@@ -40,6 +40,15 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
     .filter(t => t.type === 'expense' && t.isPaid)
     .reduce((sum, t) => sum + t.amount, 0);
 
+  // Calcular despesas pagas vs recebidas
+  const expensesPaid = transactionsForSelectedMonth
+    .filter(t => t.type === 'expense' && t.isPaid)
+    .reduce((sum, t) => sum + t.amount, 0);
+  
+  const expensesUnpaid = transactionsForSelectedMonth
+    .filter(t => t.type === 'expense' && !t.isPaid)
+    .reduce((sum, t) => sum + t.amount, 0);
+
   const goalsImpact = calculateGoalsImpact(savingsGoals, currentMonth);
   const adjustedBalance = currentBalance - goalsImpact;
 
@@ -158,6 +167,99 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
             </p>
           </div>
         )}
+      </div>
+
+      {/* Barra de progresso financeira - Relação entre gastos e entradas com diferenciação */}
+      <div className="rounded-xl p-6 shadow-lg" style={{ backgroundColor: theme.cardBackground, border: `1px solid ${theme.cardBorder}` }}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+            <span className="text-text font-medium">Receitas</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-red-600 rounded-full"></div>
+              <span className="text-text text-sm">Pagas</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-red-400 rounded-full"></div>
+              <span className="text-text text-sm">Não Pagas</span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-5 relative overflow-hidden shadow-inner">
+          {/* Barra de receitas (verde) */}
+          <div 
+            className="bg-green-400 h-5 transition-all duration-700 absolute left-0 shadow-lg"
+            style={{ 
+              width: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`
+            }}
+          ></div>
+          
+          {/* Barra de despesas pagas (vermelho escuro) */}
+          <div 
+            className="bg-red-600 h-5 transition-all duration-700 absolute shadow-lg"
+            style={{ 
+              left: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
+              width: `${expensesPaid > 0 ? (expensesPaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`
+            }}
+          ></div>
+          
+          {/* Barra de despesas não pagas (vermelho claro) */}
+          <div 
+            className="bg-red-400 h-5 transition-all duration-700 absolute shadow-lg"
+            style={{ 
+              left: `${(currentIncome + expensesPaid) > 0 ? ((currentIncome + expensesPaid) / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
+              width: `${expensesUnpaid > 0 ? (expensesUnpaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`
+            }}
+          ></div>
+          
+          {/* Indicador de equilíbrio */}
+          {currentIncome > 0 && (expensesPaid + expensesUnpaid) > 0 && (
+            <div className="absolute -top-3 flex items-center justify-center"
+                 style={{ 
+                   left: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
+                   transform: 'translateX(-50%)'
+                 }}>
+              <div className="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-lg shadow-lg relative">
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-orange-500"></div>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <div className="grid grid-cols-3 gap-4 mt-4">
+          <div className="text-center">
+            <div className="text-lg font-bold text-green-600 dark:text-green-400">
+              {currentIncome > 0 ? ((currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
+            </div>
+            <div className="text-xs text-text opacity-80">Receitas</div>
+            <div className="text-xs text-text opacity-60">
+              {formatCurrency(currentIncome)}
+            </div>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-lg font-bold text-red-600 dark:text-red-400">
+              {expensesPaid > 0 ? ((expensesPaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
+            </div>
+            <div className="text-xs text-text opacity-80">Pagas</div>
+            <div className="text-xs text-text opacity-60">
+              {formatCurrency(expensesPaid)}
+            </div>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-lg font-bold text-red-400 dark:text-red-300">
+              {expensesUnpaid > 0 ? ((expensesUnpaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
+            </div>
+            <div className="text-xs text-text opacity-80">Não Pagas</div>
+            <div className="text-xs text-text opacity-60">
+              {formatCurrency(expensesUnpaid)}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* IMPROVED: Income vs Expenses vs Goals - Better horizontal layout */}
