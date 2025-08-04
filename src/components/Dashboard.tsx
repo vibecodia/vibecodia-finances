@@ -40,6 +40,15 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
     .filter(t => t.type === 'expense' && t.isPaid)
     .reduce((sum, t) => sum + t.amount, 0);
 
+  // Calcular despesas pagas vs recebidas
+  const expensesPaid = transactionsForSelectedMonth
+    .filter(t => t.type === 'expense' && t.isPaid)
+    .reduce((sum, t) => sum + t.amount, 0);
+  
+  const expensesUnpaid = transactionsForSelectedMonth
+    .filter(t => t.type === 'expense' && !t.isPaid)
+    .reduce((sum, t) => sum + t.amount, 0);
+
   const goalsImpact = calculateGoalsImpact(savingsGoals, currentMonth);
   const adjustedBalance = currentBalance - goalsImpact;
 
@@ -158,6 +167,60 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
             </p>
           </div>
         )}
+      </div>
+
+      {/* Barra de progresso financeira - Relação entre gastos e entradas com diferenciação */}
+      <div className="rounded-xl p-6 shadow-lg" style={{ backgroundColor: theme.cardBackground, border: `1px solid ${theme.cardBorder}` }}>
+        <div className="flex justify-between text-sm mb-3">
+          <span className="text-text">Receitas</span>
+          <span className="text-text">Despesas (Pagas | Não Pagas)</span>
+        </div>
+        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-4 relative overflow-hidden">
+          {/* Barra de receitas (verde) */}
+          <div 
+            className="bg-green-400 h-4 rounded-full transition-all duration-700 absolute left-0 shadow-lg"
+            style={{ width: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%` }}
+          ></div>
+          
+          {/* Barra de despesas pagas (vermelho escuro) */}
+          <div 
+            className="bg-red-600 h-4 transition-all duration-700 absolute shadow-lg"
+            style={{ 
+              left: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
+              width: `${expensesPaid > 0 ? (expensesPaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%` 
+            }}
+          ></div>
+          
+          {/* Barra de despesas não pagas (vermelho claro) */}
+          <div 
+            className="bg-red-400 h-4 transition-all duration-700 absolute shadow-lg"
+            style={{ 
+              left: `${(currentIncome + expensesPaid) > 0 ? ((currentIncome + expensesPaid) / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
+              width: `${expensesUnpaid > 0 ? (expensesUnpaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%` 
+            }}
+          ></div>
+          
+          {/* Indicador de equilíbrio */}
+          {currentIncome > 0 && (expensesPaid + expensesUnpaid) > 0 && (
+            <div className="absolute -top-2 flex items-center justify-center"
+                 style={{ 
+                   left: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
+                   transform: 'translateX(-50%)'
+                 }}>
+              <div className="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-lg shadow-lg relative">
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-orange-500"></div>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="flex justify-between text-xs mt-2">
+          <span className="text-text opacity-80">
+            {currentIncome > 0 ? ((currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}% receitas
+          </span>
+          <span className="text-text opacity-80">
+            {expensesPaid > 0 ? ((expensesPaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}% pagas | {expensesUnpaid > 0 ? ((expensesUnpaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}% não pagas
+          </span>
+        </div>
       </div>
 
       {/* IMPROVED: Income vs Expenses vs Goals - Better horizontal layout */}
