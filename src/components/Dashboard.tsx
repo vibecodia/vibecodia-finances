@@ -171,20 +171,33 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
 
       {/* Barra de progresso financeira - Relação entre gastos e entradas com diferenciação */}
       <div className="rounded-xl p-6 shadow-lg" style={{ backgroundColor: theme.cardBackground, border: `1px solid ${theme.cardBorder}` }}>
-        <div className="flex justify-between text-sm mb-3">
-          <span className="text-text">Receitas</span>
-          <span className="text-text">Despesas (Pagas | Não Pagas)</span>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+            <span className="text-text font-medium">Receitas</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-red-600 rounded-full"></div>
+              <span className="text-text text-sm">Pagas</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-red-400 rounded-full"></div>
+              <span className="text-text text-sm">Não Pagas</span>
+            </div>
+          </div>
         </div>
-        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-4 relative overflow-hidden">
+        
+        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-5 relative overflow-hidden shadow-inner">
           {/* Barra de receitas (verde) */}
           <div 
-            className="bg-green-400 h-4 rounded-full transition-all duration-700 absolute left-0 shadow-lg"
+            className="bg-green-400 h-5 transition-all duration-700 absolute left-0 shadow-lg"
             style={{ width: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%` }}
           ></div>
           
           {/* Barra de despesas pagas (vermelho escuro) */}
           <div 
-            className="bg-red-600 h-4 transition-all duration-700 absolute shadow-lg"
+            className="bg-red-600 h-5 transition-all duration-700 absolute shadow-lg"
             style={{ 
               left: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
               width: `${expensesPaid > 0 ? (expensesPaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%` 
@@ -193,7 +206,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
           
           {/* Barra de despesas não pagas (vermelho claro) */}
           <div 
-            className="bg-red-400 h-4 transition-all duration-700 absolute shadow-lg"
+            className="bg-red-400 h-5 transition-all duration-700 absolute shadow-lg"
             style={{ 
               left: `${(currentIncome + expensesPaid) > 0 ? ((currentIncome + expensesPaid) / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
               width: `${expensesUnpaid > 0 ? (expensesUnpaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%` 
@@ -202,7 +215,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
           
           {/* Indicador de equilíbrio */}
           {currentIncome > 0 && (expensesPaid + expensesUnpaid) > 0 && (
-            <div className="absolute -top-2 flex items-center justify-center"
+            <div className="absolute -top-3 flex items-center justify-center"
                  style={{ 
                    left: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
                    transform: 'translateX(-50%)'
@@ -213,13 +226,37 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
             </div>
           )}
         </div>
-        <div className="flex justify-between text-xs mt-2">
-          <span className="text-text opacity-80">
-            {currentIncome > 0 ? ((currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}% receitas
-          </span>
-          <span className="text-text opacity-80">
-            {expensesPaid > 0 ? ((expensesPaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}% pagas | {expensesUnpaid > 0 ? ((expensesUnpaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}% não pagas
-          </span>
+        
+        <div className="grid grid-cols-3 gap-4 mt-4">
+          <div className="text-center">
+            <div className="text-lg font-bold text-green-600 dark:text-green-400">
+              {currentIncome > 0 ? ((currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
+            </div>
+            <div className="text-xs text-text opacity-80">Receitas</div>
+            <div className="text-xs text-text opacity-60">
+              {formatCurrency(currentIncome)}
+            </div>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-lg font-bold text-red-600 dark:text-red-400">
+              {expensesPaid > 0 ? ((expensesPaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
+            </div>
+            <div className="text-xs text-text opacity-80">Pagas</div>
+            <div className="text-xs text-text opacity-60">
+              {formatCurrency(expensesPaid)}
+            </div>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-lg font-bold text-red-400 dark:text-red-300">
+              {expensesUnpaid > 0 ? ((expensesUnpaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
+            </div>
+            <div className="text-xs text-text opacity-80">Não Pagas</div>
+            <div className="text-xs text-text opacity-60">
+              {formatCurrency(expensesUnpaid)}
+            </div>
+          </div>
         </div>
       </div>
 
