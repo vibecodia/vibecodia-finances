@@ -192,7 +192,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
           {/* Barra de receitas (verde) */}
           <div 
             className="bg-green-400 h-5 transition-all duration-700 absolute left-0 shadow-lg"
-            style={{ width: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%` }}
+            style={{ 
+              width: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`
+            }}
           ></div>
           
           {/* Barra de despesas pagas (vermelho escuro) */}
@@ -200,7 +202,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
             className="bg-red-600 h-5 transition-all duration-700 absolute shadow-lg"
             style={{ 
               left: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
-              width: `${expensesPaid > 0 ? (expensesPaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%` 
+              width: `${expensesPaid > 0 ? (expensesPaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`
             }}
           ></div>
           
@@ -209,7 +211,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
             className="bg-red-400 h-5 transition-all duration-700 absolute shadow-lg"
             style={{ 
               left: `${(currentIncome + expensesPaid) > 0 ? ((currentIncome + expensesPaid) / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
-              width: `${expensesUnpaid > 0 ? (expensesUnpaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%` 
+              width: `${expensesUnpaid > 0 ? (expensesUnpaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`
             }}
           ></div>
           

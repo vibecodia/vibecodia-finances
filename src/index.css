@@ -64,3 +64,78 @@
 .animate-pulse-once {
   animation: pulse-once 0.5s ease-out;
 }
+
+/* Animações para as barras de progresso */
+@keyframes pulse-slow {
+  0%, 100% { 
+    opacity: 1; 
+    transform: scaleY(1);
+  }
+  50% { 
+    opacity: 0.7; 
+    transform: scaleY(1.15);
+  }
+}
+
+@keyframes push-right {
+  0%, 100% { 
+    transform: translateX(0);
+  }
+  25% { 
+    transform: translateX(2px);
+  }
+  75% { 
+    transform: translateX(-2px);
+  }
+}
+
+@keyframes push-left {
+  0%, 100% { 
+    transform: translateX(0);
+  }
+  25% { 
+    transform: translateX(-2px);
+  }
+  75% { 
+    transform: translateX(2px);
+  }
+}
+
+@keyframes hand-appear {
+  0%, 100% { 
+    opacity: 0;
+    transform: translateX(-50%) scale(0.8);
+  }
+  20%, 80% { 
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+@keyframes bounce-slow {
+  0%, 100% { 
+    transform: translateX(-50%) translateY(0);
+  }
+  50% { 
+    transform: translateX(-50%) translateY(-5px);
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s ease-in-out infinite;
+}
+
+.animate-pulse-slow-delayed {
+  animation: pulse-slow 2s ease-in-out infinite;
+  animation-delay: 0.7s;
+}
+
+.animate-pulse-slow-delayed-2 {
+  animation: pulse-slow 2s ease-in-out infinite;
+  animation-delay: 1.4s;
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 2s ease-in-out infinite;
+  animation-delay: 1s;
+}
