@@ -12,6 +12,9 @@ services:
     ports:
       - "80:80"
       - "443:443"  # <-- ADICIONE ESTA LINHA
+    networks:
+      - default
+      - rede-global-proxy
     env_file:
       - .env
     volumes:
@@ -35,12 +38,10 @@ services:
         #- mongo
     restart: unless-stopped
     container_name: financial-app-backend
-
-      #mongo:
-      #image: mongo:latest
-      #volumes:
-      #- mongo-data:/data/db
-      #restart: always
-
-      #volumes:
-      #mongo-data:
+  
+networks:
+  default:
+    driver: bridge
+  rede-global-proxy:
+    name: rede-global-proxy
+    driver: bridge
