@@ -29,18 +29,5 @@ services:
       - .env
     environment:
       - NODE_ENV=development
-    depends_on:
-      - mongo
     restart: unless-stopped
     container_name: financial-app-backend
-
-  mongo:
-    image: mongo:latest
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo-data:/data/db
-    restart: always
-
-volumes:
-  mongo-data:

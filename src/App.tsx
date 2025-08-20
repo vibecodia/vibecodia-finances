@@ -16,6 +16,7 @@ import { Moon, Sun } from 'lucide-react';
 import ShoppingCartButton from './components/ShoppingCartButton';
 import ShoppingListModal from './components/ShoppingListModal';
 import { useShoppingList } from './hooks/useShoppingList';
+import { TrelloBoard } from './components/trello/TrelloBoard';
 
 function App() {
 
@@ -105,6 +106,7 @@ function App() {
               <Route path="/reports" element={<Reports transactions={transactions} savingsGoals={savingsGoals} />} />
               <Route path="/goals" element={<SavingsGoals goals={savingsGoals} onAdd={addSavingsGoal} onUpdate={updateSavingsGoal} onDelete={deleteSavingsGoal} onAddContribution={addSavingsContribution} onUpdateContribution={updateSavingsContribution} onDeleteContribution={deleteSavingsContribution} />} />
               <Route path="/settings" element={<Settings transactions={transactions} savingsGoals={savingsGoals} onImportData={importData} onClearAllData={clearAllData} />} />
+              <Route path="/tasks" element={<TrelloBoard />} />
             </Routes>
           </main>
       </div>
