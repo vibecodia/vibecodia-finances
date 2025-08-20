@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Column } from './Column';
 import { Task } from '../../types/trello/task';
 import { CheckSquare, Plus } from 'lucide-react';
@@ -11,7 +11,14 @@ const initialTasks: Record<string, Task[]> = {
 };
 
 export function TrelloBoard() {
-  const [tasks, setTasks] = useState(initialTasks);
+  const [tasks, setTasks] = useState(() => {
+    const savedTasks = localStorage.getItem('trelloTasks');
+    return savedTasks ? JSON.parse(savedTasks) : initialTasks;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('trelloTasks', JSON.stringify(tasks));
+  }, [tasks]);
   const [dragOver, setDragOver] = useState<false | 'todo' | 'inProgress' | 'done'>(false);
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
