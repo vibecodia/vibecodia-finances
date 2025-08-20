@@ -121,6 +121,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
           >
             <Calendar className="w-4 h-4" />
           </button>
+          <button
+            onClick={() => handleCardClick('/tasks')}
+            className="p-2 rounded-full bg-primary text-white hover:bg-opacity-80 transition-colors shadow-md"
+            title="Ir para o Quadro de Tarefas"
+          >
+            <Target className="w-4 h-4" />
+          </button>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, TrendingDown, TrendingUp, BarChart3, Target, Calendar, Settings, Menu, X } from 'lucide-react';
+import { Home, TrendingDown, TrendingUp, BarChart3, Target, Calendar, Settings, Menu, X, CheckSquare } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { cn } from '../lib/utils';
 
@@ -26,6 +26,7 @@ const Navigation: React.FC = () => {
     { id: '/reports', label: 'Relatórios', icon: BarChart3 },
     { id: '/goals', label: 'Metas', icon: Target },
     { id: '/settings', label: 'Config', icon: Settings },
+    { id: '/tasks', label: 'Tarefas', icon: CheckSquare },
   ];
 
   return (
