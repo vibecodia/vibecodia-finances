@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.8](https://github.com/vibecodia/vibecodia-finances/compare/v0.7.2...v0.8.8) (2025-08-20)
+
+
+### Bug Fixes
+
+* gemini prompt ([508b41a](https://github.com/vibecodia/vibecodia-finances/commit/508b41a3ae7f1efcf4551f259ea363cd3b0f6f0c))
+* github path for gemini cli ([05527c7](https://github.com/vibecodia/vibecodia-finances/commit/05527c7c941057bc110e7738f3f86a070a45867b))
+* melhorias ([ad22d45](https://github.com/vibecodia/vibecodia-finances/commit/ad22d45d1a587631270a909f3d1dc6cc618b104c))
+* melhorias ([a26f35e](https://github.com/vibecodia/vibecodia-finances/commit/a26f35e2c9a54efc7b9793eaec3a925bf6e58389))
+* plano argument fix ([f90ed97](https://github.com/vibecodia/vibecodia-finances/commit/f90ed97ac16f5dae452c2574e00a5d96734e5d9b))
+* plano gemin-cli ([4e7431a](https://github.com/vibecodia/vibecodia-finances/commit/4e7431a82875ae052d577e4fe2b3c4c1dbe146e6))
+* prompt mais detalhado ([de2a396](https://github.com/vibecodia/vibecodia-finances/commit/de2a396501c3d06002ed470ed159aec116068664))
+* step ([0618e5f](https://github.com/vibecodia/vibecodia-finances/commit/0618e5f71c0930ee754999aa6bff4992b7316cc7))
+* workflow step ([cefc054](https://github.com/vibecodia/vibecodia-finances/commit/cefc054e29382c894c462b5b81c9786463e843a1))
+
 ### [0.7.2](https://github.com/ErgonBerry/contas/compare/v0.7.1...v0.7.2) (2025-07-15)
 
 ### [0.7.1](https://github.com/ErgonBerry/contas/compare/v0.7.0...v0.7.1) (2025-07-15)
