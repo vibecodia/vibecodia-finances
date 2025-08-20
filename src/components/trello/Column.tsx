@@ -49,6 +49,7 @@ export function Column({ id, title, tasks, onDragStart, onDragOver, onDrop, onDr
               onDragStart={onDragStart}
               onCardClick={onCardClick}
               onDragEnd={onDragEnd}
+
             />
           ))
         ) : (

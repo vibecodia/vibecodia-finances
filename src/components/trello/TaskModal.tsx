@@ -8,11 +8,12 @@ interface TaskModalProps {
   onClose: () => void;
   onSave: (task: Task) => void;
   onDelete?: (taskId: string) => void;
+  onMove?: (taskId: string, newColumn: 'todo' | 'inProgress' | 'done') => void;
   task?: Task;
   mode: 'create' | 'edit';
 }
 
-export function TaskModal({ isOpen, onClose, onSave, task, mode }: TaskModalProps) {
+export function TaskModal({ isOpen, onClose, onSave, task, mode, onMove }: TaskModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
@@ -141,21 +142,51 @@ export function TaskModal({ isOpen, onClose, onSave, task, mode }: TaskModalProp
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-200 font-handwriting"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={!title.trim()}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors duration-200 font-medium font-handwriting"
-            >
-              {mode === 'edit' ? 'Salvar' : 'Criar'}
-            </button>
+          <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+            {mode === 'edit' && onMove && (
+              <div className="flex space-x-2">
+                <button
+                  type="button"
+                  onClick={() => onMove(task!.id, 'todo')}
+                  className="px-3 py-1.5 text-sm bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg transition-colors duration-200 font-handwriting flex items-center gap-1"
+                >
+                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                  A Fazer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onMove(task!.id, 'inProgress')}
+                  className="px-3 py-1.5 text-sm bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded-lg transition-colors duration-200 font-handwriting flex items-center gap-1"
+                >
+                  <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                  Em Progresso
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onMove(task!.id, 'done')}
+                  className="px-3 py-1.5 text-sm bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-colors duration-200 font-handwriting flex items-center gap-1"
+                >
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  Concluído
+                </button>
+              </div>
+            )}
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-200 font-handwriting"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={!title.trim()}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors duration-200 font-medium font-handwriting"
+              >
+                {mode === 'edit' ? 'Salvar' : 'Criar'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

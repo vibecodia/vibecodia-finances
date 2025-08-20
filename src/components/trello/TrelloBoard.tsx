@@ -39,7 +39,7 @@ export function TrelloBoard() {
     // Remove da coluna original
     const updatedTasks = { ...tasks };
     for (const key in updatedTasks) {
-      updatedTasks[key] = updatedTasks[key].filter(task => task.id !== draggedTask.id);
+      updatedTasks[key] = updatedTasks[key].filter((task: Task) => task.id !== draggedTask.id);
     }
 
     // Adiciona na nova coluna
@@ -75,7 +75,7 @@ export function TrelloBoard() {
       // Update existing task
       const updatedTasks = { ...tasks };
       for (const key in updatedTasks) {
-        updatedTasks[key] = updatedTasks[key].filter(t => t.id !== task.id);
+        updatedTasks[key] = updatedTasks[key].filter((t: Task) => t.id !== task.id);
       }
       updatedTasks[task.columnId] = [...updatedTasks[task.columnId], task];
       setTasks(updatedTasks);
@@ -97,11 +97,13 @@ export function TrelloBoard() {
   const handleDeleteTask = (taskId: string) => {
     const updatedTasks = { ...tasks };
     for (const key in updatedTasks) {
-      updatedTasks[key] = updatedTasks[key].filter(t => t.id !== taskId);
+      updatedTasks[key] = updatedTasks[key].filter((t: Task) => t.id !== taskId);
     }
     setTasks(updatedTasks);
     setShowTaskModal(false);
   };
+
+
 
   return (
     <div className="p-4">
@@ -142,6 +144,7 @@ export function TrelloBoard() {
             dragOver={dragOver === 'todo'} 
             onCardClick={handleCardClick}
             onDragEnd={handleDragEnd}
+
           />
         </div>
         
@@ -156,6 +159,7 @@ export function TrelloBoard() {
             dragOver={dragOver === 'inProgress'} 
             onCardClick={handleCardClick}
             onDragEnd={handleDragEnd}
+
           />
         </div>
         
@@ -170,6 +174,7 @@ export function TrelloBoard() {
             dragOver={dragOver === 'done'} 
             onCardClick={handleCardClick}
             onDragEnd={handleDragEnd}
+
           />
         </div>
       </div>

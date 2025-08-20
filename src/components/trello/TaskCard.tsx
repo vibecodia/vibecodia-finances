@@ -17,16 +17,21 @@ export function TaskCard({ task, onDragStart, onCardClick }: TaskCardProps) {
   };
 
   return (
-    <div
-      draggable
-      onDragStart={handleDragStart}
-      onClick={() => onCardClick(task)}
-      className="bg-white dark:bg-gray-100 rounded-lg p-4 shadow-md hover:shadow-lg transition-all duration-200 cursor-grab active:cursor-grabbing border-2 border-gray-300 dark:border-gray-400 group relative overflow-hidden transform transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-xl"
-      style={{
-        background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-      }}
-    >
+    <div className="relative">
+      
+      
+      <div
+        draggable
+        onDragStart={handleDragStart}
+        onClick={() => onCardClick(task)}
+        
+        onContextMenu={(e) => e.preventDefault()}
+        className="bg-white dark:bg-gray-100 rounded-lg p-4 shadow-md hover:shadow-lg transition-all duration-200 cursor-grab active:cursor-grabbing border-2 border-gray-300 dark:border-gray-400 group relative overflow-hidden transform transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-xl"
+        style={{
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+        }}
+      >
       {/* Quadro branco texture */}
       <div className="absolute inset-0 opacity-5 pointer-events-none">
         <div className="w-full h-full" style={{
@@ -66,6 +71,7 @@ export function TaskCard({ task, onDragStart, onCardClick }: TaskCardProps) {
             <span className="font-handwriting text-sm">{task.date ? formatDate(task.date.toString()) : ''}</span>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

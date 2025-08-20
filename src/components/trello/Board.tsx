@@ -144,8 +144,8 @@ export function Board() {
   
 
   const handleOpenMoveModal = (task: Task) => {
-    setTaskToMove(task);
-    setIsMoveModalOpen(true);
+    setEditingTask(task);
+    setIsModalOpen(true);
   };
 
   const handleMoveTask = (taskId: string, newColumnId: 'todo' | 'inProgress' | 'done') => {
@@ -210,6 +210,7 @@ export function Board() {
               onDragEnd={handleDragEnd}
               dragOver={dragOverColumn === column.id}
               onCardClick={handleOpenMoveModal}
+
             />
           ))}
         </div>
@@ -227,6 +228,7 @@ export function Board() {
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           onSave={handleSaveTask}
+          onMove={handleMoveTask}
           task={editingTask}
           mode={editingTask ? 'edit' : 'create'}
         />
@@ -242,14 +244,14 @@ export function Board() {
         />
 
         {/* New Move Task Modal */}
-        <MoveTaskModal
-          isOpen={isMoveModalOpen}
-          onClose={() => setIsMoveModalOpen(false)}
-          task={taskToMove}
-          onMove={handleMoveTask}
-          onEdit={handleEditTask}
-          onDelete={handleDeleteTask}
-        />
+         <MoveTaskModal
+           isOpen={isMoveModalOpen}
+           onClose={() => setIsMoveModalOpen(false)}
+           task={taskToMove}
+           onMove={handleMoveTask}
+           onEdit={handleEditTask}
+           onDelete={handleDeleteTask}
+         />
       </div>
     </div>
   );
