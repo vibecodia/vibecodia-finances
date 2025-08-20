@@ -7,10 +7,12 @@ interface TaskCardProps {
   task: Task;
   onDragStart: (task: Task) => void;
   onCardClick: (task: Task) => void;
+  onMoveForward: (taskId: string) => void;
+  onMoveBackward: (taskId: string) => void;
   onDragEnd?: () => void;
 }
 
-export function TaskCard({ task, onDragStart, onCardClick }: TaskCardProps) {
+export function TaskCard({ task, onDragStart, onCardClick, onMoveForward = () => {}, onMoveBackward = () => {} }: TaskCardProps) {
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.dataTransfer.effectAllowed = 'move';
     onDragStart(task);
@@ -18,7 +20,28 @@ export function TaskCard({ task, onDragStart, onCardClick }: TaskCardProps) {
 
   return (
     <div className="relative">
-      
+      <div className="absolute -top-2 right-0 flex space-x-1 z-20">
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            onMoveForward(task.id);
+          }}
+          className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded-md shadow-md transition-colors"
+          title="Mover para frente"
+        >
+          ➡️
+        </button>
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            onMoveBackward(task.id);
+          }}
+          className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded-md shadow-md transition-colors"
+          title="Mover para trás"
+        >
+          ⬅️
+        </button>
+      </div>
       
       <div
         draggable

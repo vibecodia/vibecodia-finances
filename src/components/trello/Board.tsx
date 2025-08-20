@@ -148,16 +148,38 @@ export function Board() {
     setIsModalOpen(true);
   };
 
-  const handleMoveTask = (taskId: string, newColumnId: 'todo' | 'inProgress' | 'done') => {
-    setTasks(prevTasks =>
-      prevTasks.map(task =>
-        task.id === taskId
-          ? { ...task, columnId: newColumnId }
-          : task
-      )
-    );
-    setIsMoveModalOpen(false);
-    setTaskToMove(null);
+  const handleMoveForward = (taskId: string) => {
+    setTasks(prevTasks => {
+      return prevTasks.map(task => {
+        if (task.id === taskId) {
+          const currentColumn = task.columnId;
+          let newColumn: 'todo' | 'inProgress' | 'done' = currentColumn;
+          
+          if (currentColumn === 'todo') newColumn = 'inProgress';
+          else if (currentColumn === 'inProgress') newColumn = 'done';
+          
+          return { ...task, columnId: newColumn };
+        }
+        return task;
+      });
+    });
+  };
+
+  const handleMoveBackward = (taskId: string) => {
+    setTasks(prevTasks => {
+      return prevTasks.map(task => {
+        if (task.id === taskId) {
+          const currentColumn = task.columnId;
+          let newColumn: 'todo' | 'inProgress' | 'done' = currentColumn;
+          
+          if (currentColumn === 'inProgress') newColumn = 'todo';
+          else if (currentColumn === 'done') newColumn = 'inProgress';
+          
+          return { ...task, columnId: newColumn };
+        }
+        return task;
+      });
+    });
   };
 
   return (
@@ -210,7 +232,8 @@ export function Board() {
               onDragEnd={handleDragEnd}
               dragOver={dragOverColumn === column.id}
               onCardClick={handleOpenMoveModal}
-
+              onMoveForward={handleMoveForward}
+              onMoveBackward={handleMoveBackward}
             />
           ))}
         </div>
@@ -228,7 +251,6 @@ export function Board() {
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           onSave={handleSaveTask}
-          onMove={handleMoveTask}
           task={editingTask}
           mode={editingTask ? 'edit' : 'create'}
         />
@@ -248,7 +270,7 @@ export function Board() {
            isOpen={isMoveModalOpen}
            onClose={() => setIsMoveModalOpen(false)}
            task={taskToMove}
-           onMove={handleMoveTask}
+           onMove={handleMoveForward}
            onEdit={handleEditTask}
            onDelete={handleDeleteTask}
          />

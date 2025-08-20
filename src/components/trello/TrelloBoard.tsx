@@ -144,7 +144,16 @@ export function TrelloBoard() {
             dragOver={dragOver === 'todo'} 
             onCardClick={handleCardClick}
             onDragEnd={handleDragEnd}
-
+            onMoveForward={(taskId) => {
+              const updatedTasks = {...tasks};
+              const task = updatedTasks.todo.find((t: Task) => t.id === taskId);
+              if (task) {
+                updatedTasks.todo = updatedTasks.todo.filter((t: Task) => t.id !== taskId);
+                updatedTasks.inProgress = [...updatedTasks.inProgress, {...task, columnId: 'inProgress'}];
+                setTasks(updatedTasks);
+              }
+            }}
+            onMoveBackward={() => {}}
           />
         </div>
         
@@ -159,7 +168,24 @@ export function TrelloBoard() {
             dragOver={dragOver === 'inProgress'} 
             onCardClick={handleCardClick}
             onDragEnd={handleDragEnd}
-
+            onMoveForward={(taskId) => {
+              const updatedTasks = {...tasks};
+              const task = updatedTasks.inProgress.find((t: Task) => t.id === taskId);
+              if (task) {
+                updatedTasks.inProgress = updatedTasks.inProgress.filter((t: Task) => t.id !== taskId);
+                updatedTasks.done = [...updatedTasks.done, {...task, columnId: 'done'}];
+                setTasks(updatedTasks);
+              }
+            }}
+            onMoveBackward={(taskId) => {
+              const updatedTasks = {...tasks};
+              const task = updatedTasks.inProgress.find((t: Task) => t.id === taskId);
+              if (task) {
+                updatedTasks.inProgress = updatedTasks.inProgress.filter((t: Task) => t.id !== taskId);
+                updatedTasks.todo = [...updatedTasks.todo, {...task, columnId: 'todo'}];
+                setTasks(updatedTasks);
+              }
+            }}
           />
         </div>
         
@@ -174,7 +200,16 @@ export function TrelloBoard() {
             dragOver={dragOver === 'done'} 
             onCardClick={handleCardClick}
             onDragEnd={handleDragEnd}
-
+            onMoveForward={() => {}}
+            onMoveBackward={(taskId) => {
+              const updatedTasks = {...tasks};
+              const task = updatedTasks.done.find((t: Task) => t.id === taskId);
+              if (task) {
+                updatedTasks.done = updatedTasks.done.filter((t: Task) => t.id !== taskId);
+                updatedTasks.inProgress = [...updatedTasks.inProgress, {...task, columnId: 'inProgress'}];
+                setTasks(updatedTasks);
+              }
+            }}
           />
         </div>
       </div>

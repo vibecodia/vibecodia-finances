@@ -13,9 +13,11 @@ interface ColumnProps {
   onCardClick: (task: Task) => void;
   onDragEnd: () => void;
   onDragLeaveColumn?: (e: React.DragEvent) => void;
+  onMoveForward: (taskId: string) => void;
+  onMoveBackward: (taskId: string) => void;
 }
 
-export function Column({ id, title, tasks, onDragStart, onDragOver, onDrop, onDragLeaveColumn, dragOver, onCardClick, onDragEnd }: ColumnProps) {
+export function Column({ id, title, tasks, onDragStart, onDragOver, onDrop, onDragLeaveColumn, dragOver, onCardClick, onDragEnd, onMoveForward, onMoveBackward }: ColumnProps) {
   const getColumnColor = () => {
     switch (id) {
       case 'todo':
@@ -49,7 +51,8 @@ export function Column({ id, title, tasks, onDragStart, onDragOver, onDrop, onDr
               onDragStart={onDragStart}
               onCardClick={onCardClick}
               onDragEnd={onDragEnd}
-
+              onMoveForward={onMoveForward}
+              onMoveBackward={onMoveBackward}
             />
           ))
         ) : (
