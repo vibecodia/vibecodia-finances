@@ -44,6 +44,7 @@ export function TaskCard({ task, onDragStart, onCardClick, onMoveForward = () =>
       </div>
       
       <div
+        id={`task-${task.id}`}
         draggable
         onDragStart={handleDragStart}
         onClick={() => onCardClick(task)}

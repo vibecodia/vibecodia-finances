@@ -158,6 +158,22 @@ export function Board() {
           if (currentColumn === 'todo') newColumn = 'inProgress';
           else if (currentColumn === 'inProgress') newColumn = 'done';
           
+          // Add animation class
+          const taskElement = document.getElementById(`task-${taskId}`);
+          if (taskElement) {
+            taskElement.classList.add('animate-pulse');
+            setTimeout(() => {
+              taskElement.classList.remove('animate-pulse');
+              // Show notification
+              const columnNames = {
+                todo: 'A Fazer',
+                inProgress: 'Em Andamento',
+                done: 'Concluído'
+              };
+              alert(`Card movido para ${columnNames[newColumn]}`);
+            }, 500);
+          }
+          
           return { ...task, columnId: newColumn };
         }
         return task;
@@ -174,6 +190,22 @@ export function Board() {
           
           if (currentColumn === 'inProgress') newColumn = 'todo';
           else if (currentColumn === 'done') newColumn = 'inProgress';
+          
+          // Add animation class
+          const taskElement = document.getElementById(`task-${taskId}`);
+          if (taskElement) {
+            taskElement.classList.add('animate-pulse');
+            setTimeout(() => {
+              taskElement.classList.remove('animate-pulse');
+              // Show notification
+              const columnNames = {
+                todo: 'A Fazer',
+                inProgress: 'Em Andamento',
+                done: 'Concluído'
+              };
+              alert(`Card movido para ${columnNames[newColumn]}`);
+            }, 500);
+          }
           
           return { ...task, columnId: newColumn };
         }
