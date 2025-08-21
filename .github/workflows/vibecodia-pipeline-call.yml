@@ -19,7 +19,7 @@ jobs:
             await github.rest.actions.createWorkflowDispatch({
               owner: 'vibecodia',
               repo: 'vibecodia-pipeline',
-              workflow_id: 'Dry Run OCI SSH Deploy', # nome do workflow de destino
+              workflow_id: 'dry-run.yml', # nome do workflow de destino
               ref: 'main',                            # branch do workflow de destino
               inputs: {
                 pr_number: context.payload.pull_request.number.toString()
