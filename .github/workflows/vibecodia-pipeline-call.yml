@@ -26,6 +26,5 @@ jobs:
               }
             })
 
-
       - name: Confirmar disparo
         run: echo "Workflow disparado no repositório destino para o PR ${{ github.event.pull_request.number }}"
