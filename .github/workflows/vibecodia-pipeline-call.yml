@@ -19,8 +19,8 @@ jobs:
             github.rest.actions.createWorkflowDispatch({
               owner: 'vibecodia',
               repo: 'vibecodia-pipelines',
-              workflow_id: 'dry-run.yml',
-              ref: 'main',
+              workflow_id: 'finances-dry-run.yml',
+              ref: 'develop',
               inputs: {
                 pr_number: context.payload.pull_request.number.toString(),
                 pr_branch: context.payload.pull_request.head.ref // Adicione esta linha para passar o branch
