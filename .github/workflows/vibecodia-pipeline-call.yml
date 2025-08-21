@@ -22,7 +22,8 @@ jobs:
               workflow_id: 'dry-run.yml',
               ref: 'main',
               inputs: {
-                pr_number: context.payload.pull_request.number.toString()
+                pr_number: context.payload.pull_request.number.toString(),
+                pr_branch: context.payload.pull_request.head.ref // Adicione esta linha para passar o branch
               }
             })
 
