@@ -14,16 +14,17 @@ jobs:
       - name: Disparar workflow em vibecodia-pipeline
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.MY_PAT }}
           script: |
             await github.rest.actions.createWorkflowDispatch({
               owner: 'vibecodia',
               repo: 'vibecodia-pipeline',
-              workflow_id: 'dry-run.yml',
-              ref: 'main',
+              workflow_id: 'Dry Run OCI SSH Deploy', # nome do workflow de destino
+              ref: 'main',                            # branch do workflow de destino
               inputs: {
                 pr_number: context.payload.pull_request.number.toString()
               }
             })
 
-      - name: Verificar resultado
-        run: echo "Workflow disparado no repositório destino para o PR ${{ github.event.pull_request.number }}"
+      - name: Confirmar disparo
+        run: echo "Workflow disparado no repositório destino para o PR #${{ github.event.pull_request.number }}"
