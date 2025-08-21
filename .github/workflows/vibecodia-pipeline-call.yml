@@ -15,12 +15,12 @@ jobs:
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.MY_PAT }}
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
+          script: >
+            github.rest.actions.createWorkflowDispatch({
               owner: 'vibecodia',
               repo: 'vibecodia-pipelines',
-              workflow_id: 'dry-run.yml', # nome do workflow de destino
-              ref: 'main',                            # branch do workflow de destino
+              workflow_id: 'dry-run.yml',
+              ref: 'main',
               inputs: {
                 pr_number: context.payload.pull_request.number.toString()
               }
