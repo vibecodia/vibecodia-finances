@@ -451,6 +451,12 @@ app.delete('/api/shopping-list/:id', async (req, res) => {
   }
 });
 
+// Health Check Route
+app.get('/api/health-check', (req, res) => {
+  // Optional: Add more sophisticated checks here, e.g., database connection
+  res.status(200).json({ status: 'ok', message: 'Backend is healthy' });
+});
+
 // Serve static files from the 'dist' directory
 app.use(express.static(path.join(__dirname, 'dist')));
 

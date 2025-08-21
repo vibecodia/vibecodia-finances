@@ -1,0 +1,29 @@
+name: Disparar Workflow em Outro Repo
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  trigger-workflow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Disparar workflow em vibecodia-pipeline
+        uses: actions/github-script@v6
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: 'vibecodia',
+              repo: 'vibecodia-pipeline',
+              workflow_id: 'dry-run.yml',
+              ref: 'main',
+              inputs: {
+                pr_number: context.payload.pull_request.number.toString()
+              }
+            })
+
+      - name: Verificar resultado
+        run: echo "Workflow disparado no repositório destino para o PR ${{ github.event.pull_request.number }}"
