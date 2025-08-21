@@ -15,16 +15,16 @@ jobs:
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.MY_PAT }}
-          script: >
+          script: |
             github.rest.actions.createWorkflowDispatch({
               owner: 'vibecodia',
               repo: 'vibecodia-pipelines',
               workflow_id: 'dry-run.yml',
               ref: 'main',
               inputs: {
-                pr_number: context.payload.pull_request.number.toString()
+                branch_name: context.payload.pull_request.head.ref
               }
             })
 
       - name: Confirmar disparo
-        run: echo "Workflow disparado no repositório destino para o PR ${{ github.event.pull_request.number }}"
+        run: echo "Workflow disparado no repositório destino para a branch ${{ github.event.pull_request.head.ref }}"
