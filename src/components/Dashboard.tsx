@@ -50,7 +50,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
   // goalsImpact removido
   
   // CORRIGIDO: Usar os saldos calculados pela nova lógica
-  const currentBalance = balanceData.totalBalance;
+  // const currentBalance = balanceData.totalBalance;
   const adjustedBalance = balanceData.adjustedBalance;
 
   const totalSavingsGoals = savingsGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
