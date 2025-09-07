@@ -8,7 +8,6 @@ export interface BalanceData {
   previousBalance: number;        // Saldo acumulado de meses anteriores
   projectedBalance: number;       // Saldo incluindo pendentes do mês atual
   pendingBalance: number;         // Apenas transações pendentes do mês atual
-  goalsImpact: number;           // Impacto das metas no mês atual
   adjustedBalance: number;        // Saldo total ajustado pelas metas
 }
 
@@ -66,19 +65,18 @@ export const calculateBalances = (
   // 5. SALDO PROJETADO (total + pendentes do mês)
   const projectedBalance = totalBalance + pendingBalance;
   
-  // 6. IMPACTO DAS METAS
+  // 6. IMPACTO DAS METAS (removido do retorno)
   const goalsImpact = calculateGoalsImpact(savingsGoals, currentMonth);
-  
+
   // 7. SALDO AJUSTADO PELAS METAS
   const adjustedBalance = totalBalance - goalsImpact;
-  
+
   return {
     totalBalance,
     currentMonthBalance,
     previousBalance,
     projectedBalance,
     pendingBalance,
-    goalsImpact,
     adjustedBalance
   };
 };
