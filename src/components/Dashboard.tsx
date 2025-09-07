@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Transaction, SavingsGoal, MonthlyBalance } from '../types';
-import { formatCurrency, filterTransactionsByMonth, calculateGoalsImpact, getCurrentBrazilDate } from '../utils/helpers';
+import { formatCurrency, filterTransactionsByMonth, getCurrentBrazilDate } from '../utils/helpers';
 import { calculateBalances } from '../utils/balanceCalculations';
 import { TrendingUp, TrendingDown, Wallet, Target, AlertTriangle, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import Confetti from 'react-confetti';
@@ -47,8 +47,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
     .filter(t => t.type === 'expense' && !t.isPaid)
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // CORRIGIDO: Usar goalsImpact da nova lógica de cálculo
-  const goalsImpact = balanceData.goalsImpact;
+  // goalsImpact removido
   
   // CORRIGIDO: Usar os saldos calculados pela nova lógica
   const currentBalance = balanceData.totalBalance;
@@ -62,7 +61,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
     return monthlyBalances.find(mb => mb.month === previousMonthKey);
   }, [monthlyBalances, previousMonthKey]);
 
-  const previousAdjustedBalance = (previousMonthBalanceData?.balance ?? 0) - calculateGoalsImpact(savingsGoals, subMonths(currentMonth, 1));
+  const previousAdjustedBalance = previousMonthBalanceData?.balance ?? 0;
   const balanceChange = adjustedBalance - previousAdjustedBalance;
 
   const getBalanceIcon = () => {
@@ -150,11 +149,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
             <p className="text-2xl sm:text-3xl font-bold mb-1 break-words">
               {formatCurrency(adjustedBalance)}
             </p>
-            {goalsImpact > 0 && (
-              <p className="text-sm opacity-80 mb-2 break-words">
-                Saldo bruto: {formatCurrency(currentBalance)}
-              </p>
-            )}
+            {/* goalsImpact removido do dashboard */}
             {balanceChange !== 0 && (
               <div className="flex items-center space-x-1">
                 {balanceChange > 0 ? (
@@ -319,12 +314,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
               <h3 className="text-sm font-medium text-black truncate">Metas</h3>
             </div>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-black break-words">
-            {formatCurrency(goalsImpact)}
-          </p>
-          <p className="text-xs text-black mt-1 truncate opacity-80">
-            Aportes realizados no mês
-          </p>
+          {/* goalsImpact removido do dashboard */}
         </div>
       </div>
 
@@ -359,9 +349,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
               <span className="text-text truncate pr-2 opacity-80">
                 {totalSavingsGoals > 0 ? Math.round((totalSaved / totalSavingsGoals) * 100) : 0}% concluído
               </span>
-              <span className="text-text flex-shrink-0 opacity-80">
-                {goalsImpact > 0 && `${formatCurrency(goalsImpact)} este mês`}
-              </span>
+              {/* goalsImpact removido do dashboard */}
             </div>
           </div>
         </div>
