@@ -28,7 +28,9 @@ export const calculateBalances = (
 
   // 1. SALDO TOTAL ACUMULADO (transações pagas até hoje)
   const paidTransactions = transactions.filter(t => {
-    return t.isPaid && t.date <= currentDate;
+    // Padroniza o formato da data para garantir comparação correta
+    const tDate = format(new Date(t.date), 'yyyy-MM-dd');
+    return t.isPaid && tDate <= currentDate;
   });
   
   const paidIncomes = paidTransactions.filter(t => t.type === 'income');
