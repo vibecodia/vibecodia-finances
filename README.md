@@ -1,6 +1,6 @@
 # 💰 Controle Financeiro v0
 
-Aplicativo web moderno para gerenciamento financeiro doméstico, otimizado para dispositivos móveis Android. ;)
+Aplicativo web moderno para gerenciamento financeiro doméstico, otimizado para dispositivos móveis Android.
 
 ## 🚀 Funcionalidades
 

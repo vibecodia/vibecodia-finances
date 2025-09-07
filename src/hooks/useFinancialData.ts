@@ -139,6 +139,7 @@ export const useFinancialData = () => {
       });
       if (!response.ok) throw new Error('Failed to update payment status');
       const updatedTransaction = await response.json();
+      
       setTransactions(prev => prev.map(transaction =>
         transaction.id === id ? updatedTransaction : transaction
       ));
