@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Transaction, SavingsGoal, MonthlyBalance } from '../types';
 import { formatCurrency, filterTransactionsByMonth, calculateGoalsImpact, getCurrentBrazilDate } from '../utils/helpers';
+import { calculateBalances } from '../utils/balanceCalculations';
 import { TrendingUp, TrendingDown, Wallet, Target, AlertTriangle, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import Confetti from 'react-confetti';
 import useWindowSize from '../hooks/useWindowSize';
@@ -25,12 +26,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
 
   const transactionsForSelectedMonth = filterTransactionsByMonth(transactions, currentMonth);
   
-  const currentMonthKey = format(currentMonth, 'yyyy-MM');
-  const currentMonthBalanceData = useMemo(() => {
-    return monthlyBalances.find(mb => mb.month === currentMonthKey);
-  }, [monthlyBalances, currentMonthKey]);
+  // SOLUÇÃO DEFINITIVA: Calcular saldos diretamente para garantir reatividade
+  const balanceData = calculateBalances(transactions, savingsGoals, currentMonth);
 
-  const currentBalance = currentMonthBalanceData?.balance ?? 0;
   
   const currentIncome = transactionsForSelectedMonth
     .filter(t => t.type === 'income' && t.isPaid)
@@ -49,8 +47,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
     .filter(t => t.type === 'expense' && !t.isPaid)
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const goalsImpact = calculateGoalsImpact(savingsGoals, currentMonth);
-  const adjustedBalance = currentBalance - goalsImpact;
+  // CORRIGIDO: Usar goalsImpact da nova lógica de cálculo
+  const goalsImpact = balanceData.goalsImpact;
+  
+  // CORRIGIDO: Usar os saldos calculados pela nova lógica
+  const currentBalance = balanceData.totalBalance;
+  const adjustedBalance = balanceData.adjustedBalance;
 
   const totalSavingsGoals = savingsGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
   const totalSaved = savingsGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
@@ -139,7 +141,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium opacity-90 truncate pr-2">
-            {adjustedBalance < 0 ? 'Déficit do Mês' : 'Saldo do Mês'}
+            {adjustedBalance < 0 ? 'Déficit Total' : 'Saldo Total Acumulado'}
           </h2>
           {getBalanceIcon()}
         </div>
@@ -169,8 +171,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
         </div>
         {adjustedBalance < 0 && (
           <div className="mt-3 p-3 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
-                        <p className="text-sm text-gray-800">
-              ⚠️ Suas despesas e metas excedem suas receitas este mês
+            <p className="text-sm text-gray-800">
+              ⚠️ Seu saldo total está negativo. Considere revisar suas despesas e metas.
             </p>
           </div>
         )}
