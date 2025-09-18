@@ -30,6 +30,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
+    networks:
+      - default
+      - rede-global-proxy
     env_file:
       - .env
     environment:
