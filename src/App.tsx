@@ -126,6 +126,7 @@ function App() {
             <Route path="/tasks" element={<TrelloBoard />} />
           </Routes>
         </main>
+        <VerificationModal />
     </div>
   );
 }
