@@ -2,13 +2,20 @@ import { useState, useEffect, useMemo } from 'react';
 import { Transaction, SavingsGoal, SavingsContribution, MonthlyBalance } from '../types';
 import { getCurrentBrazilDate, getBrazilDateString } from '../utils/helpers';
 import { format } from 'date-fns';
+import { useVerification } from '../contexts/VerificationContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export const useFinancialData = () => {
+  const { pin } = useVerification();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [monthlyBalances, setMonthlyBalances] = useState<MonthlyBalance[]>([]);
+
+  const headers = useMemo(() => ({
+    'Content-Type': 'application/json',
+    'x-pin': pin || '',
+  }), [pin]);
 
   const calculateMonthlyBalances = useMemo(() => {
     return () => {
@@ -47,14 +54,13 @@ export const useFinancialData = () => {
     };
   }, [transactions]);
 
-
-
   useEffect(() => {
     const fetchData = async () => {
+      if (!pin) return; // Don't fetch if pin is not available
       try {
         const [transactionsRes, goalsRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/transactions`),
-          fetch(`${API_BASE_URL}/goals`),
+          fetch(`${API_BASE_URL}/transactions`, { headers }),
+          fetch(`${API_BASE_URL}/goals`, { headers }),
         ]);
 
         if (!transactionsRes.ok || !goalsRes.ok) {
@@ -72,19 +78,18 @@ export const useFinancialData = () => {
     };
 
     fetchData();
-  }, []);
+  }, [pin, headers]);
 
   useEffect(() => {
     calculateMonthlyBalances();
   }, [transactions, calculateMonthlyBalances]);
 
-
-
   const addTransaction = async (transaction: Omit<Transaction, 'id' | 'createdAt'>) => {
+    if (!pin) throw new Error('PIN not verified');
     try {
       const response = await fetch(`${API_BASE_URL}/transactions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           ...transaction,
           createdAt: getCurrentBrazilDate().toISOString(),
@@ -101,10 +106,11 @@ export const useFinancialData = () => {
   };
 
   const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
+    if (!pin) throw new Error('PIN not verified');
     try {
       const response = await fetch(`${API_BASE_URL}/transactions/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(updates),
       });
       if (!response.ok) throw new Error('Failed to update transaction');
@@ -119,9 +125,11 @@ export const useFinancialData = () => {
   };
 
   const deleteTransaction = async (id: string) => {
+    if (!pin) throw new Error('PIN not verified');
     try {
       const response = await fetch(`${API_BASE_URL}/transactions/${id}`, {
         method: 'DELETE',
+        headers,
       });
       if (!response.ok) throw new Error('Failed to delete transaction');
       setTransactions(prev => prev.filter(t => t.id !== id));
@@ -131,10 +139,11 @@ export const useFinancialData = () => {
   };
 
   const updatePaymentStatus = async (id: string, isPaid: boolean) => {
+    if (!pin) throw new Error('PIN not verified');
     try {
       const response = await fetch(`${API_BASE_URL}/transactions/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ isPaid }),
       });
       if (!response.ok) throw new Error('Failed to update payment status');
@@ -149,10 +158,11 @@ export const useFinancialData = () => {
   };
 
   const addSavingsGoal = async (goal: Omit<SavingsGoal, 'id' | 'createdAt'>) => {
+    if (!pin) throw new Error('PIN not verified');
     try {
       const response = await fetch(`${API_BASE_URL}/goals`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           ...goal,
           createdAt: getCurrentBrazilDate().toISOString(),
@@ -168,10 +178,11 @@ export const useFinancialData = () => {
   };
 
   const updateSavingsGoal = async (id: string, updates: Partial<SavingsGoal>) => {
+    if (!pin) throw new Error('PIN not verified');
     try {
       const response = await fetch(`${API_BASE_URL}/goals/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(updates),
       });
       if (!response.ok) throw new Error('Failed to update savings goal');
@@ -185,6 +196,7 @@ export const useFinancialData = () => {
   };
 
   const addSavingsContribution = async (goalId: string, amount: number, date?: string) => {
+    if (!pin) throw new Error('PIN not verified');
     try {
       const goalToUpdate = savingsGoals.find(g => g.id === goalId);
       if (!goalToUpdate) throw new Error('Goal not found');
@@ -196,7 +208,7 @@ export const useFinancialData = () => {
 
       const response = await fetch(`${API_BASE_URL}/goals/${goalId}/contributions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(contribution),
       });
 
@@ -211,10 +223,11 @@ export const useFinancialData = () => {
   };
 
   const updateSavingsContribution = async (goalId: string, contributionId: string, updates: Partial<SavingsContribution>) => {
+    if (!pin) throw new Error('PIN not verified');
     try {
       const response = await fetch(`${API_BASE_URL}/goals/${goalId}/contributions/${contributionId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(updates),
       });
 
@@ -229,9 +242,11 @@ export const useFinancialData = () => {
   };
 
   const deleteSavingsContribution = async (goalId: string, contributionId: string) => {
+    if (!pin) throw new Error('PIN not verified');
     try {
       const response = await fetch(`${API_BASE_URL}/goals/${goalId}/contributions/${contributionId}`, {
         method: 'DELETE',
+        headers,
       });
 
       if (!response.ok) throw new Error('Failed to delete savings contribution');
@@ -245,9 +260,11 @@ export const useFinancialData = () => {
   };
 
   const deleteSavingsGoal = async (id: string) => {
+    if (!pin) throw new Error('PIN not verified');
     try {
       const response = await fetch(`${API_BASE_URL}/goals/${id}`, {
         method: 'DELETE',
+        headers,
       });
       if (!response.ok) throw new Error('Failed to delete savings goal');
       setSavingsGoals(prev => prev.filter(g => g.id !== id));

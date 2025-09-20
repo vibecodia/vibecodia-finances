@@ -12,206 +12,153 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
-// Function to mark income as paid
-const markIncomeAsPaid = async () => {
-  try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to start of today in local time
-
-    const result = await Transaction.updateMany(
-      {
-        type: 'income',
-        isPaid: false,
-        dueDate: { $lte: today }
-      },
-      { $set: { isPaid: true } }
-    );
-    console.log(`Cron job: Marked ${result.modifiedCount} income transactions as paid.`);
-  } catch (error) {
-    console.error('Cron job error marking income as paid:', error);
-  }
-};
-
-// Schedule the cron job to run daily at a specific time (e.g., 2 AM)
-cron.schedule('0 2 * * *', () => {
-  console.log('Running daily cron job to mark income as paid...');
-  markIncomeAsPaid();
-}, {
-  timezone: "America/Sao_Paulo" // Adjust timezone as needed
-});
-
-// Helper function to convert YYYY-MM-DD string to a UTC Date object at the start of the day
-const createLocalDateForStorage = (dateString) => {
-  if (!dateString) return undefined;
-  const [year, month, day] = dateString.split('-').map(Number);
-  // Create a Date object in local time (Brazil) at noon to avoid timezone issues
-  return new Date(year, month - 1, day, 12, 0, 0);
-};
-
 const app = express();
 const port = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
 
-// Conexão com MongoDB
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 5000
-})
-  .then(() => {
-    console.log('MongoDB connected successfully');
-  })
-  .catch(err => {
-    console.error('MongoDB connection error:', err);
-    process.exit(1); // Exit process if DB connection fails
-  });
+// ---------- Conexão dinâmica com MongoDB por PIN ----------
 
-// Schemas e Models
+// Parse do JSON map do .env
+let DB_CONN_MAP = {};
+try {
+  DB_CONN_MAP = JSON.parse(process.env.MONGO_CONN_MAP || '{}');
+} catch (err) {
+  console.error("Erro ao parsear MONGO_CONN_MAP:", err);
+  process.exit(1);
+}
 
-// Schema para as contribuições dentro de uma meta de poupança
+// Cache de conexões
+const connections = {};
+
+// Função para pegar conexão do banco com base no PIN
+function getDbConnection(pin) {
+  const uri = DB_CONN_MAP[pin];
+  if (!uri) throw new Error(`PIN inválido ou banco não configurado: ${pin}`);
+
+  if (!connections[pin]) {
+    connections[pin] = mongoose.createConnection(uri, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000,
+    });
+
+    connections[pin].on('connected', () => {
+      console.log(`MongoDB conectado para PIN ${pin}`);
+    });
+
+    connections[pin].on('error', (err) => {
+      console.error(`Erro na conexão do banco (${pin}):`, err);
+    });
+  }
+
+  return connections[pin];
+}
+
+
+// ---------- Helper ----------
+
+const createLocalDateForStorage = (dateString) => {
+  if (!dateString) return undefined;
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0); // Noon local time
+};
+
+// ---------- Schemas (mesmos para todos os bancos) ----------
+
 const savingsContributionSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   date: { type: Date, required: true },
-}, {
-  timestamps: true, // Adiciona createdAt e updatedAt
-  _id: true, // Garante que cada contribuição tenha um ID
-  toJSON: {
-    virtuals: true,
-    transform: function(doc, ret) {
-      ret.id = ret._id;
-      delete ret._id;
-      delete ret.__v;
-    }
-  },
-  toObject: {
-    virtuals: true,
-    transform: function(doc, ret) {
-      ret.id = ret._id;
-      delete ret._id;
-      delete ret.__v;
-    }
-  }
-});
+}, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 const transactionSchema = new mongoose.Schema({
   description: { type: String, required: true },
   amount: { type: Number, required: true },
-  type: {
-    type: String,
-    enum: ['income', 'expense'],
-    required: true
-  },
+  type: { type: String, enum: ['income', 'expense'], required: true },
   category: { type: String, required: true },
   date: { type: Date, required: true },
   dueDate: { type: Date },
   isPaid: { type: Boolean, default: false },
-  recurrence: {
-    type: String,
-    enum: ['none', 'weekly', 'monthly', 'yearly'],
-    default: 'none'
-  },
+  recurrence: { type: String, enum: ['none', 'weekly', 'monthly', 'yearly'], default: 'none' },
   notes: { type: String, trim: true }
-}, {
-  timestamps: true, // Adiciona createdAt e updatedAt automaticamente
-  toJSON: {
-    virtuals: true,
-    transform: function(doc, ret) {
-      ret.id = ret._id;
-      delete ret._id;
-      delete ret.__v;
-    }
-  },
-  toObject: {
-    virtuals: true,
-    transform: function(doc, ret) {
-      ret.id = ret._id;
-      delete ret._id;
-      delete ret.__v;
-    }
-  }
-});
+}, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 const savingsGoalSchema = new mongoose.Schema({
   name: { type: String, required: true },
   targetAmount: { type: Number, required: true },
   currentAmount: { type: Number, default: 0 },
   deadline: { type: Date },
-  contributions: [savingsContributionSchema] // Array de contribuições
-}, {
-  timestamps: true, // Adiciona createdAt e updatedAt
-  toJSON: {
-    virtuals: true,
-    transform: function(doc, ret) {
-      ret.id = ret._id;
-      delete ret._id;
-      delete ret.__v;
-    }
-  },
-  toObject: {
-    virtuals: true,
-    transform: function(doc, ret) {
-      ret.id = ret._id;
-      delete ret._id;
-      delete ret.__v;
-    }
-  }
-});
-
-const Transaction = mongoose.model('Transaction', transactionSchema);
-const SavingsGoal = mongoose.model('SavingsGoal', savingsGoalSchema);
+  contributions: [savingsContributionSchema]
+}, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 const shoppingItemSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  purchased: {
-    type: Boolean,
-    default: false,
-  },
-  isPriority: {
-    type: Boolean,
-    default: false,
-  },
-}, {
-  timestamps: true, // Adiciona createdAt e updatedAt
-  toJSON: {
-    virtuals: true,
-    transform: function(doc, ret) {
-      ret.id = ret._id;
-      delete ret._id;
-      delete ret.__v;
-    }
-  },
-  toObject: {
-    virtuals: true,
-    transform: function(doc, ret) {
-      ret.id = ret._id;
-      delete ret._id;
-      delete ret.__v;
-    }
+  name: { type: String, required: true, trim: true },
+  purchased: { type: Boolean, default: false },
+  isPriority: { type: Boolean, default: false },
+}, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
+
+// ---------- Cron Job ----------
+
+const markIncomeAsPaid = async (pin) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const conn = getDbConnection(pin);
+    const Transaction = conn.model('Transaction', transactionSchema);
+
+    const result = await Transaction.updateMany(
+      { type: 'income', isPaid: false, dueDate: { $lte: today } },
+      { $set: { isPaid: true } }
+    );
+    console.log(`Cron job [PIN ${pin}]: Marcou ${result.modifiedCount} transações como pagas.`);
+  } catch (error) {
+    console.error(`Cron job erro [PIN ${pin}]:`, error);
+  }
+};
+
+// Executa cron job para cada PIN diariamente às 2h
+cron.schedule('0 2 * * *', () => {
+  console.log('Rodando cron job diário...');
+  Object.keys(DB_CONN_MAP).forEach(pin => markIncomeAsPaid(pin));
+}, { timezone: "America/Sao_Paulo" });
+
+// ---------- Rotas API ----------
+
+app.post('/api/verify-pin', (req, res) => {
+  const { pin } = req.body;
+  if (!pin) {
+    return res.status(400).json({ success: false, message: 'PIN não fornecido.' });
+  }
+
+  if (Object.prototype.hasOwnProperty.call(DB_CONN_MAP, pin)) {
+    res.json({ success: true });
+  } else {
+    res.status(401).json({ success: false, message: 'PIN inválido.' });
   }
 });
 
-const ShoppingItem = mongoose.model('ShoppingItem', shoppingItemSchema);
-
-// Rotas da API
-app.get('/api/transactions', async (req, res) => {
+// Middleware para pegar conexão pelo PIN passado no header ou query
+const dbMiddleware = (req, res, next) => {
+  const pin = req.header('x-pin') || req.query.pin;
+  if (!pin) return res.status(400).json({ error: 'PIN obrigatório no header ou query' });
   try {
-    const { search, type } = req.query;
-    let query = {};
+    req.conn = getDbConnection(pin);
+    next();
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
 
-    if (type) {
-      query.type = type;
-    }
-
-    if (search) {
-      query.description = { $regex: search, $options: 'i' }; // Case-insensitive search
-    }
-
+// Transações
+app.get('/api/transactions', dbMiddleware, async (req, res) => {
+  const { search, type } = req.query;
+  const Transaction = req.conn.model('Transaction', transactionSchema);
+  let query = {};
+  if (type) query.type = type;
+  if (search) query.description = { $regex: search, $options: 'i' };
+  try {
     const transactions = await Transaction.find(query);
     res.json(transactions);
   } catch (err) {
@@ -219,22 +166,23 @@ app.get('/api/transactions', async (req, res) => {
   }
 });
 
-app.post('/api/transactions', async (req, res) => {
+app.post('/api/transactions', dbMiddleware, async (req, res) => {
+  const Transaction = req.conn.model('Transaction', transactionSchema);
   const transactionData = {
     ...req.body,
     date: createLocalDateForStorage(req.body.date),
     dueDate: req.body.dueDate ? createLocalDateForStorage(req.body.dueDate) : undefined,
   };
-  const transaction = new Transaction(transactionData);
   try {
-    const newTransaction = await transaction.save();
+    const newTransaction = await new Transaction(transactionData).save();
     res.status(201).json(newTransaction);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 });
 
-app.put('/api/transactions/:id', async (req, res) => {
+app.put('/api/transactions/:id', dbMiddleware, async (req, res) => {
+  const Transaction = req.conn.model('Transaction', transactionSchema);
   try {
     const updateData = {
       ...req.body,
@@ -244,7 +192,7 @@ app.put('/api/transactions/:id', async (req, res) => {
     const updatedTransaction = await Transaction.findByIdAndUpdate(
       req.params.id,
       updateData,
-      { new: true, runValidators: true } // new: true retorna o documento atualizado
+      { new: true, runValidators: true }
     );
     if (!updatedTransaction) {
       return res.status(404).json({ message: 'Transaction not found' });
@@ -255,16 +203,22 @@ app.put('/api/transactions/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/transactions/:id', async (req, res) => {
+app.delete('/api/transactions/:id', dbMiddleware, async (req, res) => {
+  const Transaction = req.conn.model('Transaction', transactionSchema);
   try {
-    await Transaction.findByIdAndDelete(req.params.id);
+    const deletedTransaction = await Transaction.findByIdAndDelete(req.params.id);
+    if (!deletedTransaction) {
+      return res.status(404).json({ message: 'Transaction not found' });
+    }
     res.json({ message: 'Transaction deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-app.get('/api/goals', async (req, res) => {
+// ---------- Metas de Poupança ----------
+app.get('/api/goals', dbMiddleware, async (req, res) => {
+  const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
   try {
     const goals = await SavingsGoal.find();
     res.json(goals);
@@ -273,7 +227,8 @@ app.get('/api/goals', async (req, res) => {
   }
 });
 
-app.post('/api/goals', async (req, res) => {
+app.post('/api/goals', dbMiddleware, async (req, res) => {
+  const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
   const goalData = {
     ...req.body,
     deadline: req.body.deadline ? createLocalDateForStorage(req.body.deadline) : undefined,
@@ -287,7 +242,8 @@ app.post('/api/goals', async (req, res) => {
   }
 });
 
-app.put('/api/goals/:id', async (req, res) => {
+app.put('/api/goals/:id', dbMiddleware, async (req, res) => {
+  const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
   try {
     const updateData = {
       ...req.body,
@@ -298,23 +254,30 @@ app.put('/api/goals/:id', async (req, res) => {
       updateData, 
       { new: true }
     );
+    if (!updatedGoal) {
+      return res.status(404).json({ message: 'Goal not found' });
+    }
     res.json(updatedGoal);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 });
 
-app.delete('/api/goals/:id', async (req, res) => {
+app.delete('/api/goals/:id', dbMiddleware, async (req, res) => {
+  const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
   try {
-    await SavingsGoal.findByIdAndDelete(req.params.id);
+    const deletedGoal = await SavingsGoal.findByIdAndDelete(req.params.id);
+    if (!deletedGoal) {
+      return res.status(404).json({ message: 'Goal not found' });
+    }
     res.json({ message: 'Savings goal deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// Rota para adicionar uma contribuição a uma meta de poupança
-app.post('/api/goals/:id/contributions', async (req, res) => {
+app.post('/api/goals/:id/contributions', dbMiddleware, async (req, res) => {
+  const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
   try {
     const goal = await SavingsGoal.findById(req.params.id);
     if (!goal) {
@@ -324,7 +287,7 @@ app.post('/api/goals/:id/contributions', async (req, res) => {
     const { amount, date } = req.body;
     const contribution = {
       amount,
-      date: date ? createLocalDateForStorage(date) : new Date(), // Usa a data atual se não for fornecida
+      date: date ? createLocalDateForStorage(date) : new Date(),
     };
 
     goal.contributions.push(contribution);
@@ -337,8 +300,8 @@ app.post('/api/goals/:id/contributions', async (req, res) => {
   }
 });
 
-// Rota para atualizar uma contribuição
-app.put('/api/goals/:goalId/contributions/:contributionId', async (req, res) => {
+app.put('/api/goals/:goalId/contributions/:contributionId', dbMiddleware, async (req, res) => {
+  const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
   try {
     const goal = await SavingsGoal.findById(req.params.goalId);
     if (!goal) {
@@ -365,8 +328,8 @@ app.put('/api/goals/:goalId/contributions/:contributionId', async (req, res) => 
   }
 });
 
-// Rota para deletar uma contribuição
-app.delete('/api/goals/:goalId/contributions/:contributionId', async (req, res) => {
+app.delete('/api/goals/:goalId/contributions/:contributionId', dbMiddleware, async (req, res) => {
+  const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
   try {
     const goal = await SavingsGoal.findById(req.params.goalId);
     if (!goal) {
@@ -388,8 +351,11 @@ app.delete('/api/goals/:goalId/contributions/:contributionId', async (req, res) 
   }
 });
 
-// Rotas da Lista de Compras
-app.get('/api/shopping-list', async (req, res) => {
+
+
+// ---------- Lista de Compras ----------
+app.get('/api/shopping-list', dbMiddleware, async (req, res) => {
+  const ShoppingItem = req.conn.model('ShoppingItem', shoppingItemSchema);
   try {
     const items = await ShoppingItem.find();
     res.json(items);
@@ -398,11 +364,11 @@ app.get('/api/shopping-list', async (req, res) => {
   }
 });
 
-// Add a new shopping list item
-app.post('/api/shopping-list', async (req, res) => {
+app.post('/api/shopping-list', dbMiddleware, async (req, res) => {
+  const ShoppingItem = req.conn.model('ShoppingItem', shoppingItemSchema);
   const item = new ShoppingItem({
     name: req.body.name,
-    isPriority: req.body.isPriority || false, // Ensure isPriority is captured
+    isPriority: req.body.isPriority || false,
   });
   try {
     const newItem = await item.save();
@@ -412,8 +378,8 @@ app.post('/api/shopping-list', async (req, res) => {
   }
 });
 
-// Update a shopping list item (e.g., toggle purchased)
-app.put('/api/shopping-list/:id', async (req, res) => {
+app.put('/api/shopping-list/:id', dbMiddleware, async (req, res) => {
+  const ShoppingItem = req.conn.model('ShoppingItem', shoppingItemSchema);
   try {
     const updatedItem = await ShoppingItem.findByIdAndUpdate(
       req.params.id,
@@ -429,38 +395,36 @@ app.put('/api/shopping-list/:id', async (req, res) => {
   }
 });
 
-// Clear all purchased items
-app.delete('/api/shopping-list/purchased', async (req, res) => {
-  console.log('Received DELETE request for /api/shopping-list/purchased');
+app.delete('/api/shopping-list/purchased', dbMiddleware, async (req, res) => {
+  const ShoppingItem = req.conn.model('ShoppingItem', shoppingItemSchema);
   try {
     await ShoppingItem.deleteMany({ purchased: true });
     res.json({ message: 'Purchased items cleared' });
   } catch (err) {
-    console.error("Error clearing purchased items:", err);
     res.status(500).json({ message: 'Failed to clear purchased items: ' + err.message });
   }
 });
 
-// Delete a shopping list item
-app.delete('/api/shopping-list/:id', async (req, res) => {
+app.delete('/api/shopping-list/:id', dbMiddleware, async (req, res) => {
+  const ShoppingItem = req.conn.model('ShoppingItem', shoppingItemSchema);
   try {
-    await ShoppingItem.findByIdAndDelete(req.params.id);
+    const deletedItem = await ShoppingItem.findByIdAndDelete(req.params.id);
+    if (!deletedItem) {
+      return res.status(404).json({ message: 'Shopping item not found' });
+    }
     res.json({ message: 'Shopping item deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// Health Check Route
+// ---------- Health Check ----------
 app.get('/api/health-check', (req, res) => {
-  // Optional: Add more sophisticated checks here, e.g., database connection
   res.status(200).json({ status: 'ok', message: 'Backend is healthy' });
 });
 
-// Serve static files from the 'dist' directory
+// ---------- Serve static files ----------
 app.use(express.static(path.join(__dirname, 'dist')));
-
-// Fallback for all other requests to serve index.html
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });

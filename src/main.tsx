@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App.tsx';
 import './index.css';
 import { ThemeProvider } from './contexts/ThemeContext.tsx';
+import { VerificationProvider } from './contexts/VerificationContext.tsx';
 import '@fontsource/kalam/400.css';
 import '@fontsource/kalam/700.css';
 
@@ -11,7 +12,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <ThemeProvider>
-        <App />
+        <VerificationProvider>
+          <App />
+        </VerificationProvider>
       </ThemeProvider>
     </BrowserRouter>
   </StrictMode>

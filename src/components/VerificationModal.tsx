@@ -29,7 +29,7 @@ const VerificationModal: React.FC = () => {
     // Simulate a delay for the loading animation
     await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
 
-    if (verify(fullCode)) {
+    if (await verify(fullCode)) {
       // The verify function already handles closing the modal on success
       setCodeAndErrorOnSuccess();
     } else {
