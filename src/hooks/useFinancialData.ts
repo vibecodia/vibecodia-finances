@@ -7,10 +7,11 @@ import { useVerification } from '../contexts/VerificationContext';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export const useFinancialData = () => {
-  const { pin } = useVerification();
+  const { pin, isInitializing } = useVerification();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [monthlyBalances, setMonthlyBalances] = useState<MonthlyBalance[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const headers = useMemo(() => ({
     'Content-Type': 'application/json',
@@ -56,7 +57,16 @@ export const useFinancialData = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!pin) return; // Don't fetch if pin is not available
+      if (isInitializing) {
+        return; // Wait for verification context to initialize
+      }
+      if (!pin) {
+        setTransactions([]);
+        setSavingsGoals([]);
+        setIsLoading(false);
+        return;
+      }
+      setIsLoading(true);
       try {
         const [transactionsRes, goalsRes] = await Promise.all([
           fetch(`${API_BASE_URL}/transactions`, { headers }),
@@ -74,11 +84,15 @@ export const useFinancialData = () => {
         setSavingsGoals(goalsData);
       } catch (error) {
         console.error('Error fetching financial data:', error);
+        setTransactions([]);
+        setSavingsGoals([]);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [pin, headers]);
+  }, [pin, headers, isInitializing]);
 
   useEffect(() => {
     calculateMonthlyBalances();
@@ -310,5 +324,6 @@ export const useFinancialData = () => {
     importData,
     clearAllData,
     monthlyBalances,
+    isLoading,
   };
 };

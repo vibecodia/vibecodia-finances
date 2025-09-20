@@ -9,17 +9,19 @@ import Settings from './components/Settings';
 import Navigation from './components/Navigation';
 import Header from './components/Header';
 import { useTheme } from './contexts/ThemeContext';
-
+import { useVerification } from './contexts/VerificationContext';
 import VerificationModal from './components/VerificationModal';
+import InitialBalanceModal from './components/InitialBalanceModal';
 import { useState, useEffect } from 'react';
 import { Moon, Sun } from 'lucide-react';
 import ShoppingCartButton from './components/ShoppingCartButton';
 import ShoppingListModal from './components/ShoppingListModal';
 import { useShoppingList } from './hooks/useShoppingList';
 import { TrelloBoard } from './components/trello/TrelloBoard';
+import { getBrazilDateString } from './utils/helpers';
 
 function App() {
-
+  const { pin, isInitializing } = useVerification();
   const {
     transactions,
     savingsGoals,
@@ -36,12 +38,26 @@ function App() {
     importData,
     clearAllData,
     monthlyBalances,
+    isLoading,
   } = useFinancialData();
 
   const { theme, isDarkMode, toggleTheme } = useTheme();
   const [isShoppingListOpen, setIsShoppingListOpen] = useState(false);
+  const [showInitialBalanceModal, setShowInitialBalanceModal] = useState(false);
   const { shoppingList, addItem, togglePurchased, removeItem, clearPurchased, togglePriority } = useShoppingList();
   const [animateCombined, setAnimateCombined] = useState(false);
+
+  useEffect(() => {
+    if (isInitializing) return; // Wait for auth check to complete
+
+    if (pin) {
+      const hasSeenModal = sessionStorage.getItem(`hasSeenInitialBalanceModal_${pin}`);
+      // Show modal only if loading is done, there are no transactions, and user hasn't seen it for this PIN
+      if (!isLoading && transactions.length === 0 && !hasSeenModal) {
+        setShowInitialBalanceModal(true);
+      }
+    }
+  }, [isLoading, transactions, pin, isInitializing]);
 
   useEffect(() => {
     const hasItems = Array.isArray(shoppingList) && shoppingList.filter(item => !item.purchased).length > 0;
@@ -51,12 +67,35 @@ function App() {
         setAnimateCombined(true);
         setTimeout(() => {
           setAnimateCombined(false);
-        }, 500); // Animate for 0.5 seconds
-      }, 5000); // Shake and pulse every 5 seconds
+        }, 500);
+      }, 5000);
 
       return () => clearInterval(interval);
     }
   }, [shoppingList]);
+
+  const handleConfirmInitialBalance = (amount: number, type: 'income' | 'expense') => {
+    addTransaction({
+      description: 'Saldo Inicial #1',
+      amount,
+      type,
+      category: 'Saldo Inicial',
+      date: getBrazilDateString(),
+      isPaid: true,
+      recurrence: 'none',
+    });
+    if (pin) {
+      sessionStorage.setItem(`hasSeenInitialBalanceModal_${pin}`, 'true');
+    }
+    setShowInitialBalanceModal(false);
+  };
+
+  const handleSkipInitialBalance = () => {
+    if (pin) {
+      sessionStorage.setItem(`hasSeenInitialBalanceModal_${pin}`, 'true');
+    }
+    setShowInitialBalanceModal(false);
+  };
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: theme.background }}>
@@ -127,6 +166,11 @@ function App() {
           </Routes>
         </main>
         <VerificationModal />
+        <InitialBalanceModal 
+          isOpen={showInitialBalanceModal}
+          onConfirm={handleConfirmInitialBalance}
+          onClose={handleSkipInitialBalance}
+        />
     </div>
   );
 }

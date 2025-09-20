@@ -16,6 +16,7 @@ interface VerificationContextType {
   showVerificationModal: boolean;
   setShowVerificationModal: (show: boolean) => void;
   checkVerification: () => void;
+  isInitializing: boolean;
 }
 
 const VerificationContext = createContext<VerificationContextType | undefined>(undefined);
@@ -36,6 +37,7 @@ export const VerificationProvider: React.FC<VerificationProviderProps> = ({ chil
   const [isVerified, setIsVerified] = useState<boolean>(false);
   const [pin, setPin] = useState<string | null>(null);
   const [showVerificationModal, setShowVerificationModal] = useState<boolean>(false);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   const checkVerification = (): void => {
     const lastVerification = Cookies.get(VERIFICATION_COOKIE_NAME);
@@ -52,6 +54,7 @@ export const VerificationProvider: React.FC<VerificationProviderProps> = ({ chil
     } else {
       setShowVerificationModal(true);
     }
+    setIsInitializing(false);
   };
 
   useEffect(() => {
@@ -96,7 +99,7 @@ export const VerificationProvider: React.FC<VerificationProviderProps> = ({ chil
 
   return (
     <VerificationContext.Provider
-      value={{ isVerified, pin, verify, logout, showVerificationModal, setShowVerificationModal, checkVerification }}
+      value={{ isVerified, pin, verify, logout, showVerificationModal, setShowVerificationModal, checkVerification, isInitializing }}
     >
       {children}
     </VerificationContext.Provider>
