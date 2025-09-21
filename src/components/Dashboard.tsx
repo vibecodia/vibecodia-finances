@@ -183,11 +183,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-red-600 rounded-full"></div>
-              <span className="text-text text-sm">Pagas</span>
+              <span className="text-text text-sm">Gastos Pagos</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-red-400 rounded-full"></div>
-              <span className="text-text text-sm">Não Pagas</span>
+              <span className="text-text text-sm">Não Pagos</span>
             </div>
           </div>
         </div>
