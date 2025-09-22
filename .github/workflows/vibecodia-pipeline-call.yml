@@ -2,7 +2,7 @@ name: Disparar Workflow em Outro Repo
 
 on:
   pull_request:
-    types: [opened, edited]
+    types: [opened, edited, reoppened]
 
 jobs:
   trigger-workflow:
