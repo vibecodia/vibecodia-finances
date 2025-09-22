@@ -22,6 +22,13 @@ const VerificationModal: React.FC = () => {
     }
   }, [showVerificationModal]);
 
+  useEffect(() => {
+    // This effect handles focusing the first input when an error occurs
+    if (error) {
+      inputRefs[0].current?.focus();
+    }
+  }, [error]);
+
   const handleVerificationAttempt = async (fullCode: string) => {
     setIsLoading(true);
     setError(''); // Clear previous errors
@@ -29,12 +36,13 @@ const VerificationModal: React.FC = () => {
     // Simulate a delay for the loading animation
     await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
 
-    if (verify(fullCode)) {
+    if (await verify(fullCode)) {
       // The verify function already handles closing the modal on success
       setCodeAndErrorOnSuccess();
     } else {
       setError('Código incorreto. Tente novamente.');
       setIsLoading(false); // Stop loading on error
+      setDigits(['', '', '']); // Clear the digits
     }
   };
 

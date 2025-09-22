@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useVerification } from '../contexts/VerificationContext';
 
 interface ShoppingItem {
   id: string;
@@ -11,12 +12,19 @@ interface ShoppingItem {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export const useShoppingList = () => {
+  const { pin } = useVerification();
   const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
+
+  const headers = useMemo(() => ({
+    'Content-Type': 'application/json',
+    'x-pin': pin || '',
+  }), [pin]);
 
   useEffect(() => {
     const fetchShoppingList = async () => {
+      if (!pin) return;
       try {
-        const response = await fetch(`${API_BASE_URL}/shopping-list`);
+        const response = await fetch(`${API_BASE_URL}/shopping-list`, { headers });
         if (!response.ok) throw new Error('Failed to fetch shopping list');
         const data = await response.json();
         setShoppingList(data);
@@ -25,7 +33,7 @@ export const useShoppingList = () => {
       }
     };
     fetchShoppingList();
-  }, []);
+  }, [pin, headers]);
 
   const sortedShoppingList = [...shoppingList].sort((a, b) => {
     if (a.isPriority && !b.isPriority) return -1;
@@ -34,11 +42,11 @@ export const useShoppingList = () => {
   });
 
   const addItem = async (name: string) => {
-    if (name.trim() === '') return;
+    if (name.trim() === '' || !pin) return;
     try {
       const response = await fetch(`${API_BASE_URL}/shopping-list`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ name: name.trim(), isPriority: false, createdAt: new Date().toISOString() }),
       });
       if (!response.ok) throw new Error('Failed to add item');
@@ -50,6 +58,7 @@ export const useShoppingList = () => {
   };
 
   const togglePriority = async (id: string) => {
+    if (!pin) return;
     try {
       const itemToUpdate = shoppingList.find(item => item.id === id);
       if (!itemToUpdate) return;
@@ -57,7 +66,7 @@ export const useShoppingList = () => {
       const response = await fetch(`${API_BASE_URL}/shopping-list/${id}`,
         {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ isPriority: !itemToUpdate.isPriority }),
         });
 
@@ -76,13 +85,14 @@ export const useShoppingList = () => {
   };
 
   const togglePurchased = async (id: string) => {
+    if (!pin) return;
     try {
       const itemToUpdate = shoppingList.find(item => item.id === id);
       if (!itemToUpdate) return;
 
       const response = await fetch(`${API_BASE_URL}/shopping-list/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ purchased: !itemToUpdate.purchased }),
       });
       if (!response.ok) throw new Error('Failed to toggle purchased status');
@@ -98,9 +108,11 @@ export const useShoppingList = () => {
   };
 
   const removeItem = async (id: string) => {
+    if (!pin) return;
     try {
       const response = await fetch(`${API_BASE_URL}/shopping-list/${id}`, {
         method: 'DELETE',
+        headers,
       });
       if (!response.ok) throw new Error('Failed to remove item');
       setShoppingList((prevList) => prevList.filter((item) => item.id !== id));
@@ -110,9 +122,11 @@ export const useShoppingList = () => {
   };
 
   const clearPurchased = async () => {
+    if (!pin) return;
     try {
       const response = await fetch(`${API_BASE_URL}/shopping-list/purchased`, {
         method: 'DELETE',
+        headers,
       });
       if (!response.ok) throw new Error('Failed to clear purchased items');
       setShoppingList((prevList) => prevList.filter((item) => !item.purchased));
