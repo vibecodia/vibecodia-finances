@@ -1,0 +1,65 @@
+<script src="vibecodia-assist.min.js"></script>
+    <script>
+      let finChat = null;
+      
+      const createfinButton = () => {
+          const finBtn = document.createElement('button');
+          finBtn.innerHTML = 'Assistente';
+          finBtn.style.cssText = `
+              position: fixed;
+              bottom: 20px;
+              right: 20px;
+              z-index: 999998;
+              padding: 10px 20px;
+              background: linear-gradient(135deg, #e91e63 0%, #ad1457 100%);
+              color: white;
+              border: none;
+              border-radius: 25px;
+              cursor: pointer;
+              font-size: 14px;
+              font-weight: 500;
+              box-shadow: 0 3px 15px rgba(233, 30, 99, 0.4);
+              transition: all 0.3s ease;
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          `;
+          
+          finBtn.onmouseover = () => {
+              finBtn.style.transform = 'translateY(-1px) scale(1.03)';
+              finBtn.style.boxShadow = '0 5px 20px rgba(233, 30, 99, 0.5)';
+          };
+          finBtn.onmouseout = () => {
+              finBtn.style.transform = 'translateY(0) scale(1)';
+              finBtn.style.boxShadow = '0 3px 15px rgba(233, 30, 99, 0.4)';
+          };
+          
+          finBtn.onclick = () => openfinChat();
+          
+          document.body.appendChild(finBtn);
+      };
+      
+      const openfinChat = () => {
+          if (finChat) {
+              finChat.destroy();
+          }
+          
+          finChat = new VibeCodiaChat({
+              wsUrl: 'wss://api.vibecodia.com.br/ws/chat/juca'
+          });
+          
+          // Remover o botão flutuante padrão e abrir o chat direto
+          setTimeout(() => {
+              const defaultToggle = document.querySelector('.vibecodia-chat-toggle');
+              if (defaultToggle) {
+                  defaultToggle.remove();
+              }
+              
+              // Abrir o chat automaticamente
+              if (finChat && finChat.openChat) {
+                  finChat.openChat();
+              }
+          }, 200);
+      };
+      
+      // Criar botão quando página carregar
+      document.addEventListener('DOMContentLoaded', createfinButton);
+    </script>
