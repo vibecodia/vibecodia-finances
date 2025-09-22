@@ -19,7 +19,7 @@ jobs:
             github.rest.actions.createWorkflowDispatch({
               owner: 'vibecodia',
               repo: 'vibecodia-pipelines',
-              workflow_id: 'finances-dry-run.yml',
+              workflow_id: 'finances-update-pods.yml',
               ref: 'main',
               inputs: {
                 pr_number: context.payload.pull_request.number.toString(),
