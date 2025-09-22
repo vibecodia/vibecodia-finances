@@ -2,7 +2,7 @@ name: Disparar Workflow em Outro Repo
 
 on:
   pull_request:
-    types: [opened, edited]
+    types: [opened, edited, reoppened]
 
 jobs:
   trigger-workflow:
@@ -19,7 +19,7 @@ jobs:
             github.rest.actions.createWorkflowDispatch({
               owner: 'vibecodia',
               repo: 'vibecodia-pipelines',
-              workflow_id: 'finances-dry-run.yml',
+              workflow_id: 'finances-update-pods.yml',
               ref: 'main',
               inputs: {
                 pr_number: context.payload.pull_request.number.toString(),
