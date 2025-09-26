@@ -36,7 +36,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // Limite de 50MB
+  limits: { fileSize: 50 * 5000 * 5000 }, // Limite de 50MB
  });
 
 // ---------- Conexão dinâmica com MongoDB por PIN ----------
