@@ -27,6 +27,8 @@ services:
       dockerfile: Dockerfile.backend
     ports:
       - "3001:3001"
+    volumes:
+      - ./uploads:/app/uploads
     env_file:
       - .env
     environment:

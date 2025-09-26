@@ -3,7 +3,8 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import cron from 'node-cron';
-
+import multer from 'multer';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -17,6 +18,23 @@ const port = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+
+// Configuração do Multer para upload de imagens
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ storage });
 
 // ---------- Conexão dinâmica com MongoDB por PIN ----------
 
@@ -418,17 +436,50 @@ app.delete('/api/shopping-list/:id', dbMiddleware, async (req, res) => {
   }
 });
 
-// ---------- Health Check ----------
+// ---------- FIM DAS ROTAS DE API ----------
+
+// ---------- IMPORTANTE: Rotas de API devem vir ANTES dos arquivos estáticos ----------
+
+// Health Check - deve ser acessível sempre
 app.get('/api/health-check', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Backend is healthy' });
 });
 
-// ---------- Serve static files ----------
+// Rota para upload de imagens (CRÍTICO: DEVE VIR ANTES DE QUALQUER ARQUIVO ESTÁTICO)
+app.post('/api/upload', upload.single('image'), (req, res) => {
+  console.log('📤 Rota /api/upload acessada!');
+  console.log('Arquivo:', req.file);
+  console.log('Body:', req.body);
+  
+  if (!req.file) {
+    return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+  }
+  
+  const imageUrl = `/uploads/${req.file.filename}`;
+  res.json({ 
+    success: true, 
+    imageUrl,
+    message: 'Imagem salva com sucesso'
+  });
+});
+
+// Servir arquivos estáticos da pasta uploads (antes do dist)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// ---------- Serve static files (SEMPRE POR ÚLTIMO - CATCH-ALL) ----------
 app.use(express.static(path.join(__dirname, 'dist')));
+
+// Catch-all handler - SEMPRE DEVE SER A ÚLTIMA ROTA
 app.use((req, res) => {
+  console.log('🎯 Catch-all handler acionado para:', req.url);
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
+  // Criar pasta uploads se não existir
+  const uploadDir = path.join(__dirname, 'uploads');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
 });
