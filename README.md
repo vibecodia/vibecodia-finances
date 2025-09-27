@@ -75,7 +75,7 @@ src/
 
 ## 🎯 Próximas Funcionalidades
 - [ ] Backup/Restauração de dados
-- [ ] Modo escuro
+- [X] Modo escuro
 - [ ] Notificações push para vencimentos
 - [ ] Categorias personalizáveis
 - [ ] Relatórios avançados
