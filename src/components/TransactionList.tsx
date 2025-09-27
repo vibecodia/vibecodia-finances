@@ -496,6 +496,12 @@ const TransactionList: React.FC<TransactionListProps> = ({
                         {transaction.isPaid ? <Check className="w-4 h-4 text-black" /> : <Clock className="w-4 h-4 text-black" />}
                       </button>
                     </div>
+
+                    {transaction.notes && (
+                      <div className="mb-2 text-sm text-text opacity-70 line-clamp-2 whitespace-pre-wrap">
+                        {transaction.notes}
+                      </div>
+                    )}
                     
                     <div className="flex flex-wrap gap-2 text-sm text-text opacity-90 mb-2">
                       <span className="px-2 py-1 rounded-full truncate max-w-[120px]" style={{ backgroundColor: theme.cardBorder }}>
