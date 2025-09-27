@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Transaction, SavingsGoal, MonthlyBalance } from '../types';
 import { formatCurrency, filterTransactionsByMonth, getCurrentBrazilDate } from '../utils/helpers';
-import ImageUpload from './ImageUpload';
 import { calculateBalances } from '../utils/balanceCalculations';
 import { TrendingUp, TrendingDown, Wallet, Target, AlertTriangle, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import Confetti from 'react-confetti';
@@ -10,6 +9,7 @@ import useWindowSize from '../hooks/useWindowSize';
 import { format, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useTheme } from '../contexts/ThemeContext';
+import QRCodeScanner from './QRCodeScanner';
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -319,13 +319,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
         </div>
       </div>
 
-      {/* Componente de Upload de Imagem */}
       <div className="rounded-xl p-6 shadow-lg" style={{ backgroundColor: theme.cardBackground, border: `1px solid ${theme.cardBorder}` }}>
-        <ImageUpload 
-          onUploadSuccess={() => alert('Imagem enviada com sucesso!')}
-          onUploadError={(error) => alert(`Erro ao enviar imagem: ${error}`)}
-        />
-      </div>
+  <QRCodeScanner 
+    onScanSuccess={(data) => alert(`QR Code lido: ${data}`)}
+    onScanError={(error) => alert(`Erro ao ler QR Code: ${error}`)}
+  />
+</div>
 
       {/* Savings Goals Summary */}
       {savingsGoals.length > 0 && (
