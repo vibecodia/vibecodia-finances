@@ -17,60 +17,99 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScanSuccess, onScanErro
 
   const readerRef = useRef<BrowserMultiFormatReader>();
   const controlsRef = useRef<IScannerControls>();
+  const hasScannedRef = useRef(false); // Flag para evitar múltiplas leituras
 
   useEffect(() => {
-    if (!isScanning) return;
-    if (!videoRef.current) return;
+    if (!isScanning || !videoRef.current) return;
 
-    const reader = new BrowserMultiFormatReader();
-    readerRef.current = reader;
+    const startScanning = async () => {
+      try {
+        const reader = new BrowserMultiFormatReader();
+        readerRef.current = reader;
+        hasScannedRef.current = false; // Reset da flag
 
-    // decodeFromConstraints retorna um IScannerControls
-    reader
-      .decodeFromConstraints({ video: { facingMode: 'environment' } }, videoRef.current, (result, err) => {
-        if (result) {
-          setStatus('success');
-          setIsScanning(false);
-          onScanSuccess(result.getText());
+        const video = videoRef.current!;
+        
+        const controls = await reader.decodeFromConstraints(
+          { video: { facingMode: 'environment' } },
+          video,
+          (result, err) => {
+            // Se já escaneou, ignora
+            if (hasScannedRef.current) return;
 
-          // para o scanner
-          controlsRef.current?.stop();
-        }
+            if (result) {
+              hasScannedRef.current = true; // Marca como escaneado
+              setStatus('success');
+              
+              // Para o scanner imediatamente
+              controlsRef.current?.stop();
+              setIsScanning(false);
+              
+              // Chama o callback após um pequeno delay para garantir que parou
+              setTimeout(() => {
+                onScanSuccess(result.getText());
+              }, 100);
+            }
 
-        if (err && err.name !== 'NotFoundException' && err.name !== 'NotFoundException2') {
-          console.error('QR Scanner Error:', err);
-          setStatus('error');
-          setErrorMessage(err?.message || 'Erro desconhecido');
-          setIsScanning(false);
-          onScanError?.(err?.message || 'Erro desconhecido');
+            if (err && !err.name.includes('NotFoundException')) {
+              console.error('QR Scanner Error:', err);
+              setStatus('error');
+              setErrorMessage(err?.message || 'Erro desconhecido');
+              controlsRef.current?.stop();
+              setIsScanning(false);
+              onScanError?.(err?.message || 'Erro desconhecido');
+            }
+          }
+        );
 
-          controlsRef.current?.stop();
-        }
-      })
-      .then((controls) => {
         controlsRef.current = controls;
-      })
-      .catch((err) => {
+
+        video.addEventListener('loadedmetadata', () => {
+          console.log('Video metadata loaded:', video.videoWidth, video.videoHeight);
+        });
+
+      } catch (err: any) {
         console.error('Erro ao iniciar scanner:', err);
         setStatus('error');
-        setErrorMessage(err?.message || 'Erro desconhecido');
+        setErrorMessage(err?.message || 'Erro ao acessar a câmera');
         setIsScanning(false);
-      });
+        onScanError?.(err?.message || 'Erro ao acessar a câmera');
+      }
+    };
+
+    const timer = setTimeout(startScanning, 100);
 
     return () => {
+      clearTimeout(timer);
       controlsRef.current?.stop();
+      hasScannedRef.current = false;
     };
   }, [isScanning, onScanSuccess, onScanError]);
 
+  const handleStartScan = () => {
+    setIsScanning(true);
+    setStatus('idle');
+    setErrorMessage('');
+    hasScannedRef.current = false; // Reset da flag
+  };
+
+  const handleStopScan = () => {
+    setIsScanning(false);
+    controlsRef.current?.stop();
+    hasScannedRef.current = false;
+  };
+
+  const handleScanAgain = () => {
+    setStatus('idle');
+    setErrorMessage('');
+    handleStartScan();
+  };
+
   return (
     <div className="space-y-2">
-      {!isScanning ? (
+      {!isScanning && status !== 'success' ? (
         <button
-          onClick={() => {
-            setIsScanning(true);
-            setStatus('idle');
-            setErrorMessage('');
-          }}
+          onClick={handleStartScan}
           className="flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-lg cursor-pointer transition hover:bg-opacity-50"
           style={{
             borderColor: theme.cardBorder,
@@ -81,32 +120,58 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScanSuccess, onScanErro
           <span className="mt-2 text-sm text-text">Ler QR Code com a Câmera</span>
           <span className="text-xs text-text opacity-70">Aponte para o código para capturar</span>
         </button>
-      ) : (
-        <div className="relative rounded-lg overflow-hidden">
-          <video
-            ref={videoRef}
-            style={{ width: '100%' }}
-            className="rounded-lg"
-            muted
-            autoPlay
-          />
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <Loader2 className="w-8 h-8 animate-spin text-primary bg-white bg-opacity-70 rounded-full p-1" />
+      ) : isScanning ? (
+        <div className="space-y-2">
+          <div className="relative rounded-lg overflow-hidden">
+            <video
+              ref={videoRef}
+              style={{ width: '100%', minHeight: '200px' }}
+              className="rounded-lg bg-black"
+              muted
+              autoPlay
+              playsInline
+            />
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <Loader2 className="w-8 h-8 animate-spin text-primary bg-white bg-opacity-70 rounded-full p-1" />
+            </div>
           </div>
+          
+          <button
+            onClick={handleStopScan}
+            className="w-full px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+          >
+            Parar Scanner
+          </button>
         </div>
-      )}
+      ) : null}
 
       {status === 'success' && (
-        <div className="flex items-center gap-2 text-sm text-success">
-          <CheckCircle className="w-4 h-4" />
-          <span>QR Code lido com sucesso!</span>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm text-green-600">
+            <CheckCircle className="w-4 h-4" />
+            <span>QR Code lido com sucesso!</span>
+          </div>
+          <button
+            onClick={handleScanAgain}
+            className="w-full px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+          >
+            Escanear Novamente
+          </button>
         </div>
       )}
 
       {status === 'error' && (
-        <div className="flex items-center gap-2 text-sm text-error">
-          <XCircle className="w-4 h-4" />
-          <span>{errorMessage}</span>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm text-red-600">
+            <XCircle className="w-4 h-4" />
+            <span>{errorMessage}</span>
+          </div>
+          <button
+            onClick={handleScanAgain}
+            className="w-full px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+          >
+            Tentar Novamente
+          </button>
         </div>
       )}
     </div>
