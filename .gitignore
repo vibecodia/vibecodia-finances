@@ -23,6 +23,7 @@ lerna-debug.log*
 .env
 .env.*
 !.env.example
+infra/docker/.env
 
 # User uploaded content
 uploads/
