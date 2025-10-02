@@ -1,6 +1,6 @@
 # 💰 Controle Financeiro
 
-Aplicativo web moderno para gerenciamento financeiro doméstico.
+Aplicativo web para gerenciamento financeiro doméstico.
 
 ## 🚀 Funcionalidades
 
