@@ -3,14 +3,14 @@ version: '3.8'
 services:
   frontend:
     build:
-      context: .
-      dockerfile: Dockerfile.frontend
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.frontend
       target: build
     ports:
       - "5173:5173"
     volumes:
-      - .:/app
-      - /app/node_modules
+      - ../../frontend:/app/frontend
+      - ../../node_modules:/app/node_modules
     env_file:
       - .env
     environment:
@@ -23,12 +23,13 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile.backend
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.backend
     ports:
       - "3001:3001"
     volumes:
-      - ./uploads:/app/uploads
+      - ../../backend:/app/backend
+      - ../../uploads:/app/uploads
     env_file:
       - .env
     environment:
