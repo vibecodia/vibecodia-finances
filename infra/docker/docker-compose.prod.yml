@@ -3,8 +3,8 @@ version: '3.8'
 services:
   frontend:
     build:
-      context: .
-      dockerfile: Dockerfile.frontend
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.frontend
       args:
         VITE_PIN_CODE: ${VITE_PIN_CODE}
         VITE_VERIFICATION_COOKIE_NAME: ${VITE_VERIFICATION_COOKIE_NAME}
@@ -16,7 +16,7 @@ services:
       - default
       - rede-global-proxy
     env_file:
-      - .env
+      - ../../.env
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
       # ADICIONE O BLOCO ABAIXO PARA OS CERTIFICADOS
@@ -28,17 +28,15 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile.backend
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.backend
     networks:
       - default
       - rede-global-proxy
     env_file:
-      - .env
+      - ../../.env
     environment:
       - NODE_ENV=production
-        #depends_on:
-        #- mongo
     restart: unless-stopped
     container_name: financial-app-backend
   

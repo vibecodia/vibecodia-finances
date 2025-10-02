@@ -10,7 +10,7 @@ ENV VITE_VERIFICATION_TIMEOUT_MS=$VITE_VERIFICATION_TIMEOUT_MS
 COPY package*.json ./
 RUN npm install
 COPY . .
-RUN npm run build && /bin/sh scripts/postbuild-assistant.sh
+RUN npm run build && /bin/sh frontend/scripts/postbuild-assistant.sh
 
 # Stage 2: Serve the static files with Nginx
 FROM nginx:alpine

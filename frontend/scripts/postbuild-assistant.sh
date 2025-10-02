@@ -5,7 +5,7 @@ set -e
 
 SRC_DIR="$(dirname "$0")"
 ROOT_DIR="$SRC_DIR/.."
-DIST_DIR="$ROOT_DIR/dist"
+DIST_DIR="$ROOT_DIR/../dist"
 
 # Copiar o JS minificado para o dist
 cp "$SRC_DIR/vibecodia-assist.min.js" "$DIST_DIR/vibecodia-assist.min.js"
