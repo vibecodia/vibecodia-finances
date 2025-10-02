@@ -1,4 +1,4 @@
-# 💰 Controle Financeiro v0.9.43
+# 💰 Controle Financeiro v0.9.44
 
 Aplicativo web moderno para gerenciamento financeiro doméstico.
 
