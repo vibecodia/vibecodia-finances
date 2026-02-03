@@ -1,6 +1,20 @@
 import { Transaction, SavingsGoal } from '../types';
-import { getCurrentBrazilDate, calculateGoalsImpact } from './helpers';
+import { getCurrentBrazilDate } from './helpers';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
+
+/**
+ * Calcula o impacto total acumulado de todas as contribuições para metas
+ * Considera apenas contribuições com data <= currentDate (YYYY-MM-DD)
+ */
+const calculateTotalGoalsImpact = (savingsGoals: SavingsGoal[] = [], currentDate: string): number => {
+  return savingsGoals.reduce((total, goal) => {
+    const goalTotal = goal.contributions.reduce((sum, contribution) => {
+      const cDate = format(new Date(contribution.date), 'yyyy-MM-dd');
+      return sum + (cDate <= currentDate ? contribution.amount : 0);
+    }, 0);
+    return total + goalTotal;
+  }, 0);
+};
 
 export interface BalanceData {
   totalBalance: number;           // Saldo real total (apenas transações pagas até hoje)
@@ -67,11 +81,11 @@ export const calculateBalances = (
   // 5. SALDO PROJETADO (total + pendentes do mês)
   const projectedBalance = totalBalance + pendingBalance;
   
-  // 6. IMPACTO DAS METAS (removido do retorno)
-  const goalsImpact = calculateGoalsImpact(savingsGoals, currentMonth);
+  // 6. IMPACTO TOTAL DAS METAS (aportes até a data atual)
+  const totalGoalsImpact = calculateTotalGoalsImpact(savingsGoals, currentDate);
 
   // 7. SALDO AJUSTADO PELAS METAS
-  const adjustedBalance = totalBalance - goalsImpact;
+  const adjustedBalance = totalBalance - totalGoalsImpact;
 
   return {
     totalBalance,

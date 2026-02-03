@@ -91,8 +91,8 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
     setShowForm(true);
   };
 
-  const totalGoals = goals.reduce((sum, goal) => sum + goal.targetAmount, 0);
-  const totalSaved = goals.reduce((sum, goal) => sum + goal.currentAmount, 0);
+  const totalGoals = goals.reduce((sum, goal) => sum + (goal.targetAmount || 0), 0);
+  const totalSaved = goals.reduce((sum, goal) => sum + (goal.currentAmount || 0), 0);
 
   return (
     <div className="space-y-4">
@@ -133,7 +133,9 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
           </div>
         ) : (
           goals.map((goal) => {
-            const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
+            const currentAmount = goal.currentAmount || 0;
+            const targetAmount = goal.targetAmount || 0;
+            const progress = targetAmount > 0 ? (currentAmount / targetAmount) * 100 : 0;
             const isComplete = progress >= 100;
             
             return (
@@ -329,7 +331,13 @@ const GoalCard: React.FC<GoalCardProps> = ({
 
   // Sort contributions by date (most recent first)
   const sortedContributions = (goal.contributions || [])
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    .sort((a, b) => {
+      try {
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      } catch {
+        return 0;
+      }
+    });
 
   return (
     <div className={cn(`border rounded-2xl p-6 transition-all`)}

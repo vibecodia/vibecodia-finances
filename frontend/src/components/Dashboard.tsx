@@ -53,6 +53,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
   // CORRIGIDO: Usar os saldos calculados pela nova lógica
   // const currentBalance = balanceData.totalBalance;
   const adjustedBalance = balanceData.adjustedBalance;
+  
+  // Arredondar valores muito pequenos para 0 para evitar "-R$ 0,00"
+  const displayBalance = Math.abs(adjustedBalance) < 0.001 ? 0 : adjustedBalance;
 
   const totalSavingsGoals = savingsGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
   const totalSaved = savingsGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
@@ -66,7 +69,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
   const balanceChange = adjustedBalance - previousAdjustedBalance;
 
   const getBalanceIcon = () => {
-    if (adjustedBalance < 0) {
+    if (adjustedBalance < -0.001) {
       return <AlertTriangle className="w-6 h-6 opacity-90" />;
     }
     return <Wallet className="w-6 h-6 opacity-90" />;
@@ -135,20 +138,20 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
 
       {/* Main Balance */}
       <div 
-        className={`rounded-2xl p-6 cursor-pointer transition-all duration-300 ease-in-out ${isPulsing ? 'scale-105 shadow-xl' : 'scale-100 shadow-lg'} ${adjustedBalance < 0 ? 'text-gray-800' : 'text-white'}`}
-        style={{ background: adjustedBalance < 0 ? 'linear-gradient(to right, #FFDDC1, #FFB26B)' : `linear-gradient(to right, ${theme.primary}, ${theme.secondary})` }}
+        className={`rounded-2xl p-6 cursor-pointer transition-all duration-300 ease-in-out ${isPulsing ? 'scale-105 shadow-xl' : 'scale-100 shadow-lg'} ${adjustedBalance < -0.001 ? 'text-gray-800' : 'text-white'}`}
+        style={{ background: adjustedBalance < -0.001 ? 'linear-gradient(to right, #FFDDC1, #FFB26B)' : `linear-gradient(to right, ${theme.primary}, ${theme.secondary})` }}
         onClick={handleBalanceCardClick}
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium opacity-90 truncate pr-2">
-            {adjustedBalance < 0 ? 'Déficit Total' : 'Saldo Total Acumulado'}
+            {adjustedBalance < -0.001 ? 'Déficit Total' : 'Saldo Total Acumulado'}
           </h2>
           {getBalanceIcon()}
         </div>
         <div className="flex items-end justify-between">
           <div className="flex-1 min-w-0">
             <p className="text-2xl sm:text-3xl font-bold mb-1 break-words">
-              {formatCurrency(adjustedBalance)}
+              {formatCurrency(displayBalance)}
             </p>
             {/* goalsImpact removido do dashboard */}
             {balanceChange !== 0 && (
@@ -165,7 +168,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
             )}
           </div>
         </div>
-        {adjustedBalance < 0 && (
+        {adjustedBalance < -0.001 && (
           <div className="mt-3 p-3 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
             <p className="text-sm text-gray-800">
               ⚠️ Seu saldo total está negativo. Considere revisar suas despesas e metas.
@@ -315,7 +318,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
               <h3 className="text-sm font-medium text-black truncate">Metas</h3>
             </div>
           </div>
-          {/* goalsImpact removido do dashboard */}
+          <p className="text-xl sm:text-2xl font-bold text-black break-words">
+            {formatCurrency(totalSaved)}
+          </p>
+          <p className="text-xs text-black mt-1 truncate opacity-80">
+            {totalSavingsGoals > 0 ? `de ${formatCurrency(totalSavingsGoals)}` : 'Nenhuma meta'}
+          </p>
         </div>
       </div>
 
