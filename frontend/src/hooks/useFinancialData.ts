@@ -49,7 +49,7 @@ export const useFinancialData = () => {
           balance: balance + previousMonthBalance,
           remainingBalanceFromPreviousMonth: previousMonthBalance,
         });
-        previousMonthBalance = balance; // The balance for the next month's remaining
+        previousMonthBalance = balance + previousMonthBalance;
       });
       setMonthlyBalances(calculatedBalances);
     };

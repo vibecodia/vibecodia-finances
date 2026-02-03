@@ -21,12 +21,12 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       strictPort: true,
       // 
-      // proxy: {
-      //   '/api': {
-      //     target: env.VITE_BACKEND_URL || 'http://localhost:3001',
-      //     changeOrigin: true,
-      //   },
-      // },
+      proxy: {
+        '/api': {
+          target: env.VITE_BACKEND_URL || 'http://localhost:3001',
+          changeOrigin: true,
+        },
+      },
     },
   
     preview: {
