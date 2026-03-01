@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Transaction } from '../types';
-import { formatCurrency, isTransactionOverdue, getDaysUntilDue, formatBrazilDate, getCurrentBrazilDate, filterTransactionsByMonth, parseLocalDate } from '../utils/helpers';
-import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight } from 'lucide-react';
+import { formatCurrency, isTransactionOverdue, getDaysUntilDue, formatBrazilDate, getCurrentBrazilDate, filterTransactionsByMonth, parseLocalDate, formatPaymentMethod, PAYMENT_METHODS } from '../utils/helpers';
+import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight, Wallet } from 'lucide-react';
 import TransactionForm from './TransactionForm';
 import ConfirmationModal from './ConfirmationModal';
 import DailyDateSlider from './DailyDateSlider';
@@ -40,6 +40,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [activeTransactionId, setActiveTransactionId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string[]>(['all']);
   const [paymentFilter, setPaymentFilter] = useState('all');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string[]>(['all']);
   const [currentMonth, setCurrentMonth] = useState<Date>(getCurrentBrazilDate());
   const [startDateFilter, setStartDateFilter] = useState<Date | null>(null);
   const [endDateFilter, setEndDateFilter] = useState<Date | null>(null);
@@ -52,6 +53,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
   useEffect(() => {
     setCategoryFilter(['all']);
     setPaymentFilter('all'); // Reset payment filter when type changes
+    setPaymentMethodFilter(['all']); // Reset payment method filter when type changes
     setSearchTerm(''); // Reset search term when type changes
     // Reset daily filters when month or type changes
     const start = startOfMonth(currentMonth);
@@ -88,6 +90,23 @@ const TransactionList: React.FC<TransactionListProps> = ({
     }
   };
 
+  const handlePaymentMethodFilterChange = (method: string) => {
+    if (method === 'all') {
+      setPaymentMethodFilter(['all']);
+    } else {
+      setPaymentMethodFilter(prev => {
+        if (prev.includes('all')) {
+          return [method];
+        } else if (prev.includes(method)) {
+          const newFilter = prev.filter(m => m !== method);
+          return newFilter.length === 0 ? ['all'] : newFilter;
+        } else {
+          return [...prev, method];
+        }
+      });
+    }
+  };
+
   useEffect(() => {
     const start = startOfMonth(currentMonth);
     const end = endOfMonth(currentMonth);
@@ -108,6 +127,10 @@ const TransactionList: React.FC<TransactionListProps> = ({
       if (paymentFilter === 'paid') return t.isPaid;
       if (paymentFilter === 'pending') return !t.isPaid;
       return true;
+    })
+    .filter(t => {
+      if (paymentMethodFilter.includes('all')) return true;
+      return t.paymentMethod && paymentMethodFilter.includes(t.paymentMethod);
     })
     .filter(t => {
       if (type === 'expense' && searchTerm) {
@@ -398,6 +421,36 @@ const TransactionList: React.FC<TransactionListProps> = ({
           </div>
         )}
 
+        {/* Payment Method Filter (only for expenses) */}
+        {type === 'expense' && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-2">
+            <Wallet className="w-4 h-4 text-text opacity-70 flex-shrink-0" />
+            <button
+              onClick={() => handlePaymentMethodFilterChange('all')}
+              className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
+                paymentMethodFilter.includes('all') 
+                  ? 'bg-primary text-white' 
+                  : 'bg-cardBackground text-text hover:bg-cardBorder'
+              }`}
+            >
+              Todos
+            </button>
+            {PAYMENT_METHODS.map(method => (
+              <button
+                key={method.id}
+                onClick={() => handlePaymentMethodFilterChange(method.id)}
+                className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
+                  paymentMethodFilter.includes(method.id) && !paymentMethodFilter.includes('all')
+                    ? 'bg-primary text-white' 
+                    : 'bg-cardBackground text-text hover:bg-cardBorder'
+                }`}
+              >
+                {method.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Search Input (only for expenses) */}
         {type === 'expense' && (
           <div className="relative flex items-center w-full">
@@ -507,6 +560,13 @@ const TransactionList: React.FC<TransactionListProps> = ({
                       <span className="px-2 py-1 rounded-full truncate max-w-[120px]" style={{ backgroundColor: theme.cardBorder }}>
                         {transaction.category}
                       </span>
+                      
+                      {type === 'expense' && transaction.paymentMethod && (
+                        <span className="px-2 py-1 rounded-full flex items-center gap-1 whitespace-nowrap" style={{ backgroundColor: theme.cardBorder }}>
+                          <Wallet className="w-3 h-3 flex-shrink-0" />
+                          {formatPaymentMethod(transaction.paymentMethod)}
+                        </span>
+                      )}
                       
                       {/* Data da transação */}
                       <span className="whitespace-nowrap">{formatBrazilDate(transaction.date)}</span>

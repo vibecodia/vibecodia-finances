@@ -1,7 +1,7 @@
 import React from 'react';
 import { Transaction } from '../types';
-import { formatCurrency, formatBrazilDate, parseLocalDate } from '../utils/helpers';
-import { TrendingUp, DollarSign, Check, Repeat, Tag, Calendar as CalendarIcon, Info, CreditCard } from 'lucide-react';
+import { formatCurrency, formatBrazilDate, parseLocalDate, formatPaymentMethod } from '../utils/helpers';
+import { TrendingUp, DollarSign, Check, Repeat, Tag, Calendar as CalendarIcon, Info, CreditCard, Wallet } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 
@@ -59,6 +59,12 @@ const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({ transac
             <div className="flex items-center justify-between">
               <span className="font-medium flex items-center gap-1 text-text"><CreditCard className="w-4 h-4" /> Vencimento:</span>
               <span className="text-text">{formatBrazilDate(parseLocalDate(transaction.dueDate))}</span>
+            </div>
+          )}
+          {isExpense && transaction.paymentMethod && (
+            <div className="flex items-center justify-between">
+              <span className="font-medium flex items-center gap-1 text-text"><Wallet className="w-4 h-4" /> Pagamento:</span>
+              <span className="text-text">{formatPaymentMethod(transaction.paymentMethod)}</span>
             </div>
           )}
           <div className="flex items-center justify-between">

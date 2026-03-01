@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Transaction, PendingPayment } from '../types';
-import { formatCurrency, getCurrentBrazilDate, formatBrazilDate, parseLocalDate, isTransactionOverdue, getDaysUntilDue, getTransactionsWithRecurrence, getBrazilDateString } from '../utils/helpers';
-import { ChevronLeft, ChevronRight, AlertTriangle, Clock, CreditCard, TrendingUp, DollarSign, Repeat, Check } from 'lucide-react';
+import { formatCurrency, getCurrentBrazilDate, formatBrazilDate, parseLocalDate, isTransactionOverdue, getDaysUntilDue, getTransactionsWithRecurrence, getBrazilDateString, formatPaymentMethod } from '../utils/helpers';
+import { ChevronLeft, ChevronRight, AlertTriangle, Clock, CreditCard, TrendingUp, DollarSign, Repeat, Check, Wallet } from 'lucide-react';
 import TransactionDetailModal from './TransactionDetailModal';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { useTheme } from '../contexts/ThemeContext';
@@ -22,6 +22,7 @@ interface CalendarEvent {
   isOverdue?: boolean;
   daysUntilDue?: number | null;
   isRecurring?: boolean;
+  paymentMethod?: string;
   originalId?: string; // For recurring transactions
 }
 
@@ -119,6 +120,7 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
           isOverdue: !t.isPaid && isTransactionOverdue(t),
           daysUntilDue,
           isRecurring,
+          paymentMethod: t.paymentMethod,
           originalId: t.id.includes('_') ? t.id.split('_')[0] : undefined,
         };
       });
@@ -141,6 +143,7 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
           type: 'income' as const,
           isPaid: t.isPaid,
           isRecurring,
+          paymentMethod: t.paymentMethod,
           originalId: t.id.includes('_') ? t.id.split('_')[0] : undefined,
         };
       });
@@ -485,6 +488,12 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
                         <span className="px-2 py-1 rounded-full truncate max-w-[120px]" style={{ backgroundColor: theme.cardBorder }}>
                           {event.category}
                         </span>
+                        {event.type === 'expense' && event.paymentMethod && (
+                          <span className="px-2 py-1 rounded-full flex items-center gap-1 whitespace-nowrap" style={{ backgroundColor: theme.cardBorder }}>
+                            <Wallet className="w-3 h-3 flex-shrink-0" />
+                            {formatPaymentMethod(event.paymentMethod)}
+                          </span>
+                        )}
                         {event.type === 'expense' && (
                           <span className={`px-2 py-1 rounded-full whitespace-nowrap text-white`}
                             style={{
@@ -603,6 +612,12 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
                         <span className="px-2 py-1 rounded-full truncate max-w-[120px]" style={{ backgroundColor: theme.cardBorder }}>
                           {event.category}
                         </span>
+                        {event.type === 'expense' && event.paymentMethod && (
+                          <span className="px-2 py-1 rounded-full flex items-center gap-1 whitespace-nowrap" style={{ backgroundColor: theme.cardBorder }}>
+                            <Wallet className="w-3 h-3 flex-shrink-0" />
+                            {formatPaymentMethod(event.paymentMethod)}
+                          </span>
+                        )}
                         <span className="whitespace-nowrap">
                           {formatBrazilDate(new Date(eventDate))}
                         </span>

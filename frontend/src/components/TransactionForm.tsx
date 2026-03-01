@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Transaction } from '../types';
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, getBrazilDateString } from '../utils/helpers';
-import { Plus, X, Calendar, CreditCard, Repeat, AlertCircle, Calculator } from 'lucide-react';
+import { Transaction, PaymentMethod } from '../types';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, PAYMENT_METHODS, getBrazilDateString } from '../utils/helpers';
+import { Plus, X, Calendar, CreditCard, Calculator, Wallet } from 'lucide-react';
 import { addMonths } from 'date-fns';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -23,6 +23,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     dueDate: string;
     isPaid: boolean;
     recurrence: Transaction['recurrence'];
+    paymentMethod: PaymentMethod;
     notes: string;
   }>({
     amount: '',
@@ -32,6 +33,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     dueDate: '',
     isPaid: type === 'expense' ? false : false, // Receitas e despesas são marcadas como não pagas por padrão
     recurrence: 'none' as Transaction['recurrence'],
+    paymentMethod: 'pix',
     notes: '',
   });
 
@@ -50,6 +52,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         dueDate: transaction.dueDate ? getBrazilDateString(new Date(transaction.dueDate)) : '',
         isPaid: transaction.isPaid,
         recurrence: transaction.recurrence || 'none',
+        paymentMethod: transaction.paymentMethod || 'pix',
         notes: transaction.notes || ''
       });
     } else if (replicateTransaction) {
@@ -68,6 +71,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         dueDate: nextMonthDueDateString, // Next month's due date for replication
         isPaid: false, // Replicated transactions are initially unpaid
         recurrence: replicateTransaction.recurrence || 'none',
+        paymentMethod: replicateTransaction.paymentMethod || 'pix',
         notes: replicateTransaction.notes || ''
       });
     } else {
@@ -80,6 +84,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         dueDate: '',
         isPaid: type === 'expense' ? false : false,
         recurrence: 'none',
+        paymentMethod: 'pix',
         notes: '',
       });
       setCurrentSum(0);
@@ -113,6 +118,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
       dueDate: finalDueDate || undefined,
       isPaid: formData.isPaid,
       recurrence: formData.recurrence,
+      paymentMethod: type === 'expense' ? formData.paymentMethod : undefined,
       notes: formData.notes,
     });
   };
@@ -144,25 +150,25 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     setShowCalculator(false);
   };
 
-  const getRecurrenceDescription = () => {
-    switch (formData.recurrence) {
-      case 'weekly':
-        return 'Esta transação será repetida toda semana automaticamente no calendário';
-      case 'monthly':
-        return 'Esta transação será repetida todo mês automaticamente no calendário';
-      case 'yearly':
-        return 'Esta transação será repetida todo ano automaticamente no calendário';
-      default:
-        return 'Transação única, não será repetida';
-    }
-  };
+  // const getRecurrenceDescription = () => {
+  //   switch (formData.recurrence) {
+  //     case 'weekly':
+  //       return 'Esta transação será repetida toda semana automaticamente no calendário';
+  //     case 'monthly':
+  //       return 'Esta transação será repetida todo mês automaticamente no calendário';
+  //     case 'yearly':
+  //       return 'Esta transação será repetida todo ano automaticamente no calendário';
+  //     default:
+  //       return 'Transação única, não será repetida';
+  //   }
+  // };
 
-  const getRecurrenceWarning = () => {
-    if (formData.recurrence !== 'none' && type === 'expense') {
-      return 'IMPORTANTE: Apenas a primeira ocorrência manterá o status de pagamento. As próximas sempre serão criadas como pendentes.';
-    }
-    return null;
-  };
+  // const getRecurrenceWarning = () => {
+  //   if (formData.recurrence !== 'none' && type === 'expense') {
+  //     return 'IMPORTANTE: Apenas a primeira ocorrência manterá o status de pagamento. As próximas sempre serão criadas como pendentes.';
+  //   }
+  //   return null;
+  // };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -280,7 +286,30 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
             </select>
           </div>
 
-          <div>
+          {type === 'expense' && (
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">
+                <Wallet className="w-4 h-4 inline mr-1" />
+                Meio de Pagamento
+              </label>
+              <select
+                name="paymentMethod"
+                value={formData.paymentMethod}
+                onChange={handleChange}
+                className="w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
+                required
+              >
+                {PAYMENT_METHODS.map(method => (
+                  <option key={method.id} value={method.id}>
+                    {method.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* <div>
             <label className="block text-sm font-medium text-text mb-2">
               <Repeat className="w-4 h-4 inline mr-1" />
               Recorrência
@@ -310,7 +339,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
                 </div>
               </div>
             )}
-          </div>
+          </div> */}
 
           {/* Data da transação apenas para receitas */}
           {type === 'income' && (

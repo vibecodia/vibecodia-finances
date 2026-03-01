@@ -83,6 +83,7 @@ function App() {
       date: getBrazilDateString(),
       isPaid: true,
       recurrence: 'none',
+      paymentMethod: type === 'expense' ? 'pix' : undefined,
     });
     if (pin) {
       sessionStorage.setItem(`hasSeenInitialBalanceModal_${pin}`, 'true');

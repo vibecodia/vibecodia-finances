@@ -507,3 +507,18 @@ export const INCOME_CATEGORIES = [
   'Reembolsos',
   'Aluguéis'
 ];
+
+export const PAYMENT_METHODS = [
+  { id: 'pix', label: 'PIX' },
+  { id: 'xp', label: 'XP Investimentos' },
+  { id: 'c6', label: 'C6 Bank' },
+  { id: 'bradesco_t', label: 'Bradesco T' },
+  { id: 'bradesco_r', label: 'Bradesco R' },
+  { id: 'nubank', label: 'Nubank' },
+] as const;
+
+export const formatPaymentMethod = (method?: string): string => {
+  if (!method) return 'Não informado';
+  const found = PAYMENT_METHODS.find(m => m.id === method);
+  return found ? found.label : method;
+};
