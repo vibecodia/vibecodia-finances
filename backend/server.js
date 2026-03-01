@@ -196,6 +196,7 @@ app.post('/api/transactions', dbMiddleware, async (req, res) => {
   const Transaction = req.conn.model('Transaction', transactionSchema);
   const transactionData = {
     ...req.body,
+    paymentMethod: req.body.paymentMethod || 'pix',
     date: createLocalDateForStorage(req.body.date),
     dueDate: req.body.dueDate ? createLocalDateForStorage(req.body.dueDate) : undefined,
   };
@@ -212,9 +213,15 @@ app.put('/api/transactions/:id', dbMiddleware, async (req, res) => {
   try {
     const updateData = {
       ...req.body,
-      date: createLocalDateForStorage(req.body.date),
-      dueDate: req.body.dueDate ? createLocalDateForStorage(req.body.dueDate) : undefined,
     };
+    
+    if (req.body.date) {
+      updateData.date = createLocalDateForStorage(req.body.date);
+    }
+    if (req.body.dueDate !== undefined) {
+      updateData.dueDate = req.body.dueDate ? createLocalDateForStorage(req.body.dueDate) : undefined;
+    }
+    
     const updatedTransaction = await Transaction.findByIdAndUpdate(
       req.params.id,
       updateData,

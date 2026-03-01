@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Transaction, PaymentMethod } from '../types';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, PAYMENT_METHODS, getBrazilDateString } from '../utils/helpers';
-import { Plus, X, Calendar, CreditCard, Repeat, AlertCircle, Calculator, Wallet } from 'lucide-react';
+import { Plus, X, Calendar, CreditCard, Calculator, Wallet } from 'lucide-react';
 import { addMonths } from 'date-fns';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -150,25 +150,25 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     setShowCalculator(false);
   };
 
-  const getRecurrenceDescription = () => {
-    switch (formData.recurrence) {
-      case 'weekly':
-        return 'Esta transação será repetida toda semana automaticamente no calendário';
-      case 'monthly':
-        return 'Esta transação será repetida todo mês automaticamente no calendário';
-      case 'yearly':
-        return 'Esta transação será repetida todo ano automaticamente no calendário';
-      default:
-        return 'Transação única, não será repetida';
-    }
-  };
+  // const getRecurrenceDescription = () => {
+  //   switch (formData.recurrence) {
+  //     case 'weekly':
+  //       return 'Esta transação será repetida toda semana automaticamente no calendário';
+  //     case 'monthly':
+  //       return 'Esta transação será repetida todo mês automaticamente no calendário';
+  //     case 'yearly':
+  //       return 'Esta transação será repetida todo ano automaticamente no calendário';
+  //     default:
+  //       return 'Transação única, não será repetida';
+  //   }
+  // };
 
-  const getRecurrenceWarning = () => {
-    if (formData.recurrence !== 'none' && type === 'expense') {
-      return 'IMPORTANTE: Apenas a primeira ocorrência manterá o status de pagamento. As próximas sempre serão criadas como pendentes.';
-    }
-    return null;
-  };
+  // const getRecurrenceWarning = () => {
+  //   if (formData.recurrence !== 'none' && type === 'expense') {
+  //     return 'IMPORTANTE: Apenas a primeira ocorrência manterá o status de pagamento. As próximas sempre serão criadas como pendentes.';
+  //   }
+  //   return null;
+  // };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -309,7 +309,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
             </div>
           )}
 
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium text-text mb-2">
               <Repeat className="w-4 h-4 inline mr-1" />
               Recorrência
@@ -339,7 +339,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
                 </div>
               </div>
             )}
-          </div>
+          </div> */}
 
           {/* Data da transação apenas para receitas */}
           {type === 'income' && (
