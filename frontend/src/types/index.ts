@@ -1,4 +1,4 @@
-export type PaymentMethod = 'xp' | 'c6' | 'bradesco_t' | 'bradesco_r' | 'nubank' | 'pix';
+export type PaymentMethod = 'xp' | 'c6' | 'bradesco_t' | 'bradesco_r' | 'nubank' | 'pix' | 'vero_card' | 'flash';
 
 export interface Transaction {
   _id?: string; // Adicionado para o MongoDB
