@@ -515,6 +515,11 @@ export const PAYMENT_METHODS = [
   { id: 'bradesco_t', label: 'Bradesco T' },
   { id: 'bradesco_r', label: 'Bradesco R' },
   { id: 'nubank', label: 'Nubank' },
+<<<<<<< HEAD
+=======
+  { id: 'vero_card', label: 'Vero Card' },
+  { id: 'flash', label: 'Flash' },
+>>>>>>> refs/remotes/origin/develop
 ] as const;
 
 export const formatPaymentMethod = (method?: string): string => {

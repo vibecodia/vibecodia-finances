@@ -104,7 +104,11 @@ const transactionSchema = new mongoose.Schema({
   recurrence: { type: String, enum: ['none', 'weekly', 'monthly', 'yearly'], default: 'none' },
   paymentMethod: { 
     type: String, 
+<<<<<<< HEAD
     enum: ['xp', 'c6', 'bradesco_t', 'bradesco_r', 'nubank', 'pix'],
+=======
+    enum: ['xp', 'c6', 'bradesco_t', 'bradesco_r', 'nubank', 'pix', 'vero_card', 'flash'],
+>>>>>>> refs/remotes/origin/develop
     default: 'pix' 
   },
   notes: { type: String, trim: true }
