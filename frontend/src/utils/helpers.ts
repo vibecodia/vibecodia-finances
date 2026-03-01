@@ -510,7 +510,7 @@ export const INCOME_CATEGORIES = [
 
 export const PAYMENT_METHODS = [
   { id: 'pix', label: 'PIX' },
-  { id: 'xp', label: 'XP Investimentos' },
+  { id: 'xp', label: 'XP' },
   { id: 'c6', label: 'C6 Bank' },
   { id: 'bradesco_t', label: 'Bradesco T' },
   { id: 'bradesco_r', label: 'Bradesco R' },
