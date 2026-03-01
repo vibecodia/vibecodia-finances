@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Transaction } from '../types';
-import { formatCurrency, isTransactionOverdue, getDaysUntilDue, formatBrazilDate, getCurrentBrazilDate, filterTransactionsByMonth, parseLocalDate } from '../utils/helpers';
-import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight } from 'lucide-react';
+import { formatCurrency, isTransactionOverdue, getDaysUntilDue, formatBrazilDate, getCurrentBrazilDate, filterTransactionsByMonth, parseLocalDate, formatPaymentMethod } from '../utils/helpers';
+import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight, Wallet } from 'lucide-react';
 import TransactionForm from './TransactionForm';
 import ConfirmationModal from './ConfirmationModal';
 import DailyDateSlider from './DailyDateSlider';
@@ -507,6 +507,13 @@ const TransactionList: React.FC<TransactionListProps> = ({
                       <span className="px-2 py-1 rounded-full truncate max-w-[120px]" style={{ backgroundColor: theme.cardBorder }}>
                         {transaction.category}
                       </span>
+                      
+                      {type === 'expense' && transaction.paymentMethod && (
+                        <span className="px-2 py-1 rounded-full flex items-center gap-1 whitespace-nowrap" style={{ backgroundColor: theme.cardBorder }}>
+                          <Wallet className="w-3 h-3 flex-shrink-0" />
+                          {formatPaymentMethod(transaction.paymentMethod)}
+                        </span>
+                      )}
                       
                       {/* Data da transação */}
                       <span className="whitespace-nowrap">{formatBrazilDate(transaction.date)}</span>

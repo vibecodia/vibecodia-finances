@@ -1,3 +1,5 @@
+export type PaymentMethod = 'xp' | 'c6' | 'bradesco_t' | 'bradesco_r' | 'nubank' | 'pix';
+
 export interface Transaction {
   _id?: string; // Adicionado para o MongoDB
   id: string; // Mantido para compatibilidade
@@ -9,6 +11,7 @@ export interface Transaction {
   dueDate?: string; // Data de vencimento para gastos pendentes
   isPaid: boolean; // Status de pagamento
   recurrence: 'none' | 'weekly' | 'monthly' | 'yearly';
+  paymentMethod?: PaymentMethod; // Adicionado para despesas
   createdAt: string;
   notes?: string; // Adicionado para o campo de notas
 }

@@ -102,6 +102,11 @@ const transactionSchema = new mongoose.Schema({
   dueDate: { type: Date },
   isPaid: { type: Boolean, default: false },
   recurrence: { type: String, enum: ['none', 'weekly', 'monthly', 'yearly'], default: 'none' },
+  paymentMethod: { 
+    type: String, 
+    enum: ['xp', 'c6', 'bradesco_t', 'bradesco_r', 'nubank', 'pix'],
+    default: 'pix' 
+  },
   notes: { type: String, trim: true }
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
