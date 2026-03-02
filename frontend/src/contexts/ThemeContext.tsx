@@ -17,23 +17,23 @@ interface ThemeContextType {
 }
 
 const lightPalette: ColorPalette = {
-  primary: '#2563eb', // blue-600
-  secondary: '#1d4ed8', // blue-700
-  accent: '#60a5fa', // blue-400
+  primary: '#059669', // emerald-600
+  secondary: '#047857', // emerald-700
+  accent: '#10b981', // emerald-500
   background: '#f8fafc', // slate-50
-  text: '#1e293b', // slate-800
+  text: '#064e3b', // emerald-950 (deep green text for contrast)
   cardBackground: '#ffffff',
   cardBorder: '#e2e8f0', // slate-200
 };
 
 const darkPalette: ColorPalette = {
-  primary: '#1e40af', // blue-800
-  secondary: '#1e3a8a', // blue-900
-  accent: '#3b82f6', // blue-500
-  background: '#1e293b', // slate-800
-  text: '#f8fafc', // slate-50
-  cardBackground: '#334155', // slate-700
-  cardBorder: '#475569', // slate-600
+  primary: '#10b981', // emerald-500
+  secondary: '#059669', // emerald-600
+  accent: '#34d399', // emerald-400
+  background: '#020617', // slate-950 (deep black-blue)
+  text: '#ecfdf5', // emerald-50
+  cardBackground: '#0f172a', // slate-900
+  cardBorder: '#1e293b', // slate-800
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);

@@ -379,8 +379,8 @@ export const getCategoryData = (transactions: Transaction[], date: Date = getCur
   }, {} as Record<string, number>);
 
   const colors = [
-    '#5E81AC', '#88C0D0', '#A3BE8C', '#EBCB8B', 
-    '#D08770', '#BF616A', '#B48EAD', '#8FBCBB'
+    '#059669', '#10b981', '#34d399', '#6ee7b7', 
+    '#0d9488', '#14b8a6', '#5eead4', '#99f6e4'
   ];
 
   return Object.entries(categoryTotals)

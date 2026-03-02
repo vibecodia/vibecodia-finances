@@ -23,7 +23,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
   const [showConfetti, setShowConfetti] = useState(false);
   const [isPulsing, setIsPulsing] = useState(false);
   const [currentMonth, setCurrentMonth] = useState<Date>(getCurrentBrazilDate());
-  const { theme } = useTheme();
+  const { theme, isDarkMode } = useTheme();
 
   const transactionsForSelectedMonth = filterTransactionsByMonth(transactions, currentMonth);
   
@@ -274,54 +274,54 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div 
           className="rounded-xl p-4 cursor-pointer hover:shadow-md transition-shadow duration-200"
-          style={{ backgroundColor: '#D4EDDA', border: `1px solid #C3E6CB` }}
+          style={{ backgroundColor: isDarkMode ? '#064e3b' : '#ecfdf5', border: `1px solid ${isDarkMode ? '#065f46' : '#d1fae5'}` }}
           onClick={() => handleCardClick('/income')}
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 min-w-0">
-              <TrendingUp className="w-4 h-4 text-black flex-shrink-0" />
-              <h3 className="text-sm font-medium text-black truncate">Receitas</h3>
+              <TrendingUp className={`w-4 h-4 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'} flex-shrink-0`} />
+              <h3 className={`text-sm font-medium ${isDarkMode ? 'text-emerald-50' : 'text-emerald-900'} truncate`}>Receitas</h3>
             </div>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-black break-words">
+          <p className={`text-xl sm:text-2xl font-bold ${isDarkMode ? 'text-emerald-50' : 'text-emerald-900'} break-words`}>
             {formatCurrency(currentIncome)}
           </p>
         </div>
 
         <div 
           className="rounded-xl p-4 cursor-pointer hover:shadow-md transition-shadow duration-200"
-          style={{ backgroundColor: '#FFE0B2', border: `1px solid #FFCC80` }}
+          style={{ backgroundColor: isDarkMode ? '#451a03' : '#fff7ed', border: `1px solid ${isDarkMode ? '#78350f' : '#ffedd5'}` }}
           onClick={() => handleCardClick('/expenses')}
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 min-w-0">
-              <TrendingDown className="w-4 h-4 text-black flex-shrink-0" />
-              <h3 className="text-sm font-medium text-black truncate">Gastos Pagos</h3>
+              <TrendingDown className={`w-4 h-4 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'} flex-shrink-0`} />
+              <h3 className={`text-sm font-medium ${isDarkMode ? 'text-orange-50' : 'text-orange-900'} truncate`}>Gastos Pagos</h3>
             </div>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-black break-words">
+          <p className={`text-xl sm:text-2xl font-bold ${isDarkMode ? 'text-orange-50' : 'text-orange-900'} break-words`}>
             {formatCurrency(currentExpenses)}
           </p>
-          <p className="text-xs text-black mt-1 truncate opacity-80">
+          <p className={`text-xs ${isDarkMode ? 'text-orange-200' : 'text-orange-800'} mt-1 truncate opacity-80`}>
             Apenas despesas já pagas
           </p>
         </div>
 
         <div 
           className="rounded-xl p-4 cursor-pointer hover:shadow-md transition-shadow duration-200"
-          style={{ backgroundColor: '#FFFACD', border: `1px solid #FFECB3` }}
+          style={{ backgroundColor: isDarkMode ? '#064e3b' : '#ecfdf5', border: `1px solid ${isDarkMode ? '#065f46' : '#d1fae5'}` }}
           onClick={() => handleCardClick('/goals')}
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 min-w-0">
-              <Target className="w-4 h-4 text-black flex-shrink-0" />
-              <h3 className="text-sm font-medium text-black truncate">Metas</h3>
+              <Target className={`w-4 h-4 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'} flex-shrink-0`} />
+              <h3 className={`text-sm font-medium ${isDarkMode ? 'text-emerald-50' : 'text-emerald-900'} truncate`}>Metas</h3>
             </div>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-black break-words">
+          <p className={`text-xl sm:text-2xl font-bold ${isDarkMode ? 'text-emerald-50' : 'text-emerald-900'} break-words`}>
             {formatCurrency(totalSaved)}
           </p>
-          <p className="text-xs text-black mt-1 truncate opacity-80">
+          <p className={`text-xs ${isDarkMode ? 'text-emerald-200' : 'text-emerald-800'} mt-1 truncate opacity-80`}>
             {totalSavingsGoals > 0 ? `de ${formatCurrency(totalSavingsGoals)}` : 'Nenhuma meta'}
           </p>
         </div>
