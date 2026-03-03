@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getDaysInMonth, startOfMonth, addDays, endOfDay, isSameDay } from 'date-fns';
 import { useTheme } from '../contexts/ThemeContext';
 
