@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { getDaysInMonth, startOfMonth, addDays } from 'date-fns';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { getDaysInMonth, startOfMonth, addDays, endOfDay, isSameDay } from 'date-fns';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface DailyDateSliderProps {
@@ -22,33 +22,31 @@ const DailyDateSlider: React.FC<DailyDateSliderProps> = ({
   const sliderRef = useRef<HTMLDivElement>(null);
   const [isDraggingStart, setIsDraggingStart] = useState(false);
   const [isDraggingEnd, setIsDraggingEnd] = useState(false);
-  const [activeThumb, setActiveThumb] = useState<'start' | 'end' | null>(null); // New state for active thumb
-  const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Ref for long press timeout
+  const [activeThumb, setActiveThumb] = useState<'start' | 'end' | null>(null);
+  const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Convert dates to day numbers (1-indexed)
   const getDayNumber = useCallback((date: Date) => date.getDate(), []);
 
-  const initialStartDay = startDate ? getDayNumber(startDate) : 1;
-  const initialEndDay = endDate ? getDayNumber(endDate) : daysInMonth;
+  const [startDay, setStartDay] = useState(() => getDayNumber(startDate));
+  const [endDay, setEndDay] = useState(() => getDayNumber(endDate));
 
-  const [startDay, setStartDay] = useState(initialStartDay);
-  const [endDay, setEndDay] = useState(initialEndDay);
-
-  // Update internal state when props change
+  // Update internal state when props change, but only if they actually changed to avoid jitter
   useEffect(() => {
-    setStartDay(getDayNumber(startDate));
-    setEndDay(getDayNumber(endDate));
+    const newStart = getDayNumber(startDate);
+    const newEnd = getDayNumber(endDate);
+    setStartDay(newStart);
+    setEndDay(newEnd);
   }, [startDate, endDate, getDayNumber]);
 
   const calculateDayFromMouseEvent = useCallback((e: MouseEvent | React.MouseEvent | TouchEvent | React.TouchEvent) => {
-    if (!sliderRef.current) return 0;
+    if (!sliderRef.current) return 1;
     const sliderRect = sliderRef.current.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
     const clickX = clientX - sliderRect.left;
     const percentage = clickX / sliderRect.width;
-    let day = Math.round(percentage * (daysInMonth - 1)) + 1; // 1-indexed day
-    day = Math.max(1, Math.min(daysInMonth, day)); // Clamp between 1 and daysInMonth
-    return day;
+    let day = Math.round(percentage * (daysInMonth - 1)) + 1;
+    return Math.max(1, Math.min(daysInMonth, day));
   }, [daysInMonth]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -58,8 +56,10 @@ const DailyDateSlider: React.FC<DailyDateSliderProps> = ({
 
     if (distanceToStart <= distanceToEnd) {
       setIsDraggingStart(true);
+      setActiveThumb('start');
     } else {
       setIsDraggingEnd(true);
+      setActiveThumb('end');
     }
   }, [calculateDayFromMouseEvent, startDay, endDay]);
 
@@ -69,14 +69,11 @@ const DailyDateSlider: React.FC<DailyDateSliderProps> = ({
     const distanceToEnd = Math.abs(clickedDay - endDay);
 
     const targetThumb = distanceToStart <= distanceToEnd ? 'start' : 'end';
+    setActiveThumb(targetThumb);
 
     if (longPressTimeoutRef.current) {
       clearTimeout(longPressTimeoutRef.current);
     }
-
-    longPressTimeoutRef.current = setTimeout(() => {
-      setActiveThumb(targetThumb);
-    }, 300); // 300ms for long press
 
     if (targetThumb === 'start') {
       setIsDraggingStart(true);
@@ -85,57 +82,55 @@ const DailyDateSlider: React.FC<DailyDateSliderProps> = ({
     }
   }, [calculateDayFromMouseEvent, startDay, endDay]);
 
+  const updateRange = useCallback((newStart: number, newEnd: number) => {
+    const newStartDate = addDays(monthStart, newStart - 1);
+    const newEndDate = endOfDay(addDays(monthStart, newEnd - 1));
+    
+    // Only call onChange if dates have actually changed
+    if (!isSameDay(newStartDate, startDate) || !isSameDay(newEndDate, endDate)) {
+      onChange(newStartDate, newEndDate);
+    }
+  }, [monthStart, onChange, startDate, endDate]);
+
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isDraggingStart && !isDraggingEnd) return;
 
     const newDay = calculateDayFromMouseEvent(e);
 
     if (isDraggingStart) {
-      let newStart = Math.min(newDay, endDay);
-      newStart = Math.max(1, newStart);
-      setStartDay(newStart);
-      onChange(addDays(monthStart, newStart - 1), addDays(monthStart, endDay - 1));
+      const clampedStart = Math.min(newDay, endDay);
+      setStartDay(clampedStart);
+      updateRange(clampedStart, endDay);
     } else if (isDraggingEnd) {
-      let newEnd = Math.max(newDay, startDay);
-      newEnd = Math.min(daysInMonth, newEnd);
-      setEndDay(newEnd);
-      onChange(addDays(monthStart, startDay - 1), addDays(monthStart, newEnd - 1));
+      const clampedEnd = Math.max(newDay, startDay);
+      setEndDay(clampedEnd);
+      updateRange(startDay, clampedEnd);
     }
-  }, [isDraggingStart, isDraggingEnd, calculateDayFromMouseEvent, endDay, startDay, daysInMonth, monthStart, onChange]);
+  }, [isDraggingStart, isDraggingEnd, calculateDayFromMouseEvent, endDay, startDay, updateRange]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     if (!isDraggingStart && !isDraggingEnd) return;
 
-    if (longPressTimeoutRef.current) {
-      clearTimeout(longPressTimeoutRef.current);
-      longPressTimeoutRef.current = null;
-    }
-
     const newDay = calculateDayFromMouseEvent(e);
 
     if (isDraggingStart) {
-      let newStart = Math.min(newDay, endDay);
-      newStart = Math.max(1, newStart);
-      setStartDay(newStart);
-      onChange(addDays(monthStart, newStart - 1), addDays(monthStart, endDay - 1));
+      const clampedStart = Math.min(newDay, endDay);
+      setStartDay(clampedStart);
+      updateRange(clampedStart, endDay);
     } else if (isDraggingEnd) {
-      let newEnd = Math.max(newDay, startDay);
-      newEnd = Math.min(daysInMonth, newEnd);
-      setEndDay(newEnd);
-      onChange(addDays(monthStart, startDay - 1), addDays(monthStart, newEnd - 1));
+      const clampedEnd = Math.max(newDay, startDay);
+      setEndDay(clampedEnd);
+      updateRange(startDay, clampedEnd);
     }
-  }, [isDraggingStart, isDraggingEnd, calculateDayFromMouseEvent, endDay, startDay, daysInMonth, monthStart, onChange]);
+  }, [isDraggingStart, isDraggingEnd, calculateDayFromMouseEvent, endDay, startDay, updateRange]);
 
   const handleMouseUp = useCallback(() => {
     setIsDraggingStart(false);
     setIsDraggingEnd(false);
+    setActiveThumb(null);
   }, []);
 
   const handleTouchEnd = useCallback(() => {
-    if (longPressTimeoutRef.current) {
-      clearTimeout(longPressTimeoutRef.current);
-      longPressTimeoutRef.current = null;
-    }
     setIsDraggingStart(false);
     setIsDraggingEnd(false);
     setActiveThumb(null);
@@ -144,7 +139,7 @@ const DailyDateSlider: React.FC<DailyDateSliderProps> = ({
   useEffect(() => {
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-    document.addEventListener('touchmove', handleTouchMove);
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
     document.addEventListener('touchend', handleTouchEnd);
 
     return () => {
@@ -161,46 +156,112 @@ const DailyDateSlider: React.FC<DailyDateSliderProps> = ({
   const rangeWidth = endPercentage - startPercentage;
   const rangeLeft = startPercentage;
 
+  // Ticks for every 5 days + last day
+  const ticks = useMemo(() => {
+    const t = [];
+    for (let i = 1; i <= daysInMonth; i += 5) {
+      t.push(i);
+    }
+    if (t[t.length - 1] !== daysInMonth) {
+      t.push(daysInMonth);
+    }
+    return t;
+  }, [daysInMonth]);
+
   return (
-    <div
-      ref={sliderRef}
-      className="relative w-5/6 h-4 rounded-full cursor-pointer flex items-center"
-      style={{ backgroundColor: theme.cardBorder }}
-      onMouseDown={handleMouseDown}
-      onTouchStart={handleTouchStart}
-    >
-      {/* Track */}
+    <div className="flex flex-col w-full py-6 px-2 relative z-20 overflow-visible">
+      {/* Custom float animation style */}
+      <style>{`
+        @keyframes floatIn {
+          0% { opacity: 0; transform: translate(-50%, 8px) scale(0.8); }
+          100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
+        .animate-float-in {
+          animation: floatIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards;
+        }
+      `}</style>
       <div
-        className="absolute h-full rounded-full opacity-70"
-        style={{
-          left: `${rangeLeft}%`,
-          width: `${rangeWidth}%`,
-          backgroundColor: theme.primary,
-        }}
-      ></div>
-
-      {/* Start Thumb */}
-      <div
-        className={`absolute w-5 h-5 rounded-full shadow-md flex items-center justify-center transform ${activeThumb === 'start' ? 'scale-150' : ''} transition-transform duration-200`}
-        style={{
-          left: `calc(${startPercentage}% - 10px)`,
-          backgroundColor: theme.primary,
-          zIndex: 1,
-        }}
+        ref={sliderRef}
+        className="relative h-2 rounded-full cursor-pointer flex items-center select-none"
+        style={{ backgroundColor: theme.cardBorder }}
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
       >
-        <span className="text-xs font-bold text-white select-none">{startDay}</span>
-      </div>
+        {/* Ticks */}
+        <div className="absolute inset-0 flex justify-between px-0.5 pointer-events-none">
+          {Array.from({ length: daysInMonth }).map((_, i) => (
+            <div 
+              key={i} 
+              className={`w-px h-1 rounded-full ${i + 1 === startDay || i + 1 === endDay ? 'opacity-0' : 'opacity-20'}`}
+              style={{ 
+                backgroundColor: theme.text,
+                height: (i + 1) % 5 === 0 ? '6px' : '3px',
+                marginTop: (i + 1) % 5 === 0 ? '-2px' : '0px'
+              }}
+            />
+          ))}
+        </div>
 
-      {/* End Thumb */}
-      <div
-        className={`absolute w-5 h-5 rounded-full shadow-md flex items-center justify-center transform ${activeThumb === 'end' ? 'scale-150' : ''} transition-transform duration-200`}
-        style={{
-          left: `calc(${endPercentage}% - 10px)`,
-          backgroundColor: theme.primary,
-          zIndex: 1,
-        }}
-      >
-        <span className="text-xs font-bold text-white select-none">{endDay}</span>
+        {/* Selected Range Track */}
+        <div
+          className="absolute h-full rounded-full transition-all duration-75"
+          style={{
+            left: `${rangeLeft}%`,
+            width: `${rangeWidth}%`,
+            backgroundColor: theme.primary,
+            boxShadow: `0 0 10px ${theme.primary}40`
+          }}
+        ></div>
+
+        {/* Start Thumb */}
+        <div
+          className={`absolute w-6 h-6 rounded-full shadow-lg flex items-center justify-center transform transition-all duration-150 z-30 ${
+            activeThumb === 'start' ? 'scale-125' : 'hover:scale-110'
+          }`}
+          style={{
+            left: `calc(${startPercentage}% - 12px)`,
+            backgroundColor: theme.primary,
+            border: `2px solid ${theme.cardBackground}`,
+          }}
+        >
+          <span className="text-[10px] font-bold text-white select-none">{startDay}</span>
+          
+          {/* Tooltip */}
+          {(activeThumb === 'start' || isDraggingStart) && (
+            <div 
+              className="absolute top-[-38px] left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg text-white text-[10px] font-bold shadow-[0_5px_15px_rgba(0,0,0,0.3)] border border-white/20 z-[100] whitespace-nowrap animate-float-in"
+              style={{ backgroundColor: theme.primary }}
+            >
+              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 border-r border-b border-white/10" style={{ backgroundColor: theme.primary }}></div>
+              <span className="relative z-10 drop-shadow-sm">Dia {startDay}</span>
+            </div>
+          )}
+        </div>
+
+        {/* End Thumb */}
+        <div
+          className={`absolute w-6 h-6 rounded-full shadow-lg flex items-center justify-center transform transition-all duration-150 z-30 ${
+            activeThumb === 'end' ? 'scale-125' : 'hover:scale-110'
+          }`}
+          style={{
+            left: `calc(${endPercentage}% - 12px)`,
+            backgroundColor: theme.primary,
+            border: `2px solid ${theme.cardBackground}`,
+          }}
+        >
+          <span className="text-[10px] font-bold text-white select-none">{endDay}</span>
+          
+          {/* Tooltip */}
+          {(activeThumb === 'end' || isDraggingEnd) && (
+            <div 
+              className="absolute top-[-38px] left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg text-white text-[10px] font-bold shadow-[0_5px_15px_rgba(0,0,0,0.3)] border border-white/20 z-[100] whitespace-nowrap animate-float-in"
+              style={{ backgroundColor: theme.primary }}
+            >
+              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 border-r border-b border-white/10" style={{ backgroundColor: theme.primary }}></div>
+              <span className="relative z-10 drop-shadow-sm">Dia {endDay}</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

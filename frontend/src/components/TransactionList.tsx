@@ -353,7 +353,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
       </div>
 
       {/* Filters */}
-      <div className="space-y-3">
+      <div className="space-y-3 relative z-30">
         {/* Category Filter */}
         {categories.length > 0 && (
           <div className="flex items-center gap-2 overflow-x-auto pb-2">
@@ -468,7 +468,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
         {/* Daily Filter for Income/Expense */}
         {startDateFilter && endDateFilter && (
-          <div className="flex items-center gap-3 overflow-x-auto pb-2">
+          <div className="flex items-center gap-3 pb-2 overflow-visible">
             <Calendar className="w-4 h-4 text-text opacity-70 flex-shrink-0" />
             <DailyDateSlider
               currentMonth={currentMonth}
