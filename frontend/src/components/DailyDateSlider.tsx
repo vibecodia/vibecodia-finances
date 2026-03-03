@@ -156,18 +156,6 @@ const DailyDateSlider: React.FC<DailyDateSliderProps> = ({
   const rangeWidth = endPercentage - startPercentage;
   const rangeLeft = startPercentage;
 
-  // Ticks for every 5 days + last day
-  const ticks = useMemo(() => {
-    const t = [];
-    for (let i = 1; i <= daysInMonth; i += 5) {
-      t.push(i);
-    }
-    if (t[t.length - 1] !== daysInMonth) {
-      t.push(daysInMonth);
-    }
-    return t;
-  }, [daysInMonth]);
-
   return (
     <div className="flex flex-col w-full py-6 px-2 relative z-20 overflow-visible">
       {/* Custom float animation style */}
