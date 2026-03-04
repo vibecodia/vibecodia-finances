@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import Cookies from 'js-cookie';
-import { Upload, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Upload, Loader2, CheckCircle, XCircle, Camera } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import QRScanner from './QRScanner';
 
 type ImageUploadProps = {
   onUploadError?: (error: string) => void;
@@ -14,6 +15,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
   const inputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [isLiveScanning, setIsLiveScanning] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [showManualInput, setShowManualInput] = useState(false);
@@ -27,30 +29,45 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
     }, 100);
   };
 
+  const processQRUrl = async (qrUrl: string) => {
+    if (qrUrl && (qrUrl.includes('fazenda') || qrUrl.includes('sefaz'))) {
+      setIsScanning(true);
+      const pin = Cookies.get('pin_code') || '';
+      try {
+        const receiptResponse = await axios.get(`/api/fetch-receipt-data?url=${encodeURIComponent(qrUrl)}`, {
+          headers: { 'x-pin': pin }
+        });
+        if (receiptResponse.data.success && onReceiptDetected) {
+          onReceiptDetected(receiptResponse.data.data);
+          setStatus('success');
+          return true;
+        }
+      } catch (err) {
+        throw new Error('QR Code detectado, mas falha ao buscar dados na SEFAZ.');
+      } finally {
+        setIsScanning(false);
+      }
+    } else {
+      throw new Error('Nenhum QR Code de Nota Fiscal detectado.');
+    }
+    return false;
+  };
+
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualUrl) return;
 
-    setIsScanning(true);
     setStatus('idle');
-    const pin = Cookies.get('pin_code') || '';
-    
     try {
-      const receiptResponse = await axios.get(`/api/fetch-receipt-data?url=${encodeURIComponent(manualUrl)}`, {
-        headers: { 'x-pin': pin }
-      });
-      if (receiptResponse.data.success && onReceiptDetected) {
-        onReceiptDetected(receiptResponse.data.data);
+      const success = await processQRUrl(manualUrl);
+      if (success) {
         setShowManualInput(false);
         setManualUrl('');
-        setStatus('success');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Manual fetch error:', err);
-      setErrorMessage('Não foi possível ler este link. Verifique a URL.');
+      setErrorMessage(err.message || 'Não foi possível ler este link. Verifique a URL.');
       setStatus('error');
-    } finally {
-      setIsScanning(false);
     }
   };
 
@@ -107,28 +124,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
     setStatus('idle');
     setErrorMessage('');
 
-    const pin = Cookies.get('pin_code') || '';
-
     try {
       const qrUrl = await scanQRCode(file);
-      
-      if (qrUrl && (qrUrl.includes('fazenda') || qrUrl.includes('sefaz'))) {
-        setIsScanning(true);
-        try {
-          const receiptResponse = await axios.get(`/api/fetch-receipt-data?url=${encodeURIComponent(qrUrl)}`, {
-            headers: { 'x-pin': pin }
-          });
-          if (receiptResponse.data.success && onReceiptDetected) {
-            onReceiptDetected(receiptResponse.data.data);
-            setStatus('success');
-          }
-        } catch (err) {
-          throw new Error('QR Code detectado, mas falha ao buscar dados na SEFAZ.');
-        } finally {
-          setIsScanning(false);
-        }
+      if (qrUrl) {
+        await processQRUrl(qrUrl);
       } else {
-        throw new Error('Nenhum QR Code de Nota Fiscal detectado nesta imagem.');
+        throw new Error('Nenhum QR Code detectado nesta imagem.');
       }
     } catch (error: any) {
       setStatus('error');
@@ -140,46 +141,92 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
     }
   };
 
+  const handleLiveScan = async (data: string) => {
+    setIsLiveScanning(false);
+    setIsProcessing(true);
+    setStatus('idle');
+    setErrorMessage('');
+    
+    try {
+      await processQRUrl(data);
+    } catch (error: any) {
+      setStatus('error');
+      const msg = error.message || 'Erro ao processar QR Code.';
+      setErrorMessage(msg);
+      onUploadError?.(msg);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <div className="space-y-2">
-      <label className="flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-lg cursor-pointer"
-        style={{ 
-          borderColor: theme.cardBorder,
-          backgroundColor: theme.cardBackground
-        }}>
-        {isProcessing ? (
-          <div className="flex flex-col items-center">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <span className="mt-2 text-sm text-text">
-              {isScanning ? 'Buscando dados na SEFAZ...' : 'Lendo imagem...'}
-            </span>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center text-center">
-            <Upload className="w-8 h-8 text-primary" />
-            <span className="mt-2 text-sm text-text font-medium">Capturar Nota Fiscal (QR Code)</span>
-            <span className="text-xs text-text opacity-70">Apenas lemos os dados, não salvamos a imagem</span>
-          </div>
-        )}
-        <input 
-          type="file" 
-          className="hidden" 
-          accept="image/*"
-          capture="environment"
-          onChange={handleFileChange}
-          disabled={isProcessing}
+      {isLiveScanning && (
+        <QRScanner 
+          onScan={handleLiveScan} 
+          onClose={() => setIsLiveScanning(false)}
+          onError={(err) => {
+            setErrorMessage(err);
+            setStatus('error');
+            setIsLiveScanning(false);
+          }}
         />
-      </label>
+      )}
+
+      <div className="flex gap-2">
+        <button 
+          type="button"
+          onClick={() => setIsLiveScanning(true)}
+          className="flex-1 flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg transition-all hover:opacity-80 active:scale-95"
+          style={{ 
+            borderColor: theme.cardBorder,
+            backgroundColor: theme.cardBackground
+          }}
+        >
+          <Camera className="w-8 h-8 text-primary" />
+          <span className="mt-2 text-sm text-text font-medium">Escanear ao vivo</span>
+          <span className="text-xs text-text opacity-70">Abre a câmera agora</span>
+        </button>
+
+        <label className="flex-1 flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer transition-all hover:opacity-80 active:scale-95"
+          style={{ 
+            borderColor: theme.cardBorder,
+            backgroundColor: theme.cardBackground
+          }}>
+          {isProcessing ? (
+            <div className="flex flex-col items-center">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <span className="mt-2 text-sm text-text">
+                {isScanning ? 'Lendo SEFAZ...' : 'Lendo...'}
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center text-center">
+              <Upload className="w-8 h-8 text-primary" />
+              <span className="mt-2 text-sm text-text font-medium">Foto da Galeria</span>
+              <span className="text-xs text-text opacity-70">Detectar na foto</span>
+            </div>
+          )}
+          <input 
+            type="file" 
+            className="hidden" 
+            accept="image/*"
+            capture="environment"
+            onChange={handleFileChange}
+            disabled={isProcessing}
+          />
+        </label>
+      </div>
 
       {status === 'success' && (
-        <div className="flex items-center gap-2 text-sm text-success justify-center">
+        <div className="flex items-center gap-2 text-sm text-success justify-center p-2 rounded-lg bg-success/10 border border-success/20">
           <CheckCircle className="w-4 h-4" />
           <span>Dados extraídos com sucesso!</span>
         </div>
       )}
 
       {status === 'error' && (
-        <div className="flex flex-col items-center gap-1 text-sm text-error text-center">
+        <div className="flex flex-col items-center gap-1 text-sm text-error text-center p-2 rounded-lg bg-error/10 border border-error/20">
           <div className="flex items-center gap-2">
             <XCircle className="w-4 h-4" />
             <span>{errorMessage}</span>
@@ -194,7 +241,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
             onClick={toggleManualInput}
             className="text-[10px] text-primary hover:underline opacity-80"
           >
-            Não conseguiu ler a foto? Colar link manualmente
+            Não conseguiu ler? Colar link manualmente
           </button>
         ) : (
           <div className="space-y-2 mt-2 p-3 rounded-lg border border-dashed" style={{ borderColor: theme.cardBorder }}>
@@ -212,14 +259,15 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
                 type="button"
                 onClick={handleManualSubmit}
                 disabled={isScanning || !manualUrl}
-                className="flex-1 p-2 text-xs bg-primary text-white rounded-lg hover:bg-secondary disabled:opacity-50"
+                className="flex-1 p-2 text-xs bg-primary text-white rounded-lg hover:bg-secondary disabled:opacity-50 transition-colors"
               >
                 {isScanning ? 'Processando...' : 'Processar Link'}
               </button>
               <button 
                 type="button"
                 onClick={() => setShowManualInput(false)}
-                className="p-2 text-xs bg-cardBorder text-text rounded-lg"
+                className="p-2 text-xs rounded-lg transition-colors"
+                style={{ backgroundColor: theme.cardBorder, color: theme.text }}
               >
                 Cancelar
               </button>
