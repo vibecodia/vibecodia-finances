@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Transaction } from '../types';
 import { formatCurrency, isTransactionOverdue, getDaysUntilDue, formatBrazilDate, getCurrentBrazilDate, filterTransactionsByMonth, parseLocalDate, formatPaymentMethod, PAYMENT_METHODS } from '../utils/helpers';
-import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight, Wallet, Receipt, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight, Wallet, ChevronDown, ChevronUp } from 'lucide-react';
 import TransactionForm from './TransactionForm';
 import ConfirmationModal from './ConfirmationModal';
 import DailyDateSlider from './DailyDateSlider';

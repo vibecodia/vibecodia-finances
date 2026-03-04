@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import { Upload, Loader2, CheckCircle, XCircle } from 'lucide-react';
@@ -11,12 +11,21 @@ type ImageUploadProps = {
 
 const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetected }) => {
   const { theme } = useTheme();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualUrl, setManualUrl] = useState('');
+
+  const toggleManualInput = () => {
+    setShowManualInput(true);
+    // Pequeno delay para garantir que o elemento foi montado no DOM
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+  };
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,8 +60,6 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
       reader.onload = async (e) => {
         const img = new Image();
         img.onload = async () => {
-          console.log(`📸 Processando imagem: ${img.width}x${img.height}`);
-
           // 1. BarcodeDetector (Nativa)
           // @ts-ignore
           if ('BarcodeDetector' in window) {
@@ -183,7 +190,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
         {!showManualInput ? (
           <button 
             type="button"
-            onClick={() => setShowManualInput(true)}
+            onClick={toggleManualInput}
             className="text-[10px] text-primary hover:underline opacity-80"
           >
             Não conseguiu ler a foto? Colar link manualmente
@@ -191,6 +198,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
         ) : (
           <div className="space-y-2 mt-2 p-3 rounded-lg border border-dashed" style={{ borderColor: theme.cardBorder }}>
             <input 
+              ref={inputRef}
               type="url"
               value={manualUrl}
               onChange={(e) => setManualUrl(e.target.value)}

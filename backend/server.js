@@ -182,9 +182,6 @@ app.post('/api/transactions', dbMiddleware, async (req, res) => {
     dueDate: req.body.dueDate ? createLocalDateForStorage(req.body.dueDate) : undefined,
   };
 
-  console.log('💾 Salvando Transação no Banco:');
-  console.log(JSON.stringify(transactionData, null, 2));
-
   try {
     const newTransaction = await new Transaction(transactionData).save();
     res.status(201).json(newTransaction);
@@ -450,12 +447,9 @@ app.get('/api/fetch-receipt-data', async (req, res) => {
   // Mapear URLs curtas de SP para a URL completa de consulta, conforme sugerido
   if (sanitizedUrl.includes('nfce.fazenda.sp.gov.br/qrcode')) {
     sanitizedUrl = sanitizedUrl.replace('/qrcode', '/NFCeConsultaPublica/Paginas/ConsultaQRCode.aspx');
-    console.log(`🔄 URL de SP convertida para: ${sanitizedUrl}`);
   }
 
   try {
-    console.log(`🔍 Buscando dados da nota: ${sanitizedUrl}`);
-    
     // Configurar timeout e headers para evitar bloqueios básicos
     const response = await axios.get(sanitizedUrl, {
       timeout: 15000,
@@ -475,7 +469,6 @@ app.get('/api/fetch-receipt-data', async (req, res) => {
     }
 
     const html = response.data;
-    console.log(`📄 Resposta recebida (${html.length} chars). Status: ${response.status}`);
     
     // Função auxiliar para limpar HTML tags e entidades
     const cleanText = (text) => {
@@ -495,9 +488,6 @@ app.get('/api/fetch-receipt-data', async (req, res) => {
                        html.match(/id="u20"[^>]*>([\s\S]*?)<\/div>/i);
     if (storeMatch) {
       storeName = cleanText(storeMatch[1]);
-      console.log(`🔎 Store: ${storeName}`);
-    } else {
-      console.log('❌ Store name not found via main Regex');
     }
 
     // 2. Valor Total (Busca pela classe txtMax ou rótulo Valor a Pagar)
@@ -508,9 +498,6 @@ app.get('/api/fetch-receipt-data', async (req, res) => {
     if (amountMatch) {
       const rawValue = cleanText(amountMatch[1]);
       totalAmount = parseFloat(rawValue.replace(/\./g, '').replace(',', '.')) || 0;
-      console.log(`🔎 Total: ${totalAmount} (raw: ${rawValue})`);
-    } else {
-      console.log('❌ Total amount not found via main Regex');
     }
 
     // 3. Data da Emissão
@@ -518,7 +505,6 @@ app.get('/api/fetch-receipt-data', async (req, res) => {
     if (dateMatch) {
       const [day, month, year] = dateMatch[1].split('/');
       date = `${year}-${month}-${day}`;
-      console.log(`🔎 Date: ${date}`);
     }
 
     // 4. Itens da Nota (Regex focado na classe txtTit e valor)
@@ -549,13 +535,11 @@ app.get('/api/fetch-receipt-data', async (req, res) => {
           unitPrice: -discountVal,
           totalItemPrice: -discountVal
         });
-        console.log(`🔎 Discount: ${discountVal}`);
       }
     }
 
     // Fallback para itens se o primeiro falhar
     if (itemsList.length === 0) {
-      console.log('⚠️ Fallback items mode active');
       const fallbackRegex = /class="txtNome">([\s\S]*?)<\/span>[\s\S]*?class="valor">([\s\S]*?)<\/span>/gis;
       while ((match = fallbackRegex.exec(html)) !== null) {
         const name = cleanText(match[1]);
@@ -563,8 +547,6 @@ app.get('/api/fetch-receipt-data', async (req, res) => {
         itemsList.push({ description: name, qty: 1, unitPrice: price, totalItemPrice: price });
       }
     }
-
-    console.log(`📦 Found ${itemsList.length} items`);
 
     // 5. Categorização
     let category = 'Outros';
