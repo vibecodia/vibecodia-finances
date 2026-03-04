@@ -14,6 +14,7 @@ export interface Transaction {
   paymentMethod?: PaymentMethod; // Adicionado para despesas
   createdAt: string;
   notes?: string; // Adicionado para o campo de notas
+  imageUrl?: string; // Link para o recibo/imagem
 }
 
 export interface SavingsContribution {

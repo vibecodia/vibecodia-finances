@@ -1,4 +1,5 @@
 import express from 'express';
+import axios from 'axios';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import cors from 'cors';
@@ -19,12 +20,21 @@ const port = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Configuração do Multer para upload de imagens
+// Configuração do Multer para upload de imagens com isolamento por PIN
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, 'uploads');
+    const pin = req.header('x-pin') || req.query.pin;
+    if (!pin || !DB_CONN_MAP[pin]) {
+      return cb(new Error('PIN inválido ou não fornecido para upload'));
+    }
+
+    const uploadDir = path.join(__dirname, 'uploads', pin);
     if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+      try {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      } catch (err) {
+        return cb(new Error('Erro ao criar diretório de upload: ' + err.message));
+      }
     }
     cb(null, uploadDir);
   },
@@ -107,7 +117,8 @@ const transactionSchema = new mongoose.Schema({
     enum: ['xp', 'c6', 'bradesco_t', 'bradesco_r', 'nubank', 'pix', 'vero_card', 'flash'],
     default: 'pix' 
   },
-  notes: { type: String, trim: true }
+  notes: { type: String, trim: true },
+  imageUrl: { type: String }
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 const savingsGoalSchema = new mongoose.Schema({
@@ -200,6 +211,10 @@ app.post('/api/transactions', dbMiddleware, async (req, res) => {
     date: createLocalDateForStorage(req.body.date),
     dueDate: req.body.dueDate ? createLocalDateForStorage(req.body.dueDate) : undefined,
   };
+
+  console.log('💾 Salvando Transação no Banco:');
+  console.log(JSON.stringify(transactionData, null, 2));
+
   try {
     const newTransaction = await new Transaction(transactionData).save();
     res.status(201).json(newTransaction);
@@ -451,6 +466,140 @@ app.delete('/api/shopping-list/:id', dbMiddleware, async (req, res) => {
   }
 });
 
+// Rota para buscar dados da nota fiscal (SEFAZ SP, PR, SC)
+app.get('/api/fetch-receipt-data', async (req, res) => {
+  const { url } = req.query;
+  
+  if (!url) {
+    return res.status(400).json({ error: 'URL da nota fiscal é obrigatória' });
+  }
+
+  // Sanitizar URL: o pipe "|" às vezes vem codificado ou causa problemas em certos ambientes
+  let sanitizedUrl = url.toString().replace(/%7C/g, '|');
+
+  // Mapear URLs curtas de SP para a URL completa de consulta, conforme sugerido
+  if (sanitizedUrl.includes('nfce.fazenda.sp.gov.br/qrcode')) {
+    sanitizedUrl = sanitizedUrl.replace('/qrcode', '/NFCeConsultaPublica/Paginas/ConsultaQRCode.aspx');
+    console.log(`🔄 URL de SP convertida para: ${sanitizedUrl}`);
+  }
+
+  try {
+    console.log(`🔍 Buscando dados da nota: ${sanitizedUrl}`);
+    
+    // Configurar timeout e headers para evitar bloqueios básicos
+    const response = await axios.get(sanitizedUrl, {
+      timeout: 10000,
+      maxRedirects: 5,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7'
+      }
+    });
+
+    const html = response.data;
+    console.log(`📄 Resposta da SEFAZ recebida. Tamanho: ${html.length} caracteres.`);
+    // Log de segurança: mostra os primeiros 500 chars para ver se não caímos em um CAPTCHA
+    console.log(`📄 Início do HTML: ${html.substring(0, 300).replace(/\n/g, ' ')}`);
+
+    let storeName = 'Estabelecimento Desconhecido';
+    let totalAmount = 0;
+    let date = new Date().toISOString().split('T')[0];
+    let itemsList = [];
+
+    // --- LÓGICA DE PARSING COM REGEX REFORÇADO ---
+
+    // 1. Extrair o nome do estabelecimento (Focado em SP)
+    const storeMatch = html.match(/class="txtTopo"[^>]*>([^<]+)</i) || 
+                       html.match(/id="u20"[^>]*>([^<]+)</i) ||
+                       html.match(/<div class="txtCenter"[^>]*>.*?<span[^>]*>(.*?)<\/span>/is);
+    
+    if (storeMatch) {
+      storeName = storeMatch[1].replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+    }
+
+    // 2. Extrair o valor total (Focado em SP)
+    const amountMatch = html.match(/class="totalNumb txtMax"[^>]*>([^<]+)</i) ||
+                        html.match(/Valor a pagar.*?class="totalNumb"[^>]*>([^<]+)</is) ||
+                        html.match(/Valor total R\$?\s*([\d.,]+)/i);
+    
+    if (amountMatch) {
+      const rawAmount = amountMatch[1].replace(/\./g, '').replace(',', '.').trim();
+      totalAmount = parseFloat(rawAmount) || 0;
+    }
+
+    // 3. Extrair a data
+    const dateMatch = html.match(/(\d{2}\/\d{2}\/\d{4})/);
+    if (dateMatch) {
+      const [day, month, year] = dateMatch[1].split('/');
+      date = `${year}-${month}-${day}`;
+    }
+
+    // 4. Extrair Itens da Nota (Regex mais flexível para SP)
+    // Captura Nome (txtTit), Quantidade (Rqtd) e Valor (valor)
+    const itemRegex = /<span class="txtTit">([^<]+)<\/span>.*?Qtde\.:<\/strong>([^<]+)<\/span>.*?<span class="valor">([^<]+)<\/span>/gis;
+    let match;
+    while ((match = itemRegex.exec(html)) !== null) {
+      const name = match[1].replace(/\s+/g, ' ').trim();
+      const qty = match[2].trim();
+      const price = match[3].trim();
+      itemsList.push(`${qty}x ${name} - R$ ${price}`);
+    }
+
+    // Fallback se o padrão acima falhar
+    if (itemsList.length === 0) {
+      console.log('⚠️ Itens não detectados pelo padrão SP. Tentando fallback...');
+      const fallbackRegex = /<span class="txtNome">([^<]+)<\/span>.*?<span class="valor">([^<]+)<\/span>/gis;
+      while ((match = fallbackRegex.exec(html)) !== null) {
+        itemsList.push(`${match[1].trim()} - R$ ${match[2].trim()}`);
+      }
+    }
+
+    console.log(`📦 Itens encontrados: ${itemsList.length}`);
+
+    // 5. Auto-Categorização Simples
+    let category = 'Outros';
+    const storeUpper = storeName.toUpperCase();
+    
+    if (storeUpper.match(/MERCADO|SUPERMERCADO|ATACAREJO|REDE MARIAS|PAO DE ACUCAR|CARREFOUR|ASSAI|ZAFFARI|CONFIANCA/)) {
+      category = 'Mercado';
+    } else if (storeUpper.match(/POSTO|SHELL|IPIRANGA|BR|PETROBRAS|COMBUSTIVEL/)) {
+      category = 'Transporte';
+    } else if (storeUpper.match(/FARMACIA|DROGARIA|RAIA|DROGASIL|SAO PAULO|PANVEL/)) {
+      category = 'Saúde';
+    } else if (storeUpper.match(/RESTAURANTE|LANCHONETE|IFOOD|BURGER KING|MC DONALDS|PIZZA|CAFE/)) {
+      category = 'Alimentação';
+    } else if (storeUpper.match(/PET|VETERINARIA|COBASI|PETZ/)) {
+      category = 'Pets';
+    }
+
+    const notes = itemsList.length > 0 
+      ? `ITENS DA NOTA:\n${itemsList.join('\n')}` 
+      : 'Dados detalhados dos itens não disponíveis para este link.';
+
+    console.log(`✅ Dados extraídos: ${storeName}, R$ ${totalAmount}, Categoria: ${category}`);
+
+    res.json({
+      success: true,
+      data: {
+        description: storeName,
+        amount: totalAmount,
+        date: date,
+        category: category,
+        notes: notes,
+        type: 'expense'
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar dados da SEFAZ:', error.message);
+    res.status(500).json({ 
+      error: 'Não foi possível ler os dados da SEFAZ diretamente. Verifique a conexão ou o link.',
+      details: error.message 
+    });
+  }
+});
+
 // ---------- FIM DAS ROTAS DE API ----------
 
 // ---------- IMPORTANTE: Rotas de API devem vir ANTES dos arquivos estáticos ----------
@@ -461,20 +610,28 @@ app.get('/api/health-check', (req, res) => {
 });
 
 // Rota para upload de imagens (CRÍTICO: DEVE VIR ANTES DE QUALQUER ARQUIVO ESTÁTICO)
-app.post('/api/upload', upload.single('image'), (req, res) => {
-  console.log('📤 Rota /api/upload acessada!');
-  console.log('Arquivo:', req.file);
-  console.log('Body:', req.body);
-  
-  if (!req.file) {
-    return res.status(400).json({ error: 'Nenhum arquivo enviado' });
-  }
-  
-  const imageUrl = `/uploads/${req.file.filename}`;
-  res.json({ 
-    success: true, 
-    imageUrl,
-    message: 'Imagem salva com sucesso'
+app.post('/api/upload', (req, res) => {
+  upload.single('image')(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({ error: 'Erro no upload: ' + err.message });
+    } else if (err) {
+      return res.status(400).json({ error: err.message });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+    }
+
+    const pin = req.header('x-pin') || req.query.pin;
+    const imageUrl = `/uploads/${pin}/${req.file.filename}`;
+    
+    console.log(`📤 Upload realizado para PIN ${pin}: ${imageUrl}`);
+    
+    res.json({ 
+      success: true, 
+      imageUrl,
+      message: 'Imagem salva com sucesso'
+    });
   });
 });
 

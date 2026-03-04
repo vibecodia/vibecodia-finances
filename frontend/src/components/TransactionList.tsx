@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Transaction } from '../types';
 import { formatCurrency, isTransactionOverdue, getDaysUntilDue, formatBrazilDate, getCurrentBrazilDate, filterTransactionsByMonth, parseLocalDate, formatPaymentMethod, PAYMENT_METHODS } from '../utils/helpers';
-import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight, Wallet } from 'lucide-react';
+import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight, Wallet, Receipt } from 'lucide-react';
 import TransactionForm from './TransactionForm';
 import ConfirmationModal from './ConfirmationModal';
 import DailyDateSlider from './DailyDateSlider';
@@ -571,6 +571,13 @@ const TransactionList: React.FC<TransactionListProps> = ({
                       {/* Data da transação */}
                       <span className="whitespace-nowrap">{formatBrazilDate(transaction.date)}</span>
                       
+                      {transaction.imageUrl && (
+                        <span className="px-2 py-1 rounded-full flex items-center gap-1 whitespace-nowrap bg-success bg-opacity-10 text-success border border-success border-opacity-20">
+                          <Receipt className="w-3 h-3 flex-shrink-0" />
+                          Nota
+                        </span>
+                      )}
+
                       {transaction.recurrence !== 'none' && (
                         <span className="px-2 py-1 rounded-full whitespace-nowrap" style={{ backgroundColor: theme.primary, color: 'white' }}>
                           {transaction.recurrence === 'weekly' && 'Semanal'}

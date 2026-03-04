@@ -1,7 +1,7 @@
 import React from 'react';
 import { Transaction } from '../types';
 import { formatCurrency, formatBrazilDate, parseLocalDate, formatPaymentMethod } from '../utils/helpers';
-import { TrendingUp, DollarSign, Check, Repeat, Tag, Calendar as CalendarIcon, Info, CreditCard, Wallet } from 'lucide-react';
+import { TrendingUp, DollarSign, Check, Repeat, Tag, Calendar as CalendarIcon, Info, CreditCard, Wallet, Receipt, ExternalLink } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 
@@ -83,6 +83,26 @@ const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({ transac
             <div>
               <span className="font-medium flex items-center gap-1 mb-1 text-text"><Info className="w-4 h-4" /> Observações:</span>
               <p className="p-3 rounded-md whitespace-pre-wrap" style={{ backgroundColor: theme.cardBorder, color: theme.text }}>{transaction.notes}</p>
+            </div>
+          )}
+          {transaction.imageUrl && (
+            <div className="pt-2">
+              <span className="font-medium flex items-center gap-1 mb-2 text-text"><Receipt className="w-4 h-4" /> Recibo Digital:</span>
+              <a 
+                href={transaction.imageUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-3 rounded-xl border transition-all hover:shadow-md"
+                style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-success bg-opacity-10 text-success">
+                    <Receipt className="w-5 h-5" />
+                  </div>
+                  <span className="text-sm font-medium text-text">Ver Recibo Original</span>
+                </div>
+                <ExternalLink className="w-4 h-4 text-text opacity-50" />
+              </a>
             </div>
           )}
         </div>
