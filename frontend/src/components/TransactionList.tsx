@@ -623,13 +623,6 @@ const TransactionList: React.FC<TransactionListProps> = ({
                       {/* Data da transação */}
                       <span className="whitespace-nowrap">{formatBrazilDate(transaction.date)}</span>
                       
-                      {transaction.imageUrl && (
-                        <span className="px-2 py-1 rounded-full flex items-center gap-1 whitespace-nowrap bg-success bg-opacity-10 text-success border border-success border-opacity-20">
-                          <Receipt className="w-3 h-3 flex-shrink-0" />
-                          Nota
-                        </span>
-                      )}
-
                       {transaction.recurrence !== 'none' && (
                         <span className="px-2 py-1 rounded-full whitespace-nowrap" style={{ backgroundColor: theme.primary, color: 'white' }}>
                           {transaction.recurrence === 'weekly' && 'Semanal'}

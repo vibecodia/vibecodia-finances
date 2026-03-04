@@ -25,8 +25,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     isPaid: boolean;
     recurrence: Transaction['recurrence'];
     paymentMethod: PaymentMethod;
-    notes: string;
-    imageUrl: string;
+    notes: any;
   }>({
     amount: '',
     description: '',
@@ -37,7 +36,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     recurrence: 'none' as Transaction['recurrence'],
     paymentMethod: 'pix',
     notes: '',
-    imageUrl: '',
   });
 
   const [showCalculator, setShowCalculator] = useState(false);
@@ -57,7 +55,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         recurrence: transaction.recurrence || 'none',
         paymentMethod: transaction.paymentMethod || 'pix',
         notes: transaction.notes || '',
-        imageUrl: transaction.imageUrl || ''
       });
     } else if (replicateTransaction) {
       const originalDate = new Date(replicateTransaction.date);
@@ -77,7 +74,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         recurrence: replicateTransaction.recurrence || 'none',
         paymentMethod: replicateTransaction.paymentMethod || 'pix',
         notes: replicateTransaction.notes || '',
-        imageUrl: replicateTransaction.imageUrl || ''
       });
     } else {
       // Reset form for new transaction
@@ -91,7 +87,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         recurrence: 'none',
         paymentMethod: 'pix',
         notes: '',
-        imageUrl: '',
       });
       setCurrentSum(0);
       setCalculatorInput('');
@@ -126,7 +121,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
       recurrence: formData.recurrence,
       paymentMethod: type === 'expense' ? formData.paymentMethod : undefined,
       notes: formData.notes,
-      imageUrl: formData.imageUrl,
     });
   };
 
@@ -142,10 +136,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
       // Se detectou recibo, geralmente é porque já foi pago (Mercado, Posto, etc)
       isPaid: true
     }));
-  };
-
-  const handleUploadSuccess = (imageUrl: string) => {
-    setFormData(prev => ({ ...prev, imageUrl }));
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -425,19 +415,12 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
             <div className="space-y-2">
               <label className="block text-sm font-medium text-text mb-1">
                 <Receipt className="w-4 h-4 inline mr-1" />
-                Recibo / Nota Fiscal
+                Capturar via QR Code
               </label>
               <ImageUpload 
-                onUploadSuccess={handleUploadSuccess}
                 onReceiptDetected={handleReceiptDetected}
                 onUploadError={(error) => console.error(error)}
               />
-              {formData.imageUrl && (
-                <div className="flex items-center gap-2 text-xs text-success bg-success bg-opacity-10 p-2 rounded-lg border border-success border-opacity-20">
-                  <Receipt className="w-3 h-3" />
-                  <span>Recibo digital vinculado com sucesso!</span>
-                </div>
-              )}
             </div>
           )}
 

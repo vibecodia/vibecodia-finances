@@ -20,35 +20,6 @@ const port = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Configuração do Multer para upload de imagens com isolamento por PIN
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const pin = req.header('x-pin') || req.query.pin;
-    if (!pin || !DB_CONN_MAP[pin]) {
-      return cb(new Error('PIN inválido ou não fornecido para upload'));
-    }
-
-    const uploadDir = path.join(__dirname, 'uploads', pin);
-    if (!fs.existsSync(uploadDir)) {
-      try {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      } catch (err) {
-        return cb(new Error('Erro ao criar diretório de upload: ' + err.message));
-      }
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // Limite de 50MB
- });
-
 // ---------- Conexão dinâmica com MongoDB por PIN ----------
 
 // Parse do JSON map do .env
@@ -117,8 +88,7 @@ const transactionSchema = new mongoose.Schema({
     enum: ['xp', 'c6', 'bradesco_t', 'bradesco_r', 'nubank', 'pix', 'vero_card', 'flash'],
     default: 'pix' 
   },
-  notes: { type: mongoose.Schema.Types.Mixed },
-  imageUrl: { type: String }
+  notes: { type: mongoose.Schema.Types.Mixed }
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 const savingsGoalSchema = new mongoose.Schema({
@@ -638,35 +608,6 @@ app.get('/api/health-check', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Backend is healthy' });
 });
 
-// Rota para upload de imagens (CRÍTICO: DEVE VIR ANTES DE QUALQUER ARQUIVO ESTÁTICO)
-app.post('/api/upload', (req, res) => {
-  upload.single('image')(req, res, (err) => {
-    if (err instanceof multer.MulterError) {
-      return res.status(400).json({ error: 'Erro no upload: ' + err.message });
-    } else if (err) {
-      return res.status(400).json({ error: err.message });
-    }
-
-    if (!req.file) {
-      return res.status(400).json({ error: 'Nenhum arquivo enviado' });
-    }
-
-    const pin = req.header('x-pin') || req.query.pin;
-    const imageUrl = `/uploads/${pin}/${req.file.filename}`;
-    
-    console.log(`📤 Upload realizado para PIN ${pin}: ${imageUrl}`);
-    
-    res.json({ 
-      success: true, 
-      imageUrl,
-      message: 'Imagem salva com sucesso'
-    });
-  });
-});
-
-// Servir arquivos estáticos da pasta uploads (antes do dist)
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
 // ---------- Serve static files (SEMPRE POR ÚLTIMO - CATCH-ALL) ----------
 app.use(express.static(path.join(__dirname, 'dist')));
 
@@ -678,9 +619,4 @@ app.use((req, res) => {
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
-  // Criar pasta uploads se não existir
-  const uploadDir = path.join(__dirname, 'uploads');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
 });
