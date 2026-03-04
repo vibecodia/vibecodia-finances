@@ -165,6 +165,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
           type="file" 
           className="hidden" 
           accept="image/*"
+          capture="environment"
           onChange={handleFileChange}
           disabled={isProcessing}
         />
