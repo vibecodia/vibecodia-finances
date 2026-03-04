@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Transaction } from '../types';
 import { formatCurrency, isTransactionOverdue, getDaysUntilDue, formatBrazilDate, getCurrentBrazilDate, filterTransactionsByMonth, parseLocalDate, formatPaymentMethod, PAYMENT_METHODS } from '../utils/helpers';
-import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight, Wallet } from 'lucide-react';
+import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight, Wallet, ChevronDown, ChevronUp } from 'lucide-react';
 import TransactionForm from './TransactionForm';
 import ConfirmationModal from './ConfirmationModal';
 import DailyDateSlider from './DailyDateSlider';
@@ -48,6 +48,43 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [animatedTransactionId, setAnimatedTransactionId] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchTerm, setSearchTerm] = useState(''); // Re-introduce searchTerm state
+  const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
+
+  const toggleNotes = (id: string) => {
+    setExpandedNotes(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  const formatNotes = (notes: any) => {
+    if (!notes) return '';
+    
+    // Se já for um objeto (nova estrutura de Map/Mixed no banco)
+    if (typeof notes === 'object' && notes !== null) {
+      if (notes.items && Array.isArray(notes.items)) {
+        return `ITENS DA NOTA:\n${notes.items.map((item: any) => 
+          `${item.qty}x ${item.description} - R$ ${item.unitPrice.toFixed(2).replace('.', ',')}`
+        ).join('\n')}`;
+      }
+      return JSON.stringify(notes, null, 2);
+    }
+
+    // Fallback para legado (string que pode ser JSON)
+    try {
+      if (typeof notes === 'string' && notes.startsWith('{')) {
+        const parsed = JSON.parse(notes);
+        if (parsed.items && Array.isArray(parsed.items)) {
+          return `ITENS DA NOTA:\n${parsed.items.map((item: any) => 
+            `${item.qty}x ${item.description} - R$ ${item.unitPrice.toFixed(2).replace('.', ',')}`
+          ).join('\n')}`;
+        }
+      }
+    } catch (e) {
+      // Ignora erro e retorna texto puro
+    }
+    return notes;
+  };
   const { theme } = useTheme();
 
   useEffect(() => {
@@ -551,8 +588,23 @@ const TransactionList: React.FC<TransactionListProps> = ({
                     </div>
 
                     {transaction.notes && (
-                      <div className="mb-2 text-sm text-text opacity-70 line-clamp-2 whitespace-pre-wrap">
-                        {transaction.notes}
+                      <div className="mb-2">
+                        <div className={`text-sm text-text opacity-80 whitespace-pre-wrap ${!expandedNotes[transaction.id] ? 'line-clamp-2' : ''}`}>
+                          {formatNotes(transaction.notes)}
+                        </div>
+                        {( (typeof transaction.notes === 'string' && (transaction.notes.length > 40 || transaction.notes.includes('\n') || transaction.notes.startsWith('{'))) || 
+                           (typeof transaction.notes === 'object')) && (
+                          <button 
+                            onClick={() => toggleNotes(transaction.id)}
+                            className="mt-1 text-xs font-medium text-primary flex items-center gap-1 hover:underline"
+                          >
+                            {expandedNotes[transaction.id] ? (
+                              <><ChevronUp className="w-3 h-3" /> Ver menos</>
+                            ) : (
+                              <><ChevronDown className="w-3 h-3" /> Ver itens da nota</>
+                            )}
+                          </button>
+                        )}
                       </div>
                     )}
                     

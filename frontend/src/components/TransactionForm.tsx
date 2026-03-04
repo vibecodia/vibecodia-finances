@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Transaction, PaymentMethod } from '../types';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, PAYMENT_METHODS, getBrazilDateString } from '../utils/helpers';
-import { Plus, X, Calendar, CreditCard, Calculator, Wallet } from 'lucide-react';
+import { Plus, X, Calendar, CreditCard, Calculator, Wallet, Receipt } from 'lucide-react';
 import { addMonths } from 'date-fns';
 import { useTheme } from '../contexts/ThemeContext';
+import ImageUpload from './ImageUpload';
 
 interface TransactionFormProps {
   type: 'expense' | 'income';
@@ -24,7 +25,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     isPaid: boolean;
     recurrence: Transaction['recurrence'];
     paymentMethod: PaymentMethod;
-    notes: string;
+    notes: any;
   }>({
     amount: '',
     description: '',
@@ -53,7 +54,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         isPaid: transaction.isPaid,
         recurrence: transaction.recurrence || 'none',
         paymentMethod: transaction.paymentMethod || 'pix',
-        notes: transaction.notes || ''
+        notes: transaction.notes || '',
       });
     } else if (replicateTransaction) {
       const originalDate = new Date(replicateTransaction.date);
@@ -72,7 +73,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         isPaid: false, // Replicated transactions are initially unpaid
         recurrence: replicateTransaction.recurrence || 'none',
         paymentMethod: replicateTransaction.paymentMethod || 'pix',
-        notes: replicateTransaction.notes || ''
+        notes: replicateTransaction.notes || '',
       });
     } else {
       // Reset form for new transaction
@@ -121,6 +122,20 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
       paymentMethod: type === 'expense' ? formData.paymentMethod : undefined,
       notes: formData.notes,
     });
+  };
+
+  const handleReceiptDetected = (data: { description: string; amount: number; date: string; category?: string; notes?: string }) => {
+    setFormData(prev => ({
+      ...prev,
+      description: data.description || prev.description,
+      amount: data.amount ? data.amount.toString() : prev.amount,
+      dueDate: data.date || prev.dueDate,
+      date: data.date || prev.date,
+      category: data.category || prev.category,
+      notes: data.notes || prev.notes,
+      // Se detectou recibo, geralmente é porque já foi pago (Mercado, Posto, etc)
+      isPaid: true
+    }));
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -394,6 +409,19 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
                 </p>
               </div>
             </>
+          )}
+
+          {type === 'expense' && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-text mb-1">
+                <Receipt className="w-4 h-4 inline mr-1" />
+                Capturar via QR Code
+              </label>
+              <ImageUpload 
+                onReceiptDetected={handleReceiptDetected}
+                onUploadError={(error) => console.error(error)}
+              />
+            </div>
           )}
 
           {/* Checkbox para "Pago" ou "Recebido" */}

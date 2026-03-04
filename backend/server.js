@@ -1,4 +1,5 @@
 import express from 'express';
+import axios from 'axios';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import cors from 'cors';
@@ -18,26 +19,6 @@ const port = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
-
-// Configuração do Multer para upload de imagens
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, 'uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // Limite de 50MB
- });
 
 // ---------- Conexão dinâmica com MongoDB por PIN ----------
 
@@ -107,7 +88,7 @@ const transactionSchema = new mongoose.Schema({
     enum: ['xp', 'c6', 'bradesco_t', 'bradesco_r', 'nubank', 'pix', 'vero_card', 'flash'],
     default: 'pix' 
   },
-  notes: { type: String, trim: true }
+  notes: { type: mongoose.Schema.Types.Mixed }
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 const savingsGoalSchema = new mongoose.Schema({
@@ -200,6 +181,7 @@ app.post('/api/transactions', dbMiddleware, async (req, res) => {
     date: createLocalDateForStorage(req.body.date),
     dueDate: req.body.dueDate ? createLocalDateForStorage(req.body.dueDate) : undefined,
   };
+
   try {
     const newTransaction = await new Transaction(transactionData).save();
     res.status(201).json(newTransaction);
@@ -451,6 +433,154 @@ app.delete('/api/shopping-list/:id', dbMiddleware, async (req, res) => {
   }
 });
 
+// Rota para buscar dados da nota fiscal (SEFAZ SP, PR, SC)
+app.get('/api/fetch-receipt-data', async (req, res) => {
+  const { url } = req.query;
+  
+  if (!url) {
+    return res.status(400).json({ error: 'URL da nota fiscal é obrigatória' });
+  }
+
+  // Sanitizar URL: o pipe "|" às vezes vem codificado ou causa problemas em certos ambientes
+  let sanitizedUrl = url.toString().replace(/%7C/g, '|');
+
+  // Mapear URLs curtas de SP para a URL completa de consulta, conforme sugerido
+  if (sanitizedUrl.includes('nfce.fazenda.sp.gov.br/qrcode')) {
+    sanitizedUrl = sanitizedUrl.replace('/qrcode', '/NFCeConsultaPublica/Paginas/ConsultaQRCode.aspx');
+  }
+
+  try {
+    // Configurar timeout e headers para evitar bloqueios básicos
+    const response = await axios.get(sanitizedUrl, {
+      timeout: 15000,
+      maxRedirects: 5,
+      validateStatus: false,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+
+    if (response.status !== 200) {
+      console.warn(`⚠️ SEFAZ respondeu com status ${response.status}`);
+    }
+
+    const html = response.data;
+    
+    // Função auxiliar para limpar HTML tags e entidades
+    const cleanText = (text) => {
+      if (!text) return '';
+      return text.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+    };
+
+    let storeName = 'Estabelecimento Desconhecido';
+    let totalAmount = 0;
+    let date = new Date().toISOString().split('T')[0];
+    let itemsList = [];
+
+    // --- LÓGICA DE PARSING REFORÇADA ---
+
+    // 1. Nome do Estabelecimento (Busca por txtTopo ou id u20)
+    const storeMatch = html.match(/class="txtTopo"[^>]*>([\s\S]*?)<\/div>/i) || 
+                       html.match(/id="u20"[^>]*>([\s\S]*?)<\/div>/i);
+    if (storeMatch) {
+      storeName = cleanText(storeMatch[1]);
+    }
+
+    // 2. Valor Total (Busca pela classe txtMax ou rótulo Valor a Pagar)
+    const amountMatch = html.match(/txtMax[^>]*>([\s\S]*?)<\/span>/i) ||
+                        html.match(/Valor a pagar[\s\S]*?totalNumb[^>]*>([\s\S]*?)<\/span>/i) ||
+                        html.match(/Valor total[\s\S]*?totalNumb[^>]*>([\s\S]*?)<\/span>/i);
+    
+    if (amountMatch) {
+      const rawValue = cleanText(amountMatch[1]);
+      totalAmount = parseFloat(rawValue.replace(/\./g, '').replace(',', '.')) || 0;
+    }
+
+    // 3. Data da Emissão
+    const dateMatch = html.match(/(\d{2}\/\d{2}\/\d{4})/);
+    if (dateMatch) {
+      const [day, month, year] = dateMatch[1].split('/');
+      date = `${year}-${month}-${day}`;
+    }
+
+    // 4. Itens da Nota (Regex focado na classe txtTit e valor)
+    // Tenta capturar o bloco de cada item
+    const itemRegex = /<span class="txtTit">([\s\S]*?)<\/span>[\s\S]*?Qtde\.:<\/strong>([\s\S]*?)<\/span>[\s\S]*?class="valor">([\s\S]*?)<\/span>/gis;
+    let match;
+    while ((match = itemRegex.exec(html)) !== null) {
+      const name = cleanText(match[1]);
+      const qty = parseFloat(cleanText(match[2]).replace(',', '.')) || 1;
+      const price = parseFloat(cleanText(match[3]).replace(/\./g, '').replace(',', '.')) || 0;
+      
+      itemsList.push({
+        description: name,
+        qty: qty,
+        unitPrice: price,
+        totalItemPrice: (qty * price)
+      });
+    }
+
+    // 4.1 Extrair Descontos (se houver)
+    const discountMatch = html.match(/Descontos R\$:[\s\S]*?totalNumb[^>]*>([\s\S]*?)<\/span>/i);
+    if (discountMatch) {
+      const discountVal = parseFloat(cleanText(discountMatch[1]).replace(/\./g, '').replace(',', '.')) || 0;
+      if (discountVal > 0) {
+        itemsList.push({
+          description: "(-) DESCONTOS TOTAIS",
+          qty: 1,
+          unitPrice: -discountVal,
+          totalItemPrice: -discountVal
+        });
+      }
+    }
+
+    // Fallback para itens se o primeiro falhar
+    if (itemsList.length === 0) {
+      const fallbackRegex = /class="txtNome">([\s\S]*?)<\/span>[\s\S]*?class="valor">([\s\S]*?)<\/span>/gis;
+      while ((match = fallbackRegex.exec(html)) !== null) {
+        const name = cleanText(match[1]);
+        const price = parseFloat(cleanText(match[2]).replace(/\./g, '').replace(',', '.')) || 0;
+        itemsList.push({ description: name, qty: 1, unitPrice: price, totalItemPrice: price });
+      }
+    }
+
+    // 5. Categorização
+    let category = 'Outros';
+    const storeUpper = storeName.toUpperCase();
+    if (storeUpper.match(/MERCADO|SUPERMERCADO|ATACAREJO|REDE MARIAS|PAO DE ACUCAR|CARREFOUR|ASSAI|ZAFFARI|CONFIANCA|DALBEN|CONFIANÇA/)) {
+      category = 'Mercado';
+    } else if (storeUpper.match(/POSTO|SHELL|IPIRANGA|BR|PETROBRAS|COMBUSTIVEL/)) {
+      category = 'Transporte';
+    } else if (storeUpper.match(/FARMACIA|DROGARIA|RAIA|DROGASIL|SAO PAULO|PANVEL/)) {
+      category = 'Saúde';
+    } else if (storeUpper.match(/RESTAURANTE|LANCHONETE|IFOOD|BURGER KING|MC DONALDS|PIZZA|CAFE/)) {
+      category = 'Alimentação';
+    } else if (storeUpper.match(/PET|VETERINARIA|COBASI|PETZ/)) {
+      category = 'Pets';
+    }
+
+    const notes = itemsList.length > 0 
+      ? { version: "1.0", source: "SEFAZ", store: storeName, items: itemsList }
+      : 'Dados detalhados dos itens não disponíveis.';
+
+    res.json({
+      success: true,
+      data: { description: storeName, amount: totalAmount, date: date, category: category, notes: notes, type: 'expense' }
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar dados da SEFAZ:', error.message);
+    res.status(500).json({ 
+      error: 'Não foi possível ler os dados da SEFAZ diretamente. Verifique a conexão ou o link.',
+      details: error.message 
+    });
+  }
+});
+
 // ---------- FIM DAS ROTAS DE API ----------
 
 // ---------- IMPORTANTE: Rotas de API devem vir ANTES dos arquivos estáticos ----------
@@ -459,27 +589,6 @@ app.delete('/api/shopping-list/:id', dbMiddleware, async (req, res) => {
 app.get('/api/health-check', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Backend is healthy' });
 });
-
-// Rota para upload de imagens (CRÍTICO: DEVE VIR ANTES DE QUALQUER ARQUIVO ESTÁTICO)
-app.post('/api/upload', upload.single('image'), (req, res) => {
-  console.log('📤 Rota /api/upload acessada!');
-  console.log('Arquivo:', req.file);
-  console.log('Body:', req.body);
-  
-  if (!req.file) {
-    return res.status(400).json({ error: 'Nenhum arquivo enviado' });
-  }
-  
-  const imageUrl = `/uploads/${req.file.filename}`;
-  res.json({ 
-    success: true, 
-    imageUrl,
-    message: 'Imagem salva com sucesso'
-  });
-});
-
-// Servir arquivos estáticos da pasta uploads (antes do dist)
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ---------- Serve static files (SEMPRE POR ÚLTIMO - CATCH-ALL) ----------
 app.use(express.static(path.join(__dirname, 'dist')));
@@ -492,9 +601,4 @@ app.use((req, res) => {
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
-  // Criar pasta uploads se não existir
-  const uploadDir = path.join(__dirname, 'uploads');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
 });
