@@ -117,7 +117,7 @@ const transactionSchema = new mongoose.Schema({
     enum: ['xp', 'c6', 'bradesco_t', 'bradesco_r', 'nubank', 'pix', 'vero_card', 'flash'],
     default: 'pix' 
   },
-  notes: { type: String, trim: true },
+  notes: { type: mongoose.Schema.Types.Mixed },
   imageUrl: { type: String }
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
@@ -488,80 +488,118 @@ app.get('/api/fetch-receipt-data', async (req, res) => {
     
     // Configurar timeout e headers para evitar bloqueios básicos
     const response = await axios.get(sanitizedUrl, {
-      timeout: 10000,
+      timeout: 15000,
       maxRedirects: 5,
+      validateStatus: false,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7'
+        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
       }
     });
 
+    if (response.status !== 200) {
+      console.warn(`⚠️ SEFAZ respondeu com status ${response.status}`);
+    }
+
     const html = response.data;
-    console.log(`📄 Resposta da SEFAZ recebida. Tamanho: ${html.length} caracteres.`);
-    // Log de segurança: mostra os primeiros 500 chars para ver se não caímos em um CAPTCHA
-    console.log(`📄 Início do HTML: ${html.substring(0, 300).replace(/\n/g, ' ')}`);
+    console.log(`📄 Resposta recebida (${html.length} chars). Status: ${response.status}`);
+    
+    // Função auxiliar para limpar HTML tags e entidades
+    const cleanText = (text) => {
+      if (!text) return '';
+      return text.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+    };
 
     let storeName = 'Estabelecimento Desconhecido';
     let totalAmount = 0;
     let date = new Date().toISOString().split('T')[0];
     let itemsList = [];
 
-    // --- LÓGICA DE PARSING COM REGEX REFORÇADO ---
+    // --- LÓGICA DE PARSING REFORÇADA ---
 
-    // 1. Extrair o nome do estabelecimento (Focado em SP)
-    const storeMatch = html.match(/class="txtTopo"[^>]*>([^<]+)</i) || 
-                       html.match(/id="u20"[^>]*>([^<]+)</i) ||
-                       html.match(/<div class="txtCenter"[^>]*>.*?<span[^>]*>(.*?)<\/span>/is);
-    
+    // 1. Nome do Estabelecimento (Busca por txtTopo ou id u20)
+    const storeMatch = html.match(/class="txtTopo"[^>]*>([\s\S]*?)<\/div>/i) || 
+                       html.match(/id="u20"[^>]*>([\s\S]*?)<\/div>/i);
     if (storeMatch) {
-      storeName = storeMatch[1].replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+      storeName = cleanText(storeMatch[1]);
+      console.log(`🔎 Store: ${storeName}`);
+    } else {
+      console.log('❌ Store name not found via main Regex');
     }
 
-    // 2. Extrair o valor total (Focado em SP)
-    const amountMatch = html.match(/class="totalNumb txtMax"[^>]*>([^<]+)</i) ||
-                        html.match(/Valor a pagar.*?class="totalNumb"[^>]*>([^<]+)</is) ||
-                        html.match(/Valor total R\$?\s*([\d.,]+)/i);
+    // 2. Valor Total (Busca pela classe txtMax ou rótulo Valor a Pagar)
+    const amountMatch = html.match(/txtMax[^>]*>([\s\S]*?)<\/span>/i) ||
+                        html.match(/Valor a pagar[\s\S]*?totalNumb[^>]*>([\s\S]*?)<\/span>/i) ||
+                        html.match(/Valor total[\s\S]*?totalNumb[^>]*>([\s\S]*?)<\/span>/i);
     
     if (amountMatch) {
-      const rawAmount = amountMatch[1].replace(/\./g, '').replace(',', '.').trim();
-      totalAmount = parseFloat(rawAmount) || 0;
+      const rawValue = cleanText(amountMatch[1]);
+      totalAmount = parseFloat(rawValue.replace(/\./g, '').replace(',', '.')) || 0;
+      console.log(`🔎 Total: ${totalAmount} (raw: ${rawValue})`);
+    } else {
+      console.log('❌ Total amount not found via main Regex');
     }
 
-    // 3. Extrair a data
+    // 3. Data da Emissão
     const dateMatch = html.match(/(\d{2}\/\d{2}\/\d{4})/);
     if (dateMatch) {
       const [day, month, year] = dateMatch[1].split('/');
       date = `${year}-${month}-${day}`;
+      console.log(`🔎 Date: ${date}`);
     }
 
-    // 4. Extrair Itens da Nota (Regex mais flexível para SP)
-    // Captura Nome (txtTit), Quantidade (Rqtd) e Valor (valor)
-    const itemRegex = /<span class="txtTit">([^<]+)<\/span>.*?Qtde\.:<\/strong>([^<]+)<\/span>.*?<span class="valor">([^<]+)<\/span>/gis;
+    // 4. Itens da Nota (Regex focado na classe txtTit e valor)
+    // Tenta capturar o bloco de cada item
+    const itemRegex = /<span class="txtTit">([\s\S]*?)<\/span>[\s\S]*?Qtde\.:<\/strong>([\s\S]*?)<\/span>[\s\S]*?class="valor">([\s\S]*?)<\/span>/gis;
     let match;
     while ((match = itemRegex.exec(html)) !== null) {
-      const name = match[1].replace(/\s+/g, ' ').trim();
-      const qty = match[2].trim();
-      const price = match[3].trim();
-      itemsList.push(`${qty}x ${name} - R$ ${price}`);
+      const name = cleanText(match[1]);
+      const qty = parseFloat(cleanText(match[2]).replace(',', '.')) || 1;
+      const price = parseFloat(cleanText(match[3]).replace(/\./g, '').replace(',', '.')) || 0;
+      
+      itemsList.push({
+        description: name,
+        qty: qty,
+        unitPrice: price,
+        totalItemPrice: (qty * price)
+      });
     }
 
-    // Fallback se o padrão acima falhar
-    if (itemsList.length === 0) {
-      console.log('⚠️ Itens não detectados pelo padrão SP. Tentando fallback...');
-      const fallbackRegex = /<span class="txtNome">([^<]+)<\/span>.*?<span class="valor">([^<]+)<\/span>/gis;
-      while ((match = fallbackRegex.exec(html)) !== null) {
-        itemsList.push(`${match[1].trim()} - R$ ${match[2].trim()}`);
+    // 4.1 Extrair Descontos (se houver)
+    const discountMatch = html.match(/Descontos R\$:[\s\S]*?totalNumb[^>]*>([\s\S]*?)<\/span>/i);
+    if (discountMatch) {
+      const discountVal = parseFloat(cleanText(discountMatch[1]).replace(/\./g, '').replace(',', '.')) || 0;
+      if (discountVal > 0) {
+        itemsList.push({
+          description: "(-) DESCONTOS TOTAIS",
+          qty: 1,
+          unitPrice: -discountVal,
+          totalItemPrice: -discountVal
+        });
+        console.log(`🔎 Discount: ${discountVal}`);
       }
     }
 
-    console.log(`📦 Itens encontrados: ${itemsList.length}`);
+    // Fallback para itens se o primeiro falhar
+    if (itemsList.length === 0) {
+      console.log('⚠️ Fallback items mode active');
+      const fallbackRegex = /class="txtNome">([\s\S]*?)<\/span>[\s\S]*?class="valor">([\s\S]*?)<\/span>/gis;
+      while ((match = fallbackRegex.exec(html)) !== null) {
+        const name = cleanText(match[1]);
+        const price = parseFloat(cleanText(match[2]).replace(/\./g, '').replace(',', '.')) || 0;
+        itemsList.push({ description: name, qty: 1, unitPrice: price, totalItemPrice: price });
+      }
+    }
 
-    // 5. Auto-Categorização Simples
+    console.log(`📦 Found ${itemsList.length} items`);
+
+    // 5. Categorização
     let category = 'Outros';
     const storeUpper = storeName.toUpperCase();
-    
-    if (storeUpper.match(/MERCADO|SUPERMERCADO|ATACAREJO|REDE MARIAS|PAO DE ACUCAR|CARREFOUR|ASSAI|ZAFFARI|CONFIANCA/)) {
+    if (storeUpper.match(/MERCADO|SUPERMERCADO|ATACAREJO|REDE MARIAS|PAO DE ACUCAR|CARREFOUR|ASSAI|ZAFFARI|CONFIANCA|DALBEN|CONFIANÇA/)) {
       category = 'Mercado';
     } else if (storeUpper.match(/POSTO|SHELL|IPIRANGA|BR|PETROBRAS|COMBUSTIVEL/)) {
       category = 'Transporte';
@@ -574,21 +612,12 @@ app.get('/api/fetch-receipt-data', async (req, res) => {
     }
 
     const notes = itemsList.length > 0 
-      ? `ITENS DA NOTA:\n${itemsList.join('\n')}` 
-      : 'Dados detalhados dos itens não disponíveis para este link.';
-
-    console.log(`✅ Dados extraídos: ${storeName}, R$ ${totalAmount}, Categoria: ${category}`);
+      ? { version: "1.0", source: "SEFAZ", store: storeName, items: itemsList }
+      : 'Dados detalhados dos itens não disponíveis.';
 
     res.json({
       success: true,
-      data: {
-        description: storeName,
-        amount: totalAmount,
-        date: date,
-        category: category,
-        notes: notes,
-        type: 'expense'
-      }
+      data: { description: storeName, amount: totalAmount, date: date, category: category, notes: notes, type: 'expense' }
     });
 
   } catch (error) {

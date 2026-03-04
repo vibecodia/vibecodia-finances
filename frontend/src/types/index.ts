@@ -13,7 +13,7 @@ export interface Transaction {
   recurrence: 'none' | 'weekly' | 'monthly' | 'yearly';
   paymentMethod?: PaymentMethod; // Adicionado para despesas
   createdAt: string;
-  notes?: string; // Adicionado para o campo de notas
+  notes?: any; // Adicionado para o campo de notas (pode ser string ou objeto estruturado)
   imageUrl?: string; // Link para o recibo/imagem
 }
 

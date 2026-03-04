@@ -16,26 +16,116 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadSuccess, onUploadErro
   const [isScanning, setIsScanning] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error' | 'scanning'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [manualUrl, setManualUrl] = useState('');
+
+  const handleManualSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualUrl) return;
+
+    setIsScanning(true);
+    const pin = Cookies.get('pin_code') || '';
+    
+    try {
+      const receiptResponse = await axios.get(`/api/fetch-receipt-data?url=${encodeURIComponent(manualUrl)}`, {
+        headers: { 'x-pin': pin }
+      });
+      if (receiptResponse.data.success && onReceiptDetected) {
+        onReceiptDetected(receiptResponse.data.data);
+        setShowManualInput(false);
+        setManualUrl('');
+      }
+    } catch (err) {
+      console.error('Manual fetch error:', err);
+      alert('Não foi possível ler este link. Verifique se a URL está correta.');
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
   const scanQRCode = (file: File): Promise<string | null> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         const img = new Image();
-        img.onload = () => {
+        img.onload = async () => {
+          console.log(`📸 Iniciando processamento de imagem: ${img.width}x${img.height}`);
+
+          // 1. Tentar usar a API nativa do Navegador (BarcodeDetector) - Primeira tentativa (Original)
+          // @ts-ignore
+          if ('BarcodeDetector' in window) {
+            try {
+              // @ts-ignore
+              const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+              const barcodes = await detector.detect(img);
+              if (barcodes.length > 0) {
+                console.log('✅ QR Code detectado via API Nativa (Original)');
+                return resolve(barcodes[0].rawValue);
+              }
+            } catch (err) {
+              console.warn('BarcodeDetector error:', err);
+            }
+          } else {
+            console.log('ℹ️ BarcodeDetector não disponível neste navegador.');
+          }
+
+          // 2. Preparar Canvas para processamento de imagem
           const canvas = document.createElement('canvas');
           const context = canvas.getContext('2d');
           if (!context) return resolve(null);
 
-          canvas.width = img.width;
-          canvas.height = img.height;
-          context.drawImage(img, 0, 0);
+          // Redimensionar para um "sweet spot" (evita que o jsQR se perca em pixels demais)
+          const MAX_SIZE = 2000;
+          let width = img.width;
+          let height = img.height;
 
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Aplicar filtros de imagem para melhorar o contraste do QR Code
+          context.filter = 'grayscale(100%) contrast(150%) brightness(110%)';
+          context.drawImage(img, 0, 0, width, height);
+
+          // 3. Tentar API Nativa novamente com a imagem melhorada
+          // @ts-ignore
+          if ('BarcodeDetector' in window) {
+            try {
+              // @ts-ignore
+              const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+              const barcodes = await detector.detect(canvas);
+              if (barcodes.length > 0) {
+                console.log('✅ QR Code detectado via API Nativa (Processada)');
+                return resolve(barcodes[0].rawValue);
+              }
+            } catch (err) {}
+          }
+
+          // 4. Fallback final para jsQR com a imagem processada
           const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
           // @ts-ignore - jsQR is loaded via CDN in index.html
-          const code = window.jsQR ? window.jsQR(imageData.data, imageData.width, imageData.height) : null;
+          const code = window.jsQR ? window.jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: "dontInvert",
+          }) : null;
           
-          resolve(code ? code.data : null);
+          if (code) {
+            console.log('✅ QR Code detectado via jsQR');
+            resolve(code.data);
+          } else {
+            console.log('❌ Nenhum QR Code encontrado após múltiplas tentativas.');
+            resolve(null);
+          }
         };
         img.src = e.target?.result as string;
       };
@@ -148,6 +238,51 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadSuccess, onUploadErro
           <span>{errorMessage}</span>
         </div>
       )}
+
+      <div className="pt-2 text-center">
+        {!showManualInput ? (
+          <button 
+            type="button"
+            onClick={() => setShowManualInput(true)}
+            className="text-xs text-primary hover:underline"
+          >
+            Não conseguiu escanear? Clique aqui para colar o link.
+          </button>
+        ) : (
+          <div className="space-y-2 text-left">
+            <input 
+              type="url"
+              value={manualUrl}
+              onChange={(e) => setManualUrl(e.target.value)}
+              placeholder="https://www.nfce.fazenda.sp.gov.br..."
+              className="w-full p-2 text-xs rounded-lg border focus:ring-1 focus:ring-primary focus:outline-none"
+              style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
+              required
+            />
+            <div className="flex gap-2">
+              <button 
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleManualSubmit(e);
+                }}
+                disabled={isScanning || !manualUrl}
+                className="flex-1 p-2 text-xs bg-primary text-white rounded-lg hover:bg-secondary disabled:opacity-50"
+              >
+                {isScanning ? 'Processando...' : 'Ler Link'}
+              </button>
+              <button 
+                type="button"
+                onClick={() => setShowManualInput(false)}
+                className="p-2 text-xs bg-cardBorder text-text rounded-lg"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
