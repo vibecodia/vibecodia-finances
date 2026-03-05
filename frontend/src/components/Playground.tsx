@@ -15,8 +15,6 @@ import {
   PieChart as PieChartIcon, 
   Filter, 
   Search, 
-  Calendar as CalendarIcon, 
-  Tag, 
   CreditCard,
   TrendingUp,
   ArrowUp,
@@ -92,6 +90,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
   const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'expense' | 'income'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
 
   // Price Comparison State
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
@@ -111,10 +110,13 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
         (t.paymentMethod && selectedPaymentMethods.includes(t.paymentMethod));
       const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = typeFilter === 'all' || t.type === typeFilter;
+      const matchesStatus = statusFilter === 'all' || 
+        (t.type === 'expense' && (statusFilter === 'paid' ? t.isPaid : !t.isPaid)) ||
+        (t.type === 'income' && (statusFilter === 'paid' || statusFilter === 'all'));
 
-      return isInDateRange && isInCategory && isInPaymentMethod && matchesSearch && matchesType;
+      return isInDateRange && isInCategory && isInPaymentMethod && matchesSearch && matchesType && matchesStatus;
     });
-  }, [transactions, startDate, endDate, selectedCategories, selectedPaymentMethods, searchTerm, typeFilter]);
+  }, [transactions, startDate, endDate, selectedCategories, selectedPaymentMethods, searchTerm, typeFilter, statusFilter]);
 
   // Chart Data: Category Distribution
   const categoryChartData = useMemo(() => {
@@ -371,6 +373,29 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
               </div>
 
               <div>
+                <label className="block text-xs font-medium text-text opacity-70 mb-2">Status (Gastos)</label>
+                <div className="grid grid-cols-3 gap-1">
+                  {(['all', 'paid', 'pending'] as const).map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => setStatusFilter(status)}
+                      className={`py-1.5 rounded-md text-[10px] transition-all border font-bold uppercase ${
+                        statusFilter === status 
+                          ? 'bg-primary text-white border-primary shadow-sm' 
+                          : 'bg-transparent text-text opacity-70 border-cardBorder hover:bg-cardBorder/30'
+                      }`}
+                      style={{ 
+                        backgroundColor: statusFilter === status ? theme.primary : 'transparent',
+                        color: statusFilter === status ? '#fff' : theme.text 
+                      }}
+                    >
+                      {status === 'all' ? 'Todos' : status === 'paid' ? 'Pagos' : 'Pendentes'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
                 <label className="block text-xs font-medium text-text opacity-70 mb-1">Período de Análise</label>
                 <div className="space-y-2">
                   <input 
@@ -458,6 +483,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
                   setSelectedPaymentMethods([]);
                   setSearchTerm('');
                   setTypeFilter('all');
+                  setStatusFilter('all');
                   setStartDate(format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
                   setEndDate(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
                 }}
