@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, TrendingDown, TrendingUp, BarChart3, Target, Calendar, Settings, Menu, X, CheckSquare } from 'lucide-react';
+import { Home, TrendingDown, TrendingUp, BarChart3, Target, Calendar, Settings, Menu, X, CheckSquare, PieChart } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { cn } from '../lib/utils';
 
@@ -24,6 +24,7 @@ const Navigation: React.FC = () => {
     { id: '/income', label: 'Receitas', icon: TrendingUp },
     { id: '/calendar', label: 'Agenda', icon: Calendar },
     { id: '/reports', label: 'Relatórios', icon: BarChart3 },
+    { id: '/playground', label: 'Playground', icon: PieChart },
     { id: '/goals', label: 'Metas', icon: Target },
     { id: '/settings', label: 'Config', icon: Settings },
     { id: '/tasks', label: 'Tarefas', icon: CheckSquare },

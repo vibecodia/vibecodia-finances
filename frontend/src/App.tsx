@@ -18,9 +18,13 @@ import ShoppingCartButton from './components/ShoppingCartButton';
 import ShoppingListModal from './components/ShoppingListModal';
 import { useShoppingList } from './hooks/useShoppingList';
 import { TrelloBoard } from './components/trello/TrelloBoard';
+import Playground from './components/Playground';
 import { getBrazilDateString } from './utils/helpers';
+import { useLocation } from 'react-router-dom';
 
 function App() {
+  const location = useLocation();
+  const isPlayground = location.pathname === '/playground';
   const { pin, isInitializing } = useVerification();
   const {
     transactions,
@@ -154,13 +158,14 @@ function App() {
           isDarkMode={isDarkMode}
         />
 
-        <main className="max-w-md mx-auto p-4 pb-20">
+        <main className={`${isPlayground ? 'max-w-7xl' : 'max-w-md'} mx-auto p-4 pb-20 transition-all duration-300`}>
           <Routes>
             <Route path="/" element={<Dashboard transactions={transactions} savingsGoals={savingsGoals} monthlyBalances={monthlyBalances} />} />
             <Route path="/expenses" element={<TransactionList type="expense" transactions={transactions} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} monthlyBalances={monthlyBalances} />} />
             <Route path="/income" element={<TransactionList type="income" transactions={transactions} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} monthlyBalances={monthlyBalances} />} />
             <Route path="/calendar" element={<Calendar transactions={transactions} onUpdatePaymentStatus={updatePaymentStatus} />} />
             <Route path="/reports" element={<Reports transactions={transactions} savingsGoals={savingsGoals} />} />
+            <Route path="/playground" element={<Playground transactions={transactions} />} />
             <Route path="/goals" element={<SavingsGoals goals={savingsGoals} onAdd={addSavingsGoal} onUpdate={updateSavingsGoal} onDelete={deleteSavingsGoal} onAddContribution={addSavingsContribution} onUpdateContribution={updateSavingsContribution} onDeleteContribution={deleteSavingsContribution} />} />
             <Route path="/settings" element={<Settings transactions={transactions} savingsGoals={savingsGoals} onImportData={importData} onClearAllData={clearAllData} />} />
             <Route path="/tasks" element={<TrelloBoard />} />
