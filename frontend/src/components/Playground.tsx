@@ -41,7 +41,7 @@ import {
 } from 'chart.js';
 import { Doughnut, Pie, Line } from 'react-chartjs-2';
 import { startOfMonth, endOfMonth, isWithinInterval, format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+// import { ptBR } from 'date-fns/locale';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
 
 ChartJS.register(
@@ -112,7 +112,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
       const matchesType = typeFilter === 'all' || t.type === typeFilter;
       const matchesStatus = statusFilter === 'all' || 
         (t.type === 'expense' && (statusFilter === 'paid' ? t.isPaid : !t.isPaid)) ||
-        (t.type === 'income' && (statusFilter === 'paid' || statusFilter === 'all'));
+        (t.type === 'income' && statusFilter === 'paid');
 
       return isInDateRange && isInCategory && isInPaymentMethod && matchesSearch && matchesType && matchesStatus;
     });
