@@ -21,7 +21,10 @@ import {
   ArrowDown,
   Table as TableIcon,
   Minus,
-  Maximize2
+  Maximize2,
+  Printer,
+  X,
+  RotateCcw
 } from 'lucide-react';
 import { 
   Chart as ChartJS, 
@@ -92,6 +95,20 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
   const [typeFilter, setTypeFilter] = useState<'all' | 'expense' | 'income'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
 
+  // Removed Transactions State
+  const [removedTransactionIds, setRemovedTransactionIds] = useState<string[]>([]);
+
+  // Sort State
+  const [sortBy, setSortBy] = useState<'date' | 'description' | 'category' | 'paymentMethod' | 'amount'>('date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Print Dialog State
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const [printSettings, setPrintSettings] = useState({
+    title: 'Planilha de Transações',
+    subtitle: '',
+  });
+
   // Price Comparison State
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
 
@@ -100,6 +117,9 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
   // Filtered Transactions
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
+      // Skip removed transactions
+      if (removedTransactionIds.includes(t.id)) return false;
+
       const date = parseLocalDate(t.date);
       const start = parseLocalDate(startDate);
       const end = parseLocalDate(endDate);
@@ -116,7 +136,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
 
       return isInDateRange && isInCategory && isInPaymentMethod && matchesSearch && matchesType && matchesStatus;
     });
-  }, [transactions, startDate, endDate, selectedCategories, selectedPaymentMethods, searchTerm, typeFilter, statusFilter]);
+  }, [transactions, startDate, endDate, selectedCategories, selectedPaymentMethods, searchTerm, typeFilter, statusFilter, removedTransactionIds]);
 
   // Chart Data: Category Distribution
   const categoryChartData = useMemo(() => {
@@ -248,6 +268,45 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
     ));
   };
 
+  const removeTransaction = (transactionId: string) => {
+    setRemovedTransactionIds(prev => [...prev, transactionId]);
+  };
+
+  const resetRemovedTransactions = () => {
+    setRemovedTransactionIds([]);
+  };
+
+  const handleSort = (column: 'date' | 'description' | 'category' | 'paymentMethod' | 'amount') => {
+    if (sortBy === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortedTransactions = () => {
+    return [...filteredTransactions].sort((a, b) => {
+      let aVal: any = a[sortBy as keyof Transaction];
+      let bVal: any = b[sortBy as keyof Transaction];
+
+      if (sortBy === 'date') {
+        aVal = parseLocalDate(a.date).getTime();
+        bVal = parseLocalDate(b.date).getTime();
+      } else if (sortBy === 'amount') {
+        aVal = a.amount;
+        bVal = b.amount;
+      } else if (sortBy === 'paymentMethod') {
+        aVal = a.paymentMethod || '';
+        bVal = b.paymentMethod || '';
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
   const moveItem = (index: number, direction: 'up' | 'down') => {
     const newLayout = [...layout];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
@@ -270,6 +329,149 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
         }, 1000);
       }
     }
+  };
+
+  const handlePrintTable = () => {
+    setShowPrintDialog(true);
+  };
+
+  const executePrint = () => {
+    if (!tableRef.current) return;
+
+    // Create a new window for printing
+    const printWindow = window.open('', '', 'height=600,width=800');
+    if (!printWindow) return;
+
+    // Get table HTML
+    const tableElement = tableRef.current.querySelector('table');
+    if (!tableElement) return;
+
+    // Clone the table to avoid modifying the original
+    const clonedTable = tableElement.cloneNode(true) as HTMLElement;
+    
+    // Remove all remove buttons from the cloned table
+    const removeButtons = clonedTable.querySelectorAll('button');
+    removeButtons.forEach(button => {
+      button.remove();
+    });
+
+    // Create print-friendly HTML
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Planilha de Transações</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+              padding: 20px;
+              background-color: #fff;
+            }
+            .print-header {
+              margin-bottom: 30px;
+              border-bottom: 2px solid #e0e0e0;
+              padding-bottom: 15px;
+            }
+            .print-header h1 {
+              font-size: 24px;
+              margin-bottom: 5px;
+              color: #000;
+            }
+            .print-header p {
+              font-size: 12px;
+              color: #666;
+              margin: 5px 0;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 20px;
+            }
+            thead {
+              background-color: #f5f5f5;
+            }
+            th {
+              padding: 12px;
+              text-align: left;
+              font-weight: 600;
+              border: 1px solid #ddd;
+              font-size: 12px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            td {
+              padding: 10px 12px;
+              border: 1px solid #ddd;
+              font-size: 13px;
+            }
+            tbody tr:nth-child(even) {
+              background-color: #fafafa;
+            }
+            td:last-child {
+              text-align: right;
+              font-weight: 600;
+            }
+            .positive {
+              color: #10b981;
+            }
+            .negative {
+              color: #ef4444;
+            }
+            .badge {
+              display: inline-block;
+              padding: 3px 8px;
+              border-radius: 4px;
+              font-size: 11px;
+              font-weight: 600;
+              background-color: #e0e0e0;
+            }
+            .payment-badge {
+              background-color: #dbeafe;
+              color: #0369a1;
+            }
+            .footer {
+              margin-top: 30px;
+              padding-top: 15px;
+              border-top: 2px solid #e0e0e0;
+              font-size: 12px;
+              color: #666;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-header">
+            <h1>${printSettings.title}</h1>
+            ${printSettings.subtitle ? `<p style="font-size: 14px; color: #555; margin-top: 5px;">${printSettings.subtitle}</p>` : ''}
+            <div style="margin-top: 15px; padding: 12px; background-color: #f0f0f0; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 13px; color: #666;"><strong>${filteredTransactions.length} itens</strong> • Período: ${startDate} até ${endDate}</span>
+              <span style="font-size: 14px; color: #000; font-weight: bold;">Total Despesas: ${formatCurrency(filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0))}</span>
+            </div>
+          </div>
+          
+          ${clonedTable.outerHTML}
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+
+    // Wait for content to load then print
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
   };
 
   const highlightText = (text: string, highlight: string) => {
@@ -623,27 +825,91 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
               case 'table':
                 return (
                   <div key={item.id} ref={tableRef} className="rounded-2xl border overflow-hidden shadow-md transition-all hover:shadow-lg scroll-mt-24" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    {renderCardHeader(item.id, item.label, <TableIcon className="w-5 h-5 text-primary" />, index, item.collapsed)}
+                    <div className="p-4 border-b font-semibold text-text flex items-center justify-between group" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+                      <div className="flex items-center gap-3">
+                        <TableIcon className="w-5 h-5 text-primary" />
+                        <div className="flex flex-col gap-1">
+                          <span className="text-sm lg:text-base">{item.label}</span>
+                          <div className="flex items-center gap-2 text-xs opacity-70">
+                            <span className="px-2 py-0.5 bg-primary/20 text-primary rounded-full font-bold">{filteredTransactions.length} itens</span>
+                            <span className="text-text">•</span>
+                            <span className="font-bold text-primary">{formatCurrency(filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0))}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handlePrintTable(); }}
+                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text"
+                          title="Imprimir Tabela"
+                        >
+                          <Printer className="w-4 h-4" />
+                        </button>
+                        {removedTransactionIds.length > 0 && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); resetRemovedTransactions(); }}
+                            className="px-3 py-1.5 bg-accent/20 hover:bg-accent/30 rounded-full transition-all text-accent flex items-center gap-2 font-bold animate-pulse border border-accent/50 shadow-md text-xs"
+                            title={`Reset - ${removedTransactionIds.length} removidos`}
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                            <span>{removedTransactionIds.length} removidos</span>
+                          </button>
+                        )}
+                        <div className="w-[1px] h-4 mx-1 bg-cardBorder opacity-0 group-hover:opacity-100" />
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); moveItem(index, 'up'); }}
+                          disabled={index === 0}
+                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+                          title="Mover para Cima"
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); moveItem(index, 'down'); }}
+                          disabled={index === layout.length - 1}
+                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+                          title="Mover para Baixo"
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => toggleCollapse(item.id)}
+                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+                          title={item.collapsed ? "Expandir" : "Minimizar"}
+                        >
+                          {item.collapsed ? <Maximize2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
                     {!item.collapsed && (
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm border-collapse">
                           <thead>
                             <tr className="bg-cardBorder bg-opacity-40" style={{ color: theme.text }}>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Data</th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Descrição</th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Categoria</th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Pagamento</th>
-                              <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Valor</th>
+                              <th onClick={() => handleSort('date')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Data {sortBy === 'date' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+                              <th onClick={() => handleSort('description')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Descrição {sortBy === 'description' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+                              <th onClick={() => handleSort('category')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Categoria {sortBy === 'category' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+                              <th onClick={() => handleSort('paymentMethod')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Pagamento {sortBy === 'paymentMethod' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+                              <th onClick={() => handleSort('amount')} className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Valor {sortBy === 'amount' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
-                            {filteredTransactions.sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime()).map(t => (
+                            {getSortedTransactions().map(t => (
                               <tr key={t.id} className="text-text hover:bg-primary/5 transition-colors group">
                                 <td className="p-4 whitespace-nowrap border-r font-mono text-xs opacity-70" style={{ borderColor: theme.cardBorder }}>
                                   {formatBrazilDate(t.date, 'dd/MM/yyyy')}
                                 </td>
                                 <td className="p-4 font-bold border-r" style={{ borderColor: theme.cardBorder }}>
-                                  {highlightText(t.description, searchTerm)}
+                                  <div className="flex items-center gap-2">
+                                    {highlightText(t.description, searchTerm)}
+                                    <button
+                                      onClick={() => removeTransaction(t.id)}
+                                      className="p-1 hover:bg-accent/10 rounded transition-colors text-accent flex-shrink-0"
+                                      title="Remover da Visualização"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
                                 </td>
                                 <td className="p-4 border-r" style={{ borderColor: theme.cardBorder }}>
                                   <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-cardBorder/50" style={{ color: theme.text }}>
@@ -684,6 +950,59 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
           })}
         </div>
       </div>
+
+      {/* Print Dialog Modal */}
+      {showPrintDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-cardBackground rounded-2xl shadow-2xl max-w-md w-full border" style={{ borderColor: theme.cardBorder }}>
+            <div className="p-6 border-b" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+              <h2 className="text-xl font-bold text-text">Personalizar Impressão</h2>
+              <p className="text-xs text-text opacity-70 mt-1">Customize os detalhes do seu relatório</p>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-text mb-2">Título do Relatório</label>
+                <input
+                  type="text"
+                  value={printSettings.title}
+                  onChange={(e) => setPrintSettings({ ...printSettings, title: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-primary/50 outline-none"
+                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-text mb-2">Subtítulo (Opcional)</label>
+                <input
+                  type="text"
+                  value={printSettings.subtitle}
+                  onChange={(e) => setPrintSettings({ ...printSettings, subtitle: e.target.value })}
+                  placeholder="Ex: Relatório de Setembro de 2025"
+                  className="w-full px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-primary/50 outline-none"
+                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t flex gap-3" style={{ borderColor: theme.cardBorder }}>
+              <button
+                onClick={() => setShowPrintDialog(false)}
+                className="flex-1 px-4 py-2 text-text border rounded-lg font-semibold hover:bg-cardBorder/30 transition-colors"
+                style={{ borderColor: theme.cardBorder }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { executePrint(); setShowPrintDialog(false); }}
+                className="flex-1 px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:opacity-90 transition-opacity"
+              >
+                Imprimir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
