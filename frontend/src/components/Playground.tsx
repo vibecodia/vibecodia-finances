@@ -671,8 +671,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                 <label className="block text-xs font-medium text-text opacity-70 mb-2">Categorias</label>
                 <div className="flex flex-wrap gap-1 max-h-48 overflow-y-auto p-1 custom-scrollbar">
                   {categories.map((cat, idx) => {
-                    const incomeCategories = ['Salário', 'Vale', 'Reembolsos', 'Aluguéis'];
-                    const isFirstIncomeCategory = incomeCategories.includes(cat) && !incomeCategories.includes(categories[idx - 1]);
+                    const isFirstIncomeCategory = INCOME_CATEGORIES.includes(cat) && !INCOME_CATEGORIES.includes(categories[idx - 1]);
                     
                     return (
                       <React.Fragment key={cat}>
