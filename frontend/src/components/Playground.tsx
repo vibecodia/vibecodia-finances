@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Transaction } from '../types';
+import { Transaction, SavingsGoal } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
   formatCurrency, 
@@ -26,6 +26,7 @@ import {
   X,
   RotateCcw
 } from 'lucide-react';
+import SavingsGoalsPlayground from './SavingsGoalsPlayground';
 import { 
   Chart as ChartJS, 
   CategoryScale, 
@@ -65,6 +66,7 @@ ChartJS.register(
 
 interface PlaygroundProps {
   transactions: Transaction[];
+  savingsGoals: SavingsGoal[];
 }
 
 interface LayoutItem {
@@ -80,8 +82,9 @@ const DEFAULT_LAYOUT: LayoutItem[] = [
   { id: 'price_evolution', label: 'Evolução de Preços', collapsed: false },
 ];
 
-const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
+const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) => {
   const { theme } = useTheme();
+  const [activeTab, setActiveTab] = useState<'transactions' | 'savings'>('transactions');
   // Using a new version key to reset layout to the simplified structure
   const [layout, setLayout] = useLocalStorage<LayoutItem[]>('playground_layout_v4', DEFAULT_LAYOUT);
   const tableRef = useRef<HTMLDivElement>(null);
@@ -238,7 +241,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
     );
 
     return {
-      labels: dataPoints.map(dp => formatBrazilDate(dp.date, 'dd/MM/yy')),
+      labels: dataPoints.map(dp => formatBrazilDate(dp.date, 'dd/MM/yyyy')),
       datasets: [{
         label: `Preço de ${selectedItem}`,
         data: dataPoints.map(dp => dp.price),
@@ -530,18 +533,45 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
 
   return (
     <div className="space-y-6 pb-10 max-w-full overflow-x-hidden relative">
-      <div className="flex flex-col md:flex-row items-center justify-between py-8 gap-4 border-b" style={{ borderColor: theme.cardBorder }}>
-        <div className="flex-1 text-center md:text-left">
+      {/* Tab Navigation */}
+      <div className="flex items-center justify-between py-8 gap-4 border-b" style={{ borderColor: theme.cardBorder }}>
+        <div className="flex-1">
           <h1 className="text-3xl lg:text-5xl font-bold text-text mb-2">
-            Playground Financeiro
+            {activeTab === 'transactions' ? '📊 Playground Financeiro' : '🎯 Análise de Metas'}
           </h1>
           <p className="text-text opacity-70 text-base">
-            Organize e analise seus dados com total liberdade
+            {activeTab === 'transactions'
+              ? 'Organize e analise seus dados com total liberdade'
+              : 'Visualize o progresso de suas metas e aportes'}
           </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab('transactions')}
+            className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all border ${
+              activeTab === 'transactions'
+                ? 'bg-primary text-white border-primary shadow-md'
+                : 'bg-transparent text-text border-cardBorder hover:bg-cardBorder/30'
+            }`}
+          >
+            Transações
+          </button>
+          <button
+            onClick={() => setActiveTab('savings')}
+            className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all border ${
+              activeTab === 'savings'
+                ? 'bg-primary text-white border-primary shadow-md'
+                : 'bg-transparent text-text border-cardBorder hover:bg-cardBorder/30'
+            }`}
+          >
+            Metas de Poupança
+          </button>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 items-start mt-4">
+      {/* Tab Content */}
+      {activeTab === 'transactions' && (
+        <div className="flex flex-col lg:flex-row gap-6 items-start mt-4">
         {/* Sidebar Filters - Sticky on desktop */}
         <div className="w-full lg:w-80 lg:sticky lg:top-24 space-y-4 flex-shrink-0">
           <div className="rounded-2xl border overflow-hidden shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
@@ -598,21 +628,25 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-text opacity-70 mb-1">Período de Análise</label>
                 <div className="space-y-2">
-                  <input 
-                    type="date" 
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full p-2.5 rounded-lg border text-sm"
-                    style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                  />
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="date" 
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="flex-1 p-2.5 rounded-lg border text-sm"
+                      style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
+                      title="Data inicial"
+                    />
+                    
+                  </div>
                   <input 
                     type="date" 
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                     className="w-full p-2.5 rounded-lg border text-sm"
                     style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
+                    title="Data final"
                   />
                 </div>
               </div>
@@ -636,23 +670,32 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
               <div>
                 <label className="block text-xs font-medium text-text opacity-70 mb-2">Categorias</label>
                 <div className="flex flex-wrap gap-1 max-h-48 overflow-y-auto p-1 custom-scrollbar">
-                  {categories.map(cat => (
-                    <button
-                      key={cat}
-                      onClick={() => toggleCategory(cat)}
-                      className={`px-2.5 py-1.5 rounded-md text-[10px] transition-all border font-medium ${
-                        selectedCategories.includes(cat) 
-                          ? 'bg-primary text-white border-primary shadow-sm scale-105' 
-                          : 'bg-transparent text-text opacity-70 border-cardBorder'
-                      }`}
-                      style={{ 
-                        backgroundColor: selectedCategories.includes(cat) ? theme.primary : 'transparent',
-                        color: selectedCategories.includes(cat) ? '#fff' : theme.text 
-                      }}
-                    >
-                      {cat}
-                    </button>
-                  ))}
+                  {categories.map((cat, idx) => {
+                    const incomeCategories = ['Salário', 'Vale', 'Reembolsos', 'Aluguéis'];
+                    const isFirstIncomeCategory = incomeCategories.includes(cat) && !incomeCategories.includes(categories[idx - 1]);
+                    
+                    return (
+                      <React.Fragment key={cat}>
+                        {isFirstIncomeCategory && (
+                          <div className="w-full h-px bg-cardBorder/30 my-1" />
+                        )}
+                        <button
+                          onClick={() => toggleCategory(cat)}
+                          className={`px-2.5 py-1.5 rounded-md text-[10px] transition-all border font-medium ${
+                            selectedCategories.includes(cat) 
+                              ? 'bg-primary text-white border-primary shadow-sm scale-105' 
+                              : 'bg-transparent text-text opacity-70 border-cardBorder'
+                          }`}
+                          style={{ 
+                            backgroundColor: selectedCategories.includes(cat) ? theme.primary : 'transparent',
+                            color: selectedCategories.includes(cat) ? '#fff' : theme.text 
+                          }}
+                        >
+                          {cat}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -950,6 +993,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
           })}
         </div>
       </div>
+      )}
 
       {/* Print Dialog Modal */}
       {showPrintDialog && (
@@ -957,51 +1001,56 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions }) => {
           <div className="bg-cardBackground rounded-2xl shadow-2xl max-w-md w-full border" style={{ borderColor: theme.cardBorder }}>
             <div className="p-6 border-b" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
               <h2 className="text-xl font-bold text-text">Personalizar Impressão</h2>
-              <p className="text-xs text-text opacity-70 mt-1">Customize os detalhes do seu relatório</p>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-text mb-2">Título do Relatório</label>
-                <input
-                  type="text"
-                  value={printSettings.title}
-                  onChange={(e) => setPrintSettings({ ...printSettings, title: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-primary/50 outline-none"
-                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                />
+                <p className="text-xs text-text opacity-70 mt-1">Customize os detalhes do seu relatório</p>
+              </div>
+              
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-text mb-2">Título do Relatório</label>
+                  <input
+                    type="text"
+                    value={printSettings.title}
+                    onChange={(e) => setPrintSettings({ ...printSettings, title: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-primary/50 outline-none"
+                    style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-text mb-2">Subtítulo (Opcional)</label>
+                  <input
+                    type="text"
+                    value={printSettings.subtitle}
+                    onChange={(e) => setPrintSettings({ ...printSettings, subtitle: e.target.value })}
+                    placeholder="Ex: Relatório de Setembro de 2025"
+                    className="w-full px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-primary/50 outline-none"
+                    style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-text mb-2">Subtítulo (Opcional)</label>
-                <input
-                  type="text"
-                  value={printSettings.subtitle}
-                  onChange={(e) => setPrintSettings({ ...printSettings, subtitle: e.target.value })}
-                  placeholder="Ex: Relatório de Setembro de 2025"
-                  className="w-full px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-primary/50 outline-none"
-                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                />
+              <div className="p-6 border-t flex gap-3" style={{ borderColor: theme.cardBorder }}>
+                <button
+                  onClick={() => setShowPrintDialog(false)}
+                  className="flex-1 px-4 py-2 text-text border rounded-lg font-semibold hover:bg-cardBorder/30 transition-colors"
+                  style={{ borderColor: theme.cardBorder }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => { executePrint(); setShowPrintDialog(false); }}
+                  className="flex-1 px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:opacity-90 transition-opacity"
+                >
+                  Imprimir
+                </button>
               </div>
-            </div>
-
-            <div className="p-6 border-t flex gap-3" style={{ borderColor: theme.cardBorder }}>
-              <button
-                onClick={() => setShowPrintDialog(false)}
-                className="flex-1 px-4 py-2 text-text border rounded-lg font-semibold hover:bg-cardBorder/30 transition-colors"
-                style={{ borderColor: theme.cardBorder }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => { executePrint(); setShowPrintDialog(false); }}
-                className="flex-1 px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:opacity-90 transition-opacity"
-              >
-                Imprimir
-              </button>
             </div>
           </div>
-        </div>
+        )}
+
+      {/* Savings Goals Tab */}
+      {activeTab === 'savings' && (
+        <SavingsGoalsPlayground savingsGoals={savingsGoals} transactions={transactions} />
       )}
     </div>
   );
