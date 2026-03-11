@@ -18,6 +18,7 @@ import {
   Maximize2,
   Filter,
   AlertCircle,
+  Printer,
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -70,14 +71,13 @@ interface LayoutItem {
 }
 
 const DEFAULT_LAYOUT: LayoutItem[] = [
-  { id: 'progress_dashboard', label: 'Progresso das Metas', collapsed: false, number: 1 },
-  { id: 'contribution_timeline', label: 'Linha do Tempo de Aportes', collapsed: false, number: 2 },
-  { id: 'goals_distribution', label: 'Distribuição de Metas', collapsed: false, number: 3 },
-  { id: 'contribution_table', label: 'Tabela de Aportes', collapsed: false, number: 4 },
-  { id: 'savings_vs_income', label: 'Taxa de Poupança vs Receita', collapsed: false, number: 5 },
-  { id: 'priority_matrix', label: 'Matriz de Prioridade', collapsed: false, number: 6 },
-  { id: 'goals_countdown', label: 'Contagem Regressiva de Metas', collapsed: false, number: 7 },
-  { id: 'goals_vs_expenses', label: 'Metas vs Despesas', collapsed: false, number: 8 },
+  { id: 'goals_countdown', label: 'Contagem Regressiva de Metas', collapsed: false, number: 1 },
+  { id: 'contribution_timeline', label: 'Linha do Tempo de Aportes', collapsed: true, number: 2 },
+  { id: 'goals_distribution', label: 'Distribuição de Metas', collapsed: true, number: 3 },
+  { id: 'contribution_table', label: 'Tabela de Aportes', collapsed: true, number: 4 },
+  { id: 'savings_vs_income', label: 'Taxa de Poupança vs Receita', collapsed: true, number: 5 },
+  { id: 'priority_matrix', label: 'Matriz de Prioridade', collapsed: true, number: 6 },
+  { id: 'goals_vs_expenses', label: 'Metas vs Despesas', collapsed: true, number: 7 },
 ];
 
 const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savingsGoals, transactions }) => {
@@ -87,6 +87,143 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState<string>(format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState<string>(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
+  const [neededUnit, setNeededUnit] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
+  const [daysUnit, setDaysUnit] = useState<'days' | 'weeks' | 'months'>('months');
+  const [showCountdownPrintDialog, setShowCountdownPrintDialog] = useState(false);
+  const [countdownPrintSettings, setCountdownPrintSettings] = useState({
+    title: 'Contagem Regressiva de Metas',
+    subtitle: '',
+  });
+  const countdownTableRef = React.useRef<HTMLDivElement>(null);
+
+  const handleDaysUnitChange = (newUnit: 'days' | 'weeks' | 'months') => {
+    setDaysUnit(newUnit);
+    setNeededUnit(newUnit === 'days' ? 'daily' : newUnit === 'weeks' ? 'weekly' : 'monthly');
+  };
+
+  const handleNeededUnitChange = (newUnit: 'daily' | 'weekly' | 'monthly') => {
+    setNeededUnit(newUnit);
+    setDaysUnit(newUnit === 'daily' ? 'days' : newUnit === 'weekly' ? 'weeks' : 'months');
+  };
+
+  const handleCountdownPrintTable = () => {
+    setShowCountdownPrintDialog(true);
+  };
+
+  const executeCountdownPrint = () => {
+    if (!countdownTableRef.current) return;
+
+    const printWindow = window.open('', '', 'height=600,width=900');
+    if (!printWindow) return;
+
+    const tableElement = countdownTableRef.current.querySelector('table');
+    if (!tableElement) return;
+
+    const clonedTable = tableElement.cloneNode(true) as HTMLElement;
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Contagem Regressiva de Metas</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+              padding: 20px;
+              background-color: #fff;
+            }
+            .print-header {
+              margin-bottom: 30px;
+              border-bottom: 2px solid #e0e0e0;
+              padding-bottom: 15px;
+            }
+            .print-header h1 {
+              font-size: 24px;
+              margin-bottom: 5px;
+              color: #000;
+            }
+            .print-header p {
+              font-size: 12px;
+              color: #666;
+              margin: 5px 0;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 20px;
+            }
+            thead {
+              background-color: #f5f5f5;
+            }
+            th {
+              padding: 12px;
+              text-align: left;
+              font-weight: 600;
+              border: 1px solid #ddd;
+              font-size: 12px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            th:last-child {
+              text-align: right;
+            }
+            td {
+              padding: 10px 12px;
+              border: 1px solid #ddd;
+              font-size: 13px;
+            }
+            tbody tr:nth-child(even) {
+              background-color: #fafafa;
+            }
+            td:last-child,
+            td:nth-last-child(2),
+            td:nth-last-child(3) {
+              text-align: right;
+              font-weight: 600;
+            }
+            .footer {
+              margin-top: 30px;
+              padding-top: 15px;
+              border-top: 2px solid #e0e0e0;
+              font-size: 12px;
+              color: #666;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-header">
+            <h1>${countdownPrintSettings.title}</h1>
+            ${countdownPrintSettings.subtitle ? `<p style="font-size: 14px; color: #555; margin-top: 5px;">${countdownPrintSettings.subtitle}</p>` : ''}
+            <div style="margin-top: 15px; padding: 12px; background-color: #f0f0f0; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 13px; color: #666;"><strong>${savingsGoals.length} metas</strong></span>
+              <span style="font-size: 14px; color: #000; font-weight: bold;">Total Alvo: ${formatCurrency(savingsGoals.reduce((sum, g) => sum + g.targetAmount, 0))}</span>
+            </div>
+          </div>
+          
+          ${clonedTable.outerHTML}
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
 
   const toggleCollapse = (id: string) => {
     setLayout(prev => prev.map(item => 
@@ -480,48 +617,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
           {/* Renderable Sections */}
           {layout.map((item, index) => {
             switch (item.id) {
-              case 'progress_dashboard':
-                return (
-                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    {renderCardHeader(item.id, item.label, <Target className="w-5 h-5 text-primary" />, index, item.collapsed)}
-                    {!item.collapsed && (
-                      <div className="p-8">
-                        {savingsGoals.length > 0 ? (
-                          <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
-                            {savingsGoals.map(goal => {
-                              const percentage = (goal.currentAmount / goal.targetAmount) * 100;
-                              const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
-                              return (
-                                <div key={goal.id} className="flex flex-col gap-2">
-                                  <div className="flex justify-between items-baseline">
-                                    <span className="font-semibold text-sm">{goal.name}</span>
-                                    <span className="text-xs opacity-70">{percentage.toFixed(0)}%</span>
-                                  </div>
-                                  <div className="w-full h-3 rounded-full bg-cardBorder/50 overflow-hidden">
-                                    <div
-                                      className="h-full bg-primary rounded-full transition-all"
-                                      style={{ width: `${Math.min(100, percentage)}%` }}
-                                    />
-                                  </div>
-                                  <div className="flex justify-between text-xs opacity-60">
-                                    <span>{formatCurrency(goal.currentAmount)}</span>
-                                    <span>{formatCurrency(remaining)} restante</span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="min-h-96 flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
-                            <Target className="w-12 h-12 opacity-10" />
-                            <span>Nenhuma meta cadastrada</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-
               case 'contribution_timeline':
                 return (
                   <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
@@ -701,8 +796,51 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
 
               case 'goals_countdown':
                 return (
-                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    {renderCardHeader(item.id, item.label, <Target className="w-5 h-5 text-primary" />, index, item.collapsed)}
+                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }} ref={countdownTableRef}>
+                    <div className="p-4 border-b font-semibold text-text flex items-center justify-between group" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/20 text-primary font-bold text-xs">
+                          {DEFAULT_LAYOUT.find(it => it.id === item.id)?.number}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Target className="w-5 h-5 text-primary" />
+                          <span className="text-sm lg:text-base">{item.label}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleCountdownPrintTable(); }}
+                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100"
+                          title="Imprimir tabela"
+                        >
+                          <Printer className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); moveItem(index, 'up'); }}
+                          disabled={index === 0}
+                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+                          title="Mover para Cima"
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); moveItem(index, 'down'); }}
+                          disabled={index === layout.length - 1}
+                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+                          title="Mover para Baixo"
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                        </button>
+                        <div className="w-[1px] h-4 mx-1 bg-cardBorder opacity-0 group-hover:opacity-100" />
+                        <button
+                          onClick={() => toggleCollapse(item.id)}
+                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+                          title={item.collapsed ? "Expandir" : "Minimizar"}
+                        >
+                          {item.collapsed ? <Maximize2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
                     {!item.collapsed && (
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm border-collapse">
@@ -710,11 +848,25 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                             <tr className="bg-cardBorder bg-opacity-40" style={{ color: theme.text }}>
                               <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Meta</th>
                               <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Prazo</th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Dias</th>
+                              <th 
+                                onClick={() => handleDaysUnitChange(daysUnit === 'days' ? 'weeks' : daysUnit === 'weeks' ? 'months' : 'days')}
+                                className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer transition-colors hover:bg-primary/10 rounded" 
+                                style={{ borderColor: theme.cardBorder }}
+                                title="Clique para alternar entre dias, semanas e meses"
+                              >
+                                {daysUnit === 'days' ? 'Dias' : daysUnit === 'weeks' ? 'Semanas' : 'Meses'}
+                              </th>
                               <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Alvo</th>
                               <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Atual</th>
                               <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>% Completo</th>
-                              <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Mensal Necessário</th>
+                              <th 
+                                onClick={() => handleNeededUnitChange(neededUnit === 'daily' ? 'weekly' : neededUnit === 'weekly' ? 'monthly' : 'daily')}
+                                className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right cursor-pointer transition-colors hover:bg-primary/10 rounded" 
+                                style={{ borderColor: theme.cardBorder }}
+                                title="Clique para alternar entre diário, semanal e mensal"
+                              >
+                                {neededUnit === 'daily' ? 'Diário Necessário' : neededUnit === 'weekly' ? 'Semanal Necessário' : 'Mensal Necessário'}
+                              </th>
                             </tr>
                           </thead>
                           <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
@@ -735,7 +887,13 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                       {goal.deadline ? formatBrazilDate(goal.deadline, 'dd/MM/yyyy') : '-'}
                                     </td>
                                     <td className="p-4 border-r text-sm font-bold" style={{ borderColor: theme.cardBorder, color: statusColor }}>
-                                      {goal.daysLeft !== null ? goal.daysLeft : '-'}
+                                      {goal.daysLeft !== null ? (
+                                        daysUnit === 'days' 
+                                          ? goal.daysLeft
+                                          : daysUnit === 'weeks'
+                                          ? Math.ceil(goal.daysLeft / 7)
+                                          : Math.ceil(goal.daysLeft / 30)
+                                      ) : '-'}
                                     </td>
                                     <td className="p-4 border-r text-right text-xs font-black opacity-70" style={{ borderColor: theme.cardBorder }}>
                                       {formatCurrency(goal.targetAmount)}
@@ -747,7 +905,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                       {goal.percentage.toFixed(1)}%
                                     </td>
                                     <td className="p-4 text-right text-xs font-bold text-accent">
-                                      {goal.monthlyNeeded > 0 ? formatCurrency(goal.monthlyNeeded) : '-'}
+                                      {neededUnit === 'daily' && goal.daysLeft !== null && goal.daysLeft > 0
+                                        ? formatCurrency((goal.targetAmount - goal.currentAmount) / goal.daysLeft)
+                                        : neededUnit === 'weekly' && goal.daysLeft !== null && goal.daysLeft > 0
+                                        ? formatCurrency((goal.targetAmount - goal.currentAmount) / Math.ceil(goal.daysLeft / 7))
+                                        : goal.monthlyNeeded > 0 ? formatCurrency(goal.monthlyNeeded) : '-'
+                                      }
                                     </td>
                                   </tr>
                                 );
@@ -811,6 +974,59 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
           })}
         </div>
       </div>
+
+      {/* Print Dialog - Countdown Table */}
+      {showCountdownPrintDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="rounded-2xl w-full max-w-md p-6" style={{ backgroundColor: theme.cardBackground }}>
+            <h3 className="text-lg font-semibold text-text mb-4">Imprimir Contagem Regressiva</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">Título</label>
+                <input
+                  type="text"
+                  value={countdownPrintSettings.title}
+                  onChange={(e) => setCountdownPrintSettings(prev => ({ ...prev, title: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border text-sm"
+                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">Subtítulo (Opcional)</label>
+                <input
+                  type="text"
+                  value={countdownPrintSettings.subtitle}
+                  onChange={(e) => setCountdownPrintSettings(prev => ({ ...prev, subtitle: e.target.value }))}
+                  placeholder="Ex: Relatório de Março de 2026"
+                  className="w-full px-3 py-2 rounded-lg border text-sm"
+                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowCountdownPrintDialog(false)}
+                className="flex-1 px-4 py-2.5 rounded-xl transition-colors hover:bg-cardBorder"
+                style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  executeCountdownPrint();
+                  setShowCountdownPrintDialog(false);
+                }}
+                className="flex-1 px-4 py-2.5 text-white rounded-xl font-medium transition-colors bg-primary hover:bg-secondary"
+              >
+                Imprimir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
