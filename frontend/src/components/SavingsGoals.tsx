@@ -61,18 +61,24 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
       return;
     }
 
-    const goalData = {
-      name: formData.name,
-      targetAmount: parseFloat(formData.targetAmount),
-      currentAmount: 0, // Always start with 0, contributions will be added separately
-      deadline: formData.deadline || undefined,
-      contributions: [], // Initialize with empty contributions
-    };
-
     if (editingGoal) {
-      onUpdate(editingGoal, goalData);
+      // When editing, only update name, targetAmount, and deadline - preserve contributions
+      const updates: Partial<SavingsGoal> = {
+        name: formData.name,
+        targetAmount: parseFloat(formData.targetAmount),
+        deadline: formData.deadline || undefined,
+      };
+      onUpdate(editingGoal, updates);
       setEditingGoal(null);
     } else {
+      // When creating new, initialize with empty contributions
+      const goalData = {
+        name: formData.name,
+        targetAmount: parseFloat(formData.targetAmount),
+        currentAmount: 0,
+        deadline: formData.deadline || undefined,
+        contributions: [],
+      };
       onAdd(goalData);
     }
 
