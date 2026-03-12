@@ -280,15 +280,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
 
   // Chart Data: Contribution Timeline
   const timelineChartData = useMemo(() => {
-    const filteredContributions = allContributions.filter(c => {
-      const date = parseLocalDate(c.date);
-      const start = parseLocalDate(startDate);
-      const end = parseLocalDate(endDate);
-      return isWithinInterval(date, { start, end });
-    });
-
     const grouped: Record<string, number> = {};
-    filteredContributions.forEach(c => {
+    allContributions.forEach(c => {
       const monthKey = format(parseLocalDate(c.date), 'yyyy-MM');
       grouped[monthKey] = (grouped[monthKey] || 0) + c.amount;
     });
@@ -310,7 +303,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         pointRadius: 5,
       }],
     };
-  }, [allContributions, startDate, endDate, theme.primary]);
+  }, [allContributions, theme.primary]);
 
   // Chart Data: Goals Distribution
   const distributionChartData = useMemo(() => {

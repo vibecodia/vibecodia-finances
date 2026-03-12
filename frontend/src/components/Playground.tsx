@@ -229,7 +229,12 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   }, [transactions]);
 
   const sortedItemNames = useMemo(() => {
-    return Object.keys(allItems).sort();
+    const keys = Object.keys(allItems);
+    // Separate duplicates (items with multiple prices) from unique items
+    const duplicates = keys.filter(name => allItems[name].length > 1).sort();
+    const unique = keys.filter(name => allItems[name].length === 1).sort();
+    // Put duplicates on top
+    return [...duplicates, ...unique];
   }, [allItems]);
 
   // Price Evolution Chart Data
@@ -823,9 +828,14 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                             onChange={(e) => setSelectedItem(e.target.value)}
                           >
                             <option value="">Filtrar Item Específico...</option>
-                            {sortedItemNames.map(name => (
-                              <option key={name} value={name}>{name}</option>
-                            ))}
+                            {sortedItemNames.map(name => {
+                              const isDuplicate = allItems[name]?.length > 1;
+                              return (
+                                <option key={name} value={name}>
+                                  {isDuplicate ? '🔴 ' : ''}{name}
+                                </option>
+                              );
+                            })}
                           </select>
                         )}
                         <div className="flex items-center gap-1 border-l pl-3" style={{ borderColor: theme.cardBorder }}>
