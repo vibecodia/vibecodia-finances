@@ -31,7 +31,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     description: '',
     category: '',
     date: getBrazilDateString(),
-    dueDate: '',
+    dueDate: getBrazilDateString(),
     isPaid: type === 'expense' ? false : false, // Receitas e despesas são marcadas como não pagas por padrão
     recurrence: 'none' as Transaction['recurrence'],
     paymentMethod: 'pix',
@@ -82,7 +82,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         description: '',
         category: '',
         date: getBrazilDateString(),
-        dueDate: '',
+        dueDate: getBrazilDateString(),
         isPaid: type === 'expense' ? false : false,
         recurrence: 'none',
         paymentMethod: 'pix',
@@ -380,13 +380,12 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
             </div>
           )}
 
-          {/* Para gastos, mostrar data de vencimento */}
           {type === 'expense' && (
             <>
               <div>
                 <label className="block text-sm font-medium text-text mb-2">
                   <Calendar className="w-4 h-4 inline mr-1" />
-                  Data de Vencimento {!formData.isPaid && <span className="text-accent">*</span>}
+                  Data de Vencimento
                 </label>
                 <input
                   type="date"
@@ -397,16 +396,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
                   style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
                   required={!formData.isPaid}
                 />
-                <p className="text-xs text-text opacity-70 mt-1">
-                  {formData.isPaid 
-                    ? "Para gastos já pagos, a data de vencimento é opcional" 
-                    : "Obrigatório para gastos pendentes"}
-                  {formData.recurrence !== 'none' && " • Esta será a data do primeiro vencimento"}
-                  <br />
-                  <span className="text-primary font-medium">
-                    ✅ Agora você pode adicionar despesas de qualquer data (passado, presente ou futuro)
-                  </span>
-                </p>
               </div>
             </>
           )}
