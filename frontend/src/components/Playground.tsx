@@ -143,8 +143,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
       const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = typeFilter === 'all' || t.type === typeFilter;
       const matchesStatus = statusFilter === 'all' || 
-        (t.type === 'expense' && (statusFilter === 'paid' ? t.isPaid : !t.isPaid)) ||
-        (t.type === 'income' && statusFilter === 'paid');
+        (statusFilter === 'paid' ? t.isPaid : !t.isPaid);
 
       return isInDateRange && isInCategory && isInPaymentMethod && matchesSearch && matchesType && matchesStatus;
     });
@@ -681,7 +680,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-text opacity-70 mb-2">Status (Gastos)</label>
+                <label className="block text-xs font-medium text-text opacity-70 mb-2">Status (Pagamento/Recebimento)</label>
                 <div className="grid grid-cols-3 gap-1">
                   {(['all', 'paid', 'pending'] as const).map((status) => (
                     <button
@@ -821,7 +820,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
               <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Total Receitas</p>
-              <p className="text-2xl font-black text-primary">
+              <p className="text-2xl font-black text-orange-500">
                 {formatCurrency(filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0))}
               </p>
             </div>
@@ -1133,7 +1132,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                                     </span>
                                   ) : <span className="opacity-20">-</span>}
                                 </td>
-                                <td className={`p-4 text-right font-black text-base ${t.type === 'income' ? 'text-primary' : 'text-accent'}`}>
+                                <td className={`p-4 text-right font-black text-base ${t.type === 'income' ? 'text-orange-500' : 'text-accent'}`}>
                                   {formatCurrency(t.amount)}
                                 </td>
                               </tr>
