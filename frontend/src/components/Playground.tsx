@@ -20,8 +20,9 @@ import {
   ArrowUp,
   ArrowDown,
   Table as TableIcon,
-  Minus,
   Maximize2,
+  ChevronDown,
+  ChevronUp,
   Printer,
   X,
   RotateCcw
@@ -43,7 +44,7 @@ import {
   DoughnutController,
   PieController
 } from 'chart.js';
-import { Doughnut, Pie, Line } from 'react-chartjs-2';
+import { Doughnut, Pie, Line, Bar } from 'react-chartjs-2';
 import { startOfMonth, endOfMonth, isWithinInterval, format } from 'date-fns';
 // import { ptBR } from 'date-fns/locale';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
@@ -64,6 +65,42 @@ ChartJS.register(
   PieController
 );
 
+const stackedBarTotalPlugin = {
+  id: 'stackedBarTotal',
+  afterDraw: (chart: any) => {
+    const { ctx, scales: { y, x }, data } = chart;
+    if (chart.config.type !== 'bar' || !y.options.stacked) return;
+
+    ctx.save();
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+
+    const totals = new Array(data.labels.length).fill(0);
+    data.datasets.forEach((dataset: any) => {
+      dataset.data.forEach((value: number, i: number) => {
+        totals[i] += value || 0;
+      });
+    });
+
+    data.labels.forEach((_label: string, i: number) => {
+      const xPos = x.getPixelForTick(i);
+      const yPos = y.getPixelForValue(totals[i]);
+      if (totals[i] > 0) {
+        ctx.fillStyle = chart.options.scales.y.ticks.color || '#000';
+        ctx.fillText(
+          new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(totals[i]), 
+          xPos, 
+          yPos - 5
+        );
+      }
+    });
+    ctx.restore();
+  }
+};
+
+ChartJS.register(stackedBarTotalPlugin);
+
 interface PlaygroundProps {
   transactions: Transaction[];
   savingsGoals: SavingsGoal[];
@@ -77,6 +114,7 @@ interface LayoutItem {
 
 const DEFAULT_LAYOUT: LayoutItem[] = [
   { id: 'income_timeline', label: 'Cronograma de Receitas', collapsed: false },
+  { id: 'expense_timeline', label: 'Cronograma de Despesas', collapsed: false },
   { id: 'categories', label: 'Distribuição por Categoria', collapsed: false },
   { id: 'payments', label: 'Distribuição por Pagamento', collapsed: false },
   { id: 'table', label: 'Planilha de Transações', collapsed: false },
@@ -86,8 +124,9 @@ const DEFAULT_LAYOUT: LayoutItem[] = [
 const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) => {
   const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState<'transactions' | 'savings'>('transactions');
+  const [maximizedId, setMaximizedId] = useState<string | null>(null);
   // Using a new version key to reset layout to the simplified structure
-  const [layout, setLayout] = useLocalStorage<LayoutItem[]>('playground_layout_v5', DEFAULT_LAYOUT);
+  const [layout, setLayout] = useLocalStorage<LayoutItem[]>('playground_layout_v6', DEFAULT_LAYOUT);
   const tableRef = useRef<HTMLDivElement>(null);
   
   // Filters State
@@ -123,6 +162,14 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   // Income Timeline Date Range State
   const [incomeTimelineStartDate, setIncomeTimelineStartDate] = useState<string>(format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
   const [incomeTimelineEndDate, setIncomeTimelineEndDate] = useState<string>(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
+
+  // Expense Timeline Grouping State
+  const [expenseGroupBy, setExpenseGroupBy] = useState<'category' | 'description'>('category');
+  const [expenseStatusFilter, setExpenseStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
+
+  // Expense Timeline Date Range State (default to last 12 months for better closing view)
+  const [expenseTimelineStartDate, setExpenseTimelineStartDate] = useState<string>(format(startOfMonth(new Date(new Date().setFullYear(new Date().getFullYear() - 1))), 'yyyy-MM-dd'));
+  const [expenseTimelineEndDate, setExpenseTimelineEndDate] = useState<string>(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
 
   const categories = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES];
 
@@ -205,8 +252,12 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   // Income Timeline Chart Data
   const incomeTimelineChartData = useMemo(() => {
     const incomeTransactions = transactions.filter((t: any) => {
-      const isPaidIncome = t.type === 'income' && t.isPaid;
-      if (!isPaidIncome) return false;
+      const isIncome = t.type === 'income';
+      if (!isIncome) return false;
+
+      const matchesStatus = statusFilter === 'all' || 
+        (statusFilter === 'paid' ? t.isPaid : !t.isPaid);
+      if (!matchesStatus) return false;
 
       const date = parseLocalDate(t.date);
       const start = parseLocalDate(incomeTimelineStartDate);
@@ -262,7 +313,74 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
       labels: sortedDates,
       datasets,
     };
-  }, [transactions, incomeGroupBy, theme.cardBackground, incomeTimelineStartDate, incomeTimelineEndDate]);
+  }, [transactions, incomeGroupBy, statusFilter, theme.cardBackground, incomeTimelineStartDate, incomeTimelineEndDate]);
+
+  // Expense Timeline Chart Data
+  const expenseTimelineChartData = useMemo(() => {
+    const expenseTransactions = transactions.filter((t: any) => {
+      const isExpense = t.type === 'expense';
+      if (!isExpense) return false;
+
+      const matchesStatus = expenseStatusFilter === 'all' || 
+        (expenseStatusFilter === 'paid' ? t.isPaid : !t.isPaid);
+      if (!matchesStatus) return false;
+
+      const date = parseLocalDate(t.date);
+      const start = parseLocalDate(expenseTimelineStartDate);
+      const end = parseLocalDate(expenseTimelineEndDate);
+      return isWithinInterval(date, { start, end });
+    });
+    const groupedData: Record<string, Record<string, number>> = {};
+    const labelsInOrder: string[] = [];
+
+    // Group by month/year and selected criteria (description or category)
+    expenseTransactions.sort((a: any, b: any) => 
+      parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime()
+    ).forEach((t: any) => {
+      const date = parseLocalDate(t.date);
+      const dateStr = format(date, 'MMM/yy'); // e.g., Jan/26
+      const groupKey = expenseGroupBy === 'category' ? t.category : t.description;
+      
+      if (!groupedData[dateStr]) {
+        groupedData[dateStr] = {};
+        labelsInOrder.push(dateStr);
+      }
+      groupedData[dateStr][groupKey] = (groupedData[dateStr][groupKey] || 0) + t.amount;
+    });
+
+    const sortedDates = Array.from(new Set(labelsInOrder));
+
+    // Get all unique group keys
+    const allGroupKeys = Array.from(
+      new Set(
+        Object.values(groupedData).flatMap(dateData => Object.keys(dateData))
+      )
+    );
+
+    const colors = [
+      '#EF4444', '#F97316', '#F59E0B', '#10B981', '#3B82F6', '#6366F1',
+      '#8B5CF6', '#EC4899', '#64748B', '#06B6D4', '#84CC16', '#0891B2'
+    ];
+
+    const datasets = allGroupKeys.map((key, idx) => ({
+      label: key,
+      data: sortedDates.map(date => groupedData[date][key] || 0),
+      borderColor: colors[idx % colors.length],
+      backgroundColor: colors[idx % colors.length] + '33',
+      borderWidth: 2,
+      fill: true,
+      tension: 0.4,
+      pointRadius: 4,
+      pointBackgroundColor: colors[idx % colors.length],
+      pointBorderColor: theme.cardBackground,
+      pointBorderWidth: 1,
+    }));
+
+    return {
+      labels: sortedDates,
+      datasets,
+    };
+  }, [transactions, expenseGroupBy, expenseStatusFilter, theme.cardBackground, expenseTimelineStartDate, expenseTimelineEndDate]);
 
   // Extract Items from Notes for Price Comparison
   const allItems = useMemo(() => {
@@ -596,18 +714,205 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
         </button>
         <div className="w-[1px] h-4 mx-1 bg-cardBorder opacity-0 group-hover:opacity-100" />
         <button 
+          onClick={() => setMaximizedId(id)}
+          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+          title="Maximizar"
+        >
+          <Maximize2 className="w-4 h-4" />
+        </button>
+        <button 
           onClick={() => toggleCollapse(id)}
           className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
           title={isCollapsed ? "Expandir" : "Minimizar"}
         >
-          {isCollapsed ? <Maximize2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
+          {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
         </button>
       </div>
     </div>
   );
 
+  const renderMaximizedModal = () => {
+    if (!maximizedId) return null;
+    const item = layout.find(i => i.id === maximizedId);
+    if (!item) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 md:p-8 animate-in fade-in duration-200">
+        <div 
+          className="w-full h-full max-w-7xl bg-cardBackground rounded-3xl border shadow-2xl flex flex-col overflow-hidden"
+          style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
+        >
+          {/* Header */}
+          <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: theme.cardBorder }}>
+            <div className="flex items-center gap-3">
+              <span className="text-xl font-bold text-text">{item.label}</span>
+              {maximizedId === 'table' && (
+                <span className="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs font-bold">
+                  {filteredTransactions.length} itens
+                </span>
+              )}
+            </div>
+            <button 
+              onClick={() => setMaximizedId(null)}
+              className="p-2 hover:bg-cardBorder rounded-xl transition-all text-text"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-auto p-6 md:p-10">
+            {maximizedId === 'income_timeline' && (
+              <div className="h-full min-h-[500px]">
+                <Line 
+                  data={incomeTimelineChartData} 
+                  options={{ 
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: theme.text, font: { size: 14 } } } },
+                    scales: {
+                      y: { 
+                        ticks: { 
+                          color: theme.text, 
+                          font: { size: 12 },
+                          callback: (value) => formatCurrency(value as number)
+                        }, 
+                        grid: { color: theme.cardBorder } 
+                      },
+                      x: { ticks: { color: theme.text, font: { size: 12 } }, grid: { color: theme.cardBorder } }
+                    }
+                  }} 
+                />
+              </div>
+            )}
+            {maximizedId === 'expense_timeline' && (
+              <div className="h-full min-h-[500px]">
+                <Bar 
+                  data={expenseTimelineChartData} 
+                  options={{ 
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: theme.text, font: { size: 14 } } } },
+                    scales: {
+                      y: { 
+                        stacked: true,
+                        grace: '10%',
+                        ticks: { 
+                          color: theme.text, 
+                          font: { size: 12 },
+                          callback: (value) => formatCurrency(value as number)
+                        }, 
+                        grid: { color: theme.cardBorder } 
+                      },
+                      x: { 
+                        stacked: true,
+                        ticks: { color: theme.text, font: { size: 12 } }, 
+                        grid: { color: theme.cardBorder } 
+                      }
+                    }
+                  }} 
+                />
+              </div>
+            )}
+            {maximizedId === 'categories' && (
+              <div className="h-full min-h-[500px] flex items-center justify-center">
+                <div className="w-full h-full max-w-3xl">
+                  <Doughnut 
+                    data={categoryChartData} 
+                    options={{ 
+                      maintainAspectRatio: false, 
+                      plugins: { legend: { position: 'right', labels: { color: theme.text, font: { size: 14 } } } } 
+                    }} 
+                  />
+                </div>
+              </div>
+            )}
+            {maximizedId === 'payments' && (
+              <div className="h-full min-h-[500px] flex items-center justify-center">
+                <div className="w-full h-full max-w-3xl">
+                  <Pie 
+                    data={paymentChartData} 
+                    options={{ 
+                      maintainAspectRatio: false, 
+                      plugins: { legend: { position: 'right', labels: { color: theme.text, font: { size: 14 } } } } 
+                    }} 
+                  />
+                </div>
+              </div>
+            )}
+            {maximizedId === 'price_evolution' && (
+              <div className="h-full min-h-[500px]">
+                {priceChartData ? (
+                  <Line data={priceChartData} options={{ 
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true, labels: { color: theme.text } } },
+                    scales: {
+                      y: { 
+                        ticks: { 
+                          color: theme.text,
+                          callback: (value) => formatCurrency(value as number)
+                        }, 
+                        grid: { color: theme.cardBorder } 
+                      },
+                      x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
+                    }
+                  }} />
+                ) : (
+                  <div className="h-full flex items-center justify-center text-text opacity-40 italic text-xl">
+                    Nenhum item selecionado para evolução de preços
+                  </div>
+                )}
+              </div>
+            )}
+            {maximizedId === 'table' && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-cardBorder bg-opacity-40" style={{ color: theme.text }}>
+                      <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>Data</th>
+                      <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>Descrição</th>
+                      <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>Categoria</th>
+                      <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>Pagamento</th>
+                      <th className="p-4 border-b font-bold uppercase text-xs tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
+                    {getSortedTransactions().map(t => (
+                      <tr key={t.id} className="text-text hover:bg-primary/5 transition-colors group">
+                        <td className="p-4 whitespace-nowrap border-r font-mono text-sm opacity-70" style={{ borderColor: theme.cardBorder }}>
+                          {formatBrazilDate(t.date, 'dd/MM/yyyy')}
+                        </td>
+                        <td className="p-4 font-bold border-r text-base" style={{ borderColor: theme.cardBorder }}>
+                          {t.description}
+                        </td>
+                        <td className="p-4 border-r" style={{ borderColor: theme.cardBorder }}>
+                          <span className="px-3 py-1 rounded-full text-xs font-bold bg-cardBorder/50">
+                            {t.category}
+                          </span>
+                        </td>
+                        <td className="p-4 border-r" style={{ borderColor: theme.cardBorder }}>
+                          {t.paymentMethod ? (
+                            <span className="text-xs opacity-80 uppercase font-black bg-primary/10 px-2 py-1 rounded text-primary">
+                              {PAYMENT_METHODS.find(m => m.id === t.paymentMethod)?.label || t.paymentMethod}
+                            </span>
+                          ) : <span className="opacity-20">-</span>}
+                        </td>
+                        <td className={`p-4 text-right font-black text-xl ${t.type === 'income' ? 'text-orange-500' : 'text-accent'}`}>
+                          {formatCurrency(t.amount)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 pb-10 max-w-full overflow-x-hidden relative">
+      {renderMaximizedModal()}
       {/* Tab Navigation */}
       <div className="flex items-center justify-between py-8 gap-4 border-b" style={{ borderColor: theme.cardBorder }}>
         <div className="flex-1">
@@ -895,12 +1200,28 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                                                       Descrição
                                                     </button>
                                                   </div>
+                                                  <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
+                                                    {(['all', 'paid', 'pending'] as const).map((status) => (
+                                                      <button
+                                                        key={status}
+                                                        onClick={() => item.id === 'income_timeline' ? setStatusFilter(status) : setExpenseStatusFilter(status)}
+                                                        className={`px-2 py-1 rounded text-[10px] font-bold transition-all uppercase ${
+                                                          (item.id === 'income_timeline' ? statusFilter === status : expenseStatusFilter === status)
+                                                            ? (item.id === 'income_timeline' ? 'bg-primary text-white' : 'bg-accent text-white')
+                                                            : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                                        }`}
+                                                      >
+                                                        {status === 'all' ? 'Todos' : status === 'paid' ? 'Pagos' : 'Pend.'}
+                                                      </button>
+                                                    ))}
+                                                  </div>
                                                 </div>
                                               )}
                                               <div className="flex items-center gap-1 border-l pl-3" style={{ borderColor: theme.cardBorder }}>                          <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowUp className="w-4 h-4" /></button>
                           <button onClick={() => moveItem(index, 'down')} disabled={index === layout.length - 1} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowDown className="w-4 h-4" /></button>
-                          <button onClick={() => toggleCollapse(item.id)} className="p-1.5 hover:bg-cardBorder rounded-md transition-all ml-1">
-                            {item.collapsed ? <Maximize2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
+                          <button onClick={() => setMaximizedId(item.id)} className="p-1.5 hover:bg-cardBorder rounded-md transition-all ml-1" title="Maximizar"><Maximize2 className="w-4 h-4" /></button>
+                          <button onClick={() => toggleCollapse(item.id)} className="p-1.5 hover:bg-cardBorder rounded-md transition-all ml-1" title={item.collapsed ? "Expandir" : "Minimizar"}>
+                            {item.collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
                           </button>
                         </div>
                       </div>
@@ -914,7 +1235,13 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                               maintainAspectRatio: false,
                               plugins: { legend: { labels: { color: theme.text } } },
                               scales: {
-                                y: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } },
+                                y: { 
+                                  ticks: { 
+                                    color: theme.text,
+                                    callback: (value) => formatCurrency(value as number)
+                                  }, 
+                                  grid: { color: theme.cardBorder } 
+                                },
                                 x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
                               }
                             }} 
@@ -923,6 +1250,121 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                           <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
                             <TrendingUp className="w-12 h-12 opacity-10" />
                             <span>Nenhuma receita encontrada</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+
+              case 'expense_timeline':
+                return (
+                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                    <div className="p-4 border-b font-semibold text-text flex flex-col md:flex-row md:items-center justify-between gap-4" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5 text-accent" />
+                        <span className="text-sm lg:text-base">{item.label}</span>
+                      </div>
+                                            <div className="flex items-center gap-3">
+                                              {!item.collapsed && (
+                                                <div className="flex items-center gap-2">
+                                                  <div className="flex items-center gap-1 border rounded-lg p-1 px-2" style={{ borderColor: theme.cardBorder }}>
+                                                    <input 
+                                                      type="date" 
+                                                      value={expenseTimelineStartDate}
+                                                      onChange={(e) => setExpenseTimelineStartDate(e.target.value)}
+                                                      className="bg-transparent text-[10px] font-bold outline-none"
+                                                      style={{ color: theme.text }}
+                                                      title="Data Inicial"
+                                                    />
+                                                    <span className="text-[10px] opacity-30 px-1">até</span>
+                                                    <input 
+                                                      type="date" 
+                                                      value={expenseTimelineEndDate}
+                                                      onChange={(e) => setExpenseTimelineEndDate(e.target.value)}
+                                                      className="bg-transparent text-[10px] font-bold outline-none"
+                                                      style={{ color: theme.text }}
+                                                      title="Data Final"
+                                                    />
+                                                  </div>
+                                                  <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
+                                                    <button
+                                                      onClick={() => setExpenseGroupBy('category')}
+                                                      className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                                                        expenseGroupBy === 'category'
+                                                          ? 'bg-accent text-white'
+                                                          : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                                      }`}
+                                                    >
+                                                      Categoria
+                                                    </button>
+                                                    <button
+                                                      onClick={() => setExpenseGroupBy('description')}
+                                                      className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                                                        expenseGroupBy === 'description'
+                                                          ? 'bg-accent text-white'
+                                                          : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                                      }`}
+                                                    >
+                                                      Descrição
+                                                    </button>
+                                                  </div>
+                                                  <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
+                                                    {(['all', 'paid', 'pending'] as const).map((status) => (
+                                                      <button
+                                                        key={status}
+                                                        onClick={() => item.id === 'income_timeline' ? setStatusFilter(status) : setExpenseStatusFilter(status)}
+                                                        className={`px-2 py-1 rounded text-[10px] font-bold transition-all uppercase ${
+                                                          (item.id === 'income_timeline' ? statusFilter === status : expenseStatusFilter === status)
+                                                            ? (item.id === 'income_timeline' ? 'bg-primary text-white' : 'bg-accent text-white')
+                                                            : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                                        }`}
+                                                      >
+                                                        {status === 'all' ? 'Todos' : status === 'paid' ? 'Pagos' : 'Pend.'}
+                                                      </button>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                              )}
+                                              <div className="flex items-center gap-1 border-l pl-3" style={{ borderColor: theme.cardBorder }}>                          <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowUp className="w-4 h-4" /></button>
+                          <button onClick={() => moveItem(index, 'down')} disabled={index === layout.length - 1} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowDown className="w-4 h-4" /></button>
+                          <button onClick={() => setMaximizedId(item.id)} className="p-1.5 hover:bg-cardBorder rounded-md transition-all ml-1" title="Maximizar"><Maximize2 className="w-4 h-4" /></button>
+                          <button onClick={() => toggleCollapse(item.id)} className="p-1.5 hover:bg-cardBorder rounded-md transition-all ml-1" title={item.collapsed ? "Expandir" : "Minimizar"}>
+                            {item.collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    {!item.collapsed && (
+                      <div className="p-8 h-80">
+                        {transactions.filter((t: any) => t.type === 'expense').length > 0 ? (
+                          <Bar 
+                            data={expenseTimelineChartData} 
+                            options={{ 
+                              maintainAspectRatio: false,
+                              plugins: { legend: { labels: { color: theme.text } } },
+                              scales: {
+                                y: { 
+                                  stacked: true,
+                                  grace: '10%',
+                                  ticks: { 
+                                    color: theme.text,
+                                    callback: (value) => formatCurrency(value as number)
+                                  }, 
+                                  grid: { color: theme.cardBorder } 
+                                },
+                                x: { 
+                                  stacked: true,
+                                  ticks: { color: theme.text }, 
+                                  grid: { color: theme.cardBorder } 
+                                }
+                              }
+                            }} 
+                          />
+                        ) : (
+                          <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
+                            <TrendingUp className="w-12 h-12 opacity-10" />
+                            <span>Nenhuma despesa encontrada</span>
                           </div>
                         )}
                       </div>
@@ -998,8 +1440,9 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                         <div className="flex items-center gap-1 border-l pl-3" style={{ borderColor: theme.cardBorder }}>
                           <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowUp className="w-4 h-4" /></button>
                           <button onClick={() => moveItem(index, 'down')} disabled={index === layout.length - 1} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowDown className="w-4 h-4" /></button>
-                          <button onClick={() => toggleCollapse(item.id)} className="p-1.5 hover:bg-cardBorder rounded-md transition-all ml-1">
-                            {item.collapsed ? <Maximize2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
+                          <button onClick={() => setMaximizedId(item.id)} className="p-1.5 hover:bg-cardBorder rounded-md transition-all ml-1" title="Maximizar"><Maximize2 className="w-4 h-4" /></button>
+                          <button onClick={() => toggleCollapse(item.id)} className="p-1.5 hover:bg-cardBorder rounded-md transition-all ml-1" title={item.collapsed ? "Expandir" : "Minimizar"}>
+                            {item.collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
                           </button>
                         </div>
                       </div>
@@ -1011,7 +1454,13 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                             maintainAspectRatio: false,
                             plugins: { legend: { display: false } },
                             scales: {
-                              y: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } },
+                              y: { 
+                                ticks: { 
+                                  color: theme.text,
+                                  callback: (value) => formatCurrency(value as number)
+                                }, 
+                                grid: { color: theme.cardBorder } 
+                              },
                               x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
                             }
                           }} />
@@ -1082,11 +1531,18 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                           <ArrowDown className="w-4 h-4" />
                         </button>
                         <button 
+                          onClick={(e) => { e.stopPropagation(); setMaximizedId(item.id); }}
+                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text"
+                          title="Maximizar"
+                        >
+                          <Maximize2 className="w-4 h-4" />
+                        </button>
+                        <button 
                           onClick={() => toggleCollapse(item.id)}
                           className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
                           title={item.collapsed ? "Expandir" : "Minimizar"}
                         >
-                          {item.collapsed ? <Maximize2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
+                          {item.collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
                         </button>
                       </div>
                     </div>
