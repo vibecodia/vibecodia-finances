@@ -76,6 +76,7 @@ interface LayoutItem {
 }
 
 const DEFAULT_LAYOUT: LayoutItem[] = [
+  { id: 'income_timeline', label: 'Cronograma de Receitas', collapsed: false },
   { id: 'categories', label: 'Distribuição por Categoria', collapsed: false },
   { id: 'payments', label: 'Distribuição por Pagamento', collapsed: false },
   { id: 'table', label: 'Planilha de Transações', collapsed: false },
@@ -86,7 +87,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState<'transactions' | 'savings'>('transactions');
   // Using a new version key to reset layout to the simplified structure
-  const [layout, setLayout] = useLocalStorage<LayoutItem[]>('playground_layout_v4', DEFAULT_LAYOUT);
+  const [layout, setLayout] = useLocalStorage<LayoutItem[]>('playground_layout_v5', DEFAULT_LAYOUT);
   const tableRef = useRef<HTMLDivElement>(null);
   
   // Filters State
@@ -114,6 +115,14 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
 
   // Price Comparison State
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
+
+  // Income Timeline Grouping State
+  const [incomeGroupBy, setIncomeGroupBy] = useState<'category' | 'description'>('category');
+
+
+  // Income Timeline Date Range State
+  // const [incomeTimelineStartDate, setIncomeTimelineStartDate] = useState<string>(format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
+  // const [incomeTimelineEndDate, setIncomeTimelineEndDate] = useState<string>(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
 
   const categories = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES];
 
@@ -194,11 +203,67 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
     };
   }, [filteredTransactions, theme.cardBackground]);
 
+  // Income Timeline Chart Data
+  const incomeTimelineChartData = useMemo(() => {
+    const incomeTransactions = transactions.filter((t: any) => t.type === 'income' && t.isPaid);
+    const groupedData: Record<string, Record<string, number>> = {};
+
+    // Group by selected criteria (description or category)
+    incomeTransactions.sort((a: any, b: any) => 
+      parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime()
+    ).forEach((t: any) => {
+      const dateStr = formatBrazilDate(t.date, 'dd/MM');
+      const groupKey = incomeGroupBy === 'category' ? t.category : t.description;
+      
+      if (!groupedData[dateStr]) groupedData[dateStr] = {};
+      groupedData[dateStr][groupKey] = (groupedData[dateStr][groupKey] || 0) + t.amount;
+    });
+
+    const sortedDates = Object.keys(groupedData).sort((a, b) => {
+      const [dayA, monthA] = a.split('/').map(Number);
+      const [dayB, monthB] = b.split('/').map(Number);
+      const dateA = new Date(2000, monthA - 1, dayA);
+      const dateB = new Date(2000, monthB - 1, dayB);
+      return dateA.getTime() - dateB.getTime();
+    });
+
+    // Get all unique group keys
+    const allGroupKeys = Array.from(
+      new Set(
+        Object.values(groupedData).flatMap(dateData => Object.keys(dateData))
+      )
+    );
+
+    const colors = [
+      '#4CAF50', '#2196F3', '#FF9800', '#E91E63', '#9C27B0', '#00BCD4',
+      '#4FC3F7', '#66BB6A', '#FFA726', '#AB47BC', '#EC407A', '#29B6F6'
+    ];
+
+    const datasets = allGroupKeys.map((key, idx) => ({
+      label: key,
+      data: sortedDates.map(date => groupedData[date][key] || 0),
+      borderColor: colors[idx % colors.length],
+      backgroundColor: colors[idx % colors.length] + '33',
+      borderWidth: 2,
+      fill: true,
+      tension: 0.4,
+      pointRadius: 4,
+      pointBackgroundColor: colors[idx % colors.length],
+      pointBorderColor: theme.cardBackground,
+      pointBorderWidth: 1,
+    }));
+
+    return {
+      labels: sortedDates,
+      datasets,
+    };
+  }, [transactions, incomeGroupBy, theme.cardBackground]);
+
   // Extract Items from Notes for Price Comparison
   const allItems = useMemo(() => {
     const itemsMap: Record<string, { date: string, price: number }[]> = {};
     
-    transactions.forEach(t => {
+    transactions.forEach((t: any) => {
       let items: any[] = [];
       if (t.notes) {
         if (typeof t.notes === 'object' && Array.isArray(t.notes.items)) {
@@ -773,6 +838,74 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
 
           {layout.map((item, index) => {
             switch (item.id) {
+              case 'income_timeline':
+                return (
+                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                    <div className="p-4 border-b font-semibold text-text flex flex-col md:flex-row md:items-center justify-between gap-4" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5 text-primary" />
+                        <span className="text-sm lg:text-base">{item.label}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {!item.collapsed && (
+                          <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
+                            <button
+                              onClick={() => setIncomeGroupBy('category')}
+                              className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                                incomeGroupBy === 'category'
+                                  ? 'bg-primary text-white'
+                                  : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                              }`}
+                            >
+                              Categoria
+                            </button>
+                            <button
+                              onClick={() => setIncomeGroupBy('description')}
+                              className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                                incomeGroupBy === 'description'
+                                  ? 'bg-primary text-white'
+                                  : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                              }`}
+                            >
+                              Descrição
+                            </button>
+                            
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1 border-l pl-3" style={{ borderColor: theme.cardBorder }}>
+                          <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowUp className="w-4 h-4" /></button>
+                          <button onClick={() => moveItem(index, 'down')} disabled={index === layout.length - 1} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowDown className="w-4 h-4" /></button>
+                          <button onClick={() => toggleCollapse(item.id)} className="p-1.5 hover:bg-cardBorder rounded-md transition-all ml-1">
+                            {item.collapsed ? <Maximize2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    {!item.collapsed && (
+                      <div className="p-8 h-80">
+                        {transactions.filter((t: any) => t.type === 'income').length > 0 ? (
+                          <Line 
+                            data={incomeTimelineChartData} 
+                            options={{ 
+                              maintainAspectRatio: false,
+                              plugins: { legend: { labels: { color: theme.text } } },
+                              scales: {
+                                y: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } },
+                                x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
+                              }
+                            }} 
+                          />
+                        ) : (
+                          <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
+                            <TrendingUp className="w-12 h-12 opacity-10" />
+                            <span>Nenhuma receita encontrada</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+
               case 'categories':
                 return (
                   <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>

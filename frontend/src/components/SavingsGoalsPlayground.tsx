@@ -362,8 +362,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         {
           label: 'Aportes',
           data: sortedMonths.map(m => months[m].savings),
-          borderColor: '#10b981',
-          backgroundColor: '#10b98133',
+          borderColor: '#3b82f6',
+          backgroundColor: '#3b82f633',
           yAxisID: 'y',
           tension: 0.4,
           pointRadius: 4,
