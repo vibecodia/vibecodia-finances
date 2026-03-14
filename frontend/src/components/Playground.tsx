@@ -121,8 +121,8 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
 
 
   // Income Timeline Date Range State
-  // const [incomeTimelineStartDate, setIncomeTimelineStartDate] = useState<string>(format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
-  // const [incomeTimelineEndDate, setIncomeTimelineEndDate] = useState<string>(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
+  const [incomeTimelineStartDate, setIncomeTimelineStartDate] = useState<string>(format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
+  const [incomeTimelineEndDate, setIncomeTimelineEndDate] = useState<string>(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
 
   const categories = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES];
 
@@ -205,27 +205,33 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
 
   // Income Timeline Chart Data
   const incomeTimelineChartData = useMemo(() => {
-    const incomeTransactions = transactions.filter((t: any) => t.type === 'income' && t.isPaid);
+    const incomeTransactions = transactions.filter((t: any) => {
+      const isPaidIncome = t.type === 'income' && t.isPaid;
+      if (!isPaidIncome) return false;
+
+      const date = parseLocalDate(t.date);
+      const start = parseLocalDate(incomeTimelineStartDate);
+      const end = parseLocalDate(incomeTimelineEndDate);
+      return isWithinInterval(date, { start, end });
+    });
     const groupedData: Record<string, Record<string, number>> = {};
+    const labelsInOrder: string[] = [];
 
     // Group by selected criteria (description or category)
     incomeTransactions.sort((a: any, b: any) => 
       parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime()
     ).forEach((t: any) => {
-      const dateStr = formatBrazilDate(t.date, 'dd/MM');
+      const dateStr = formatBrazilDate(t.date, 'dd/MM/yy');
       const groupKey = incomeGroupBy === 'category' ? t.category : t.description;
       
-      if (!groupedData[dateStr]) groupedData[dateStr] = {};
+      if (!groupedData[dateStr]) {
+        groupedData[dateStr] = {};
+        labelsInOrder.push(dateStr);
+      }
       groupedData[dateStr][groupKey] = (groupedData[dateStr][groupKey] || 0) + t.amount;
     });
 
-    const sortedDates = Object.keys(groupedData).sort((a, b) => {
-      const [dayA, monthA] = a.split('/').map(Number);
-      const [dayB, monthB] = b.split('/').map(Number);
-      const dateA = new Date(2000, monthA - 1, dayA);
-      const dateB = new Date(2000, monthB - 1, dayB);
-      return dateA.getTime() - dateB.getTime();
-    });
+    const sortedDates = labelsInOrder;
 
     // Get all unique group keys
     const allGroupKeys = Array.from(
@@ -257,7 +263,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
       labels: sortedDates,
       datasets,
     };
-  }, [transactions, incomeGroupBy, theme.cardBackground]);
+  }, [transactions, incomeGroupBy, theme.cardBackground, incomeTimelineStartDate, incomeTimelineEndDate]);
 
   // Extract Items from Notes for Price Comparison
   const allItems = useMemo(() => {
@@ -846,34 +852,53 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                         <TrendingUp className="w-5 h-5 text-primary" />
                         <span className="text-sm lg:text-base">{item.label}</span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        {!item.collapsed && (
-                          <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
-                            <button
-                              onClick={() => setIncomeGroupBy('category')}
-                              className={`px-3 py-1 rounded text-xs font-bold transition-all ${
-                                incomeGroupBy === 'category'
-                                  ? 'bg-primary text-white'
-                                  : 'bg-transparent text-text opacity-70 hover:opacity-100'
-                              }`}
-                            >
-                              Categoria
-                            </button>
-                            <button
-                              onClick={() => setIncomeGroupBy('description')}
-                              className={`px-3 py-1 rounded text-xs font-bold transition-all ${
-                                incomeGroupBy === 'description'
-                                  ? 'bg-primary text-white'
-                                  : 'bg-transparent text-text opacity-70 hover:opacity-100'
-                              }`}
-                            >
-                              Descrição
-                            </button>
-                            
-                          </div>
-                        )}
-                        <div className="flex items-center gap-1 border-l pl-3" style={{ borderColor: theme.cardBorder }}>
-                          <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowUp className="w-4 h-4" /></button>
+                                            <div className="flex items-center gap-3">
+                                              {!item.collapsed && (
+                                                <div className="flex items-center gap-2">
+                                                  <div className="flex items-center gap-1 border rounded-lg p-1 px-2" style={{ borderColor: theme.cardBorder }}>
+                                                    <input 
+                                                      type="date" 
+                                                      value={incomeTimelineStartDate}
+                                                      onChange={(e) => setIncomeTimelineStartDate(e.target.value)}
+                                                      className="bg-transparent text-[10px] font-bold outline-none"
+                                                      style={{ color: theme.text }}
+                                                      title="Data Inicial"
+                                                    />
+                                                    <span className="text-[10px] opacity-30 px-1">até</span>
+                                                    <input 
+                                                      type="date" 
+                                                      value={incomeTimelineEndDate}
+                                                      onChange={(e) => setIncomeTimelineEndDate(e.target.value)}
+                                                      className="bg-transparent text-[10px] font-bold outline-none"
+                                                      style={{ color: theme.text }}
+                                                      title="Data Final"
+                                                    />
+                                                  </div>
+                                                  <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
+                                                    <button
+                                                      onClick={() => setIncomeGroupBy('category')}
+                                                      className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                                                        incomeGroupBy === 'category'
+                                                          ? 'bg-primary text-white'
+                                                          : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                                      }`}
+                                                    >
+                                                      Categoria
+                                                    </button>
+                                                    <button
+                                                      onClick={() => setIncomeGroupBy('description')}
+                                                      className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                                                        incomeGroupBy === 'description'
+                                                          ? 'bg-primary text-white'
+                                                          : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                                      }`}
+                                                    >
+                                                      Descrição
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                              )}
+                                              <div className="flex items-center gap-1 border-l pl-3" style={{ borderColor: theme.cardBorder }}>                          <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowUp className="w-4 h-4" /></button>
                           <button onClick={() => moveItem(index, 'down')} disabled={index === layout.length - 1} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowDown className="w-4 h-4" /></button>
                           <button onClick={() => toggleCollapse(item.id)} className="p-1.5 hover:bg-cardBorder rounded-md transition-all ml-1">
                             {item.collapsed ? <Maximize2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
