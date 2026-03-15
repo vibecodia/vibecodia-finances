@@ -45,7 +45,7 @@ import {
   PieController
 } from 'chart.js';
 import { Doughnut, Pie, Line, Bar } from 'react-chartjs-2';
-import { startOfMonth, endOfMonth, isWithinInterval, format } from 'date-fns';
+import { startOfMonth, endOfMonth, isWithinInterval, format, subMonths } from 'date-fns';
 // import { ptBR } from 'date-fns/locale';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
 
@@ -167,8 +167,8 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   const [expenseGroupBy, setExpenseGroupBy] = useState<'category' | 'description'>('category');
   const [expenseStatusFilter, setExpenseStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
 
-  // Expense Timeline Date Range State (default to last 12 months for better closing view)
-  const [expenseTimelineStartDate, setExpenseTimelineStartDate] = useState<string>(format(startOfMonth(new Date(new Date().setFullYear(new Date().getFullYear() - 1))), 'yyyy-MM-dd'));
+  // Expense Timeline Date Range State (default to last 6 months for better closing view)
+  const [expenseTimelineStartDate, setExpenseTimelineStartDate] = useState<string>(format(startOfMonth(subMonths(getCurrentBrazilDate(), 6)), 'yyyy-MM-dd'));
   const [expenseTimelineEndDate, setExpenseTimelineEndDate] = useState<string>(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
 
   const categories = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES];
@@ -737,9 +737,9 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
     if (!item) return null;
 
     return (
-      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 md:p-8 animate-in fade-in duration-200">
+      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-2 md:p-4 animate-in fade-in duration-200">
         <div 
-          className="w-full h-full max-w-7xl bg-cardBackground rounded-3xl border shadow-2xl flex flex-col overflow-hidden"
+          className="w-full h-full bg-cardBackground rounded-3xl border shadow-2xl flex flex-col overflow-hidden"
           style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
         >
           {/* Header */}
@@ -814,7 +814,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
             )}
             {maximizedId === 'categories' && (
               <div className="h-full min-h-[500px] flex items-center justify-center">
-                <div className="w-full h-full max-w-3xl">
+                <div className="w-full h-full">
                   <Doughnut 
                     data={categoryChartData} 
                     options={{ 
@@ -827,7 +827,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
             )}
             {maximizedId === 'payments' && (
               <div className="h-full min-h-[500px] flex items-center justify-center">
-                <div className="w-full h-full max-w-3xl">
+                <div className="w-full h-full">
                   <Pie 
                     data={paymentChartData} 
                     options={{ 

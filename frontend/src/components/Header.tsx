@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 const Header: React.FC = () => {
   const [isPulsing, setIsPulsing] = useState(false);
   const appVersion = import.meta.env.APP_VERSION;
+  const location = useLocation();
+  const isPlayground = location.pathname === '/playground';
 
   const handleHeaderClick = () => {
     if (isPulsing) return;
@@ -20,7 +22,7 @@ const Header: React.FC = () => {
       onClick={handleHeaderClick}
     >
       <Link to="/" className="block cursor-pointer">
-        <div className="max-w-md mx-auto relative h-16 flex items-center justify-center">
+        <div className={`${isPlayground ? 'max-w-none px-2 lg:px-6' : 'max-w-md mx-auto'} relative h-16 flex items-center justify-center`}>
           <div className="text-center">
             <h1 className="text-xl font-bold">💰 Controle Financeiro</h1>
             <p className="text-blue-100 text-sm mt-1">

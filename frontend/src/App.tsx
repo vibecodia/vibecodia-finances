@@ -158,7 +158,7 @@ function App() {
           isDarkMode={isDarkMode}
         />
 
-        <main className={`${isPlayground ? 'max-w-7xl' : 'max-w-md'} mx-auto p-4 pb-20 transition-all duration-300`}>
+        <main className={`${isPlayground ? 'max-w-none px-2 lg:px-6' : 'max-w-md mx-auto p-4'} pb-20 transition-all duration-300`}>
           <Routes>
             <Route path="/" element={<Dashboard transactions={transactions} savingsGoals={savingsGoals} monthlyBalances={monthlyBalances} />} />
             <Route path="/expenses" element={<TransactionList type="expense" transactions={transactions} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} monthlyBalances={monthlyBalances} />} />
