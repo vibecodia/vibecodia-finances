@@ -120,13 +120,31 @@ const stackedBarTotalPlugin = {
 
           ctx.save();
           if (height > 15) { 
-            // Draw inside the bar
-            ctx.font = 'bold 9px sans-serif';
+            // Draw inside the bar with a "High-Contrast Badge" style
+            ctx.font = 'bold 10px sans-serif';
+            const textMetrics = ctx.measureText(label);
+            const paddingX = 6;
+            const paddingY = 2;
+            const boxWidth = textMetrics.width + paddingX * 2;
+            const boxHeight = 10 + paddingY * 2; 
+            
+            const rectX = xPosInside - boxWidth / 2;
+            const rectY = yPos - boxHeight / 2;
+            
+            // Draw semi-transparent background box
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+            if (ctx.roundRect) {
+              ctx.beginPath();
+              ctx.roundRect(rectX, rectY, boxWidth, boxHeight, 4);
+              ctx.fill();
+            } else {
+              ctx.fillRect(rectX, rectY, boxWidth, boxHeight);
+            }
+
+            // Draw text
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.shadowBlur = 3;
-            ctx.shadowColor = 'rgba(0,0,0,0.8)';
-            ctx.fillStyle = '#fff';
+            ctx.fillStyle = '#ffffff';
             ctx.fillText(label, xPosInside, yPos);
           } else if (height > 4) {
             // Draw on the right side if too small but still visible
