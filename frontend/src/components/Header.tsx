@@ -23,7 +23,7 @@ const Header: React.FC = () => {
         <div className="w-full relative h-16 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-xl font-bold">💰 Controle Financeiro</h1>
-            <p className="text-blue-100 text-sm mt-1">
+            <p className="text-blue-100 text-xs opacity-80 mt-1">
               Beta Version | v{appVersion} 🚀
             </p>
           </div>
