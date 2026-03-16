@@ -522,6 +522,6 @@ export const PAYMENT_METHODS = [
 
 export const formatPaymentMethod = (method?: string): string => {
   if (!method) return 'Não informado';
-  const found = PAYMENT_METHODS.find(m => m.id === method);
+  const found = PAYMENT_METHODS.find(m => m.id === method || m.label === method);
   return found ? found.label : method;
 };

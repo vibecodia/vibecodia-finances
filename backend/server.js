@@ -85,8 +85,7 @@ const transactionSchema = new mongoose.Schema({
   recurrence: { type: String, enum: ['none', 'weekly', 'monthly', 'yearly'], default: 'none' },
   paymentMethod: { 
     type: String, 
-    enum: ['xp', 'c6', 'bradesco_t', 'bradesco_r', 'nubank', 'pix', 'vero_card', 'flash'],
-    default: 'pix' 
+    default: 'PIX' 
   },
   notes: { type: mongoose.Schema.Types.Mixed }
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
