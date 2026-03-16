@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Transaction, SavingsGoal, MonthlyBalance } from '../types';
 import { formatCurrency, filterTransactionsByMonth, getCurrentBrazilDate } from '../utils/helpers';
 import { calculateBalances } from '../utils/balanceCalculations';
-import { TrendingUp, TrendingDown, Wallet, Target, AlertTriangle, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Target, AlertTriangle, ChevronLeft, ChevronRight, CreditCard } from 'lucide-react';
 import Confetti from 'react-confetti';
 import useWindowSize from '../hooks/useWindowSize';
 import { format, addMonths, subMonths } from 'date-fns';
@@ -45,6 +45,33 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
   
   const expensesUnpaid = transactionsForSelectedMonth
     .filter(t => t.type === 'expense' && !t.isPaid)
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  // Benefícios (Flash e Vero Card)
+  // Income: check description, category, or paymentMethod
+  const flashIncome = transactionsForSelectedMonth
+    .filter(t => t.type === 'income' && (
+      t.description.toLowerCase().includes('flash') || 
+      t.category.toLowerCase().includes('flash') ||
+      t.paymentMethod === 'flash'
+    ))
+    .reduce((sum, t) => sum + t.amount, 0);
+  
+  // Expenses: strictly by paymentMethod
+  const flashSpent = transactionsForSelectedMonth
+    .filter(t => t.type === 'expense' && t.paymentMethod === 'flash')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const veroIncome = transactionsForSelectedMonth
+    .filter(t => t.type === 'income' && (
+      t.description.toLowerCase().includes('vero') || 
+      t.category.toLowerCase().includes('vero') ||
+      t.paymentMethod === 'vero_card'
+    ))
+    .reduce((sum, t) => sum + t.amount, 0);
+  
+  const veroSpent = transactionsForSelectedMonth
+    .filter(t => t.type === 'expense' && t.paymentMethod === 'vero_card')
     .reduce((sum, t) => sum + t.amount, 0);
 
   // goalsImpact removido
@@ -102,7 +129,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
     : ['#a8e063', '#56ab2f', '#4CAF50', '#8BC34A']; // Green shades
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {showConfetti && <Confetti width={width} height={height} recycle={false} numberOfPieces={adjustedBalance < 0 ? 300 : 200} colors={confettiColors} />}
       <div className="text-center py-3">
         <h1 className="text-2xl font-bold text-text mb-2">
@@ -118,27 +145,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
           <button onClick={handleNextMonth} className="p-1 rounded-full hover:bg-cardBorder">
             <ChevronRight className="w-5 h-5 text-text" />
           </button>
-          <button
-            onClick={() => handleCardClick('/calendar')}
-            className="p-2 rounded-full bg-accent text-text hover:bg-opacity-80 transition-colors shadow-md"
-            title="Ir para o Calendário"
-          >
-            <Calendar className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => handleCardClick('/tasks')}
-            className="p-2 rounded-full bg-primary text-white hover:bg-opacity-80 transition-colors shadow-md"
-            title="Ir para o Quadro de Tarefas"
-          >
-            <Target className="w-4 h-4" />
-          </button>
         </div>
       </div>
 
       {/* Main Balance */}
       <div 
-        className={`rounded-2xl p-6 cursor-pointer transition-all duration-300 ease-in-out ${isPulsing ? 'scale-105 shadow-xl' : 'scale-100 shadow-lg'} ${adjustedBalance < -0.001 ? 'text-gray-800' : 'text-white'}`}
-        style={{ background: adjustedBalance < -0.001 ? 'linear-gradient(to right, #FFDDC1, #FFB26B)' : `linear-gradient(to right, ${theme.primary}, ${theme.secondary})` }}
+        className={`rounded-2xl p-6 cursor-pointer border-2 transition-all duration-300 ease-in-out ${isPulsing ? 'scale-105 shadow-xl' : 'scale-100 shadow-lg'} ${adjustedBalance < -0.001 ? 'text-gray-800' : 'text-white'}`}
+        style={{ 
+          background: adjustedBalance < -0.001 ? 'linear-gradient(to right, #FFDDC1, #FFB26B)' : `linear-gradient(to right, ${theme.primary}, ${theme.secondary})`,
+          borderColor: theme.cardBorder
+        }}
         onClick={handleBalanceCardClick}
       >
         <div className="flex items-center justify-between mb-4">
@@ -177,7 +193,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
       </div>
 
       {/* Barra de progresso financeira - Relação entre gastos e entradas com diferenciação */}
-      <div className="rounded-xl p-6 shadow-lg" style={{ backgroundColor: theme.cardBackground, border: `1px solid ${theme.cardBorder}` }}>
+      <div className="rounded-xl p-6 shadow-lg" style={{ backgroundColor: theme.cardBackground, border: `2px solid ${theme.cardBorder}` }}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-green-400 rounded-full"></div>
@@ -269,11 +285,105 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
         </div>
       </div>
 
+      {/* Barra de progresso financeira - Benefícios (Flash / Vero Card) */}
+      <div className="rounded-xl p-6 shadow-lg space-y-8" style={{ backgroundColor: theme.cardBackground, border: `2px solid ${theme.cardBorder}` }}>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <CreditCard className="w-5 h-5 text-primary" />
+            <span className="text-text font-bold">Saldo Benefícios</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+              <span className="text-text text-xs">Disponível</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+              <span className="text-text text-xs">Utilizado</span>
+            </div>
+          </div>
+        </div>
+        
+        {/* Flash Section */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-semibold text-text opacity-90">Flash</span>
+            <span className="text-xs text-text opacity-70">Saldo: {formatCurrency(flashIncome - flashSpent)}</span>
+          </div>
+          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 relative overflow-hidden shadow-inner">
+            <div 
+              className="bg-green-400 h-3 transition-all duration-700 absolute left-0"
+              style={{ 
+                width: `${flashIncome > 0 ? (Math.max(0, flashIncome - flashSpent) / flashIncome) * 100 : (flashSpent > 0 ? 0 : 100)}%`
+              }}
+            ></div>
+            <div 
+              className="bg-red-500 h-3 transition-all duration-700 absolute"
+              style={{ 
+                left: `${flashIncome > 0 ? (Math.max(0, flashIncome - flashSpent) / flashIncome) * 100 : (flashSpent > 0 ? 0 : 100)}%`,
+                width: `${flashIncome > 0 ? (Math.min(flashIncome, flashSpent) / flashIncome) * 100 : (flashSpent > 0 ? 100 : 0)}%`
+              }}
+            ></div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center pt-1">
+            <div>
+              <div className="text-xs font-bold text-green-600 dark:text-green-400">{formatCurrency(flashIncome)}</div>
+              <div className="text-[10px] text-text opacity-60 uppercase">Recebido</div>
+            </div>
+            <div>
+              <div className="text-xs font-bold text-red-600 dark:text-red-400">{formatCurrency(flashSpent)}</div>
+              <div className="text-[10px] text-text opacity-60 uppercase">Gasto</div>
+            </div>
+            <div>
+              <div className={`text-xs font-bold ${flashIncome - flashSpent >= 0 ? 'text-primary' : 'text-red-600'}`}>{formatCurrency(flashIncome - flashSpent)}</div>
+              <div className="text-[10px] text-text opacity-60 uppercase">Saldo</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Vero Card Section */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-semibold text-text opacity-90">Vero Card</span>
+            <span className="text-xs text-text opacity-70">Saldo: {formatCurrency(veroIncome - veroSpent)}</span>
+          </div>
+          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 relative overflow-hidden shadow-inner">
+            <div 
+              className="bg-green-400 h-3 transition-all duration-700 absolute left-0"
+              style={{ 
+                width: `${veroIncome > 0 ? (Math.max(0, veroIncome - veroSpent) / veroIncome) * 100 : (veroSpent > 0 ? 0 : 100)}%`
+              }}
+            ></div>
+            <div 
+              className="bg-red-500 h-3 transition-all duration-700 absolute"
+              style={{ 
+                left: `${veroIncome > 0 ? (Math.max(0, veroIncome - veroSpent) / veroIncome) * 100 : (veroSpent > 0 ? 0 : 100)}%`,
+                width: `${veroIncome > 0 ? (Math.min(veroIncome, veroSpent) / veroIncome) * 100 : (veroSpent > 0 ? 100 : 0)}%`
+              }}
+            ></div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center pt-1">
+            <div>
+              <div className="text-xs font-bold text-green-600 dark:text-green-400">{formatCurrency(veroIncome)}</div>
+              <div className="text-[10px] text-text opacity-60 uppercase">Recebido</div>
+            </div>
+            <div>
+              <div className="text-xs font-bold text-red-600 dark:text-red-400">{formatCurrency(veroSpent)}</div>
+              <div className="text-[10px] text-text opacity-60 uppercase">Gasto</div>
+            </div>
+            <div>
+              <div className={`text-xs font-bold ${veroIncome - veroSpent >= 0 ? 'text-primary' : 'text-red-600'}`}>{formatCurrency(veroIncome - veroSpent)}</div>
+              <div className="text-[10px] text-text opacity-60 uppercase">Saldo</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* IMPROVED: Income vs Expenses vs Goals - Better horizontal layout */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div 
-          className="rounded-xl p-4 cursor-pointer hover:shadow-md transition-shadow duration-200"
-          style={{ backgroundColor: isDarkMode ? '#064e3b' : '#ecfdf5', border: `1px solid ${isDarkMode ? '#065f46' : '#d1fae5'}` }}
+          className="rounded-xl p-4 border-2 cursor-pointer hover:shadow-md transition-shadow duration-200"
+          style={{ backgroundColor: isDarkMode ? '#064e3b' : '#ecfdf5', borderColor: isDarkMode ? '#065f46' : '#d1fae5' }}
           onClick={() => handleCardClick('/income')}
         >
           <div className="flex items-center justify-between mb-3">
@@ -288,8 +398,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
         </div>
 
         <div 
-          className="rounded-xl p-4 cursor-pointer hover:shadow-md transition-shadow duration-200"
-          style={{ backgroundColor: isDarkMode ? '#451a03' : '#fff7ed', border: `1px solid ${isDarkMode ? '#78350f' : '#ffedd5'}` }}
+          className="rounded-xl p-4 border-2 cursor-pointer hover:shadow-md transition-shadow duration-200"
+          style={{ backgroundColor: isDarkMode ? '#451a03' : '#fff7ed', borderColor: isDarkMode ? '#78350f' : '#ffedd5' }}
           onClick={() => handleCardClick('/expenses')}
         >
           <div className="flex items-center justify-between mb-3">
@@ -307,8 +417,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
         </div>
 
         <div 
-          className="rounded-xl p-4 cursor-pointer hover:shadow-md transition-shadow duration-200"
-          style={{ backgroundColor: isDarkMode ? '#064e3b' : '#ecfdf5', border: `1px solid ${isDarkMode ? '#065f46' : '#d1fae5'}` }}
+          className="rounded-xl p-4 border-2 cursor-pointer hover:shadow-md transition-shadow duration-200"
+          style={{ backgroundColor: isDarkMode ? '#064e3b' : '#ecfdf5', borderColor: isDarkMode ? '#065f46' : '#d1fae5' }}
           onClick={() => handleCardClick('/goals')}
         >
           <div className="flex items-center justify-between mb-3">
@@ -329,8 +439,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
       {/* Savings Goals Summary */}
       {savingsGoals.length > 0 && (
         <div 
-          className="rounded-xl p-4 cursor-pointer hover:shadow-md transition-shadow duration-200"
-          style={{ backgroundColor: theme.cardBackground, border: `1px solid ${theme.cardBorder}` }}
+          className="rounded-xl p-4 border-2 cursor-pointer hover:shadow-md transition-shadow duration-200"
+          style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}
           onClick={() => handleCardClick('/goals')}
         >
           <div className="flex items-center justify-between mb-3">
