@@ -17,7 +17,11 @@ interface ReportsProps {
 
 const Reports: React.FC<ReportsProps> = ({ transactions, savingsGoals = [] }) => {
   const [currentMonth, setCurrentMonth] = useState<Date>(getCurrentBrazilDate());
-  const { theme } = useTheme();
+  const { theme, setThemeMonth } = useTheme();
+
+  useEffect(() => {
+    setThemeMonth(currentMonth);
+  }, [currentMonth, setThemeMonth]);
 
   const monthlyData = getMonthlyData(transactions, savingsGoals, 6, currentMonth);
   const categoryData = getCategoryData(transactions, currentMonth);

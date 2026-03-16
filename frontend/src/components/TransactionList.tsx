@@ -85,7 +85,11 @@ const TransactionList: React.FC<TransactionListProps> = ({
     }
     return notes;
   };
-  const { theme } = useTheme();
+  const { theme, setThemeMonth } = useTheme();
+
+  useEffect(() => {
+    setThemeMonth(currentMonth);
+  }, [currentMonth, setThemeMonth]);
 
   useEffect(() => {
     setCategoryFilter(['all']);

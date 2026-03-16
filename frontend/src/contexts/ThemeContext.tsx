@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useEffect, ReactNode, useMemo } from 'react';
+import { HEALTH_CALENDAR } from '../utils/healthData';
 
 export interface ColorPalette {
   primary: string;
@@ -14,27 +15,14 @@ interface ThemeContextType {
   theme: ColorPalette;
   isDarkMode: boolean;
   toggleTheme: () => void;
+  setThemeMonth: (date: Date) => void;
+  campaignInfo: {
+    label: string;
+    cause: string;
+    colorName: string;
+    hex: string;
+  };
 }
-
-const lightPalette: ColorPalette = {
-  primary: '#059669', // emerald-600
-  secondary: '#047857', // emerald-700
-  accent: '#10b981', // emerald-500
-  background: '#f8fafc', // slate-50
-  text: '#064e3b', // emerald-950 (deep green text for contrast)
-  cardBackground: '#ffffff',
-  cardBorder: '#e2e8f0', // slate-200
-};
-
-const darkPalette: ColorPalette = {
-  primary: '#10b981', // emerald-500
-  secondary: '#059669', // emerald-600
-  accent: '#34d399', // emerald-400
-  background: '#020617', // slate-950 (deep black-blue)
-  text: '#ecfdf5', // emerald-50
-  cardBackground: '#0f172a', // slate-900
-  cardBorder: '#1e293b', // slate-800
-};
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
@@ -44,7 +32,37 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return savedMode ? JSON.parse(savedMode) : false;
   });
 
-  const theme = isDarkMode ? darkPalette : lightPalette;
+  const [themeMonth, setThemeMonth] = useState<number>(new Date().getMonth());
+
+  // Get health campaign for the selected month
+  const campaignData = HEALTH_CALENDAR[themeMonth];
+  const activeCampaign = campaignData.campaigns[0];
+
+  const theme = useMemo((): ColorPalette => {
+    const primaryColor = activeCampaign.hex;
+    
+    if (isDarkMode) {
+      return {
+        primary: primaryColor,
+        secondary: activeCampaign.accentHex,
+        accent: activeCampaign.accentHex,
+        background: '#020617', // deep black-blue
+        text: '#f8fafc', // slate-50
+        cardBackground: '#0f172a', // slate-900
+        cardBorder: `${primaryColor}44`,
+      };
+    } else {
+      return {
+        primary: primaryColor,
+        secondary: activeCampaign.accentHex,
+        accent: primaryColor,
+        background: '#f1f5f9', // slate-100 (slightly more depth than pure white)
+        text: '#0f172a', // slate-900 (neutral contrast)
+        cardBackground: '#ffffff',
+        cardBorder: `${primaryColor}33`, // slightly more visible border
+      };
+    }
+  }, [isDarkMode, activeCampaign]);
 
   useEffect(() => {
     localStorage.setItem('isDarkMode', JSON.stringify(isDarkMode));
@@ -59,14 +77,29 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     document.documentElement.style.setProperty('--color-text', currentTheme.text);
     document.documentElement.style.setProperty('--color-card-background', currentTheme.cardBackground);
     document.documentElement.style.setProperty('--color-card-border', currentTheme.cardBorder);
+    
+    document.documentElement.style.setProperty('--campaign-hex', activeCampaign.hex);
+    document.documentElement.style.setProperty('--campaign-text', activeCampaign.textHex);
+    document.documentElement.style.setProperty('--campaign-accent', activeCampaign.accentHex);
   };
 
   const toggleTheme = () => {
     setIsDarkMode(prev => !prev);
   };
 
+  const updateThemeMonth = (date: Date) => {
+    setThemeMonth(date.getMonth());
+  };
+
+  const campaignInfo = {
+    label: activeCampaign.label,
+    cause: activeCampaign.cause,
+    colorName: activeCampaign.color,
+    hex: activeCampaign.hex,
+  };
+
   return (
-    <ThemeContext.Provider value={{ theme, isDarkMode, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, isDarkMode, toggleTheme, setThemeMonth: updateThemeMonth, campaignInfo }}>
       {children}
     </ThemeContext.Provider>
   );

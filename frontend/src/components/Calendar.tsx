@@ -32,7 +32,11 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  const { theme } = useTheme();
+  const { theme, setThemeMonth } = useTheme();
+
+  React.useEffect(() => {
+    setThemeMonth(currentDate);
+  }, [currentDate, setThemeMonth]);
 
   const handleDayClick = (date: Date) => {
     setSelectedDate(prev => {

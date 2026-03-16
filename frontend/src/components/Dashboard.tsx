@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Transaction, SavingsGoal, MonthlyBalance } from '../types';
 import { formatCurrency, filterTransactionsByMonth, getCurrentBrazilDate } from '../utils/helpers';
@@ -22,7 +22,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
   const [showConfetti, setShowConfetti] = useState(false);
   const [isPulsing, setIsPulsing] = useState(false);
   const [currentMonth, setCurrentMonth] = useState<Date>(getCurrentBrazilDate());
-  const { theme, isDarkMode } = useTheme();
+  const { theme, isDarkMode, setThemeMonth } = useTheme();
+
+  useEffect(() => {
+    setThemeMonth(currentMonth);
+  }, [currentMonth, setThemeMonth]);
 
   const transactionsForSelectedMonth = filterTransactionsByMonth(transactions, currentMonth);
   
