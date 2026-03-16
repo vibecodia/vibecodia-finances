@@ -166,7 +166,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   const [incomeTimelineEndDate, setIncomeTimelineEndDate] = useState<string>(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
 
   // Expense Timeline Grouping State
-  const [expenseGroupBy, setExpenseGroupBy] = useState<'category' | 'description'>('category');
+  const [expenseGroupBy, setExpenseGroupBy] = useState<'category' | 'paymentMethod'>('category');
   const [expenseStatusFilter, setExpenseStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
 
   // Expense Timeline Date Range State (default to last 6 months for better closing view)
@@ -352,7 +352,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
     ).forEach((t: any) => {
       const date = parseLocalDate(t.date);
       const dateStr = format(date, 'MMM/yy'); // e.g., Jan/26
-      const groupKey = expenseGroupBy === 'category' ? t.category : t.description;
+      const groupKey = expenseGroupBy === 'category' ? t.category : (t.paymentMethod ? formatPaymentMethod(t.paymentMethod) : 'Sem Pagamento');
       
       if (!groupedData[dateStr]) {
         groupedData[dateStr] = {};
@@ -1360,17 +1360,17 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                                     : 'bg-transparent text-text opacity-70 hover:opacity-100'
                                 }`}
                               >
-                                Cat.
+                                Categ.
                               </button>
                               <button
-                                onClick={() => setExpenseGroupBy('description')}
+                                onClick={() => setExpenseGroupBy('paymentMethod')}
                                 className={`px-2 md:px-3 py-1 rounded-lg text-[10px] md:text-xs font-black transition-all ${
-                                  expenseGroupBy === 'description'
+                                  expenseGroupBy === 'paymentMethod'
                                     ? 'bg-accent text-white shadow-sm'
                                     : 'bg-transparent text-text opacity-70 hover:opacity-100'
                                 }`}
                               >
-                                Desc.
+                                Método
                               </button>
                             </div>
 
