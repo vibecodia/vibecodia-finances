@@ -130,6 +130,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   // Using a new version key to reset layout to the simplified structure
   const [layout, setLayout] = useLocalStorage<LayoutItem[]>('playground_layout_v6', DEFAULT_LAYOUT);
   const tableRef = useRef<HTMLDivElement>(null);
+  const expenseChartRef = useRef<any>(null);
   
   // Filters State
   const [startDate, setStartDate] = useState<string>(format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
@@ -151,6 +152,12 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [printSettings, setPrintSettings] = useState({
     title: 'Planilha de Transações',
+    subtitle: '',
+  });
+
+  const [showChartPrintDialog, setShowChartPrintDialog] = useState(false);
+  const [chartPrintSettings, setChartPrintSettings] = useState({
+    title: 'Cronograma de Despesas',
     subtitle: '',
   });
 
@@ -681,6 +688,119 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
       printWindow.print();
       printWindow.close();
     }, 250);
+  };
+
+  const handlePrintExpenseChart = () => {
+    setChartPrintSettings({
+      title: 'Cronograma de Despesas',
+      subtitle: expenseMode === 'range' 
+        ? `Período: ${format(parseLocalDate(expenseTimelineStartDate), 'dd/MM/yyyy')} até ${format(parseLocalDate(expenseTimelineEndDate), 'dd/MM/yyyy')}`
+        : `Comparação: ${expenseComparisonMonth1} vs ${expenseComparisonMonth2}`,
+    });
+    setShowChartPrintDialog(true);
+  };
+
+  const executePrintChart = () => {
+    if (!expenseChartRef.current) return;
+
+    // Get chart image
+    const chartImage = expenseChartRef.current.toBase64Image();
+
+    // Create a new window for printing
+    const printWindow = window.open('', '', 'height=600,width=900');
+    if (!printWindow) return;
+
+    // Create print-friendly HTML
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${chartPrintSettings.title}</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+              padding: 40px;
+              background-color: #fff;
+              text-align: center;
+            }
+            .print-header {
+              margin-bottom: 30px;
+              border-bottom: 2px solid #e0e0e0;
+              padding-bottom: 15px;
+              text-align: left;
+            }
+            .print-header h1 {
+              font-size: 28px;
+              margin-bottom: 10px;
+              color: #000;
+              font-weight: 900;
+              text-transform: uppercase;
+              letter-spacing: -0.5px;
+            }
+            .print-header p {
+              font-size: 14px;
+              color: #666;
+              font-weight: 500;
+            }
+            .chart-container {
+              margin-top: 40px;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              width: 100%;
+            }
+            img {
+              max-width: 100%;
+              height: auto;
+              border: 1px solid #eee;
+              border-radius: 8px;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            }
+            .footer {
+              margin-top: 50px;
+              padding-top: 20px;
+              border-top: 1px solid #eee;
+              font-size: 12px;
+              color: #999;
+              text-align: left;
+            }
+            @media print {
+              body { padding: 0; }
+              img { box-shadow: none; border: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-header">
+            <h1>${chartPrintSettings.title}</h1>
+            ${chartPrintSettings.subtitle ? `<p>${chartPrintSettings.subtitle}</p>` : ''}
+          </div>
+          
+          <div class="chart-container">
+            <img src="${chartImage}" alt="Gráfico" />
+          </div>
+
+          <div class="footer">
+            Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm')} - Vibecodia Finances
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+
+    // Wait for content to load then print
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
   };
 
   const highlightText = (text: string, highlight: string) => {
@@ -1394,6 +1514,13 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                         )}
                         
                         <div className="flex items-center gap-1 border-l-2 pl-2 md:pl-4" style={{ borderColor: theme.cardBorder }}>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handlePrintExpenseChart(); }}
+                            className="p-1.5 md:p-2 hover:bg-cardBorder rounded-xl transition-colors text-text"
+                            title="Imprimir Gráfico"
+                          >
+                            <Printer className="w-4 h-4 md:w-5 md:h-5" />
+                          </button>
                           <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1.5 md:p-2 hover:bg-cardBorder rounded-xl disabled:opacity-0 transition-all"><ArrowUp className="w-4 h-4 md:w-5 md:h-5" /></button>
                           <button onClick={() => moveItem(index, 'down')} disabled={index === layout.length - 1} className="p-1.5 md:p-2 hover:bg-cardBorder rounded-xl disabled:opacity-0 transition-all"><ArrowDown className="w-4 h-4 md:w-5 md:h-5" /></button>
                           <button onClick={() => setMaximizedId(item.id)} className="p-1.5 md:p-2 hover:bg-cardBorder rounded-xl transition-all ml-1" title="Maximizar"><Maximize2 className="w-4 h-4 md:w-5 md:h-5" /></button>
@@ -1407,6 +1534,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                       <div className="p-10 h-[750px]">
                         {transactions.filter((t: any) => t.type === 'expense').length > 0 ? (
                           <Bar 
+                            ref={expenseChartRef}
                             data={expenseTimelineChartData} 
                             options={{ 
                               maintainAspectRatio: false,
@@ -1737,6 +1865,59 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
             </div>
           </div>
         )}
+
+      {/* Chart Print Dialog Modal */}
+      {showChartPrintDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-cardBackground rounded-2xl shadow-2xl max-w-md w-full border" style={{ borderColor: theme.cardBorder }}>
+            <div className="p-6 border-b" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+              <h2 className="text-xl font-bold text-text">Personalizar Impressão do Gráfico</h2>
+              <p className="text-xs text-text opacity-70 mt-1">Customize os detalhes do seu gráfico</p>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-text mb-2">Título do Gráfico</label>
+                <input
+                  type="text"
+                  value={chartPrintSettings.title}
+                  onChange={(e) => setChartPrintSettings({ ...chartPrintSettings, title: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-primary/50 outline-none"
+                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-text mb-2">Subtítulo (Opcional)</label>
+                <input
+                  type="text"
+                  value={chartPrintSettings.subtitle}
+                  onChange={(e) => setChartPrintSettings({ ...chartPrintSettings, subtitle: e.target.value })}
+                  placeholder="Ex: Evolução de Despesas"
+                  className="w-full px-3 py-2 rounded-lg border text-sm focus:ring-2 focus:ring-primary/50 outline-none"
+                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t flex gap-3" style={{ borderColor: theme.cardBorder }}>
+              <button
+                onClick={() => setShowChartPrintDialog(false)}
+                className="flex-1 px-4 py-2 text-text border rounded-lg font-semibold hover:bg-cardBorder/30 transition-colors"
+                style={{ borderColor: theme.cardBorder }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { executePrintChart(); setShowChartPrintDialog(false); }}
+                className="flex-1 px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:opacity-90 transition-opacity"
+              >
+                Imprimir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Savings Goals Tab */}
       {activeTab === 'savings' && (
