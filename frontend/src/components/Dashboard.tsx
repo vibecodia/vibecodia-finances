@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Transaction, SavingsGoal, MonthlyBalance } from '../types';
-import { formatCurrency, filterTransactionsByMonth, getCurrentBrazilDate } from '../utils/helpers';
+import { formatCurrency, filterTransactionsByMonth, getCurrentBrazilDate, formatPaymentMethod } from '../utils/helpers';
 import { calculateBalances } from '../utils/balanceCalculations';
 import { TrendingUp, TrendingDown, Wallet, Target, AlertTriangle, ChevronLeft, ChevronRight, CreditCard } from 'lucide-react';
 import Confetti from 'react-confetti';
@@ -57,25 +57,25 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
     .filter(t => t.type === 'income' && (
       t.description.toLowerCase().includes('flash') || 
       t.category.toLowerCase().includes('flash') ||
-      t.paymentMethod === 'flash'
+      (t.paymentMethod && formatPaymentMethod(t.paymentMethod) === 'Flash')
     ))
     .reduce((sum, t) => sum + t.amount, 0);
   
   // Expenses: strictly by paymentMethod
   const flashSpent = transactionsForSelectedMonth
-    .filter(t => t.type === 'expense' && t.paymentMethod === 'flash')
+    .filter(t => t.type === 'expense' && (t.paymentMethod && formatPaymentMethod(t.paymentMethod) === 'Flash'))
     .reduce((sum, t) => sum + t.amount, 0);
 
   const veroIncome = transactionsForSelectedMonth
     .filter(t => t.type === 'income' && (
       t.description.toLowerCase().includes('vero') || 
       t.category.toLowerCase().includes('vero') ||
-      t.paymentMethod === 'vero_card'
+      (t.paymentMethod && formatPaymentMethod(t.paymentMethod) === 'Vero Card')
     ))
     .reduce((sum, t) => sum + t.amount, 0);
   
   const veroSpent = transactionsForSelectedMonth
-    .filter(t => t.type === 'expense' && t.paymentMethod === 'vero_card')
+    .filter(t => t.type === 'expense' && (t.paymentMethod && formatPaymentMethod(t.paymentMethod) === 'Vero Card'))
     .reduce((sum, t) => sum + t.amount, 0);
 
   // goalsImpact removido

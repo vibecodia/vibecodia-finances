@@ -3,9 +3,7 @@ import { Transaction, SavingsGoal } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
   formatCurrency, 
-  EXPENSE_CATEGORIES, 
-  INCOME_CATEGORIES, 
-  PAYMENT_METHODS,
+  formatPaymentMethod,
   parseLocalDate,
   formatBrazilDate,
   getCurrentBrazilDate
@@ -48,6 +46,8 @@ import { Doughnut, Pie, Line, Bar } from 'react-chartjs-2';
 import { startOfMonth, endOfMonth, isWithinInterval, format, subMonths } from 'date-fns';
 // import { ptBR } from 'date-fns/locale';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
+import { useCategories } from '../hooks/useCategories';
+import { usePaymentMethods } from '../hooks/usePaymentMethods';
 
 ChartJS.register(
   CategoryScale, 
@@ -123,6 +123,8 @@ const DEFAULT_LAYOUT: LayoutItem[] = [
 
 const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) => {
   const { theme } = useTheme();
+  const { expenseCategories, incomeCategories } = useCategories();
+  const { paymentMethods } = usePaymentMethods();
   const [activeTab, setActiveTab] = useState<'transactions' | 'savings'>('transactions');
   const [maximizedId, setMaximizedId] = useState<string | null>(null);
   // Using a new version key to reset layout to the simplified structure
@@ -176,7 +178,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   const [expenseComparisonMonth1, setExpenseComparisonMonth1] = useState<string>(format(getCurrentBrazilDate(), 'yyyy-MM'));
   const [expenseComparisonMonth2, setExpenseComparisonMonth2] = useState<string>(format(subMonths(getCurrentBrazilDate(), 1), 'yyyy-MM'));
 
-  const categories = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES];
+  const categories = [...expenseCategories, ...incomeCategories];
 
   // Filtered Transactions
   const filteredTransactions = useMemo(() => {
@@ -191,7 +193,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
       const isInDateRange = isWithinInterval(date, { start, end });
       const isInCategory = selectedCategories.length === 0 || selectedCategories.includes(t.category);
       const isInPaymentMethod = selectedPaymentMethods.length === 0 || 
-        (t.paymentMethod && selectedPaymentMethods.includes(t.paymentMethod));
+        (t.paymentMethod && selectedPaymentMethods.includes(formatPaymentMethod(t.paymentMethod)));
       const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = typeFilter === 'all' || t.type === typeFilter;
       const matchesStatus = statusFilter === 'all' || 
@@ -231,7 +233,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
     const paymentTotals: Record<string, number> = {};
     filteredTransactions.forEach(t => {
       if (t.paymentMethod) {
-        const label = PAYMENT_METHODS.find(m => m.id === t.paymentMethod)?.label || t.paymentMethod;
+        const label = formatPaymentMethod(t.paymentMethod);
         paymentTotals[label] = (paymentTotals[label] || 0) + t.amount;
       }
     });
@@ -902,7 +904,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                         <td className="p-4 border-r" style={{ borderColor: theme.cardBorder }}>
                           {t.paymentMethod ? (
                             <span className="text-xs opacity-80 uppercase font-black bg-primary/10 px-2 py-1 rounded text-primary">
-                              {PAYMENT_METHODS.find(m => m.id === t.paymentMethod)?.label || t.paymentMethod}
+                              {formatPaymentMethod(t.paymentMethod)}
                             </span>
                           ) : <span className="opacity-20">-</span>}
                         </td>
@@ -1062,7 +1064,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                 <label className="block text-xs font-medium text-text opacity-70 mb-2">Categorias</label>
                 <div className="flex flex-wrap gap-1 max-h-48 overflow-y-auto p-1 custom-scrollbar">
                   {categories.map((cat, idx) => {
-                    const isFirstIncomeCategory = INCOME_CATEGORIES.includes(cat) && !INCOME_CATEGORIES.includes(categories[idx - 1]);
+                    const isFirstIncomeCategory = incomeCategories.includes(cat) && !incomeCategories.includes(categories[idx - 1]);
                     
                     return (
                       <React.Fragment key={cat}>
@@ -1092,21 +1094,21 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
               <div>
                 <label className="block text-xs font-medium text-text opacity-70 mb-2">Cartões</label>
                 <div className="flex flex-wrap gap-1">
-                  {PAYMENT_METHODS.map(pm => (
+                  {paymentMethods.map(pm => (
                     <button
-                      key={pm.id}
-                      onClick={() => togglePaymentMethod(pm.id)}
+                      key={pm}
+                      onClick={() => togglePaymentMethod(pm)}
                       className={`px-2.5 py-1.5 rounded-md text-[10px] transition-all border font-medium ${
-                        selectedPaymentMethods.includes(pm.id) 
+                        selectedPaymentMethods.includes(pm) 
                           ? 'bg-primary text-white border-primary shadow-sm scale-105' 
                           : 'bg-transparent text-text opacity-70 border-cardBorder'
                       }`}
                       style={{ 
-                        backgroundColor: selectedPaymentMethods.includes(pm.id) ? theme.primary : 'transparent',
-                        color: selectedPaymentMethods.includes(pm.id) ? '#fff' : theme.text 
+                        backgroundColor: selectedPaymentMethods.includes(pm) ? theme.primary : 'transparent',
+                        color: selectedPaymentMethods.includes(pm) ? '#fff' : theme.text 
                       }}
                     >
-                      {pm.label}
+                      {pm}
                     </button>
                   ))}
                 </div>
@@ -1650,7 +1652,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                                 <td className="p-4 border-r" style={{ borderColor: theme.cardBorder }}>
                                   {t.paymentMethod ? (
                                     <span className="text-[10px] opacity-80 uppercase font-black bg-primary/10 px-2 py-1 rounded text-primary">
-                                      {PAYMENT_METHODS.find(m => m.id === t.paymentMethod)?.label || t.paymentMethod}
+                                      {formatPaymentMethod(t.paymentMethod)}
                                     </span>
                                   ) : <span className="opacity-20">-</span>}
                                 </td>

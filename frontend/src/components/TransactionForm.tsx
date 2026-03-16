@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Transaction, PaymentMethod } from '../types';
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, PAYMENT_METHODS, getBrazilDateString } from '../utils/helpers';
+import { getBrazilDateString } from '../utils/helpers';
 import { Plus, X, Calendar, CreditCard, Calculator, Wallet, Receipt } from 'lucide-react';
 import { addMonths } from 'date-fns';
 import { useTheme } from '../contexts/ThemeContext';
 import ImageUpload from './ImageUpload';
+import { useCategories } from '../hooks/useCategories';
+import { usePaymentMethods } from '../hooks/usePaymentMethods';
 
 interface TransactionFormProps {
   type: 'expense' | 'income';
@@ -16,6 +18,11 @@ interface TransactionFormProps {
 
 const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, replicateTransaction, onSubmit, onClose }) => {
   const { theme } = useTheme();
+  const { expenseCategories, incomeCategories } = useCategories();
+  const { paymentMethods } = usePaymentMethods();
+  
+  const defaultPaymentMethod = paymentMethods.includes('PIX') ? 'PIX' : (paymentMethods[0] || '');
+
   const [formData, setFormData] = useState<{
     amount: string;
     description: string;
@@ -34,7 +41,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     dueDate: getBrazilDateString(),
     isPaid: type === 'expense' ? false : false, // Receitas e despesas são marcadas como não pagas por padrão
     recurrence: 'none' as Transaction['recurrence'],
-    paymentMethod: 'pix',
+    paymentMethod: defaultPaymentMethod,
     notes: '',
   });
 
@@ -53,7 +60,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         dueDate: transaction.dueDate ? getBrazilDateString(new Date(transaction.dueDate)) : '',
         isPaid: transaction.isPaid,
         recurrence: transaction.recurrence || 'none',
-        paymentMethod: transaction.paymentMethod || 'pix',
+        paymentMethod: transaction.paymentMethod || defaultPaymentMethod,
         notes: transaction.notes || '',
       });
     } else if (replicateTransaction) {
@@ -72,7 +79,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         dueDate: nextMonthDueDateString, // Next month's due date for replication
         isPaid: false, // Replicated transactions are initially unpaid
         recurrence: replicateTransaction.recurrence || 'none',
-        paymentMethod: replicateTransaction.paymentMethod || 'pix',
+        paymentMethod: replicateTransaction.paymentMethod || defaultPaymentMethod,
         notes: replicateTransaction.notes || '',
       });
     } else {
@@ -85,15 +92,15 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         dueDate: getBrazilDateString(),
         isPaid: type === 'expense' ? false : false,
         recurrence: 'none',
-        paymentMethod: 'pix',
+        paymentMethod: defaultPaymentMethod,
         notes: '',
       });
       setCurrentSum(0);
       setCalculatorInput('');
     }
-  }, [transaction, replicateTransaction, type]);
+  }, [transaction, replicateTransaction, type, defaultPaymentMethod]);
 
-  const categories = type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+  const categories = type === 'expense' ? expenseCategories : incomeCategories;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,7 +123,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
       description: formData.description,
       category: formData.category,
       date: finalDate,
-      dueDate: finalDueDate || undefined,
+      dueDate: type === 'expense' ? (finalDueDate || undefined) : undefined,
       isPaid: formData.isPaid,
       recurrence: formData.recurrence,
       paymentMethod: type === 'expense' ? formData.paymentMethod : undefined,
@@ -164,26 +171,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     setCalculatorInput('');
     setShowCalculator(false);
   };
-
-  // const getRecurrenceDescription = () => {
-  //   switch (formData.recurrence) {
-  //     case 'weekly':
-  //       return 'Esta transação será repetida toda semana automaticamente no calendário';
-  //     case 'monthly':
-  //       return 'Esta transação será repetida todo mês automaticamente no calendário';
-  //     case 'yearly':
-  //       return 'Esta transação será repetida todo ano automaticamente no calendário';
-  //     default:
-  //       return 'Transação única, não será repetida';
-  //   }
-  // };
-
-  // const getRecurrenceWarning = () => {
-  //   if (formData.recurrence !== 'none' && type === 'expense') {
-  //     return 'IMPORTANTE: Apenas a primeira ocorrência manterá o status de pagamento. As próximas sempre serão criadas como pendentes.';
-  //   }
-  //   return null;
-  // };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -315,46 +302,15 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
                 style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
                 required
               >
-                {PAYMENT_METHODS.map(method => (
-                  <option key={method.id} value={method.id}>
-                    {method.label}
+                <option value="">Selecione um meio de pagamento</option>
+                {paymentMethods.map(method => (
+                  <option key={method} value={method}>
+                    {method}
                   </option>
                 ))}
               </select>
             </div>
           )}
-
-          {/* <div>
-            <label className="block text-sm font-medium text-text mb-2">
-              <Repeat className="w-4 h-4 inline mr-1" />
-              Recorrência
-            </label>
-            <select
-              name="recurrence"
-              value={formData.recurrence}
-              onChange={handleChange}
-              className="w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-              style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
-            >
-              <option value="none">Única</option>
-              <option value="weekly">Semanal</option>
-              <option value="monthly">Mensal</option>
-              <option value="yearly">Anual</option>
-            </select>
-            <p className="text-xs text-text opacity-70 mt-1">
-              {getRecurrenceDescription()}
-            </p>
-            {getRecurrenceWarning() && (
-              <div className="mt-2 p-3 rounded-lg" style={{ backgroundColor: theme.cardBackground, border: `1px solid ${theme.cardBorder}` }}>
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-text">
-                    {getRecurrenceWarning()}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div> */}
 
           {/* Data da transação apenas para receitas */}
           {type === 'income' && (

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Transaction } from '../types';
-import { formatCurrency, isTransactionOverdue, getDaysUntilDue, formatBrazilDate, getCurrentBrazilDate, filterTransactionsByMonth, parseLocalDate, formatPaymentMethod, PAYMENT_METHODS } from '../utils/helpers';
+import { formatCurrency, isTransactionOverdue, getDaysUntilDue, formatBrazilDate, getCurrentBrazilDate, filterTransactionsByMonth, parseLocalDate, formatPaymentMethod } from '../utils/helpers';
 import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight, Wallet, ChevronDown, ChevronUp } from 'lucide-react';
 import TransactionForm from './TransactionForm';
 import ConfirmationModal from './ConfirmationModal';
@@ -8,6 +8,7 @@ import DailyDateSlider from './DailyDateSlider';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useTheme } from '../contexts/ThemeContext';
+import { usePaymentMethods } from '../hooks/usePaymentMethods';
 
 import { MonthlyBalance } from '../types';
 
@@ -86,6 +87,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
     return notes;
   };
   const { theme, setThemeMonth } = useTheme();
+  const { paymentMethods } = usePaymentMethods();
 
   useEffect(() => {
     setThemeMonth(currentMonth);
@@ -171,7 +173,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
     })
     .filter(t => {
       if (paymentMethodFilter.includes('all')) return true;
-      return t.paymentMethod && paymentMethodFilter.includes(t.paymentMethod);
+      return t.paymentMethod && paymentMethodFilter.includes(formatPaymentMethod(t.paymentMethod));
     })
     .filter(t => {
       if (type === 'expense' && searchTerm) {
@@ -476,17 +478,17 @@ const TransactionList: React.FC<TransactionListProps> = ({
             >
               Todos
             </button>
-            {PAYMENT_METHODS.map(method => (
+            {paymentMethods.map(method => (
               <button
-                key={method.id}
-                onClick={() => handlePaymentMethodFilterChange(method.id)}
+                key={method}
+                onClick={() => handlePaymentMethodFilterChange(method)}
                 className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
-                  paymentMethodFilter.includes(method.id) && !paymentMethodFilter.includes('all')
+                  paymentMethodFilter.includes(method) && !paymentMethodFilter.includes('all')
                     ? 'bg-primary text-white' 
                     : 'bg-cardBackground text-text hover:bg-cardBorder'
                 }`}
               >
-                {method.label}
+                {method}
               </button>
             ))}
           </div>
