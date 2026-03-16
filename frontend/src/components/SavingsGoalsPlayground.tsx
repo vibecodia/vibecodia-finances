@@ -19,6 +19,9 @@ import {
   Filter,
   AlertCircle,
   Printer,
+  Calculator,
+  ChevronRight,
+  Info
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -71,20 +74,29 @@ interface LayoutItem {
 }
 
 const DEFAULT_LAYOUT: LayoutItem[] = [
-  { id: 'goals_countdown', label: 'Contagem Regressiva de Metas', collapsed: false, number: 1 },
-  { id: 'contribution_timeline', label: 'Linha do Tempo de Aportes', collapsed: true, number: 2 },
-  { id: 'goals_distribution', label: 'Distribuição de Metas', collapsed: true, number: 3 },
-  { id: 'contribution_table', label: 'Tabela de Aportes', collapsed: true, number: 4 },
-  { id: 'savings_vs_income', label: 'Taxa de Poupança vs Receita', collapsed: true, number: 5 },
-  { id: 'priority_matrix', label: 'Matriz de Prioridade', collapsed: true, number: 6 },
-  { id: 'goals_vs_expenses', label: 'Metas vs Despesas', collapsed: true, number: 7 },
+  { id: 'financial_simulators', label: 'Simuladores Financeiros', collapsed: false, number: 1 },
+  { id: 'goals_countdown', label: 'Contagem Regressiva de Metas', collapsed: false, number: 2 },
+  { id: 'contribution_timeline', label: 'Linha do Tempo de Aportes', collapsed: true, number: 3 },
+  { id: 'goals_distribution', label: 'Distribuição de Metas', collapsed: true, number: 4 },
+  { id: 'contribution_table', label: 'Tabela de Aportes', collapsed: true, number: 5 },
+  { id: 'savings_vs_income', label: 'Taxa de Poupança vs Receita', collapsed: true, number: 6 },
+  { id: 'priority_matrix', label: 'Matriz de Prioridade', collapsed: true, number: 7 },
+  { id: 'goals_vs_expenses', label: 'Metas vs Despesas', collapsed: true, number: 8 },
 ];
 
 const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savingsGoals, transactions }) => {
   const { theme } = useTheme();
-  const [layout, setLayout] = useLocalStorage<LayoutItem[]>('savings_playground_layout', DEFAULT_LAYOUT);
+  const [layout, setLayout] = useLocalStorage<LayoutItem[]>('savings_playground_layout_v2', DEFAULT_LAYOUT);
 
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
+  
+  // Simulator State
+  const [simInitialAmount, setSimInitialAmount] = useState<number>(0);
+  const [simMonthlyAmount, setSimMonthlyAmount] = useState<number>(500);
+  const [simInterestRate, setSimInterestRate] = useState<number>(1); // 1% per month
+  const [simPeriod, setSimPeriod] = useState<number>(12); // 12 months
+  const [simMode, setSimMode] = useState<'investment' | 'goal_reach'>('investment');
+  const [simTargetGoalId, setSimTargetGoalId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState<string>(format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState<string>(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
   const [neededUnit, setNeededUnit] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
@@ -250,6 +262,74 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       }))
     ).sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
   }, [savingsGoals]);
+
+  // Simulator Calculations
+  const simulationResults = useMemo(() => {
+    const data: { month: number; total: number; invested: number; interest: number }[] = [];
+    let currentTotal = simInitialAmount;
+    let currentInvested = simInitialAmount;
+
+    for (let i = 0; i <= simPeriod; i++) {
+      if (i > 0) {
+        const interest = currentTotal * (simInterestRate / 100);
+        currentTotal += interest + simMonthlyAmount;
+        currentInvested += simMonthlyAmount;
+      }
+      data.push({
+        month: i,
+        total: currentTotal,
+        invested: currentInvested,
+        interest: currentTotal - currentInvested,
+      });
+    }
+    return data;
+  }, [simInitialAmount, simMonthlyAmount, simInterestRate, simPeriod]);
+
+  const simChartData = useMemo(() => ({
+    labels: simulationResults.map(r => `Mês ${r.month}`),
+    datasets: [
+      {
+        label: 'Total Acumulado',
+        data: simulationResults.map(r => r.total),
+        borderColor: theme.primary,
+        backgroundColor: theme.primary + '33',
+        fill: true,
+        tension: 0.4,
+      },
+      {
+        label: 'Total Investido',
+        data: simulationResults.map(r => r.invested),
+        borderColor: '#94a3b8',
+        backgroundColor: '#94a3b833',
+        fill: true,
+        tension: 0.4,
+      }
+    ]
+  }), [simulationResults, theme.primary]);
+
+  // Salary History Analysis
+  const salaryAnalysis = useMemo(() => {
+    const monthlyData: Record<string, { income: number; savings: number }> = {};
+    
+    transactions.filter(t => t.type === 'income' && t.isPaid).forEach(t => {
+      const month = format(parseLocalDate(t.date), 'yyyy-MM');
+      if (!monthlyData[month]) monthlyData[month] = { income: 0, savings: 0 };
+      monthlyData[month].income += t.amount;
+    });
+
+    allContributions.forEach(c => {
+      const month = format(parseLocalDate(c.date), 'yyyy-MM');
+      if (!monthlyData[month]) monthlyData[month] = { income: 0, savings: 0 };
+      monthlyData[month].savings += c.amount;
+    });
+
+    const months = Object.values(monthlyData);
+    const avgIncome = months.length > 0 ? months.reduce((sum, m) => sum + m.income, 0) / months.length : 0;
+    const avgSavings = months.length > 0 ? months.reduce((sum, m) => sum + m.savings, 0) / months.length : 0;
+    const avgRate = avgIncome > 0 ? (avgSavings / avgIncome) * 100 : 0;
+
+    return { avgIncome, avgSavings, avgRate, monthsCount: months.length };
+  }, [transactions, allContributions]);
 
   // Chart Data: Progress Dashboard (used in JSX)
   useMemo(() => {
@@ -610,6 +690,166 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
           {/* Renderable Sections */}
           {layout.map((item, index) => {
             switch (item.id) {
+              case 'financial_simulators':
+                return (
+                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                    {renderCardHeader(item.id, item.label, <Calculator className="w-5 h-5 text-primary" />, index, item.collapsed)}
+                    {!item.collapsed && (
+                      <div className="p-6 md:p-8 space-y-8">
+                        {/* Simulation Controls */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                          <div className="space-y-6">
+                            <div className="flex gap-2 p-1 bg-cardBorder/30 rounded-xl">
+                              <button 
+                                onClick={() => setSimMode('investment')}
+                                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${simMode === 'investment' ? 'bg-primary text-white shadow-md' : 'text-text opacity-70 hover:opacity-100'}`}
+                              >
+                                Investimento Livre
+                              </button>
+                              <button 
+                                onClick={() => setSimMode('goal_reach')}
+                                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${simMode === 'goal_reach' ? 'bg-primary text-white shadow-md' : 'text-text opacity-70 hover:opacity-100'}`}
+                              >
+                                Alcance de Meta
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-bold uppercase opacity-50">Valor Inicial (R$)</label>
+                                <input 
+                                  type="number" 
+                                  value={simInitialAmount}
+                                  onChange={(e) => setSimInitialAmount(Number(e.target.value))}
+                                  className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
+                                  style={{ borderColor: theme.cardBorder }}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-bold uppercase opacity-50">Aporte Mensal (R$)</label>
+                                <input 
+                                  type="number" 
+                                  value={simMonthlyAmount}
+                                  onChange={(e) => setSimMonthlyAmount(Number(e.target.value))}
+                                  className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
+                                  style={{ borderColor: theme.cardBorder }}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-bold uppercase opacity-50">Juros Mensal (%)</label>
+                                <input 
+                                  type="number" 
+                                  step="0.1"
+                                  value={simInterestRate}
+                                  onChange={(e) => setSimInterestRate(Number(e.target.value))}
+                                  className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
+                                  style={{ borderColor: theme.cardBorder }}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-bold uppercase opacity-50">Período (Meses)</label>
+                                <input 
+                                  type="number" 
+                                  value={simPeriod}
+                                  onChange={(e) => setSimPeriod(Number(e.target.value))}
+                                  className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
+                                  style={{ borderColor: theme.cardBorder }}
+                                />
+                              </div>
+                            </div>
+
+                            {simMode === 'goal_reach' && (
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-bold uppercase opacity-50">Vincular a Meta Existente</label>
+                                <select 
+                                  value={simTargetGoalId || ''}
+                                  onChange={(e) => {
+                                    const goalId = e.target.value;
+                                    setSimTargetGoalId(goalId);
+                                    const goal = savingsGoals.find(g => g.id === goalId);
+                                    if (goal) {
+                                      setSimInitialAmount(goal.currentAmount);
+                                      // Calculate months needed based on current sim settings if target is to reach goal
+                                      const remaining = goal.targetAmount - goal.currentAmount;
+                                      if (simMonthlyAmount > 0) {
+                                        setSimPeriod(Math.ceil(remaining / simMonthlyAmount));
+                                      }
+                                    }
+                                  }}
+                                  className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
+                                  style={{ borderColor: theme.cardBorder }}
+                                >
+                                  <option value="">Nenhuma Meta</option>
+                                  {savingsGoals.map(g => (
+                                    <option key={g.id} value={g.id}>{g.name} ({formatCurrency(g.targetAmount)})</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+
+                            {/* Summary Box */}
+                            <div className="p-5 rounded-2xl bg-primary/5 border border-primary/20 flex items-center justify-between">
+                              <div>
+                                <p className="text-[10px] font-bold uppercase opacity-60">Total ao Final</p>
+                                <p className="text-2xl font-black text-primary">
+                                  {formatCurrency(simulationResults[simulationResults.length - 1].total)}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[10px] font-bold uppercase opacity-60">Juros Ganhos</p>
+                                <p className="text-xl font-black text-accent">
+                                  {formatCurrency(simulationResults[simulationResults.length - 1].interest)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="h-full min-h-[300px]">
+                            <Line 
+                              data={simChartData}
+                              options={{
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: true, labels: { color: theme.text } } },
+                                scales: {
+                                  y: { ticks: { color: theme.text, callback: (v) => formatCurrency(v as number) }, grid: { color: theme.cardBorder } },
+                                  x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Salary vs Savings Analysis Row */}
+                        <div className="pt-8 border-t" style={{ borderColor: theme.cardBorder }}>
+                          <h4 className="text-sm font-bold mb-4 flex items-center gap-2">
+                            <Info className="w-4 h-4 text-primary" />
+                            Análise Baseada no seu Histórico de Salário
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="p-4 rounded-xl border bg-cardBorder/10" style={{ borderColor: theme.cardBorder }}>
+                              <p className="text-[10px] font-bold uppercase opacity-50 mb-1">Média Salarial Mensal</p>
+                              <p className="text-lg font-black text-text">{formatCurrency(salaryAnalysis.avgIncome)}</p>
+                              <p className="text-[10px] opacity-40 mt-1">Baseado em {salaryAnalysis.monthsCount} meses</p>
+                            </div>
+                            <div className="p-4 rounded-xl border bg-cardBorder/10" style={{ borderColor: theme.cardBorder }}>
+                              <p className="text-[10px] font-bold uppercase opacity-50 mb-1">Média de Aportes</p>
+                              <p className="text-lg font-black text-primary">{formatCurrency(salaryAnalysis.avgSavings)}</p>
+                              <p className="text-[10px] opacity-40 mt-1">({salaryAnalysis.avgRate.toFixed(1)}% do salário)</p>
+                            </div>
+                            <div className="p-4 rounded-xl border bg-primary/10 border-primary/30">
+                              <p className="text-[10px] font-bold uppercase opacity-50 mb-1">Potencial em 1 Ano</p>
+                              <p className="text-lg font-black text-primary">
+                                {formatCurrency((salaryAnalysis.avgSavings * 12) * (1 + (simInterestRate/100) * 6))} 
+                              </p>
+                              <p className="text-[10px] opacity-40 mt-1">Se mantiver a média + juros</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+
               case 'contribution_timeline':
                 return (
                   <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
