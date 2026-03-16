@@ -72,6 +72,8 @@ const stackedBarTotalPlugin = {
     if (chart.config.type !== 'bar' || !y.options.stacked) return;
 
     ctx.save();
+
+    // Draw totals at the top of each bar
     ctx.font = 'bold 10px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
@@ -89,16 +91,61 @@ const stackedBarTotalPlugin = {
       if (totals[i] > 0) {
         ctx.fillStyle = chart.options.scales.y.ticks.color || '#000';
         ctx.fillText(
-          new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(totals[i]), 
-          xPos, 
+          new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(totals[i]),
+          xPos,
           yPos - 5
         );
       }
     });
+
+    // Draw individual segment values overlayed on the colors
+    data.datasets.forEach((dataset: any, datasetIndex: number) => {
+      const meta = chart.getDatasetMeta(datasetIndex);
+      if (meta.hidden) return;
+
+      meta.data.forEach((bar: any, index: number) => {
+        const value = dataset.data[index];
+        if (value && value > 0) {
+          const height = Math.abs(bar.y - bar.base);
+          const xPosInside = bar.x;
+          const yPos = (bar.y + bar.base) / 2;
+          
+          // Format number concisely
+          let label;
+          if (value >= 1000) {
+            label = (value / 1000).toFixed(1).replace('.0', '') + 'k';
+          } else {
+            label = Math.round(value).toString();
+          }
+
+          ctx.save();
+          if (height > 15) { 
+            // Draw inside the bar
+            ctx.font = 'bold 9px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowBlur = 3;
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.fillStyle = '#fff';
+            ctx.fillText(label, xPosInside, yPos);
+          } else if (height > 4) {
+            // Draw on the right side if too small but still visible
+            ctx.font = '600 8px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = chart.options.scales.y.ticks.color || '#666';
+            const xPosOutside = bar.x + (bar.width / 2) + 3;
+            ctx.fillText(label, xPosOutside, yPos);
+          }
+          ctx.restore();
+        }
+      });
+    });
+
     ctx.restore();
   }
 };
-
 ChartJS.register(stackedBarTotalPlugin);
 
 interface PlaygroundProps {
