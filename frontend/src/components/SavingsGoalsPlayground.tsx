@@ -20,7 +20,6 @@ import {
   AlertCircle,
   Printer,
   Calculator,
-  ChevronRight,
   Info
 } from 'lucide-react';
 import {
