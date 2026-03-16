@@ -35,7 +35,7 @@ const Navigation: React.FC = () => {
       <button
         onClick={toggleMenu}
         className={cn(
-          'fixed top-4 left-4 text-white rounded-full p-3 shadow-lg transition-all duration-300 ease-in-out z-50',
+          'fixed top-4 left-4 text-white rounded-full p-3 shadow-lg transition-all duration-300 ease-in-out z-[70] lg:hidden',
           'bg-primary hover:bg-secondary',
           { 'animate-pulse': !isMenuOpen }
         )}
@@ -47,20 +47,23 @@ const Navigation: React.FC = () => {
       {isMenuOpen && (
         <div
           onClick={() => setIsMenuOpen(false)}
-          className="fixed inset-0 bg-black bg-opacity-25 z-30 transition-opacity duration-300 ease-in-out"
+          className="fixed inset-0 bg-black bg-opacity-50 z-[60] transition-opacity duration-300 ease-in-out lg:hidden"
         />
       )}
 
       <nav
         className={cn(
-          'fixed top-0 left-0 h-full p-2 flex flex-col justify-start pt-20',
-          'transition-all duration-300 ease-in-out z-40',
+          'fixed top-0 lg:top-24 left-0 h-full lg:h-[calc(100vh-6rem)] p-2 flex flex-col justify-start pt-24 lg:pt-4 w-64',
+          'transition-all duration-300 ease-in-out z-[65] lg:z-40 lg:shadow-xl',
           {
             'translate-x-0 opacity-100': isMenuOpen,
-            '-translate-x-full opacity-0': !isMenuOpen,
+            '-translate-x-full opacity-0 lg:translate-x-0 lg:opacity-100': !isMenuOpen,
           }
         )}
-        style={{ backgroundColor: theme.cardBackground, borderRight: `1px solid ${theme.cardBorder}` }}
+        style={{ 
+          backgroundColor: theme.cardBackground, 
+          borderRight: `2px solid ${theme.cardBorder}` // Increased to 2px for better visibility
+        }}
       >
         <div className="flex flex-col items-start gap-4">
           {tabs.map((tab) => {
