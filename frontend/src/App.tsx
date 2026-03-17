@@ -38,7 +38,6 @@ function App() {
     deleteSavingsGoal,
     importData,
     clearAllData,
-    monthlyBalances,
     isLoading,
   } = useFinancialData();
 
@@ -139,7 +138,7 @@ function App() {
 
         <main className="w-full lg:pl-72 px-4 sm:px-6 lg:px-12 pb-20 transition-all duration-300">
           <Routes>
-            <Route path="/" element={<Dashboard transactions={transactions} savingsGoals={savingsGoals} monthlyBalances={monthlyBalances} />} />
+            <Route path="/" element={<Dashboard transactions={transactions} savingsGoals={savingsGoals} />} />
             <Route path="/expenses" element={<TransactionList type="expense" transactions={transactions} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} />} />
             <Route path="/income" element={<TransactionList type="income" transactions={transactions} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} />} />
             <Route path="/calendar" element={<Calendar transactions={transactions} onUpdatePaymentStatus={updatePaymentStatus} />} />

@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Transaction, SavingsGoal, MonthlyBalance } from '../types';
+import { Transaction, SavingsGoal } from '../types';
 import { formatCurrency, filterTransactionsByMonth, getCurrentBrazilDate, formatPaymentMethod } from '../utils/helpers';
 import { calculateBalances } from '../utils/balanceCalculations';
-import { TrendingUp, TrendingDown, Wallet, Target, AlertTriangle, ChevronLeft, ChevronRight, CreditCard } from 'lucide-react';
+import { Wallet, Target, AlertTriangle, ChevronLeft, ChevronRight, CreditCard, Eye, EyeOff } from 'lucide-react';
 import Confetti from 'react-confetti';
 import useWindowSize from '../hooks/useWindowSize';
 import { format, addMonths, subMonths } from 'date-fns';
@@ -14,7 +14,6 @@ import { useEffect } from 'react';
 interface DashboardProps {
   transactions: Transaction[];
   savingsGoals: SavingsGoal[];
-  monthlyBalances: MonthlyBalance[];
 }
 
 // ─── AccountSlider ────────────────────────────────────────────────────────────
@@ -130,13 +129,14 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, monthlyBalances }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => {
   const navigate = useNavigate();
   const { width, height } = useWindowSize();
   const [showConfetti, setShowConfetti] = useState(false);
   const [isPulsing, setIsPulsing] = useState(false);
   const [currentMonth, setCurrentMonth] = useState<Date>(getCurrentBrazilDate());
-  const { theme, isDarkMode, setThemeMonth } = useTheme();
+  const [showBalance, setShowBalance] = useState(true);
+  const { theme, setThemeMonth } = useTheme();
 
   useEffect(() => {
     setThemeMonth(currentMonth);
@@ -147,10 +147,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
 
   const currentIncome = transactionsForSelectedMonth
     .filter(t => t.type === 'income' && t.isPaid)
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const currentExpenses = transactionsForSelectedMonth
-    .filter(t => t.type === 'expense' && t.isPaid)
     .reduce((sum, t) => sum + t.amount, 0);
 
   const expensesPaid = transactionsForSelectedMonth
@@ -190,14 +186,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
 
   const totalSavingsGoals = savingsGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
   const totalSaved = savingsGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
-
-  const previousMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
-  const previousMonthBalanceData = useMemo(() => {
-    return monthlyBalances.find(mb => mb.month === previousMonthKey);
-  }, [monthlyBalances, previousMonthKey]);
-
-  const previousAdjustedBalance = previousMonthBalanceData?.balance ?? 0;
-  const balanceChange = adjustedBalance - previousAdjustedBalance;
 
   const getBalanceIcon = () => {
     if (adjustedBalance < -0.001) return <AlertTriangle className="w-6 h-6 opacity-90" />;
@@ -241,45 +229,59 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
         </div>
       </div>
 
-      {/* Main Balance */}
+      {/* Main Balance Card */}
       <div
-        className={`rounded-2xl p-6 cursor-pointer border-2 transition-all duration-300 ease-in-out ${isPulsing ? 'scale-105 shadow-xl' : 'scale-100 shadow-lg'} ${adjustedBalance < -0.001 ? 'text-gray-800' : 'text-white'}`}
+        className={`relative overflow-hidden rounded-[2.5rem] p-8 cursor-pointer border transition-all duration-500 shadow-xl ${
+          isPulsing ? 'scale-[1.02]' : 'scale-100'
+        } ${adjustedBalance < -0.001 ? 'text-rose-950' : 'text-white'}`}
         style={{
           background: adjustedBalance < -0.001
-            ? 'linear-gradient(to right, #FFDDC1, #FFB26B)'
-            : `linear-gradient(to right, ${theme.primary}, ${theme.secondary})`,
-          borderColor: theme.cardBorder,
+            ? 'radial-gradient(circle at top left, #fff1eb, #ffd1ff)'
+            : `radial-gradient(circle at top left, ${theme.primary}, ${theme.primary}dd)`,
+          backgroundColor: theme.primary,
+          borderColor: adjustedBalance < -0.001 ? '#fecaca' : 'rgba(255, 255, 255, 0.1)',
         }}
         onClick={handleBalanceCardClick}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium opacity-90 truncate pr-2">
-            {adjustedBalance < -0.001 ? 'Déficit Total' : 'Saldo Total Acumulado'}
-          </h2>
-          {getBalanceIcon()}
-        </div>
-        <div className="flex items-end justify-between">
-          <div className="flex-1 min-w-0">
-            <p className="text-2xl sm:text-3xl font-bold mb-1 break-words">
-              {formatCurrency(displayBalance)}
-            </p>
-            {balanceChange !== 0 && (
-              <div className="flex items-center space-x-1">
-                {balanceChange > 0
-                  ? <TrendingUp className="w-4 h-4 text-green-300 flex-shrink-0" />
-                  : <TrendingDown className="w-4 h-4 text-red-300 flex-shrink-0" />}
-                <span className="text-sm opacity-90 break-words">
-                  {formatCurrency(Math.abs(balanceChange))} vs mês anterior
-                </span>
+        <div className="relative z-10 flex flex-col h-full justify-between">
+          <div className="flex items-start justify-between mb-8">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50 mb-1">
+                {adjustedBalance < -0.001 ? 'Atenção • Déficit' : 'Total em Carteira'}
+              </p>
+              <h2 className="text-xl font-black tracking-tight uppercase italic">
+                {adjustedBalance < -0.001 ? 'Saldo Devedor' : 'Saldo'}
+              </h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowBalance(!showBalance);
+                }}
+                className="p-3 bg-black/10 backdrop-blur-xl rounded-2xl border border-white/10 hover:bg-black/20 transition-colors shadow-lg"
+              >
+                {showBalance ? <EyeOff className="w-5 h-5 opacity-70" /> : <Eye className="w-5 h-5 opacity-70" />}
+              </button>
+              <div className="p-4 bg-black/10 backdrop-blur-xl rounded-2xl border border-white/10 shadow-lg">
+                {getBalanceIcon()}
               </div>
-            )}
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="flex flex-col gap-1">
+              <p className="text-5xl sm:text-7xl font-black tracking-tighter leading-none">
+                {showBalance ? formatCurrency(displayBalance) : 'R$ ••••••'}
+              </p>
+            </div>
+
           </div>
         </div>
+
         {adjustedBalance < -0.001 && (
-          <div className="mt-3 p-3 rounded-lg" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
-            <p className="text-sm text-gray-800">
-              ⚠️ Seu saldo total está negativo. Considere revisar suas despesas e metas.
-            </p>
+          <div className="absolute top-0 right-0 p-4">
+            <div className="animate-pulse bg-rose-500 w-2 h-2 rounded-full shadow-[0_0_10px_#ef4444]" />
           </div>
         )}
       </div>
@@ -336,14 +338,14 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
             <div className="text-lg font-bold text-red-600 dark:text-red-400">
               {expensesPaid > 0 ? ((expensesPaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
             </div>
-            <div className="text-xs text-text opacity-80">Pagas</div>
+            <div className="text-xs text-text opacity-80">Pagos</div>
             <div className="text-xs text-text opacity-60">{formatCurrency(expensesPaid)}</div>
           </div>
           <div className="text-center">
             <div className="text-lg font-bold text-red-400 dark:text-red-300">
               {expensesUnpaid > 0 ? ((expensesUnpaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
             </div>
-            <div className="text-xs text-text opacity-80">Não Pagas</div>
+            <div className="text-xs text-text opacity-80">Não Pagos</div>
             <div className="text-xs text-text opacity-60">{formatCurrency(expensesUnpaid)}</div>
           </div>
         </div>
@@ -386,57 +388,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
           spent={veroSpent}
           formatCurrency={formatCurrency}
         />
-      </div>
-
-      {/* Cards Receitas / Gastos / Metas */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div
-          className="rounded-xl p-4 border-2 cursor-pointer hover:shadow-md transition-shadow duration-200"
-          style={{ backgroundColor: isDarkMode ? '#064e3b' : '#ecfdf5', borderColor: isDarkMode ? '#065f46' : '#d1fae5' }}
-          onClick={() => navigate('/income')}
-        >
-          <div className="flex items-center gap-2 mb-3 min-w-0">
-            <TrendingUp className={`w-4 h-4 flex-shrink-0 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
-            <h3 className={`text-sm font-medium truncate ${isDarkMode ? 'text-emerald-50' : 'text-emerald-900'}`}>Receitas</h3>
-          </div>
-          <p className={`text-xl sm:text-2xl font-bold break-words ${isDarkMode ? 'text-emerald-50' : 'text-emerald-900'}`}>
-            {formatCurrency(currentIncome)}
-          </p>
-        </div>
-
-        <div
-          className="rounded-xl p-4 border-2 cursor-pointer hover:shadow-md transition-shadow duration-200"
-          style={{ backgroundColor: isDarkMode ? '#451a03' : '#fff7ed', borderColor: isDarkMode ? '#78350f' : '#ffedd5' }}
-          onClick={() => navigate('/expenses')}
-        >
-          <div className="flex items-center gap-2 mb-3 min-w-0">
-            <TrendingDown className={`w-4 h-4 flex-shrink-0 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} />
-            <h3 className={`text-sm font-medium truncate ${isDarkMode ? 'text-orange-50' : 'text-orange-900'}`}>Gastos Pagos</h3>
-          </div>
-          <p className={`text-xl sm:text-2xl font-bold break-words ${isDarkMode ? 'text-orange-50' : 'text-orange-900'}`}>
-            {formatCurrency(currentExpenses)}
-          </p>
-          <p className={`text-xs mt-1 truncate opacity-80 ${isDarkMode ? 'text-orange-200' : 'text-orange-800'}`}>
-            Apenas despesas já pagas
-          </p>
-        </div>
-
-        <div
-          className="rounded-xl p-4 border-2 cursor-pointer hover:shadow-md transition-shadow duration-200"
-          style={{ backgroundColor: isDarkMode ? '#064e3b' : '#ecfdf5', borderColor: isDarkMode ? '#065f46' : '#d1fae5' }}
-          onClick={() => navigate('/goals')}
-        >
-          <div className="flex items-center gap-2 mb-3 min-w-0">
-            <Target className={`w-4 h-4 flex-shrink-0 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
-            <h3 className={`text-sm font-medium truncate ${isDarkMode ? 'text-emerald-50' : 'text-emerald-900'}`}>Metas</h3>
-          </div>
-          <p className={`text-xl sm:text-2xl font-bold break-words ${isDarkMode ? 'text-emerald-50' : 'text-emerald-900'}`}>
-            {formatCurrency(totalSaved)}
-          </p>
-          <p className={`text-xs mt-1 truncate opacity-80 ${isDarkMode ? 'text-emerald-200' : 'text-emerald-800'}`}>
-            {totalSavingsGoals > 0 ? `de ${formatCurrency(totalSavingsGoals)}` : 'Nenhuma meta'}
-          </p>
-        </div>
       </div>
 
       {/* Progresso das Metas */}
