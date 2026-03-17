@@ -312,7 +312,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-sm font-semibold text-text opacity-90">Flash</span>
-            <span className="text-xs text-text opacity-70">Saldo: {formatCurrency(flashIncome - flashSpent)}</span>
           </div>
           <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 relative overflow-hidden shadow-inner">
             <div 
@@ -349,7 +348,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals, month
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-sm font-semibold text-text opacity-90">Vero Card</span>
-            <span className="text-xs text-text opacity-70">Saldo: {formatCurrency(veroIncome - veroSpent)}</span>
           </div>
           <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 relative overflow-hidden shadow-inner">
             <div 
