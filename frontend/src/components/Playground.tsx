@@ -232,10 +232,10 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   // Income Timeline Grouping State
   const [incomeGroupBy, setIncomeGroupBy] = useState<'category' | 'description'>('category');
 
-
-  // Income Timeline Date Range State
-  const [incomeTimelineStartDate, setIncomeTimelineStartDate] = useState<string>(format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
-  const [incomeTimelineEndDate, setIncomeTimelineEndDate] = useState<string>(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
+  // Income Comparison Mode State
+  const [incomeMode, setIncomeMode] = useState<'range' | 'comparison'>('range');
+  const [incomeComparisonMonth1, setIncomeComparisonMonth1] = useState<string>(format(getCurrentBrazilDate(), 'yyyy-MM'));
+  const [incomeComparisonMonth2, setIncomeComparisonMonth2] = useState<string>(format(subMonths(getCurrentBrazilDate(), 1), 'yyyy-MM'));
 
   // Expense Timeline Grouping State
   const [expenseGroupBy, setExpenseGroupBy] = useState<'category' | 'paymentMethod'>('category');
@@ -339,9 +339,15 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
       if (!matchesStatus) return false;
 
       const date = parseLocalDate(t.date);
-      const start = parseLocalDate(incomeTimelineStartDate);
-      const end = parseLocalDate(incomeTimelineEndDate);
-      return isWithinInterval(date, { start, end });
+
+      if (incomeMode === 'range') {
+        const start = parseLocalDate(startDate);
+        const end = parseLocalDate(endDate);
+        return isWithinInterval(date, { start, end });
+      } else {
+        const monthKey = format(date, 'yyyy-MM');
+        return monthKey === incomeComparisonMonth1 || monthKey === incomeComparisonMonth2;
+      }
     });
     const groupedData: Record<string, Record<string, number>> = {};
     const labelsInOrder: string[] = [];
@@ -350,7 +356,8 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
     incomeTransactions.sort((a: any, b: any) => 
       parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime()
     ).forEach((t: any) => {
-      const dateStr = formatBrazilDate(t.date, 'dd/MM/yy');
+      const date = parseLocalDate(t.date);
+      const dateStr = incomeMode === 'range' ? formatBrazilDate(t.date, 'dd/MM/yy') : format(date, 'MMM/yy');
       const groupKey = incomeGroupBy === 'category' ? t.category : t.description;
       
       if (!groupedData[dateStr]) {
@@ -360,7 +367,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
       groupedData[dateStr][groupKey] = (groupedData[dateStr][groupKey] || 0) + t.amount;
     });
 
-    const sortedDates = labelsInOrder;
+    const sortedDates = incomeMode === 'range' ? labelsInOrder : Array.from(new Set(labelsInOrder));
 
     // Get all unique group keys
     const allGroupKeys = Array.from(
@@ -392,7 +399,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
       labels: sortedDates,
       datasets,
     };
-  }, [transactions, incomeGroupBy, statusFilter, theme.cardBackground, incomeTimelineStartDate, incomeTimelineEndDate]);
+  }, [transactions, incomeGroupBy, statusFilter, theme.cardBackground, startDate, endDate, incomeMode, incomeComparisonMonth1, incomeComparisonMonth2]);
 
   // Expense Timeline Chart Data
   const expenseTimelineChartData = useMemo(() => {
@@ -962,24 +969,51 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
           <div className="flex-1 overflow-auto p-6 md:p-10">
             {maximizedId === 'income_timeline' && (
               <div className="h-full min-h-[500px]">
-                <Line 
-                  data={incomeTimelineChartData} 
-                  options={{ 
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: theme.text, font: { size: 14 } } } },
-                    scales: {
-                      y: { 
-                        ticks: { 
-                          color: theme.text, 
-                          font: { size: 12 },
-                          callback: (value) => formatCurrency(value as number)
-                        }, 
-                        grid: { color: theme.cardBorder } 
-                      },
-                      x: { ticks: { color: theme.text, font: { size: 12 } }, grid: { color: theme.cardBorder } }
-                    }
-                  }} 
-                />
+                {incomeMode === 'range' ? (
+                  <Line 
+                    data={incomeTimelineChartData} 
+                    options={{ 
+                      maintainAspectRatio: false,
+                      plugins: { legend: { labels: { color: theme.text, font: { size: 14 } } } },
+                      scales: {
+                        y: { 
+                          ticks: { 
+                            color: theme.text, 
+                            font: { size: 12 },
+                            callback: (value) => formatCurrency(value as number)
+                          }, 
+                          grid: { color: theme.cardBorder } 
+                        },
+                        x: { ticks: { color: theme.text, font: { size: 12 } }, grid: { color: theme.cardBorder } }
+                      }
+                    }} 
+                  />
+                ) : (
+                  <Bar 
+                    data={incomeTimelineChartData} 
+                    options={{ 
+                      maintainAspectRatio: false,
+                      plugins: { legend: { labels: { color: theme.text, font: { size: 14 } } } },
+                      scales: {
+                        y: { 
+                          stacked: true,
+                          grace: '10%',
+                          ticks: { 
+                            color: theme.text, 
+                            font: { size: 12 },
+                            callback: (value) => formatCurrency(value as number)
+                          }, 
+                          grid: { color: theme.cardBorder } 
+                        },
+                        x: { 
+                          stacked: true,
+                          ticks: { color: theme.text, font: { size: 12 } }, 
+                          grid: { color: theme.cardBorder } 
+                        }
+                      }
+                    }} 
+                  />
+                )}
               </div>
             )}
             {maximizedId === 'expense_timeline' && (
@@ -1357,25 +1391,53 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                                             <div className="flex items-center gap-3">
                                               {!item.collapsed && (
                                                 <div className="flex items-center gap-2">
-                                                  <div className="flex items-center gap-1 border rounded-lg p-1 px-2" style={{ borderColor: theme.cardBorder }}>
-                                                    <input 
-                                                      type="date" 
-                                                      value={incomeTimelineStartDate}
-                                                      onChange={(e) => setIncomeTimelineStartDate(e.target.value)}
-                                                      className="bg-transparent text-[10px] font-bold outline-none"
-                                                      style={{ color: theme.text }}
-                                                      title="Data Inicial"
-                                                    />
-                                                    <span className="text-[10px] opacity-30 px-1">até</span>
-                                                    <input 
-                                                      type="date" 
-                                                      value={incomeTimelineEndDate}
-                                                      onChange={(e) => setIncomeTimelineEndDate(e.target.value)}
-                                                      className="bg-transparent text-[10px] font-bold outline-none"
-                                                      style={{ color: theme.text }}
-                                                      title="Data Final"
-                                                    />
+                                                  {/* Mode Toggle */}
+                                                  <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
+                                                    <button
+                                                      onClick={() => setIncomeMode('range')}
+                                                      className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${
+                                                        incomeMode === 'range'
+                                                          ? 'bg-primary text-white'
+                                                          : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                                      }`}
+                                                    >
+                                                      INTERVALO
+                                                    </button>
+                                                    <button
+                                                      onClick={() => setIncomeMode('comparison')}
+                                                      className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${
+                                                        incomeMode === 'comparison'
+                                                          ? 'bg-primary text-white'
+                                                          : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                                      }`}
+                                                    >
+                                                      COMPARAÇÃO
+                                                    </button>
                                                   </div>
+
+                                                  {/* Comparison Months */}
+                                                  {incomeMode === 'comparison' && (
+                                                    <div className="flex items-center gap-1 border rounded-lg p-1 px-2" style={{ borderColor: theme.cardBorder }}>
+                                                      <input 
+                                                        type="month" 
+                                                        value={incomeComparisonMonth1}
+                                                        onChange={(e) => setIncomeComparisonMonth1(e.target.value)}
+                                                        className="bg-transparent text-[10px] font-bold outline-none"
+                                                        style={{ color: theme.text }}
+                                                        title="Mês 1"
+                                                      />
+                                                      <span className="text-[10px] opacity-30 px-1 font-black">vs</span>
+                                                      <input 
+                                                        type="month" 
+                                                        value={incomeComparisonMonth2}
+                                                        onChange={(e) => setIncomeComparisonMonth2(e.target.value)}
+                                                        className="bg-transparent text-[10px] font-bold outline-none"
+                                                        style={{ color: theme.text }}
+                                                        title="Mês 2"
+                                                      />
+                                                    </div>
+                                                  )}
+
                                                   <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
                                                     <button
                                                       onClick={() => setIncomeGroupBy('category')}
@@ -1427,23 +1489,49 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                     {!item.collapsed && (
                       <div className="p-8 h-[500px]">
                         {transactions.filter((t: any) => t.type === 'income').length > 0 ? (
-                          <Line 
-                            data={incomeTimelineChartData} 
-                            options={{ 
-                              maintainAspectRatio: false,
-                              plugins: { legend: { labels: { color: theme.text } } },
-                              scales: {
-                                y: { 
-                                  ticks: { 
-                                    color: theme.text,
-                                    callback: (value) => formatCurrency(value as number)
-                                  }, 
-                                  grid: { color: theme.cardBorder } 
-                                },
-                                x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
-                              }
-                            }} 
-                          />
+                          incomeMode === 'range' ? (
+                            <Line 
+                              data={incomeTimelineChartData} 
+                              options={{ 
+                                maintainAspectRatio: false,
+                                plugins: { legend: { labels: { color: theme.text } } },
+                                scales: {
+                                  y: { 
+                                    ticks: { 
+                                      color: theme.text,
+                                      callback: (value) => formatCurrency(value as number)
+                                    }, 
+                                    grid: { color: theme.cardBorder } 
+                                  },
+                                  x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
+                                }
+                              }} 
+                            />
+                          ) : (
+                            <Bar 
+                              data={incomeTimelineChartData} 
+                              options={{ 
+                                maintainAspectRatio: false,
+                                plugins: { legend: { labels: { color: theme.text } } },
+                                scales: {
+                                  y: { 
+                                    stacked: true,
+                                    grace: '10%',
+                                    ticks: { 
+                                      color: theme.text,
+                                      callback: (value) => formatCurrency(value as number)
+                                    }, 
+                                    grid: { color: theme.cardBorder } 
+                                  },
+                                  x: { 
+                                    stacked: true,
+                                    ticks: { color: theme.text }, 
+                                    grid: { color: theme.cardBorder } 
+                                  }
+                                }
+                              }} 
+                            />
+                          )
                         ) : (
                           <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
                             <TrendingUp className="w-12 h-12 opacity-10" />
