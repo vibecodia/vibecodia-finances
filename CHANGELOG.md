@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.26.364](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.26.364) (2026-03-17)
+
 ### [0.26.362](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.26.362) (2026-03-17)
 
 ### [0.26.361](https://github.com/vibecodia/vibecodia-finances/compare/v0.26.0...v0.26.361) (2026-03-04)
