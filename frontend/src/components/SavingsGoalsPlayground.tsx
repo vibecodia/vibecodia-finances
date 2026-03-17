@@ -38,6 +38,7 @@ import {
   DoughnutController,
   PieController,
   ScatterController,
+  Filler,
 } from 'chart.js';
 import { Doughnut, Line, Pie, Scatter } from 'react-chartjs-2';
 import { startOfMonth, endOfMonth, isWithinInterval, format, differenceInDays } from 'date-fns';
@@ -57,7 +58,8 @@ ChartJS.register(
   BarController,
   DoughnutController,
   PieController,
-  ScatterController
+  ScatterController,
+  Filler
 );
 
 interface SavingsGoalsPlaygroundProps {

@@ -40,7 +40,8 @@ import {
   LineController,
   BarController,
   DoughnutController,
-  PieController
+  PieController,
+  Filler
 } from 'chart.js';
 import { Doughnut, Pie, Line, Bar } from 'react-chartjs-2';
 import { startOfMonth, endOfMonth, isWithinInterval, format, subMonths } from 'date-fns';
@@ -62,7 +63,8 @@ ChartJS.register(
   LineController,
   BarController,
   DoughnutController,
-  PieController
+  PieController,
+  Filler
 );
 
 const stackedBarTotalPlugin = {
