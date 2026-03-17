@@ -200,6 +200,8 @@ const TransactionList: React.FC<TransactionListProps> = ({
       })
     : transactionsForDisplay;
 
+  const currentTotal = sortedTransactions.reduce((acc, t) => acc + t.amount, 0);
+
   const handleEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction);
     setShowForm(true);
@@ -356,6 +358,9 @@ const TransactionList: React.FC<TransactionListProps> = ({
               <ChevronRight className="w-5 h-5 text-text" />
             </button>
           </div>
+          <p className="text-sm font-medium opacity-70 ml-9" style={{ color: type === 'income' ? theme.primary : theme.accent }}>
+            Total: {formatCurrency(currentTotal)}
+          </p>
         </div>
         <button
           onClick={() => setShowForm(true)}
@@ -412,7 +417,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
               Todos
             </button>
             <button
-              onClick={() => setPaymentFilter('paid')}
+              onClick={() => setPaymentFilter(prev => prev === 'paid' ? 'all' : 'paid')}
               className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
                 paymentFilter === 'paid' 
                   ? 'bg-primary text-white' 
@@ -422,7 +427,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
               Pagos
             </button>
             <button
-              onClick={() => setPaymentFilter('pending')}
+              onClick={() => setPaymentFilter(prev => prev === 'pending' ? 'all' : 'pending')}
               className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
                 paymentFilter === 'pending' 
                   ? 'bg-accent text-white' 
