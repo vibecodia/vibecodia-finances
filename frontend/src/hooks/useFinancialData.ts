@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Transaction, SavingsGoal, SavingsContribution, MonthlyBalance } from '../types';
 import { getCurrentBrazilDate, getBrazilDateString } from '../utils/helpers';
-import { format } from 'date-fns';
+import { format, endOfMonth } from 'date-fns';
 import { useVerification } from '../contexts/VerificationContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -20,18 +20,34 @@ export const useFinancialData = () => {
 
   const calculateMonthlyBalances = useMemo(() => {
     return () => {
-      const balancesMap = new Map<string, { income: number; expenses: number; }>();
+      const now = getCurrentBrazilDate();
+      const todayStr = format(now, 'yyyy-MM-dd');
+
+      const balancesMap = new Map<string, { income: number; expenses: number }>();
 
       transactions.forEach(transaction => {
-        const monthKey = format(new Date(transaction.date), 'yyyy-MM');
+        const tDate = transaction.date.slice(0, 10); // sem new Date(), sem risco de fuso
+        const monthKey = tDate.slice(0, 7);          // "yyyy-MM" direto da string
+
         if (!balancesMap.has(monthKey)) {
           balancesMap.set(monthKey, { income: 0, expenses: 0 });
         }
-        const currentMonthData = balancesMap.get(monthKey)!;
-        if (transaction.type === 'income' && transaction.isPaid) {
-          currentMonthData.income += transaction.amount;
-        } else if (transaction.type === 'expense' && transaction.isPaid) {
-          currentMonthData.expenses += transaction.amount;
+
+        if (!transaction.isPaid) return;
+
+        // Só conta se a transação é <= data efetiva do mês
+        // Para meses passados: último dia do mês. Para mês atual: hoje.
+        const [year, month] = monthKey.split('-').map(Number);
+        const lastDayOfMonth = format(endOfMonth(new Date(year, month - 1, 1)), 'yyyy-MM-dd');
+        const effectiveDate = lastDayOfMonth < todayStr ? lastDayOfMonth : todayStr;
+
+        if (tDate > effectiveDate) return;
+
+        const data = balancesMap.get(monthKey)!;
+        if (transaction.type === 'income') {
+          data.income += transaction.amount;
+        } else if (transaction.type === 'expense') {
+          data.expenses += transaction.amount;
         }
       });
 
@@ -51,6 +67,7 @@ export const useFinancialData = () => {
         });
         previousMonthBalance = balance + previousMonthBalance;
       });
+
       setMonthlyBalances(calculatedBalances);
     };
   }, [transactions]);
