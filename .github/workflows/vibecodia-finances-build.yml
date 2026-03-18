@@ -28,6 +28,5 @@ jobs:
               --base develop \
               --head ${{ github.ref_name }} \
               --title "feat: ${{ github.ref_name }}" \
-              --body "PR gerado automaticamente após sucesso do CI na branch de feature." \
-              --draft
+              --body "PR gerado automaticamente após sucesso do CI na branch de feature."
           fi
