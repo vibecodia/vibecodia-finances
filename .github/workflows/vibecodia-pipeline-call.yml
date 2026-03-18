@@ -1,74 +1,38 @@
-name: Disparar Workflow em Outro Repo
-
+name: Release & Trigger
 on:
   pull_request:
-    types: [opened, edited, reopened]
-
+    branches:
+      - develop
+    types: [opened, synchronize, reopened]
 jobs:
-  build-and-lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configurar Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-
-      - name: Instalar dependências
-        run: npm ci
-
-      - name: Rodar lint
-        run: npm run lint
-
-      - name: Build
-        run: npm run build
-
   release:
-    needs: build-and-lint
+    if: startsWith(github.head_ref, 'feature/')
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.release.outputs.version }}
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.MY_PAT }}
           ref: ${{ github.head_ref }}
-
-      - name: Configurar Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
-      - name: Instalar dependências
-        run: npm ci
-
-      - name: Configurar git
-        run: |
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Release
-        id: release
-        run: |
-          npm run release -- --ci
-          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-
-      - name: Push commit e tags
-        run: git push --follow-tags origin ${{ github.head_ref }}
-
-  trigger-workflow:
+      - run: npm run release -- --ci
+      - run: git push origin ${{ github.head_ref }} --follow-tags
+      - id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+  trigger:
     needs: release
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Disparar workflow em vibecodia-pipeline
-        uses: actions/github-script@v6
+      - uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.MY_PAT }}
           script: |
@@ -83,6 +47,3 @@ jobs:
                 version: '${{ needs.release.outputs.version }}'
               }
             })
-
-      - name: Confirmar disparo
-        run: echo "Workflow disparado no repositório destino para o PR ${{ github.event.pull_request.number }} versão ${{ needs.release.outputs.version }}"
