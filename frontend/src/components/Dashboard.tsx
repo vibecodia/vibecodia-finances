@@ -6,7 +6,7 @@ import { calculateBalances } from '../utils/balanceCalculations';
 import { Wallet, Target, AlertTriangle, ChevronLeft, ChevronRight, CreditCard, Eye, EyeOff } from 'lucide-react';
 import Confetti from 'react-confetti';
 import useWindowSize from '../hooks/useWindowSize';
-import { format, addMonths, subMonths } from 'date-fns';
+import { format, addMonths, subMonths, getDate, getDaysInMonth, isBefore, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useTheme } from '../contexts/ThemeContext';
 import { useEffect } from 'react';
@@ -23,9 +23,11 @@ interface AccountSliderProps {
   income: number;
   spent: number;
   formatCurrency: (value: number) => string;
+  daysPassed: number;
+  totalDays: number;
 }
 
-const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, formatCurrency }) => {
+const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, formatCurrency, daysPassed, totalDays }) => {
   const remaining = Math.max(0, income - spent);
   const hasIncome = income > 0;
   const balance = income - spent;
@@ -54,11 +56,22 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
       ? '● atenção'
       : '● ok';
 
+  const avgDailySpent = daysPassed > 0 ? spent / daysPassed : 0;
+  const daysRemaining = totalDays - daysPassed;
+  const dailyBudget = daysRemaining > 0 ? remaining / daysRemaining : (daysRemaining === 0 ? remaining : 0);
+
   return (
     <div className="space-y-2">
       {/* Header com status */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-text opacity-90">{label}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-text opacity-90">{label}</span>
+          {spent > 0 && (
+            <span className="text-[10px] text-text opacity-40 font-mono italic">
+              ({formatCurrency(avgDailySpent)}/dia)
+            </span>
+          )}
+        </div>
         <span className={`text-[10px] font-mono font-bold uppercase tracking-wide ${statusColor}`}>
           {statusLabel}
         </span>
@@ -97,9 +110,11 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
         <span className="text-[10px] text-text opacity-40 font-mono">
           {spentPct.toFixed(0)}% utilizado
         </span>
-        <span className="text-[10px] text-text opacity-40 font-mono">
-          {remainingPct.toFixed(0)}% disponível
-        </span>
+        {remaining > 0 && daysRemaining > 0 && (
+          <span className="text-[10px] text-primary opacity-60 font-mono font-bold">
+            Disponível: {formatCurrency(dailyBudget)}/dia
+          </span>
+        )}
       </div>
 
       {/* Valores */}
@@ -141,6 +156,15 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   useEffect(() => {
     setThemeMonth(currentMonth);
   }, [currentMonth, setThemeMonth]);
+
+  const today = getCurrentBrazilDate();
+  const isSelectedMonthCurrent = format(currentMonth, 'yyyy-MM') === format(today, 'yyyy-MM');
+  const isSelectedMonthPast = isBefore(endOfMonth(currentMonth), startOfMonth(today));
+  
+  const totalDays = getDaysInMonth(currentMonth);
+  const daysPassed = isSelectedMonthCurrent 
+    ? getDate(today) 
+    : (isSelectedMonthPast ? totalDays : 0);
 
   const transactionsForSelectedMonth = filterTransactionsByMonth(transactions, currentMonth);
   const balanceData = calculateBalances(transactions, savingsGoals, currentMonth);
@@ -378,6 +402,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
           income={flashIncome}
           spent={flashSpent}
           formatCurrency={formatCurrency}
+          daysPassed={daysPassed}
+          totalDays={totalDays}
         />
 
         <div className="border-t border-slate-200 dark:border-slate-700" />
@@ -387,6 +413,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
           income={veroIncome}
           spent={veroSpent}
           formatCurrency={formatCurrency}
+          daysPassed={daysPassed}
+          totalDays={totalDays}
         />
       </div>
 
