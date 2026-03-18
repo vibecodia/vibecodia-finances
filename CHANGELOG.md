@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.26.369](https://github.com/vibecodia/vibecodia-finances/compare/v0.26.368...v0.26.369) (2026-03-18)
+
+## [0.26.368](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.26.368) (2026-03-18)
+
+
+### Bug Fixes
+
+* test new pipe ([199fcd0](https://github.com/vibecodia/vibecodia-finances/commit/199fcd01f1f82723f93a9ef85382d6dbeb6f569a))
+
 ## [0.26.367](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.26.367) (2026-03-18)
 
 
