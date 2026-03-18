@@ -2,10 +2,62 @@ name: Disparar Workflow em Outro Repo
 
 on:
   pull_request:
-    types: [opened, edited, reoppened]
+    types: [opened, edited, reopened]
 
 jobs:
+  build-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Rodar lint
+        run: |
+          npm run lint || true
+
+      - name: Build
+        run: npm run build
+
+  release:
+    needs: build-and-lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.MY_PAT }}
+          ref: ${{ github.head_ref }}
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Configurar git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Release
+        run: npm run release -- --ci
+
+      - name: Push commit e tags
+        run: git push --follow-tags origin ${{ github.head_ref }}
+
   trigger-workflow:
+    needs: release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -15,15 +67,15 @@ jobs:
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.MY_PAT }}
-          script: >
-            github.rest.actions.createWorkflowDispatch({
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
               owner: 'vibecodia',
               repo: 'vibecodia-pipelines',
               workflow_id: '01_finances-update-pods.yml',
               ref: 'main',
               inputs: {
                 pr_number: context.payload.pull_request.number.toString(),
-                pr_branch: context.payload.pull_request.head.ref // Adicione esta linha para passar o branch
+                pr_branch: context.payload.pull_request.head.ref
               }
             })
 

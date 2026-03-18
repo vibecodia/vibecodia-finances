@@ -1,7 +1,7 @@
 {
   "name": "financial-dashboard",
   "private": true,
-  "version": "0.26.364",
+  "version": "0.26.366",
   "type": "module",
   "scripts": {
     "dev": "vite --config frontend/config/vite.config.ts",
@@ -10,8 +10,8 @@
     "preview": "vite preview --config frontend/config/vite.config.ts",
     "start": "node backend/server.js",
     "serve": "serve -s dist -l 5173",
-    "release": "standard-version",
-    "release:dry-run": "standard-version --dry-run",
+    "release": "release-it",
+    "release:dry-run": "release-it --dry-run",
     "test-connection": "node backend/test_connection.js"
   },
   "dependencies": {
@@ -28,8 +28,8 @@
     "express": "^5.1.0",
     "js-cookie": "^3.0.5",
     "lucide-react": "^0.344.0",
-    "multer": "^2.0.0",
     "mongoose": "^8.16.1",
+    "multer": "^2.0.0",
     "node-cron": "^3.0.0",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.2.0",
@@ -40,22 +40,24 @@
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
-    "@eslint/js": "^9.9.1",
+    "@eslint/js": "^9.39.4",
+    "@release-it/conventional-changelog": "^10.0.6",
     "@types/node": "^24.0.8",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@types/react-transition-group": "^4.4.12",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.20",
-    "eslint": "^9.9.1",
+    "eslint": "^9.39.4",
+    "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.11",
     "globals": "^15.9.0",
     "postcss": "^8.4.45",
-    "standard-version": "^9.5.0",
+    "release-it": "^19.2.4",
     "tailwindcss": "^3.4.10",
     "typescript": "^5.5.3",
-    "typescript-eslint": "^8.3.0",
+    "typescript-eslint": "^8.57.1",
     "vite": "^5.4.2"
   }
 }

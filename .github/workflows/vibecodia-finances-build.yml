@@ -1,0 +1,27 @@
+name: Continuous Integration - Finances
+
+on:
+  push:
+    branches: [feature/*]
+
+jobs:
+  build-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Rodar lint
+        run: |
+          npm run lint || true
+
+      - name: Build
+        run: npm run build
