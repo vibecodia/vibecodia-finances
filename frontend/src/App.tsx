@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom';
+import { Route, Routes, useLocation } from 'react-router-dom';
 import { useFinancialData } from './hooks/useFinancialData';
 import Dashboard from './components/Dashboard';
 import TransactionList from './components/TransactionList';
@@ -47,12 +47,16 @@ function App() {
   const { shoppingList, addItem, togglePurchased, removeItem, clearPurchased, togglePriority } = useShoppingList();
   const [animateCombined, setAnimateCombined] = useState(false);
 
+  // Rotas onde o menu lateral não fica expandido no desktop
+  const location = useLocation();
+  const routesWithoutDesktopMenu = ['/playground'];
+  const hideMenuOnDesktop = routesWithoutDesktopMenu.includes(location.pathname);
+
   useEffect(() => {
-    if (isInitializing) return; // Wait for auth check to complete
+    if (isInitializing) return;
 
     if (pin) {
       const hasSeenModal = sessionStorage.getItem(`hasSeenInitialBalanceModal_${pin}`);
-      // Show modal only if loading is done, there are no transactions, and user hasn't seen it for this PIN
       if (!isLoading && transactions.length === 0 && !hasSeenModal) {
         setShowInitialBalanceModal(true);
       }
@@ -136,7 +140,8 @@ function App() {
           isDarkMode={isDarkMode}
         />
 
-        <main className="w-full lg:pl-72 px-4 sm:px-6 lg:px-12 pb-20 transition-all duration-300">
+        {/* No /playground, remove o lg:pl-72 para ocupar toda a largura */}
+        <main className={`w-full px-4 sm:px-6 lg:px-12 pb-20 transition-all duration-300 ${hideMenuOnDesktop ? '' : 'lg:pl-72'}`}>
           <Routes>
             <Route path="/" element={<Dashboard transactions={transactions} savingsGoals={savingsGoals} />} />
             <Route path="/expenses" element={<TransactionList type="expense" transactions={transactions} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} />} />
