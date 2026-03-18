@@ -1,4 +1,4 @@
-name: CI WIP
+name: CI + Docker (Dry Run)
 on:
   push:
     branches:
