@@ -32,7 +32,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Docker Compose dry-run
-        run: docker compose -f infra/docker/docker-compose.yml config
+        run: |
+          touch infra/docker/.env
+          docker compose -f infra/docker/docker-compose.yml config
         env:
           VITE_BACKEND_URL: http://backend:3001
           NODE_ENV: development
