@@ -1,7 +1,7 @@
 {
   "name": "financial-dashboard",
   "private": true,
-  "version": "0.26.364",
+  "version": "0.26.365",
   "type": "module",
   "scripts": {
     "dev": "vite --config frontend/config/vite.config.ts",
@@ -41,6 +41,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@release-it/conventional-changelog": "^10.0.6",
     "@types/node": "^24.0.8",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
