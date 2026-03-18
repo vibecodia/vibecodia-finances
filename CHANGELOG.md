@@ -1,5 +1,19 @@
 # Changelog
 
+# [0.28.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.27.1...v0.28.0) (2026-03-18)
+
+
+### Bug Fixes
+
+* mudar a palavra ([07e2675](https://github.com/vibecodia/vibecodia-finances/commit/07e2675d19e71cda34ac3e24d97c11aa84377561))
+* run deploy only if ([eac9e5d](https://github.com/vibecodia/vibecodia-finances/commit/eac9e5d570e0a15c4323fbdbca9a31bd5dde09ed))
+* test not run deploy ([4b7b033](https://github.com/vibecodia/vibecodia-finances/commit/4b7b0339017e80f6ac4a9c46811dcc7bb006f4d2))
+
+
+### Features
+
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+
 ## [0.27.1](https://github.com/vibecodia/vibecodia-finances/compare/v0.27.0...v0.27.1) (2026-03-18)
 
 # [0.27.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.27.0) (2026-03-18)
