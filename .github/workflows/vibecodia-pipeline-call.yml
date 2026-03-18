@@ -2,10 +2,31 @@ name: Disparar Workflow em Outro Repo
 
 on:
   pull_request:
-    types: [opened, edited, reoppened]
+    types: [opened, edited, reopened]
 
 jobs:
+  build-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Rodar lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
   trigger-workflow:
+    needs: build-and-lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -15,15 +36,15 @@ jobs:
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.MY_PAT }}
-          script: >
-            github.rest.actions.createWorkflowDispatch({
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
               owner: 'vibecodia',
               repo: 'vibecodia-pipelines',
               workflow_id: '01_finances-update-pods.yml',
               ref: 'main',
               inputs: {
                 pr_number: context.payload.pull_request.number.toString(),
-                pr_branch: context.payload.pull_request.head.ref // Adicione esta linha para passar o branch
+                pr_branch: context.payload.pull_request.head.ref
               }
             })
 
