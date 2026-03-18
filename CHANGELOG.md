@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.26.366](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.26.366) (2026-03-18)
+
+
+### Bug Fixes
+
+* checkout correto ([c156562](https://github.com/vibecodia/vibecodia-finances/commit/c156562b06c7332d0ff274642ecdaabd15791813))
+* incluindo o release it ([398fcb0](https://github.com/vibecodia/vibecodia-finances/commit/398fcb09fd01224eed925e4c53f1f30d0f19e163))
+* remove lint do release it ([1a223c6](https://github.com/vibecodia/vibecodia-finances/commit/1a223c62598511317b417d31ba4f7e25aa546825))
+* upgrade na versao do node no workflow ([867de47](https://github.com/vibecodia/vibecodia-finances/commit/867de4768f8716f62b409549ace02a7b1573486c))
+* upgrade na versao do node no workflow ([721a69a](https://github.com/vibecodia/vibecodia-finances/commit/721a69a95e1f1c6d6935e2c80a9964c83db5a223))
+
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
 ### [0.26.364](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.26.364) (2026-03-17)
