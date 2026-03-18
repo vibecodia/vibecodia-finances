@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.26.367](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.26.367) (2026-03-18)
+
+
+### Bug Fixes
+
+* corrigir configuração do eslint ([c9ff69c](https://github.com/vibecodia/vibecodia-finances/commit/c9ff69c28e96841e0ff58b76664797ea74e911b7))
+* version on the other pipe ([b5767e9](https://github.com/vibecodia/vibecodia-finances/commit/b5767e9ec5668b7fd8a9e9fd77118f5aa8465ffb))
+
 ## [0.26.366](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.26.366) (2026-03-18)
 
 

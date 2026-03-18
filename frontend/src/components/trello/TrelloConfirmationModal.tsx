@@ -1,4 +1,5 @@
 import { AlertTriangle, CheckCircle } from 'lucide-react';
+
 import { Task } from '../../types/trello/task';
 
 interface ConfirmationModalProps {

@@ -1,27 +1,3 @@
-import React, { useState, useMemo } from 'react';
-import { SavingsGoal, Transaction } from '../types';
-import { useTheme } from '../contexts/ThemeContext';
-import {
-  formatCurrency,
-  formatBrazilDate,
-  getCurrentBrazilDate,
-  parseLocalDate,
-} from '../utils/helpers';
-import {
-  Target,
-  TrendingUp,
-  BarChart3,
-  PieChart as PieChartIcon,
-  ArrowUp,
-  ArrowDown,
-  Minus,
-  Maximize2,
-  Filter,
-  AlertCircle,
-  Printer,
-  Calculator,
-  Info
-} from 'lucide-react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -40,9 +16,36 @@ import {
   ScatterController,
   Filler,
 } from 'chart.js';
-import { Doughnut, Line, Pie, Scatter } from 'react-chartjs-2';
 import { startOfMonth, endOfMonth, isWithinInterval, format, differenceInDays } from 'date-fns';
+import {
+  Target,
+  TrendingUp,
+  BarChart3,
+  PieChart as PieChartIcon,
+  ArrowUp,
+  ArrowDown,
+  Minus,
+  Maximize2,
+  Filter,
+  AlertCircle,
+  Printer,
+  Calculator,
+  Info
+} from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Doughnut, Line, Pie, Scatter } from 'react-chartjs-2';
+
+import { useTheme } from '../contexts/ThemeContext';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
+import { SavingsGoal, Transaction } from '../types';
+import {
+  formatCurrency,
+  formatBrazilDate,
+  getCurrentBrazilDate,
+  parseLocalDate,
+} from '../utils/helpers';
+
+
 
 ChartJS.register(
   CategoryScale,

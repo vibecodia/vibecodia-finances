@@ -28,6 +28,8 @@ jobs:
   release:
     needs: build-and-lint
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,7 +52,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Release
-        run: npm run release -- --ci
+        id: release
+        run: |
+          npm run release -- --ci
+          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
       - name: Push commit e tags
         run: git push --follow-tags origin ${{ github.head_ref }}
@@ -74,9 +79,10 @@ jobs:
               ref: 'main',
               inputs: {
                 pr_number: context.payload.pull_request.number.toString(),
-                pr_branch: context.payload.pull_request.head.ref
+                pr_branch: context.payload.pull_request.head.ref,
+                version: '${{ needs.release.outputs.version }}'
               }
             })
 
       - name: Confirmar disparo
-        run: echo "Workflow disparado no repositório destino para o PR ${{ github.event.pull_request.number }}"
+        run: echo "Workflow disparado no repositório destino para o PR ${{ github.event.pull_request.number }} versão ${{ needs.release.outputs.version }}"

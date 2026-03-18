@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
-import { SavingsGoal, SavingsContribution } from '../types';
-import { formatCurrency, formatBrazilDate, getBrazilDateString } from '../utils/helpers';
 import { Target, Plus, Trash2, Edit3, Calendar, TrendingUp, History, X } from 'lucide-react';
-import ConfirmationModal from './ConfirmationModal';
+import React, { useState } from 'react';
+
 import { useTheme } from '../contexts/ThemeContext';
 import { cn } from '../lib/utils';
+import { SavingsGoal, SavingsContribution } from '../types';
+import { formatCurrency, formatBrazilDate, getBrazilDateString } from '../utils/helpers';
+
+import ConfirmationModal from './ConfirmationModal';
+
 
 interface SavingsGoalsProps {
   goals: SavingsGoal[];

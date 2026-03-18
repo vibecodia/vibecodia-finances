@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import Cookies from "js-cookie";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 const VERIFICATION_COOKIE_NAME: string =
   import.meta.env.VITE_VERIFICATION_COOKIE_NAME || "user_verified";

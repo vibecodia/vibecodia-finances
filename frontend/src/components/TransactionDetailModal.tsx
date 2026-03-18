@@ -1,8 +1,10 @@
+import { TrendingUp, DollarSign, Check, Repeat, Tag, Calendar as CalendarIcon, Info, CreditCard, Wallet } from 'lucide-react';
 import React from 'react';
+
+import { useTheme } from '../contexts/ThemeContext';
 import { Transaction } from '../types';
 import { formatCurrency, formatBrazilDate, parseLocalDate, formatPaymentMethod } from '../utils/helpers';
-import { TrendingUp, DollarSign, Check, Repeat, Tag, Calendar as CalendarIcon, Info, CreditCard, Wallet } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 
 interface TransactionDetailModalProps {

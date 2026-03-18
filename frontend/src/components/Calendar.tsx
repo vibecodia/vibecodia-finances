@@ -1,10 +1,14 @@
+import { startOfMonth, endOfMonth } from 'date-fns';
+import { ChevronLeft, ChevronRight, AlertTriangle, Clock, CreditCard, TrendingUp, DollarSign, Repeat, Check, Wallet } from 'lucide-react';
 import React, { useState } from 'react';
+
+import { useTheme } from '../contexts/ThemeContext';
 import { Transaction, PendingPayment } from '../types';
 import { formatCurrency, getCurrentBrazilDate, formatBrazilDate, parseLocalDate, isTransactionOverdue, getDaysUntilDue, getTransactionsWithRecurrence, getBrazilDateString, formatPaymentMethod } from '../utils/helpers';
-import { ChevronLeft, ChevronRight, AlertTriangle, Clock, CreditCard, TrendingUp, DollarSign, Repeat, Check, Wallet } from 'lucide-react';
+
 import TransactionDetailModal from './TransactionDetailModal';
-import { startOfMonth, endOfMonth } from 'date-fns';
-import { useTheme } from '../contexts/ThemeContext';
+
+
 
 interface CalendarProps {
   transactions: Transaction[];

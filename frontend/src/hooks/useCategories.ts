@@ -1,5 +1,6 @@
-import { useLocalStorage } from './trello/useLocalStorage';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../utils/helpers';
+
+import { useLocalStorage } from './trello/useLocalStorage';
 
 export const useCategories = () => {
   // Use a manageable list that starts with standard categories

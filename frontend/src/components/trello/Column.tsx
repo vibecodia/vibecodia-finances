@@ -1,6 +1,8 @@
 import React from 'react';
-import { TaskCard } from './TaskCard';
+
 import { Task } from '../../types/trello/task';
+
+import { TaskCard } from './TaskCard';
 
 interface ColumnProps {
   id: 'todo' | 'inProgress' | 'done';

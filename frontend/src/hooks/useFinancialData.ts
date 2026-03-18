@@ -1,8 +1,9 @@
+import { format, endOfMonth } from 'date-fns';
 import { useState, useEffect, useMemo } from 'react';
+
+import { useVerification } from '../contexts/VerificationContext';
 import { Transaction, SavingsGoal, SavingsContribution, MonthlyBalance } from '../types';
 import { getCurrentBrazilDate, getBrazilDateString } from '../utils/helpers';
-import { format, endOfMonth } from 'date-fns';
-import { useVerification } from '../contexts/VerificationContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 

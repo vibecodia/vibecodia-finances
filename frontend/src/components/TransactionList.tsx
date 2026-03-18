@@ -1,14 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { Transaction } from '../types';
-import { formatCurrency, isTransactionOverdue, getDaysUntilDue, formatBrazilDate, getCurrentBrazilDate, filterTransactionsByMonth, parseLocalDate, formatPaymentMethod } from '../utils/helpers';
-import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight, Wallet, ChevronDown, ChevronUp } from 'lucide-react';
-import TransactionForm from './TransactionForm';
-import ConfirmationModal from './ConfirmationModal';
-import DailyDateSlider from './DailyDateSlider';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight, Wallet, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+
 import { useTheme } from '../contexts/ThemeContext';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
+import { Transaction } from '../types';
+import { formatCurrency, isTransactionOverdue, getDaysUntilDue, formatBrazilDate, getCurrentBrazilDate, filterTransactionsByMonth, parseLocalDate, formatPaymentMethod } from '../utils/helpers';
+
+import ConfirmationModal from './ConfirmationModal';
+import DailyDateSlider from './DailyDateSlider';
+import TransactionForm from './TransactionForm';
+
+
 
 interface TransactionListProps {
   type: 'expense' | 'income';

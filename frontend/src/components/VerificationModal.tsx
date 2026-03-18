@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+
 import { useVerification } from '../contexts/VerificationContext';
 
 const VerificationModal: React.FC = () => {
