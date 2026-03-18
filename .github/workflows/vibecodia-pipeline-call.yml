@@ -35,6 +35,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.MY_PAT }}
+          ref: ${{ github.head_ref }}
 
       - name: Configurar Node.js
         uses: actions/setup-node@v3
