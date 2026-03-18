@@ -1,5 +1,5 @@
-import React from 'react';
 import { ShoppingBasket } from 'lucide-react';
+import React from 'react';
 
 import { ColorPalette } from '../contexts/ThemeContext';
 

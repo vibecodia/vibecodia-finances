@@ -1,31 +1,3 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { Transaction, SavingsGoal } from '../types';
-import { useTheme } from '../contexts/ThemeContext';
-import { 
-  formatCurrency, 
-  formatPaymentMethod,
-  parseLocalDate,
-  formatBrazilDate,
-  getCurrentBrazilDate
-} from '../utils/helpers';
-import { 
-  BarChart3, 
-  PieChart as PieChartIcon, 
-  Filter, 
-  Search, 
-  CreditCard,
-  TrendingUp,
-  ArrowUp,
-  ArrowDown,
-  Table as TableIcon,
-  Maximize2,
-  ChevronDown,
-  ChevronUp,
-  Printer,
-  X,
-  RotateCcw
-} from 'lucide-react';
-import SavingsGoalsPlayground from './SavingsGoalsPlayground';
 import { 
   Chart as ChartJS, 
   CategoryScale, 
@@ -43,12 +15,42 @@ import {
   PieController,
   Filler
 } from 'chart.js';
-import { Doughnut, Pie, Line, Bar } from 'react-chartjs-2';
 import { startOfMonth, endOfMonth, isWithinInterval, format, subMonths } from 'date-fns';
+import { 
+  BarChart3, 
+  PieChart as PieChartIcon, 
+  Filter, 
+  Search, 
+  CreditCard,
+  TrendingUp,
+  ArrowUp,
+  ArrowDown,
+  Table as TableIcon,
+  Maximize2,
+  ChevronDown,
+  ChevronUp,
+  Printer,
+  X,
+  RotateCcw
+} from 'lucide-react';
+import React, { useState, useMemo, useRef } from 'react';
+import { Doughnut, Pie, Line, Bar } from 'react-chartjs-2';
+
+import { useTheme } from '../contexts/ThemeContext';
 // import { ptBR } from 'date-fns/locale';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
 import { useCategories } from '../hooks/useCategories';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
+import { Transaction, SavingsGoal } from '../types';
+import { 
+  formatCurrency, 
+  formatPaymentMethod,
+  parseLocalDate,
+  formatBrazilDate,
+  getCurrentBrazilDate
+} from '../utils/helpers';
+
+import SavingsGoalsPlayground from './SavingsGoalsPlayground';
 
 ChartJS.register(
   CategoryScale, 

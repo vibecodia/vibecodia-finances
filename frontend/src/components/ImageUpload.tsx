@@ -1,8 +1,10 @@
-import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import { Upload, Loader2, CheckCircle, XCircle, Camera } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+
 import { useTheme } from '../contexts/ThemeContext';
+
 import QRScanner from './QRScanner';
 
 type ImageUploadProps = {
@@ -85,7 +87,9 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
               const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
               const barcodes = await detector.detect(img);
               if (barcodes.length > 0) return resolve(barcodes[0].rawValue);
-            } catch (err) {}
+            } catch (_err) {
+              // intencional
+            }
           }
 
           // 2. jsQR com Canvas Processado

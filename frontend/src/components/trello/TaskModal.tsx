@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
 import { X, Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+
 import { Task } from '../../types/trello/task';
 import { createTask } from '../../utils/trello/taskUtils';
 

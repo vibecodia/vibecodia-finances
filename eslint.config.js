@@ -1,6 +1,7 @@
 import js from "@eslint/js";
-import tseslint from "typescript-eslint";
 import importPlugin from "eslint-plugin-import";
+import globals from "globals";
+import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   js.configs.recommended,
@@ -9,23 +10,20 @@ export default tseslint.config(
     plugins: {
       import: importPlugin,
     },
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+    },
     rules: {
-      // TypeScript
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
       "@typescript-eslint/no-explicit-any": "warn",
-
-      // Import order
+      "@typescript-eslint/ban-ts-comment": ["error", { "ts-ignore": false }],
       "import/order": [
         "warn",
         {
-          groups: [
-            "builtin",    // node:fs, node:path
-            "external",   // express, axios
-            "internal",   // @/lib/...
-            "parent",     // ../
-            "sibling",    // ./
-            "index",      // ./index
-          ],
+          groups: ["builtin", "external", "internal", "parent", "sibling", "index"],
           "newlines-between": "always",
           alphabetize: { order: "asc", caseInsensitive: true },
         },
@@ -34,7 +32,27 @@ export default tseslint.config(
     },
   },
   {
-    // Arquivos a ignorar
-    ignores: ["node_modules/**", "dist/**", "build/**"],
+    ignores: [
+      "node_modules/**",
+      "dist/**",
+      "build/**",
+      "**/*.min.js",
+    ],
+  },
+  {
+    files: ["backend/**/*.js"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        require: "readonly",
+        module: "readonly",
+        exports: "readonly",
+        __dirname: "readonly",
+        __filename: "readonly",
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
   }
 );

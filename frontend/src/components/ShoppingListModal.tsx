@@ -1,6 +1,7 @@
+import { X, Check, Trash2, PlusCircle, Star } from 'lucide-react';
 import React, { useState, useRef, useEffect } from 'react';
 import { TransitionGroup, CSSTransition } from 'react-transition-group';
-import { X, Check, Trash2, PlusCircle, Star } from 'lucide-react';
+
 import { ColorPalette } from '../contexts/ThemeContext';
 
 interface ShoppingItem {

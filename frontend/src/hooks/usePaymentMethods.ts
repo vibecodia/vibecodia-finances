@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
-import { useLocalStorage } from './trello/useLocalStorage';
+
 import { PAYMENT_METHODS, formatPaymentMethod } from '../utils/helpers';
+
+import { useLocalStorage } from './trello/useLocalStorage';
 
 const DEFAULT_PAYMENT_METHODS = PAYMENT_METHODS.map(m => m.label as string);
 

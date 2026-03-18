@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Transaction, SavingsGoal } from '../types';
-import { formatCurrency, filterTransactionsByMonth, getCurrentBrazilDate, formatPaymentMethod } from '../utils/helpers';
-import { calculateBalances } from '../utils/balanceCalculations';
-import { Wallet, Target, AlertTriangle, ChevronLeft, ChevronRight, CreditCard, Eye, EyeOff } from 'lucide-react';
-import Confetti from 'react-confetti';
-import useWindowSize from '../hooks/useWindowSize';
 import { format, addMonths, subMonths, getDate, getDaysInMonth, isBefore, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Wallet, Target, AlertTriangle, ChevronLeft, ChevronRight, CreditCard, Eye, EyeOff } from 'lucide-react';
+import React, { useState , useEffect } from 'react';
+import Confetti from 'react-confetti';
+import { useNavigate } from 'react-router-dom';
+
 import { useTheme } from '../contexts/ThemeContext';
-import { useEffect } from 'react';
+import useWindowSize from '../hooks/useWindowSize';
+import { Transaction, SavingsGoal } from '../types';
+import { calculateBalances } from '../utils/balanceCalculations';
+import { formatCurrency, filterTransactionsByMonth, getCurrentBrazilDate, formatPaymentMethod } from '../utils/helpers';
+
+
 
 interface DashboardProps {
   transactions: Transaction[];

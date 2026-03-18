@@ -1,13 +1,16 @@
+import { Plus, Moon, Sun } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
+
+import { useTheme } from '../../contexts/ThemeContext';
+import { useLocalStorage } from '../../hooks/trello/useLocalStorage';
 import { Task, Column as ColumnType } from '../../types/trello/task';
+
 import { Column } from './Column';
+import { MoveTaskModal } from './MoveTaskModal';
+import { SearchBar } from './SearchBar';
 import { TaskModal } from './TaskModal';
 import { TrelloConfirmationModal } from './TrelloConfirmationModal';
-import { SearchBar } from './SearchBar';
-import { Plus, Moon, Sun } from 'lucide-react';
-import { useLocalStorage } from '../../hooks/trello/useLocalStorage';
-import { useTheme } from '../../contexts/ThemeContext';
-import { MoveTaskModal } from './MoveTaskModal';
+
 
 const initialColumns: ColumnType[] = [
   { id: 'todo', title: 'A Fazer', tasks: [] },

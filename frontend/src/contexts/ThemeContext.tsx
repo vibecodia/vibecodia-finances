@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode, useMemo } from 'react';
+
 import { HEALTH_CALENDAR } from '../utils/healthData';
 
 export interface ColorPalette {

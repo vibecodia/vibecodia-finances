@@ -1,6 +1,7 @@
+import { Home, TrendingDown, TrendingUp, BarChart3, Target, Calendar, Settings, Menu, X, CheckSquare, PieChart } from 'lucide-react';
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, TrendingDown, TrendingUp, BarChart3, Target, Calendar, Settings, Menu, X, CheckSquare, PieChart } from 'lucide-react';
+
 import { useTheme } from '../contexts/ThemeContext';
 import { cn } from '../lib/utils';
 

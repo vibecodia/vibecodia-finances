@@ -1,5 +1,6 @@
-import React from 'react';
 import { AlertTriangle } from 'lucide-react';
+import React from 'react';
+
 import { useTheme } from '../contexts/ThemeContext';
 
 interface ConfirmationModalProps {

@@ -1,24 +1,25 @@
+import { Moon, Sun } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
-import { useFinancialData } from './hooks/useFinancialData';
+
+import Calendar from './components/Calendar';
 import Dashboard from './components/Dashboard';
-import TransactionList from './components/TransactionList';
+import Header from './components/Header';
+import InitialBalanceModal from './components/InitialBalanceModal';
+import Navigation from './components/Navigation';
+import Playground from './components/Playground';
 import Reports from './components/Reports';
 import SavingsGoals from './components/SavingsGoals';
-import Calendar from './components/Calendar';
+import TransactionList from './components/TransactionList';
 import Settings from './components/Settings';
-import Navigation from './components/Navigation';
-import Header from './components/Header';
+import { TrelloBoard } from './components/trello/TrelloBoard';
+import VerificationModal from './components/VerificationModal';
 import { useTheme } from './contexts/ThemeContext';
 import { useVerification } from './contexts/VerificationContext';
-import VerificationModal from './components/VerificationModal';
-import InitialBalanceModal from './components/InitialBalanceModal';
-import { useState, useEffect } from 'react';
-import { Moon, Sun } from 'lucide-react';
 import ShoppingCartButton from './components/ShoppingCartButton';
 import ShoppingListModal from './components/ShoppingListModal';
+import { useFinancialData } from './hooks/useFinancialData';
 import { useShoppingList } from './hooks/useShoppingList';
-import { TrelloBoard } from './components/trello/TrelloBoard';
-import Playground from './components/Playground';
 import { getBrazilDateString } from './utils/helpers';
 
 function App() {

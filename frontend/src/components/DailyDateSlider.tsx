@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getDaysInMonth, startOfMonth, addDays, endOfDay, isSameDay } from 'date-fns';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+
 import { useTheme } from '../contexts/ThemeContext';
 
 interface DailyDateSliderProps {
@@ -45,7 +46,7 @@ const DailyDateSlider: React.FC<DailyDateSliderProps> = ({
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
     const clickX = clientX - sliderRect.left;
     const percentage = clickX / sliderRect.width;
-    let day = Math.round(percentage * (daysInMonth - 1)) + 1;
+    const day = Math.round(percentage * (daysInMonth - 1)) + 1;
     return Math.max(1, Math.min(daysInMonth, day));
   }, [daysInMonth]);
 

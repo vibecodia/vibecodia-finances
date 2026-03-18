@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, TooltipItem, Filler } from 'chart.js';
-import { Bar, Doughnut } from 'react-chartjs-2';
-import { Transaction, SavingsGoal } from '../types';
-import { getMonthlyData, getCategoryData, formatCurrency, getCurrentBrazilDate } from '../utils/helpers';
-import { BarChart3, PieChart, TrendingUp, Brain, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { BarChart3, PieChart, TrendingUp, Brain, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Bar, Doughnut } from 'react-chartjs-2';
+
 import { useTheme } from '../contexts/ThemeContext';
+import { Transaction, SavingsGoal } from '../types';
+import { getMonthlyData, getCategoryData, formatCurrency, getCurrentBrazilDate } from '../utils/helpers';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, Filler);
 

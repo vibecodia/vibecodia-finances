@@ -1,6 +1,7 @@
 
-import { Task } from '../../types/trello/task';
 import { Edit2, Trash2, ArrowRight } from 'lucide-react';
+
+import { Task } from '../../types/trello/task';
 
 interface MoveTaskModalProps {
   isOpen: boolean;

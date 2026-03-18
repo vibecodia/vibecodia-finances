@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
 import { X, Camera, RefreshCw } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+
 import { useTheme } from '../contexts/ThemeContext';
 
 interface QRScannerProps {

@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Column } from './Column';
-import { Task } from '../../types/trello/task';
 import { CheckSquare, Plus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+
+import { Task } from '../../types/trello/task';
+
+import { Column } from './Column';
 import { TaskModal } from './TaskModal';
 
 const initialTasks: Record<string, Task[]> = {

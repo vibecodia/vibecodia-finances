@@ -1,5 +1,6 @@
-import React from 'react';
 import { Calendar } from 'lucide-react';
+import React from 'react';
+
 import { Task } from '../../types/trello/task';
 import { getPriorityColor, getPriorityLabel, formatDate } from '../../utils/trello/taskUtils';
 
