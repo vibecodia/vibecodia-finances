@@ -10,6 +10,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
+      - env:
+        MY_PAT: ${{ secrets.MY_PAT }}
         with:
           node-version: 20
           cache: 'npm'
