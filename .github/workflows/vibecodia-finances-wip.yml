@@ -1,0 +1,40 @@
+name: CI + Docker (Dry Run)
+on:
+  push:
+    branches:
+      - 'wip/*'
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.MY_PAT }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - run: npm run release:dry-run
+        env:
+          MY_PAT: ${{ secrets.MY_PAT }}
+
+  docker:
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker Compose dry-run
+        run: |
+          touch infra/docker/.env
+          docker compose -f infra/docker/docker-compose.yml config
+        env:
+          VITE_BACKEND_URL: http://backend:3001
+          NODE_ENV: development
