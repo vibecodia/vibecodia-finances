@@ -25,8 +25,37 @@ jobs:
       - name: Build
         run: npm run build
 
-  trigger-workflow:
+  release:
     needs: build-and-lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.MY_PAT }}
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Configurar git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Release patch
+        run: npm run release -- --release-as patch
+
+      - name: Push commit e tags
+        run: git push --follow-tags origin ${{ github.head_ref }}
+
+  trigger-workflow:
+    needs: release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
