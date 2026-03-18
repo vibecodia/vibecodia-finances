@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.27.1](https://github.com/vibecodia/vibecodia-finances/compare/v0.27.0...v0.27.1) (2026-03-18)
+
 # [0.27.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.27.0) (2026-03-18)
 
 
