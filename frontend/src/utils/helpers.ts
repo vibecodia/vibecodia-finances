@@ -506,7 +506,10 @@ export const INCOME_CATEGORIES = [
   'Salário',
   'Vale',
   'Reembolsos',
-  'Aluguéis'
+  'Aluguéis',
+  'Premiação',
+  'Déc.Terceiro',
+  'Férias'
 ];
 
 export const PAYMENT_METHODS = [
