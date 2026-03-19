@@ -49,3 +49,19 @@ jobs:
           tags: |
             ghcr.io/vibecodia/vibecodia-finances-frontend:latest
             ghcr.io/vibecodia/vibecodia-finances-frontend:${{ inputs.version }}
+            
+      - name: Limpar imagens antigas no ghcr.io
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: vibecodia-finances-backend
+          package-type: container
+          min-versions-to-keep: 3
+          token: ${{ secrets.MY_PAT }}
+
+      - name: Limpar imagens antigas no ghcr.io
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: vibecodia-finances-frontend
+          package-type: container
+          min-versions-to-keep: 3
+          token: ${{ secrets.MY_PAT }}
