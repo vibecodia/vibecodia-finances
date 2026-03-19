@@ -70,7 +70,7 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
           <span className="text-sm font-semibold text-text opacity-90">{label}</span>
           {spent > 0 && (
             <span className="text-[10px] text-text opacity-40 font-mono italic">
-              ({formatCurrency(avgDailySpent)}/dia)
+              (média diária {formatCurrency(avgDailySpent)})
             </span>
           )}
         </div>
