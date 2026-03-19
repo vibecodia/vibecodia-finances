@@ -81,9 +81,24 @@ jobs:
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Verificar se tag já existe
+        id: tag-check
+        run: |
+          git fetch --tags
+          VERSION=$(node -p "require('./package.json').version")
+          if git tag | grep -q "^v$VERSION$"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Tag v$VERSION já existe, pulando release."
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - run: npm run release -- --ci
+        if: steps.tag-check.outputs.exists == 'false'
         env:
           MY_PAT: ${{ secrets.MY_PAT }}
+
       - id: version
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
