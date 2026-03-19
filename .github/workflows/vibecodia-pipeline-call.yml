@@ -106,7 +106,7 @@ jobs:
               owner: 'vibecodia',
               repo: 'vibecodia-finances',
               workflow_id: 'build-push.yml',
-              ref: '${{ github.head_ref }}',
+              ref: 'develop',
               inputs: {
                 version: '${{ needs.release.outputs.version }}',
                 pr_branch: '${{ github.head_ref }}'
