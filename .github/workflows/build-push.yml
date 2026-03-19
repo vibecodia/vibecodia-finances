@@ -1,0 +1,51 @@
+name: Build & Push Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        required: true
+      pr_branch:
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.pr_branch }}
+
+      - name: Login ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.MY_PAT }}
+
+      - name: Build e push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: infra/docker/Dockerfile.backend
+          push: true
+          tags: |
+            ghcr.io/vibecodia/vibecodia-finances-backend:latest
+            ghcr.io/vibecodia/vibecodia-finances-backend:${{ inputs.version }}
+
+      - name: Build e push frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: infra/docker/Dockerfile.frontend
+          push: true
+          build-args: |
+            VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL }}
+            VITE_VERIFICATION_COOKIE_NAME=${{ vars.VITE_VERIFICATION_COOKIE_NAME }}
+            VITE_VERIFICATION_TIMEOUT_MS=${{ vars.VITE_VERIFICATION_TIMEOUT_MS }}
+          tags: |
+            ghcr.io/vibecodia/vibecodia-finances-frontend:latest
+            ghcr.io/vibecodia/vibecodia-finances-frontend:${{ inputs.version }}
