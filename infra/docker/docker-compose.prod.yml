@@ -1,20 +1,12 @@
 services:
   frontend:
-    build:
-      context: ../../
-      dockerfile: infra/docker/Dockerfile.frontend
-      args:
-        VITE_PIN_CODE: ${VITE_PIN_CODE}
-        VITE_VERIFICATION_COOKIE_NAME: ${VITE_VERIFICATION_COOKIE_NAME}
-        VITE_VERIFICATION_TIMEOUT_MS: ${VITE_VERIFICATION_TIMEOUT_MS}
+    image: ghcr.io/vibecodia/vibecodia-finances-frontend:latest
     ports:
       - "80:80"
       - "443:443"
     networks:
       - default
       - rede-global-proxy
-    env_file:
-      - .env
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
       - /etc/letsencrypt:/etc/letsencrypt:ro
@@ -25,9 +17,7 @@ services:
     container_name: financial-app-frontend
 
   backend:
-    build:
-      context: ../../
-      dockerfile: infra/docker/Dockerfile.backend
+    image: ghcr.io/vibecodia/vibecodia-finances-backend:latest
     networks:
       - default
       - rede-global-proxy
