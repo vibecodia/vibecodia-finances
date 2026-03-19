@@ -1,5 +1,22 @@
 # Changelog
 
+# [0.30.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.30.0) (2026-03-19)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* bora deploy ([5a9d8d8](https://github.com/vibecodia/vibecodia-finances/commit/5a9d8d8164ff645e4677941e18bdf136eb6d4d18))
+* testando health check menos indisponibilidade ([4ede34e](https://github.com/vibecodia/vibecodia-finances/commit/4ede34edd14e04b8963ff393e1d96c56d1abae0e))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+
 # [0.29.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.29.0) (2026-03-19)
 
 
