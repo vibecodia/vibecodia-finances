@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.29.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.28.0...v0.29.0) (2026-03-19)
+
+
+### Features
+
+* small change in gasto médio diário para os vales ([7e9c481](https://github.com/vibecodia/vibecodia-finances/commit/7e9c4812e73b892b8fe4630196fd69e48ae60faa))
+
 # [0.28.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.27.1...v0.28.0) (2026-03-18)
 
 
