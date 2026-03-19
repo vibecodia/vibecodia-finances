@@ -387,16 +387,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
             <CreditCard className="w-5 h-5 text-primary" />
             <span className="text-text font-bold">Saldo Benefícios</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 bg-red-500 rounded-full" />
-              <span className="text-text text-xs">Utilizado</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 bg-green-400 rounded-full" />
-              <span className="text-text text-xs">Disponível</span>
-            </div>
-          </div>
         </div>
 
         <AccountSlider
