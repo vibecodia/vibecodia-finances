@@ -114,7 +114,7 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
         </span>
         {remaining > 0 && daysRemaining > 0 && (
           <span className="text-[10px] text-primary opacity-60 font-mono font-bold">
-            Disponível: {formatCurrency(dailyBudget)}/dia
+            Sugerido: {formatCurrency(dailyBudget)}/dia
           </span>
         )}
       </div>

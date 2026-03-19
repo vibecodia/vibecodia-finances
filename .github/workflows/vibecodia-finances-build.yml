@@ -7,7 +7,7 @@ permissions:
   contents: write
   pull-requests: write
 jobs:
-  ci-and-pr:
+  ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,7 +18,34 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+
+  auto-pr:
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Verificar alterações relevantes
+        id: check
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD)
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -qE '^(frontend|backend|infra/docker)/'; then
+            echo "relevant=true" >> $GITHUB_OUTPUT
+          else
+            echo "relevant=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Sem alterações relevantes
+        if: steps.check.outputs.relevant == 'false'
+        run: |
+          echo "⚠️ Nenhuma alteração em frontend/, backend/ ou infra/docker/."
+          echo "O PR automático não será criado e nenhum deploy será disparado no servidor."
+
       - name: Create Pull Request
+        if: steps.check.outputs.relevant == 'true'
         env:
           GH_TOKEN: ${{ secrets.MY_PAT }}
         run: |
