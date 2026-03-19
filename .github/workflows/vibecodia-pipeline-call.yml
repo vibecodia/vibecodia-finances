@@ -34,7 +34,7 @@ jobs:
               mergeable = pr.mergeable;
 
               if (mergeable === null) {
-                console.log(`Tentativa ${attempts}/${maxAttempts} — GitHub ainda calculando mergeabilidade, aguardando 10s...`);
+                console.log(`Tentativa ${attempts}/${maxAttempts} — aguardando 10s...`);
                 await new Promise(resolve => setTimeout(resolve, 10000));
               }
             }
@@ -42,17 +42,13 @@ jobs:
             if (mergeable === null) {
               core.summary
                 .addHeading('⚠️ Não foi possível verificar conflitos')
-                .addRaw('O GitHub não retornou o status de mergeabilidade após várias tentativas.')
-                .addEOL()
-                .addRaw('O deploy foi bloqueado por precaução. Feche e reabra o PR para tentar novamente.')
+                .addRaw('O deploy foi bloqueado por precaução. Feche e reabra o PR.')
                 .write();
               core.setOutput('mergeable', 'false');
             } else if (mergeable === false) {
               core.summary
                 .addHeading('⚠️ PR com conflitos — deploy bloqueado')
-                .addRaw('Este PR possui conflitos com a branch `develop`.')
-                .addEOL()
-                .addRaw('Resolva os conflitos antes de prosseguir com o release e deploy.')
+                .addRaw('Resolva os conflitos antes de prosseguir.')
                 .write();
               core.setOutput('mergeable', 'false');
             } else {
@@ -81,7 +77,6 @@ jobs:
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
       - name: Verificar se tag já existe
         id: tag-check
         run: |
@@ -89,21 +84,73 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           if git tag | grep -q "^v$VERSION$"; then
             echo "exists=true" >> $GITHUB_OUTPUT
-            echo "⚠️ Tag v$VERSION já existe, pulando release."
           else
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
-
       - run: npm run release -- --ci
         if: steps.tag-check.outputs.exists == 'false'
         env:
           MY_PAT: ${{ secrets.MY_PAT }}
-
       - id: version
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
-  trigger:
+  build-images:
     needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.MY_PAT }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: 'vibecodia',
+              repo: 'vibecodia-finances',
+              workflow_id: 'build-push.yml',
+              ref: 'develop',
+              inputs: {
+                version: '${{ needs.release.outputs.version }}',
+                pr_branch: '${{ github.head_ref }}'
+              }
+            })
+
+      - name: Aguardar build completar
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.MY_PAT }}
+          script: |
+            await new Promise(resolve => setTimeout(resolve, 10000));
+            
+            let completed = false;
+            let attempts = 0;
+            
+            while (!completed && attempts < 30) {
+              attempts++;
+              const { data: runs } = await github.rest.actions.listWorkflowRuns({
+                owner: 'vibecodia',
+                repo: 'vibecodia-finances',
+                workflow_id: 'build-push.yml',
+                per_page: 1
+              });
+              
+              const run = runs.workflow_runs[0];
+              console.log(`Status: ${run.status} | Conclusão: ${run.conclusion}`);
+              
+              if (run.status === 'completed') {
+                if (run.conclusion !== 'success') {
+                  core.setFailed('Build das imagens falhou');
+                }
+                completed = true;
+              } else {
+                await new Promise(resolve => setTimeout(resolve, 15000));
+              }
+            }
+            
+            if (!completed) {
+              core.setFailed('Timeout aguardando build das imagens');
+            }
+
+  trigger:
+    needs: [release, build-images]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v7
