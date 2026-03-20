@@ -63,7 +63,7 @@ jobs:
 
           # Configurable globs
           GLOBS=(
-            "frontend/src/components/playground*.tsx"
+            "frontend/src/components/*.tsx"
             "frontend/src/types/*.ts"
             "frontend/src/hooks/*.ts"
             "backend/src/routes/*.ts"
