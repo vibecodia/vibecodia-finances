@@ -1,4 +1,4 @@
-# .github/workflows/run-gemini-from-issue.yml
+# .github/workflows/run-aider-from-issue.yml
 name: "IA-Driven Development Workflow"
 
 on:
@@ -33,248 +33,130 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: "📥 Install aider"
+        run: pip install aider-chat --quiet
+
       - name: "🔧 Configure Git"
         run: |
-          git config user.name "Gemini-CLI Bot"
+          git config user.name "Aider Bot"
           git config user.email "github-actions-bot@users.noreply.github.com"
 
-      - name: "📂 Build codebase context"
-        id: build_codebase_context
+      - name: "🔑 Validate secrets"
         run: |
-          mkdir -p ia/context
-          SNAPSHOT_FILE="ia/context/codebase-snapshot.md"
-          
-          echo "🔍 Generating codebase snapshot..."
-          
-          {
-            echo "# Codebase Snapshot"
-            echo ""
-            echo "## Project Structure (.ts, .tsx)"
-            echo "\`\`\`"
-            find . -maxdepth 10 -type f \( -name "*.ts" -o -name "*.tsx" \) \
-              -not -path "*/node_modules/*" \
-              -not -path "*/dist/*" \
-              -not -path "*/.git/*" | sed 's|^\./||' | sort
-            echo "\`\`\`"
-            echo ""
-            echo "## Relevant File Contents"
-            echo ""
-          } > "$SNAPSHOT_FILE"
-
-          # Configurable globs
-          GLOBS=(
-            "frontend/src/components/*.tsx"
-            "frontend/src/types/*.ts"
-            "frontend/src/hooks/*.ts"
-            "backend/src/routes/*.ts"
-            "backend/src/models/*.ts"
-            "backend/*.js"
-          )
-
-          for pattern in "${GLOBS[@]}"; do
-            for file in $pattern; do
-              if [ -f "$file" ]; then
-                echo "📄 Including: $file"
-                echo "### File: $file" >> "$SNAPSHOT_FILE"
-                EXT="${file##*.}"
-                LANG="text"
-                [[ "$EXT" == "ts" || "$EXT" == "tsx" ]] && LANG="typescript"
-                [[ "$EXT" == "js" ]] && LANG="javascript"
-                echo "\`\`\`$LANG" >> "$SNAPSHOT_FILE"
-                cat "$file" >> "$SNAPSHOT_FILE"
-                echo "" >> "$SNAPSHOT_FILE"
-                echo "\`\`\`" >> "$SNAPSHOT_FILE"
-                echo "" >> "$SNAPSHOT_FILE"
-              fi
-            done
-          done
-
-      - name: "📁 Validate templates and prepare context"
-        id: prepare_context
-        env:
-          TASK_DESCRIPTION: ${{ github.event.issue.body }}
-        run: |
-          mkdir -p ia/templates
-          TEMPLATE_PATH="ia/templates/001-general.md"
-
-          if [ ! -s "$TEMPLATE_PATH" ]; then
-            echo "⚠️ Template missing, creating a default one..."
-            cat <<EOF > "$TEMPLATE_PATH"
-          You are an expert software engineer. Analyze the following task and implement the necessary changes.
-          Follow the project's coding standards and best practices.
-          EOF
-          fi
-
-          TIMESTAMP=$(date +%Y%m%d%H%M%S)
-          BRANCH_NAME="ia/task-${{ github.event.issue.number }}-$TIMESTAMP"
-          PLAN_FILE_PATH="ia/plans/plan-${{ github.event.issue.number }}.md"
-          mkdir -p ia/plans
-
-          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
-          echo "plan_file_path=$PLAN_FILE_PATH" >> $GITHUB_OUTPUT
-
-          # Prepare Plan Content
-          TEMPLATE_CONTENT=$(cat "$TEMPLATE_PATH")
-
-          {
-            echo "# 🧠 AI Action Plan - Issue #${{ github.event.issue.number }}"
-            echo ""
-            echo "## 🎯 Task Description"
-            echo "$TASK_DESCRIPTION"
-            echo ""
-            echo "## 📋 Instructions"
-            echo "$TEMPLATE_CONTENT"
-            echo ""
-            echo "### ⚠️ CRITICAL INSTRUCTION"
-            echo "1. Use your AVAILABLE TOOLS (write_file, replace, etc.) to apply changes DIRECTLY to the repository files."
-            echo "2. Do NOT just output code blocks unless you are in a restricted environment."
-            echo "3. Ensure all paths are relative to the repository root."
-            echo "4. After modifying files, provide a brief summary of what was changed."
-            
-            if [ -f "ia/context/codebase-snapshot.md" ]; then
-              echo ""
-              echo "## 📂 Existing codebase context (Read carefully before acting)"
-              cat "ia/context/codebase-snapshot.md"
-            fi
-          } > "$PLAN_FILE_PATH"
-
-      - name: "🌱 Create branch and commit plan"
-        run: |
-          git checkout -b ${{ steps.prepare_context.outputs.branch_name }}
-          git add ia/
-          git commit -m "docs(ia): initialize plan for issue #${{ github.event.issue.number }}" || true
-
-      - name: "🧠 Execute Gemini-CLI"
-        id: gemini_run
-        continue-on-error: true
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          PLAN_FILE: ${{ steps.prepare_context.outputs.plan_file_path }}
-        run: |
-          echo "::group::Executing Gemini-CLI"
-          set +e
-          # Passing prompt via stdin
-          RESULT=$(npx --yes @google/gemini-cli --approval-mode yolo < "$PLAN_FILE" 2>&1)
-          EXIT_CODE=$?
-          set -e
-          echo "::endgroup::"
-
-          if [ $EXIT_CODE -ne 0 ]; then
-            echo "⚠️ Gemini-CLI failed (likely quota). Moving to fallback."
-            echo "error_msg=$RESULT" >> $GITHUB_OUTPUT
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::OPENAI_API_KEY não configurado — o workflow vai falhar"
             exit 1
           fi
-
-          echo "result<<EOF" >> $GITHUB_OUTPUT
-          echo "$RESULT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: "🧠 Fallback: Execute OpenAI"
-        if: steps.gemini_run.outcome == 'failure'
-        id: openai_run
+          echo "✅ Secrets OK"
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          PLAN_FILE_PATH: ${{ steps.prepare_context.outputs.plan_file_path }}
-          OPENAI_MODEL: "gpt-4o-mini"
+
+      - name: "📁 Prepare task and branch"
+        id: prepare
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          echo "::group::Executing OpenAI Fallback"
-          node -e "
-          async function run() {
-            const fs = require('fs');
-            const path = require('path');
-            
-            if (!fs.existsSync(process.env.PLAN_FILE_PATH)) {
-              console.error('Plan file not found:', process.env.PLAN_FILE_PATH);
-              process.exit(1);
-            }
-            
-            const prompt = fs.readFileSync(process.env.PLAN_FILE_PATH, 'utf8');
-            
-            const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': \`Bearer \${process.env.OPENAI_API_KEY}\`
-              },
-              body: JSON.stringify({
-                model: process.env.OPENAI_MODEL,
-                messages: [
-                  { role: 'system', content: 'You are a senior developer. Apply the plan and return the full content of modified files using the format: FILE:path/to/file\nCONTENT_START\n[FILE CONTENT]\nCONTENT_END' },
-                  { role: 'user', content: prompt }
-                ],
-                temperature: 0.1
-              })
-            });
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          BRANCH_NAME="ia/task-${ISSUE_NUMBER}-${TIMESTAMP}"
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
-            const data = await resp.json();
-            if (!resp.ok) {
-              console.error('OpenAI Error:', JSON.stringify(data, null, 2));
-              process.exit(1);
-            }
+          mkdir -p ia/tasks
+          TASK_FILE="ia/tasks/task-${ISSUE_NUMBER}.md"
+          echo "task_file=$TASK_FILE" >> $GITHUB_OUTPUT
 
-            const text = data.choices[0].message.content;
-            console.log('--- OPENAI RESPONSE START ---');
-            console.log(text);
-            console.log('--- OPENAI RESPONSE END ---');
+          # Monta o arquivo de instrução para o aider
+          # ISSUE_BODY vem de env var — nunca exposto diretamente no shell
+          {
+            echo "# Task — Issue #${ISSUE_NUMBER}"
+            echo ""
+            echo "## What needs to be done"
+            echo "$ISSUE_BODY"
+            echo ""
+            echo "## Rules"
+            echo "- Follow existing code patterns, file structure and naming conventions in the project"
+            echo "- Frontend is under frontend/ (React, TypeScript, Vite, Tailwind CSS)"
+            echo "- Backend is under backend/ (Node.js, Express, MongoDB/Mongoose)"
+            echo "- Do not create new files unless strictly necessary — prefer editing existing ones"
+            echo "- Do not modify unrelated files"
+            echo "- Do not change package.json, lock files or config files unless the task explicitly requires it"
+          } > "$TASK_FILE"
 
-            // Parser
-            const fileBlocks = text.split('FILE:');
-            for (let block of fileBlocks) {
-              if (!block.includes('CONTENT_START')) continue;
-              
-              const parts = block.split('CONTENT_START');
-              const filePath = parts[0].trim().split('\n')[0].trim();
-              const contentParts = parts[1].split('CONTENT_END');
-              
-              if (filePath && contentParts.length > 0) {
-                const content = contentParts[0].trim();
-                console.log('✅ Found file to write:', filePath);
-                
-                const fullPath = path.resolve(process.cwd(), filePath);
-                const dir = path.dirname(fullPath);
-                
-                if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-                fs.writeFileSync(fullPath, content);
-                console.log('💾 Successfully written:', filePath);
-              }
-            }
-            
-            const summary = text.substring(0, 1000) + (text.length > 1000 ? '...' : '');
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, 'result<<EOF\n' + summary + '\nEOF\n');
-          }
-          run().catch(err => { console.error(err); process.exit(1); });
-          "
+          git checkout -b "$BRANCH_NAME"
+
+      - name: "🧠 Execute aider"
+        id: aider_run
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TASK_FILE: ${{ steps.prepare.outputs.task_file }}
+        run: |
+          echo "::group::Executing aider"
+
+          # --yes-always    : sem interação humana
+          # --no-git        : git é gerenciado pelo workflow, não pelo aider
+          # --model         : gpt-4o
+          # --map-tokens    : limita o repo map para não estourar contexto (2048 é conservador, aumente se necessário)
+          # --auto-commits  : desligado — o workflow faz o commit
+          # Os arquivos passados no final são o "foco inicial" do aider,
+          # mas ele vai navegar o repo conforme necessário para entender o contexto
+
+          aider \
+            --yes-always \
+            --no-git \
+            --model gpt-4o \
+            --map-tokens 2048 \
+            --no-auto-commits \
+            --message "$(cat "$TASK_FILE")" \
+            frontend/src \
+            backend/src
+
           echo "::endgroup::"
 
-      - name: "💾 Commit and Push changes"
+      - name: "💾 Commit and push changes"
         id: push_changes
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
         run: |
           git add .
-          
+
           if git diff --staged --quiet; then
             echo "changes_detected=false" >> $GITHUB_OUTPUT
             echo "ℹ️ No code changes detected."
           else
             echo "changes_detected=true" >> $GITHUB_OUTPUT
-            git commit -m "feat(ia): implement solution for #${{ github.event.issue.number }}" \
-                       -m "Generated by Gemini-CLI based on issue description." \
-                       -m "Issue: ${{ github.event.issue.html_url }}"
+            git commit \
+              -m "feat(ia): implement solution for #${ISSUE_NUMBER}" \
+              -m "Generated by aider + gpt-4o based on issue description." \
+              -m "Issue: ${ISSUE_URL}"
           fi
-          
-          git push origin ${{ steps.prepare_context.outputs.branch_name }}
+
+          git push origin "$BRANCH_NAME"
 
       - name: "📬 Create Pull Request"
         id: create_pr
         uses: actions/github-script@v7
         env:
-          BRANCH_NAME: ${{ steps.prepare_context.outputs.branch_name }}
-          PLAN_FILE_PATH: ${{ steps.prepare_context.outputs.plan_file_path }}
+          BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
+          TASK_FILE: ${{ steps.prepare.outputs.task_file }}
+          CHANGES_DETECTED: ${{ steps.push_changes.outputs.changes_detected }}
         with:
           script: |
-            const { BRANCH_NAME, PLAN_FILE_PATH } = process.env;
+            const { BRANCH_NAME, TASK_FILE, CHANGES_DETECTED } = process.env;
             const issueNumber = context.issue.number;
             const issueTitle = context.payload.issue.title;
-            
+
+            if (CHANGES_DETECTED !== 'true') {
+              console.log('ℹ️ No changes detected — skipping PR creation');
+              return null;
+            }
+
             try {
               const pr = await github.rest.pulls.create({
                 owner: context.repo.owner,
@@ -282,20 +164,24 @@ jobs:
                 title: `[IA] ${issueTitle} (#${issueNumber})`,
                 head: BRANCH_NAME,
                 base: 'develop',
-                body: `This PR was automatically generated by IA to address issue #${issueNumber}.\n\n` +
-                      `- **Action Plan**: [Link to Plan](${context.payload.repository.html_url}/blob/${BRANCH_NAME}/${PLAN_FILE_PATH})\n` +
-                      `- **Original Issue**: #${issueNumber}\n\n` +
-                      `Please review the changes and merge if they meet the requirements.`,
-                draft: true
+                body: [
+                  `This PR was automatically generated by **aider + gpt-4o** to address issue #${issueNumber}.`,
+                  ``,
+                  `- **Task file**: [View](${context.payload.repository.html_url}/blob/${BRANCH_NAME}/${TASK_FILE})`,
+                  `- **Original issue**: #${issueNumber}`,
+                  ``,
+                  `> Please review carefully before merging.`,
+                ].join('\n'),
+                draft: true,
               });
-              
+
               await github.rest.issues.addLabels({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: pr.data.number,
-                labels: ['ia-generated', 'waiting-review']
+                labels: ['ia-generated', 'waiting-review'],
               });
-              
+
               console.log(`✅ Pull Request created: ${pr.data.html_url}`);
               return pr.data;
             } catch (error) {
@@ -303,69 +189,74 @@ jobs:
               return null;
             }
 
-      - name: "📝 Generate Step Summary"
+      - name: "📝 Generate step summary"
         if: always()
+        env:
+          CHANGES_DETECTED: ${{ steps.push_changes.outputs.changes_detected }}
+          AIDER_OUTCOME: ${{ steps.aider_run.outcome }}
+          PR_RESULT: ${{ steps.create_pr.outputs.result }}
         run: |
           echo "## 🤖 IA-Driven Workflow Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Status | Step | Details |" >> $GITHUB_STEP_SUMMARY
           echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
-          
-          if [ "${{ steps.gemini_run.outcome }}" == "success" ]; then
-            echo "| ✅ | AI Execution | Successfully completed |" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ steps.openai_run.outcome }}" == "success" ]; then
-             echo "| ✅ | AI Execution | Completed via OpenAI Fallback |" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$AIDER_OUTCOME" == "success" ]; then
+            echo "| ✅ | aider execution | Successfully completed |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| ❌ | AI Execution | Failed |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ | aider execution | Failed — check logs |" >> $GITHUB_STEP_SUMMARY
           fi
-          
-          if [ "${{ steps.push_changes.outputs.changes_detected }}" == "true" ]; then
+
+          if [ "$CHANGES_DETECTED" == "true" ]; then
             echo "| ✅ | Changes | Code changes detected and pushed |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| ℹ️ | Changes | No changes detected |" >> $GITHUB_STEP_SUMMARY
           fi
-          
-          PR_URL="${{ fromJSON(steps.create_pr.outputs.result || '{}').html_url }}"
+
+          PR_URL=$(echo "${PR_RESULT:-{}}" | node -e "
+            let d=''; process.stdin.on('data',c=>d+=c).on('end',()=>{
+              try { const o=JSON.parse(d); process.stdout.write(o.html_url||''); } catch(e){}
+            });
+          ")
           if [ -n "$PR_URL" ]; then
             echo "| 🚀 | Pull Request | [View PR]($PR_URL) |" >> $GITHUB_STEP_SUMMARY
           fi
 
-      - name: "🗣️ Comment on Issue"
+      - name: "🗣️ Comment on issue"
         if: always()
         uses: actions/github-script@v7
         env:
           PR_RESULT: ${{ steps.create_pr.outputs.result }}
-          GEMINI_RESULT: ${{ steps.gemini_run.outputs.result }}
-          OPENAI_RESULT: ${{ steps.openai_run.outputs.result }}
-          BRANCH_NAME: ${{ steps.prepare_context.outputs.branch_name }}
-          GEMINI_OUTCOME: ${{ steps.gemini_run.outcome }}
-          OPENAI_OUTCOME: ${{ steps.openai_run.outcome }}
+          AIDER_OUTCOME: ${{ steps.aider_run.outcome }}
+          CHANGES_DETECTED: ${{ steps.push_changes.outputs.changes_detected }}
+          BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
         with:
           script: |
-            const { PR_RESULT, GEMINI_RESULT, OPENAI_RESULT, BRANCH_NAME, GEMINI_OUTCOME, OPENAI_OUTCOME } = process.env;
+            const { PR_RESULT, AIDER_OUTCOME, CHANGES_DETECTED, BRANCH_NAME } = process.env;
             const prResult = PR_RESULT ? JSON.parse(PR_RESULT) : null;
-            const aiResult = GEMINI_RESULT || OPENAI_RESULT || "";
-            const success = GEMINI_OUTCOME === "success" || OPENAI_OUTCOME === "success";
-            
+            const success = AIDER_OUTCOME === 'success';
+            const hasChanges = CHANGES_DETECTED === 'true';
+
             let body = `### 🤖 IA Workflow Results\n\n`;
-            
-            if (success) {
-              body += `✅ **Success!** AI has processed the task.\n\n`;
-              if (prResult && prResult.html_url) {
-                body += `- **Pull Request**: ${prResult.html_url} (Draft)\n`;
+
+            if (success && hasChanges) {
+              body += `✅ **Success!** aider + gpt-4o implemented the changes.\n\n`;
+              if (prResult?.html_url) {
+                body += `- **Pull Request**: ${prResult.html_url} (Draft — please review before merging)\n`;
               }
-              body += `- **Branch**: \`${BRANCH_NAME}\`\n\n`;
-              if (aiResult) {
-                body += `#### AI Output Summary:\n\`\`\`\n${aiResult}\n\`\`\``;
-              }
+              body += `- **Branch**: \`${BRANCH_NAME}\`\n`;
+            } else if (success && !hasChanges) {
+              body += `⚠️ **aider ran successfully but made no changes.**\n\n`;
+              body += `This usually means the task description wasn't specific enough, or the code already satisfies the requirements.\n`;
+              body += `Try adding more details to the issue.\n`;
             } else {
-              body += `❌ **Failed!** AI execution encountered an error.\n\n`;
-              body += `Please check the [Action logs](${context.payload.repository.html_url}/actions/runs/${context.runId}) for more details.`;
+              body += `❌ **Failed!** aider encountered an error.\n\n`;
+              body += `Please check the [Action logs](${context.payload.repository.html_url}/actions/runs/${context.runId}) for details.`;
             }
-            
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: body
+              body,
             });
