@@ -97,23 +97,13 @@ jobs:
         run: |
           echo "::group::Executing aider"
 
-          # --yes-always    : sem interação humana
-          # --no-git        : git é gerenciado pelo workflow, não pelo aider
-          # --model         : gpt-4o
-          # --map-tokens    : limita o repo map para não estourar contexto (2048 é conservador, aumente se necessário)
-          # --auto-commits  : desligado — o workflow faz o commit
-          # Os arquivos passados no final são o "foco inicial" do aider,
-          # mas ele vai navegar o repo conforme necessário para entender o contexto
-
           aider \
             --yes-always \
             --no-git \
             --model gpt-4o \
             --map-tokens 2048 \
             --no-auto-commits \
-            --message "$(cat "$TASK_FILE")" \
-            frontend/src \
-            backend/src
+            --message "$(cat "$TASK_FILE")"
 
           echo "::endgroup::"
 
