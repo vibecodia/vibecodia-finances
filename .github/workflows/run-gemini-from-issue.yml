@@ -105,20 +105,32 @@ jobs:
         run: |
           echo "::group::Executing aider"
 
-          # Coleta todos os arquivos relevantes do projeto para passar como contexto
-          FILES=$(find frontend/src backend/src -type f \( -name "*.ts" -o -name "*.tsx" \) \
-            -not -path "*/node_modules/*" \
-            -not -path "*/dist/*" \
-            2>/dev/null | tr '\n' ' ')
+          # Arquivos cirúrgicos — só o que é relevante para tarefas de playground/charts
+          RELEVANT_FILES=""
+          for f in \
+            "frontend/src/components/Playground.tsx" \
+            "frontend/src/types/transaction.ts" \
+            "frontend/src/types/index.ts" \
+            "frontend/src/hooks/useTransactions.ts" \
+            "frontend/src/hooks/useDashboard.ts" \
+            "backend/src/routes/transactions.ts" \
+            "backend/src/routes/index.ts" \
+            "backend/src/models/Transaction.ts" \
+            "backend/src/models/transaction.model.ts"
+          do
+            [ -f "$f" ] && RELEVANT_FILES="$RELEVANT_FILES $f"
+          done
+
+          echo "📄 Files passed to aider: $RELEVANT_FILES"
 
           aider \
             --yes-always \
             --no-pretty \
             --model gpt-4o \
-            --map-tokens 4096 \
+            --map-tokens 512 \
             --no-auto-commits \
             --message "$(cat "$TASK_FILE")" \
-            $FILES
+            $RELEVANT_FILES
 
           echo "::endgroup::"
 
