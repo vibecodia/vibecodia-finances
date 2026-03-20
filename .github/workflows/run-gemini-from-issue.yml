@@ -117,7 +117,6 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           PLAN_CONTENT: ${{ steps.prepare_context.outputs.plan_content }}
-          # Defina aqui o modelo desejado (gpt-4o-mini, gpt-4.1-mini, etc)
           OPENAI_MODEL: "gpt-4o-mini"
         run: |
           echo "::group::Executing OpenAI Fallback"
@@ -136,35 +135,49 @@ jobs:
                   { role: 'system', content: 'You are a senior developer. Apply the plan and return the full content of modified files using the format: FILE:path/to/file\nCONTENT_START\n[FILE CONTENT]\nCONTENT_END' },
                   { role: 'user', content: prompt }
                 ],
-                temperature: 0.2
+                temperature: 0.1
               })
             });
 
             const data = await resp.json();
             if (!resp.ok) {
-              console.error('OpenAI Error:', data);
+              console.error('OpenAI Error:', JSON.stringify(data, null, 2));
               process.exit(1);
             }
 
             const text = data.choices[0].message.content;
-            console.log('OpenAI Response received');
+            console.log('--- OPENAI RESPONSE START ---');
+            console.log(text);
+            console.log('--- OPENAI RESPONSE END ---');
 
-            // Parser simples para aplicar arquivos
+            // Parser mais robusto
+            const fs = require('fs');
+            const path = require('path');
+            
             const fileBlocks = text.split('FILE:');
             for (let block of fileBlocks) {
-              if (!block.trim()) continue;
-              const lines = block.split('\n');
-              const filePath = lines[0].trim();
-              const content = block.split('CONTENT_START')[1]?.split('CONTENT_END')[0];
-
-              if (filePath && content) {
-                console.log('Writing to:', filePath);
-                const dir = filePath.substring(0, filePath.lastIndexOf('/'));
-                if (dir && !require('fs').existsSync(dir)) require('fs').mkdirSync(dir, { recursive: true });
-                require('fs').writeFileSync(filePath, content.trim());
+              if (!block.includes('CONTENT_START')) continue;
+              
+              const parts = block.split('CONTENT_START');
+              const filePath = parts[0].trim().split('\n')[0].trim();
+              const contentParts = parts[1].split('CONTENT_END');
+              
+              if (filePath && contentParts.length > 0) {
+                const content = contentParts[0].trim();
+                console.log('✅ Found file to write:', filePath);
+                
+                const fullPath = path.resolve(process.cwd(), filePath);
+                const dir = path.dirname(fullPath);
+                
+                if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+                fs.writeFileSync(fullPath, content);
+                console.log('💾 Successfully written:', filePath);
               }
             }
-            console.log('::set-output name=result::' + text.substring(0, 500) + '...');
+            
+            // Export result for summary using the new $GITHUB_OUTPUT syntax
+            const summary = text.substring(0, 1000) + (text.length > 1000 ? '...' : '');
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, 'result<<EOF\n' + summary + '\nEOF\n');
           }
           run().catch(err => { console.error(err); process.exit(1); });
           "
