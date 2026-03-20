@@ -7,7 +7,12 @@ on:
     paths:
       - 'frontend/**'
       - 'backend/**'
-      - 'infra/docker/**'
+      - 'infra/**'
+      - '.github/**'
+      - '*.json'
+      - '*.ts'
+      - '*.js'
+      - '*.config.*'
 jobs:
   check-conflicts:
     runs-on: ubuntu-latest
@@ -55,14 +60,49 @@ jobs:
               core.setOutput('mergeable', 'true');
             }
 
-  release:
+  detect-change-type:
     needs: check-conflicts
     if: |
       needs.check-conflicts.outputs.mergeable == 'true' &&
       startsWith(github.head_ref, 'feature/')
     runs-on: ubuntu-latest
     outputs:
+      app: ${{ steps.detect.outputs.app }}
+      build: ${{ steps.detect.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.MY_PAT }}
+          ref: ${{ github.head_ref }}
+      - name: Detectar tipo de mudança
+        id: detect
+        run: |
+          CHANGED=$(git diff --name-only origin/develop...HEAD)
+          echo "Arquivos alterados:"
+          echo "$CHANGED"
+
+          APP_CHANGED=false
+          BUILD_CHANGED=false
+
+          if echo "$CHANGED" | grep -qE '^(frontend|backend)/|^[^/]+\.(json|ts|js|config\..*)$'; then
+            APP_CHANGED=true
+          fi
+
+          if echo "$CHANGED" | grep -qE '^(infra/|\.github/)'; then
+            BUILD_CHANGED=true
+          fi
+
+          echo "app=$APP_CHANGED" >> $GITHUB_OUTPUT
+          echo "build=$BUILD_CHANGED" >> $GITHUB_OUTPUT
+          echo "App changed: $APP_CHANGED | Build changed: $BUILD_CHANGED"
+
+  release:
+    needs: detect-change-type
+    runs-on: ubuntu-latest
+    outputs:
       version: ${{ steps.version.outputs.version }}
+      build_version: ${{ steps.build_version.outputs.build_version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -77,7 +117,8 @@ jobs:
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-      - name: Verificar se tag já existe
+
+      - name: Verificar se tag app já existe
         id: tag-check
         run: |
           git fetch --tags
@@ -87,17 +128,42 @@ jobs:
           else
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
-      - run: npm run release -- --release-as minor --ci
-        if: steps.tag-check.outputs.exists == 'false'
+
+      - name: Release app version
+        if: |
+          needs.detect-change-type.outputs.app == 'true' &&
+          steps.tag-check.outputs.exists == 'false'
+        run: npm run release -- --ci
         env:
           MY_PAT: ${{ secrets.MY_PAT }}
+
+      - name: Release build version
+        if: |
+          needs.detect-change-type.outputs.build == 'true' &&
+          needs.detect-change-type.outputs.app == 'false'
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          BUILD_NUM=$(git tag | grep '^build-' | wc -l)
+          BUILD_TAG="build-$((BUILD_NUM + 1))"
+          git tag -a "$BUILD_TAG" -m "Build $BUILD_TAG"
+          git push origin "$BUILD_TAG"
+          echo "🏗️ Build tag criada: $BUILD_TAG"
+
       - id: version
         run: |
-          if [ "${{ steps.tag-check.outputs.exists }}" = "true" ]; then
-            echo "⚠️ Tag já existe, pulando build e deploy."
-            echo "version=" >> $GITHUB_OUTPUT
-          else
+          if [ "${{ needs.detect-change-type.outputs.app }}" = "true" ] && [ "${{ steps.tag-check.outputs.exists }}" = "false" ]; then
             echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+          else
+            echo "version=" >> $GITHUB_OUTPUT
+          fi
+
+      - id: build_version
+        run: |
+          if [ "${{ needs.detect-change-type.outputs.build }}" = "true" ] && [ "${{ needs.detect-change-type.outputs.app }}" = "false" ]; then
+            BUILD_NUM=$(git tag | grep '^build-' | wc -l)
+            echo "build_version=build-$BUILD_NUM" >> $GITHUB_OUTPUT
+          else
+            echo "build_version=" >> $GITHUB_OUTPUT
           fi
 
   build-images:
@@ -126,10 +192,10 @@ jobs:
           github-token: ${{ secrets.MY_PAT }}
           script: |
             await new Promise(resolve => setTimeout(resolve, 10000));
-            
+
             let completed = false;
             let attempts = 0;
-            
+
             while (!completed && attempts < 30) {
               attempts++;
               const { data: runs } = await github.rest.actions.listWorkflowRuns({
@@ -138,10 +204,10 @@ jobs:
                 workflow_id: 'build-push.yml',
                 per_page: 1
               });
-              
+
               const run = runs.workflow_runs[0];
               console.log(`Status: ${run.status} | Conclusão: ${run.conclusion}`);
-              
+
               if (run.status === 'completed') {
                 if (run.conclusion !== 'success') {
                   core.setFailed('Build das imagens falhou');
@@ -151,7 +217,7 @@ jobs:
                 await new Promise(resolve => setTimeout(resolve, 15000));
               }
             }
-            
+
             if (!completed) {
               core.setFailed('Timeout aguardando build das imagens');
             }
