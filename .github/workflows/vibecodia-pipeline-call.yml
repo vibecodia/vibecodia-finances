@@ -87,7 +87,7 @@ jobs:
           else
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
-      - run: npm run release -- --release-as patch --ci
+      - run: npm run release -- --release-as minor --ci
         if: steps.tag-check.outputs.exists == 'false'
         env:
           MY_PAT: ${{ secrets.MY_PAT }}
