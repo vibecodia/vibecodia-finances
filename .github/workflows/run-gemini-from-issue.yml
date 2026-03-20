@@ -86,9 +86,9 @@ jobs:
           git checkout -b "$BRANCH_NAME"
 
       # ────────────────────────────────────────────────────────────────────
-      # PRIMARY: OpenAI gpt-4o com function calling
+      # PRIMARY: OpenAI gpt-4.1-nano com function calling
       # ────────────────────────────────────────────────────────────────────
-      - name: "🧠 Primary: OpenAI gpt-4o + function calling"
+      - name: "🧠 Primary: OpenAI gpt-4.1-nano + function calling"
         id: openai_run
         continue-on-error: true
         env:
@@ -186,7 +186,7 @@ jobs:
                 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
               },
               body: JSON.stringify({
-                model: 'gpt-4o',
+                model: 'gpt-4.1-nano',
                 temperature: 0.1,
                 tool_choice: 'required',
                 tools,
@@ -261,7 +261,7 @@ jobs:
           # FALLBACK: aider com arquivos cirúrgicos
           # Só roda se o OpenAI falhar (rate limit, token limit, erro de API)
           # ────────────────────────────────────────────────────────────────────
-      - name: "🔁 Fallback: aider + gpt-4o"
+      - name: "🔁 Fallback: aider + gpt-4.1-nano"
         id: aider_run
         if: steps.openai_run.outcome == 'failure'
         env:
@@ -295,7 +295,7 @@ jobs:
           aider \
             --yes-always \
             --no-pretty \
-            --model gpt-4o \
+            --model gpt-4.1-nano \
             --map-tokens 512 \
             --no-auto-commits \
             --message "$(cat "$TASK_FILE")" \
@@ -320,7 +320,7 @@ jobs:
           else
             echo "changes_detected=true" >> $GITHUB_OUTPUT
 
-            ENGINE="gpt-4o + function calling"
+            ENGINE="gpt-4.1-nano + function calling"
             [ "$OPENAI_OUTCOME" != "success" ] && ENGINE="aider fallback"
 
             git commit \
@@ -346,12 +346,12 @@ jobs:
           echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
 
           if [ "$OPENAI_OUTCOME" == "success" ]; then
-            echo "| ✅ | Primary (gpt-4o function calling) | Success |" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ | Primary (gpt-4.1-nano function calling) | Success |" >> $GITHUB_STEP_SUMMARY
           elif [ "$AIDER_OUTCOME" == "success" ]; then
-            echo "| ⚠️ | Primary (gpt-4o function calling) | Failed — used fallback |" >> $GITHUB_STEP_SUMMARY
+            echo "| ⚠️ | Primary (gpt-4.1-nano function calling) | Failed — used fallback |" >> $GITHUB_STEP_SUMMARY
             echo "| ✅ | Fallback (aider) | Success |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| ❌ | Primary (gpt-4o function calling) | Failed |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ | Primary (gpt-4.1-nano function calling) | Failed |" >> $GITHUB_STEP_SUMMARY
             echo "| ❌ | Fallback (aider) | Failed |" >> $GITHUB_STEP_SUMMARY
           fi
 
@@ -382,7 +382,7 @@ jobs:
             const repoUrl    = context.payload.repository.html_url;
             const hasChanges = CHANGES_DETECTED === 'true';
             const success    = OPENAI_OUTCOME === 'success' || AIDER_OUTCOME === 'success';
-            const engine     = OPENAI_OUTCOME === 'success' ? 'gpt-4o + function calling' : 'aider fallback';
+            const engine     = OPENAI_OUTCOME === 'success' ? 'gpt-4.1-nano + function calling' : 'aider fallback';
 
             let body = `### 🤖 IA Workflow Results\n\n`;
 
