@@ -47,9 +47,9 @@ jobs:
           if [ ! -s "$TEMPLATE_PATH" ]; then
             echo "⚠️ Template missing, creating a default one..."
             cat <<EOF > "$TEMPLATE_PATH"
-            You are an expert software engineer. Analyze the following task and implement the necessary changes.
-            Follow the project's coding standards and best practices.
-            EOF
+          You are an expert software engineer. Analyze the following task and implement the necessary changes.
+          Follow the project's coding standards and best practices.
+          EOF
           fi
 
           TIMESTAMP=$(date +%Y%m%d%H%M%S)
