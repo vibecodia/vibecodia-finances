@@ -86,9 +86,9 @@ jobs:
           git checkout -b "$BRANCH_NAME"
 
       # ────────────────────────────────────────────────────────────────────
-      # PRIMARY: OpenAI gpt-4.1-mini com function calling
+      # PRIMARY: OpenAI gpt-5-mini com function calling
       # ────────────────────────────────────────────────────────────────────
-      - name: "🧠 Primary: OpenAI gpt-4.1-mini + function calling"
+      - name: "🧠 Primary: OpenAI gpt-5-mini + function calling"
         id: openai_run
         continue-on-error: true
         env:
@@ -186,7 +186,7 @@ jobs:
                 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
               },
               body: JSON.stringify({
-                model: 'gpt-4.1-mini',
+                model: 'gpt-5-mini',
                 temperature: 0.1,
                 tool_choice: 'required',
                 tools,
@@ -259,7 +259,7 @@ jobs:
 
           echo "::endgroup::"
 
-      - name: "🔁 Fallback: aider + gpt-4.1-mini"
+      - name: "🔁 Fallback: aider + gpt-5-mini"
         id: aider_run
         if: steps.openai_run.outcome == 'failure'
         env:
@@ -293,7 +293,7 @@ jobs:
           aider \
             --yes-always \
             --no-pretty \
-            --model gpt-4.1-mini \
+            --model gpt-5-mini \
             --map-tokens 512 \
             --no-auto-commits \
             --message "$(cat "$TASK_FILE")" \
@@ -375,7 +375,7 @@ jobs:
           else
             echo "changes_detected=true" >> $GITHUB_OUTPUT
 
-            ENGINE="gpt-4.1-mini + function calling"
+            ENGINE="gpt-5-mini + function calling"
             [ "$OPENAI_OUTCOME" != "success" ] && ENGINE="aider fallback"
 
             LINT_NOTE=""
@@ -407,12 +407,12 @@ jobs:
           echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
 
           if [ "$OPENAI_OUTCOME" == "success" ]; then
-            echo "| ✅ | Primary (gpt-4.1-mini function calling) | Success |" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ | Primary (gpt-5-mini function calling) | Success |" >> $GITHUB_STEP_SUMMARY
           elif [ "$AIDER_OUTCOME" == "success" ]; then
-            echo "| ⚠️ | Primary (gpt-4.1-mini function calling) | Failed — used fallback |" >> $GITHUB_STEP_SUMMARY
+            echo "| ⚠️ | Primary (gpt-5-mini function calling) | Failed — used fallback |" >> $GITHUB_STEP_SUMMARY
             echo "| ✅ | Fallback (aider) | Success |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| ❌ | Primary (gpt-4.1-mini function calling) | Failed |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ | Primary (gpt-5-mini function calling) | Failed |" >> $GITHUB_STEP_SUMMARY
             echo "| ❌ | Fallback (aider) | Failed |" >> $GITHUB_STEP_SUMMARY
           fi
 
@@ -463,7 +463,7 @@ jobs:
             const repoUrl    = context.payload.repository.html_url;
             const hasChanges = CHANGES_DETECTED === 'true';
             const success    = OPENAI_OUTCOME === 'success' || AIDER_OUTCOME === 'success';
-            const engine     = OPENAI_OUTCOME === 'success' ? 'gpt-4.1-mini + function calling' : 'aider fallback';
+            const engine     = OPENAI_OUTCOME === 'success' ? 'gpt-5-mini + function calling' : 'aider fallback';
             const buildOk    = BUILD_OUTCOME === 'success';
             const lintErrors = parseInt(LINT_ERRORS || '0');
 
