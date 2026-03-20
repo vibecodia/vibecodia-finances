@@ -38,8 +38,61 @@ jobs:
           git config user.name "Gemini-CLI Bot"
           git config user.email "github-actions-bot@users.noreply.github.com"
 
+      - name: "📂 Build codebase context"
+        id: build_codebase_context
+        run: |
+          mkdir -p ia/context
+          SNAPSHOT_FILE="ia/context/codebase-snapshot.md"
+          
+          echo "🔍 Generating codebase snapshot..."
+          
+          {
+            echo "# Codebase Snapshot"
+            echo ""
+            echo "## Project Structure (.ts, .tsx)"
+            echo "\`\`\`"
+            find . -maxdepth 10 -type f \( -name "*.ts" -o -name "*.tsx" \) \
+              -not -path "*/node_modules/*" \
+              -not -path "*/dist/*" \
+              -not -path "*/.git/*" | sed 's|^\./||' | sort
+            echo "\`\`\`"
+            echo ""
+            echo "## Relevant File Contents"
+            echo ""
+          } > "$SNAPSHOT_FILE"
+
+          # Configurable globs
+          GLOBS=(
+            "frontend/src/components/playground*.tsx"
+            "frontend/src/types/*.ts"
+            "frontend/src/hooks/*.ts"
+            "backend/src/routes/*.ts"
+            "backend/src/models/*.ts"
+            "backend/*.js"
+          )
+
+          for pattern in "${GLOBS[@]}"; do
+            for file in $pattern; do
+              if [ -f "$file" ]; then
+                echo "📄 Including: $file"
+                echo "### File: $file" >> "$SNAPSHOT_FILE"
+                EXT="${file##*.}"
+                LANG="text"
+                [[ "$EXT" == "ts" || "$EXT" == "tsx" ]] && LANG="typescript"
+                [[ "$EXT" == "js" ]] && LANG="javascript"
+                echo "\`\`\`$LANG" >> "$SNAPSHOT_FILE"
+                cat "$file" >> "$SNAPSHOT_FILE"
+                echo "" >> "$SNAPSHOT_FILE"
+                echo "\`\`\`" >> "$SNAPSHOT_FILE"
+                echo "" >> "$SNAPSHOT_FILE"
+              fi
+            done
+          done
+
       - name: "📁 Validate templates and prepare context"
         id: prepare_context
+        env:
+          TASK_DESCRIPTION: ${{ github.event.issue.body }}
         run: |
           mkdir -p ia/templates
           TEMPLATE_PATH="ia/templates/001-general.md"
@@ -61,7 +114,6 @@ jobs:
           echo "plan_file_path=$PLAN_FILE_PATH" >> $GITHUB_OUTPUT
 
           # Prepare Plan Content
-          TASK_DESCRIPTION="${{ github.event.issue.body }}"
           TEMPLATE_CONTENT=$(cat "$TEMPLATE_PATH")
 
           {
@@ -74,12 +126,13 @@ jobs:
             echo "$TEMPLATE_CONTENT"
             echo ""
             echo "🛑 *Note: Respond with the complete file content for each file you modify using the format: FILE:path/to/file.ext\n\`\`\`\nCONTENT\n\`\`\`\n*"
+            
+            if [ -f "ia/context/codebase-snapshot.md" ]; then
+              echo ""
+              echo "## Existing codebase (read before writing anything)"
+              cat "ia/context/codebase-snapshot.md"
+            fi
           } > "$PLAN_FILE_PATH"
-
-          # Export for use in steps
-          echo "plan_content<<EOF" >> $GITHUB_OUTPUT
-          cat "$PLAN_FILE_PATH" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: "🌱 Create branch and commit plan"
         run: |
@@ -92,11 +145,12 @@ jobs:
         continue-on-error: true
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PLAN_FILE: ${{ steps.prepare_context.outputs.plan_file_path }}
         run: |
           echo "::group::Executing Gemini-CLI"
           set +e
-          # Tentativa com modelo flash para maior cota
-          RESULT=$(npx --yes @google/gemini-cli --approval-mode yolo -p "${{ steps.prepare_context.outputs.plan_content }}" 2>&1)
+          # Passing prompt via stdin
+          RESULT=$(npx --yes @google/gemini-cli --approval-mode yolo < "$PLAN_FILE" 2>&1)
           EXIT_CODE=$?
           set -e
           echo "::endgroup::"
@@ -116,13 +170,22 @@ jobs:
         id: openai_run
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          PLAN_CONTENT: ${{ steps.prepare_context.outputs.plan_content }}
+          PLAN_FILE_PATH: ${{ steps.prepare_context.outputs.plan_file_path }}
           OPENAI_MODEL: "gpt-4o-mini"
         run: |
           echo "::group::Executing OpenAI Fallback"
           node -e "
           async function run() {
-            const prompt = process.env.PLAN_CONTENT;
+            const fs = require('fs');
+            const path = require('path');
+            
+            if (!fs.existsSync(process.env.PLAN_FILE_PATH)) {
+              console.error('Plan file not found:', process.env.PLAN_FILE_PATH);
+              process.exit(1);
+            }
+            
+            const prompt = fs.readFileSync(process.env.PLAN_FILE_PATH, 'utf8');
+            
             const resp = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
               headers: {
@@ -150,10 +213,7 @@ jobs:
             console.log(text);
             console.log('--- OPENAI RESPONSE END ---');
 
-            // Parser mais robusto
-            const fs = require('fs');
-            const path = require('path');
-            
+            // Parser
             const fileBlocks = text.split('FILE:');
             for (let block of fileBlocks) {
               if (!block.includes('CONTENT_START')) continue;
@@ -175,13 +235,13 @@ jobs:
               }
             }
             
-            // Export result for summary using the new $GITHUB_OUTPUT syntax
             const summary = text.substring(0, 1000) + (text.length > 1000 ? '...' : '');
             fs.appendFileSync(process.env.GITHUB_OUTPUT, 'result<<EOF\n' + summary + '\nEOF\n');
           }
           run().catch(err => { console.error(err); process.exit(1); });
           "
           echo "::endgroup::"
+
       - name: "💾 Commit and Push changes"
         id: push_changes
         run: |
@@ -249,6 +309,8 @@ jobs:
           
           if [ "${{ steps.gemini_run.outcome }}" == "success" ]; then
             echo "| ✅ | AI Execution | Successfully completed |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.openai_run.outcome }}" == "success" ]; then
+             echo "| ✅ | AI Execution | Completed via OpenAI Fallback |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| ❌ | AI Execution | Failed |" >> $GITHUB_STEP_SUMMARY
           fi
@@ -270,14 +332,16 @@ jobs:
         env:
           PR_RESULT: ${{ steps.create_pr.outputs.result }}
           GEMINI_RESULT: ${{ steps.gemini_run.outputs.result }}
+          OPENAI_RESULT: ${{ steps.openai_run.outputs.result }}
           BRANCH_NAME: ${{ steps.prepare_context.outputs.branch_name }}
-          OUTCOME: ${{ steps.gemini_run.outcome }}
+          GEMINI_OUTCOME: ${{ steps.gemini_run.outcome }}
+          OPENAI_OUTCOME: ${{ steps.openai_run.outcome }}
         with:
           script: |
-            const { PR_RESULT, GEMINI_RESULT, BRANCH_NAME, OUTCOME } = process.env;
+            const { PR_RESULT, GEMINI_RESULT, OPENAI_RESULT, BRANCH_NAME, GEMINI_OUTCOME, OPENAI_OUTCOME } = process.env;
             const prResult = PR_RESULT ? JSON.parse(PR_RESULT) : null;
-            const geminiResult = GEMINI_RESULT || "";
-            const success = OUTCOME === "success";
+            const aiResult = GEMINI_RESULT || OPENAI_RESULT || "";
+            const success = GEMINI_OUTCOME === "success" || OPENAI_OUTCOME === "success";
             
             let body = `### 🤖 IA Workflow Results\n\n`;
             
@@ -287,8 +351,8 @@ jobs:
                 body += `- **Pull Request**: ${prResult.html_url} (Draft)\n`;
               }
               body += `- **Branch**: \`${BRANCH_NAME}\`\n\n`;
-              if (geminiResult) {
-                body += `#### AI Output:\n\`\`\`\n${geminiResult}\n\`\`\``;
+              if (aiResult) {
+                body += `#### AI Output Summary:\n\`\`\`\n${aiResult}\n\`\`\``;
               }
             } else {
               body += `❌ **Failed!** AI execution encountered an error.\n\n`;
