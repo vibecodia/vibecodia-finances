@@ -125,11 +125,15 @@ jobs:
             echo "## 📋 Instructions"
             echo "$TEMPLATE_CONTENT"
             echo ""
-            echo "🛑 *Note: Respond with the complete file content for each file you modify using the format: FILE:path/to/file.ext\n\`\`\`\nCONTENT\n\`\`\`\n*"
+            echo "### ⚠️ CRITICAL INSTRUCTION"
+            echo "1. Use your AVAILABLE TOOLS (write_file, replace, etc.) to apply changes DIRECTLY to the repository files."
+            echo "2. Do NOT just output code blocks unless you are in a restricted environment."
+            echo "3. Ensure all paths are relative to the repository root."
+            echo "4. After modifying files, provide a brief summary of what was changed."
             
             if [ -f "ia/context/codebase-snapshot.md" ]; then
               echo ""
-              echo "## Existing codebase (read before writing anything)"
+              echo "## 📂 Existing codebase context (Read carefully before acting)"
               cat "ia/context/codebase-snapshot.md"
             fi
           } > "$PLAN_FILE_PATH"
