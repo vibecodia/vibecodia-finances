@@ -105,17 +105,20 @@ jobs:
         run: |
           echo "::group::Executing aider"
 
-          # Sem --no-git: o repo map precisa do git para enxergar o projeto
-          # --no-auto-commits: o workflow controla os commits
-          # --no-pretty: evita warnings de TTY em CI
-          # --map-tokens 4096: contexto suficiente para projetos médios
+          # Coleta todos os arquivos relevantes do projeto para passar como contexto
+          FILES=$(find frontend/src backend/src -type f \( -name "*.ts" -o -name "*.tsx" \) \
+            -not -path "*/node_modules/*" \
+            -not -path "*/dist/*" \
+            2>/dev/null | tr '\n' ' ')
+
           aider \
             --yes-always \
             --no-pretty \
             --model gpt-4o \
             --map-tokens 4096 \
             --no-auto-commits \
-            --message "$(cat "$TASK_FILE")"
+            --message "$(cat "$TASK_FILE")" \
+            $FILES
 
           echo "::endgroup::"
 
