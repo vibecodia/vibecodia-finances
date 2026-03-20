@@ -86,9 +86,9 @@ jobs:
           git checkout -b "$BRANCH_NAME"
 
       # ────────────────────────────────────────────────────────────────────
-      # PRIMARY: OpenAI gpt-4.1-mini com function calling
+      # PRIMARY: OpenAI gpt-5-mini com function calling
       # ────────────────────────────────────────────────────────────────────
-      - name: "🧠 Primary: OpenAI gpt-4.1-mini + function calling"
+      - name: "🧠 Primary: OpenAI gpt-5-mini + function calling"
         id: openai_run
         continue-on-error: true
         env:
@@ -163,7 +163,7 @@ jobs:
             },
           }];
 
-          // ── 4. System prompt com regra explícita de não apagar conteúdo ─
+          // ── 4. System prompt ────────────────────────────────────────────
           const systemPrompt = `You are a senior full-stack engineer working on a real codebase.
           You will receive a task and the relevant source files of the project.
           Implement the requested changes by calling write_file for every file you need to create or modify.
@@ -186,7 +186,7 @@ jobs:
                 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
               },
               body: JSON.stringify({
-                model: 'gpt-4.1-mini',
+                model: 'gpt-5-mini',
                 temperature: 0.1,
                 tool_choice: 'required',
                 tools,
@@ -211,9 +211,9 @@ jobs:
               process.exit(1);
             }
 
-            // ── 6. Escreve os arquivos com verificação de content loss ────
-            const cwd = path.resolve(process.cwd());
-            let warnings = 0;
+            // ── 6. Escreve os arquivos com proteção contra content loss ───
+            const cwd      = path.resolve(process.cwd());
+            let lossDetected = false;
 
             for (const call of calls) {
               if (call.function.name !== 'write_file') continue;
@@ -225,13 +225,14 @@ jobs:
                 continue;
               }
 
-              // Verifica se o arquivo encolheu demais (provável perda de conteúdo)
+              // Proteção: aborta escrita se arquivo encolheu mais de 30%
               if (fs.existsSync(fullPath)) {
                 const originalLines = fs.readFileSync(fullPath, 'utf8').split('\n').length;
                 const newLines      = content.split('\n').length;
                 if (newLines < originalLines * 0.7) {
-                  console.warn(`⚠️  WARNING: ${filePath} shrunk from ${originalLines} to ${newLines} lines — possible content loss!`);
-                  warnings++;
+                  console.error(`❌ ABORTED: ${filePath} shrunk from ${originalLines} to ${newLines} lines — content loss detected. File was NOT written.`);
+                  lossDetected = true;
+                  continue;
                 }
               }
 
@@ -240,8 +241,9 @@ jobs:
               console.log(`✅ Written: ${filePath} — ${reason}`);
             }
 
-            if (warnings > 0) {
-              console.warn(`\n⚠️  ${warnings} file(s) may have lost content. Review the branch carefully before merging.`);
+            if (lossDetected) {
+              console.error('\n❌ One or more files were skipped due to content loss. Failing so the aider fallback can run.');
+              process.exit(1);
             }
 
             console.log(`\n🎉 Done. ${calls.length} file(s) written.`);
@@ -257,11 +259,7 @@ jobs:
 
           echo "::endgroup::"
 
-          # ────────────────────────────────────────────────────────────────────
-          # FALLBACK: aider com arquivos cirúrgicos
-          # Só roda se o OpenAI falhar (rate limit, token limit, erro de API)
-          # ────────────────────────────────────────────────────────────────────
-      - name: "🔁 Fallback: aider + gpt-4.1-mini"
+      - name: "🔁 Fallback: aider + gpt-5-mini"
         id: aider_run
         if: steps.openai_run.outcome == 'failure'
         env:
@@ -295,7 +293,7 @@ jobs:
           aider \
             --yes-always \
             --no-pretty \
-            --model gpt-4.1-mini \
+            --model gpt-5-mini \
             --map-tokens 512 \
             --no-auto-commits \
             --message "$(cat "$TASK_FILE")" \
@@ -303,13 +301,70 @@ jobs:
 
           echo "::endgroup::"
 
+      - name: "🔍 Validate: install dependencies"
+        id: install
+        if: steps.openai_run.outcome == 'success' || steps.aider_run.outcome == 'success'
+        run: |
+          echo "::group::Installing dependencies"
+          cd frontend && npm ci --prefer-offline 2>&1 | tail -5
+          cd ../backend && npm ci --prefer-offline 2>&1 | tail -5
+          echo "::endgroup::"
+
+      - name: "🔍 Validate: lint"
+        id: lint
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        run: |
+          echo "::group::Lint"
+          LINT_ERRORS=0
+
+          cd frontend
+          echo "--- Frontend lint ---"
+          npm run lint 2>&1 || LINT_ERRORS=$((LINT_ERRORS + 1))
+          cd ..
+
+          cd backend
+          echo "--- Backend lint ---"
+          npm run lint 2>&1 || LINT_ERRORS=$((LINT_ERRORS + 1))
+          cd ..
+
+          echo "lint_errors=$LINT_ERRORS" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
+
+          if [ $LINT_ERRORS -gt 0 ]; then
+            echo "::warning::Lint encontrou erros — revise antes de fazer merge"
+          fi
+
+      - name: "🔍 Validate: build"
+        id: build
+        if: steps.install.outcome == 'success'
+        run: |
+          echo "::group::Build"
+          BUILD_FAILED=0
+
+          cd frontend
+          echo "--- Frontend build ---"
+          npm run build 2>&1 || BUILD_FAILED=1
+          cd ..
+
+          echo "build_failed=$BUILD_FAILED" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
+
+          # Build quebrado bloqueia o commit
+          if [ $BUILD_FAILED -eq 1 ]; then
+            echo "::error::Build do frontend falhou — as alterações da IA quebraram o projeto"
+            exit 1
+          fi
+
       - name: "💾 Commit and push changes"
         id: push_changes
+        if: steps.build.outcome == 'success' || steps.build.outcome == 'skipped'
         env:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_URL: ${{ github.event.issue.html_url }}
           BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
           OPENAI_OUTCOME: ${{ steps.openai_run.outcome }}
+          LINT_ERRORS: ${{ steps.lint.outputs.lint_errors }}
         run: |
           git reset HEAD .aider.chat.history.md .aider.input.history 2>/dev/null || true
           git add .
@@ -320,12 +375,15 @@ jobs:
           else
             echo "changes_detected=true" >> $GITHUB_OUTPUT
 
-            ENGINE="gpt-4.1-mini + function calling"
+            ENGINE="gpt-5-mini + function calling"
             [ "$OPENAI_OUTCOME" != "success" ] && ENGINE="aider fallback"
+
+            LINT_NOTE=""
+            [ "${LINT_ERRORS}" != "0" ] && LINT_NOTE=" [lint warnings]"
 
             git commit \
               -m "feat(ia): implement solution for #${ISSUE_NUMBER}" \
-              -m "Generated by ${ENGINE}." \
+              -m "Generated by ${ENGINE}.${LINT_NOTE}" \
               -m "Issue: ${ISSUE_URL}"
           fi
 
@@ -337,6 +395,9 @@ jobs:
           CHANGES_DETECTED: ${{ steps.push_changes.outputs.changes_detected }}
           OPENAI_OUTCOME: ${{ steps.openai_run.outcome }}
           AIDER_OUTCOME: ${{ steps.aider_run.outcome }}
+          LINT_OUTCOME: ${{ steps.lint.outcome }}
+          LINT_ERRORS: ${{ steps.lint.outputs.lint_errors }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
           AI_SUMMARY: ${{ steps.openai_run.outputs.ai_summary }}
           BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
         run: |
@@ -346,13 +407,31 @@ jobs:
           echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
 
           if [ "$OPENAI_OUTCOME" == "success" ]; then
-            echo "| ✅ | Primary (gpt-4.1-mini function calling) | Success |" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ | Primary (gpt-5-mini function calling) | Success |" >> $GITHUB_STEP_SUMMARY
           elif [ "$AIDER_OUTCOME" == "success" ]; then
-            echo "| ⚠️ | Primary (gpt-4.1-mini function calling) | Failed — used fallback |" >> $GITHUB_STEP_SUMMARY
+            echo "| ⚠️ | Primary (gpt-5-mini function calling) | Failed — used fallback |" >> $GITHUB_STEP_SUMMARY
             echo "| ✅ | Fallback (aider) | Success |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| ❌ | Primary (gpt-4.1-mini function calling) | Failed |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ | Primary (gpt-5-mini function calling) | Failed |" >> $GITHUB_STEP_SUMMARY
             echo "| ❌ | Fallback (aider) | Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$LINT_OUTCOME" == "success" ]; then
+            if [ "${LINT_ERRORS}" == "0" ]; then
+              echo "| ✅ | Lint | No errors |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| ⚠️ | Lint | Errors found — review before merging |" >> $GITHUB_STEP_SUMMARY
+            fi
+          elif [ "$LINT_OUTCOME" == "skipped" ]; then
+            echo "| ⏭️ | Lint | Skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$BUILD_OUTCOME" == "success" ]; then
+            echo "| ✅ | Build | Passed |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$BUILD_OUTCOME" == "failure" ]; then
+            echo "| ❌ | Build | Failed — commit blocked |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$BUILD_OUTCOME" == "skipped" ]; then
+            echo "| ⏭️ | Build | Skipped |" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ "$CHANGES_DETECTED" == "true" ]; then
@@ -374,25 +453,35 @@ jobs:
           OPENAI_OUTCOME: ${{ steps.openai_run.outcome }}
           AIDER_OUTCOME: ${{ steps.aider_run.outcome }}
           CHANGES_DETECTED: ${{ steps.push_changes.outputs.changes_detected }}
+          LINT_ERRORS: ${{ steps.lint.outputs.lint_errors }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
           BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
           AI_SUMMARY: ${{ steps.openai_run.outputs.ai_summary }}
         with:
           script: |
-            const { OPENAI_OUTCOME, AIDER_OUTCOME, CHANGES_DETECTED, BRANCH_NAME, AI_SUMMARY } = process.env;
+            const { OPENAI_OUTCOME, AIDER_OUTCOME, CHANGES_DETECTED, LINT_ERRORS, BUILD_OUTCOME, BRANCH_NAME, AI_SUMMARY } = process.env;
             const repoUrl    = context.payload.repository.html_url;
             const hasChanges = CHANGES_DETECTED === 'true';
             const success    = OPENAI_OUTCOME === 'success' || AIDER_OUTCOME === 'success';
-            const engine     = OPENAI_OUTCOME === 'success' ? 'gpt-4.1-mini + function calling' : 'aider fallback';
+            const engine     = OPENAI_OUTCOME === 'success' ? 'gpt-5-mini + function calling' : 'aider fallback';
+            const buildOk    = BUILD_OUTCOME === 'success';
+            const lintErrors = parseInt(LINT_ERRORS || '0');
 
             let body = `### 🤖 IA Workflow Results\n\n`;
 
-            if (success && hasChanges) {
+            if (success && hasChanges && buildOk) {
               body += `✅ **Success!** Changes implemented via **${engine}**.\n\n`;
               body += `- **Branch**: [\`${BRANCH_NAME}\`](${repoUrl}/tree/${BRANCH_NAME})\n`;
+              body += `- **Build**: ✅ passed\n`;
+              body += `- **Lint**: ${lintErrors === 0 ? '✅ no errors' : `⚠️ ${lintErrors} error(s) — review before merging`}\n`;
               if (AI_SUMMARY) {
                 body += `\n**Files modified:**\n${AI_SUMMARY}\n`;
               }
-              body += `\n> Checkout the branch, review carefully and merge into \`develop\` when ready.`;
+              body += `\n> Checkout the branch, review and merge into \`develop\` when ready.`;
+            } else if (success && BUILD_OUTCOME === 'failure') {
+              body += `⚠️ **AI made changes but the build failed.**\n\n`;
+              body += `The generated code broke the frontend build — commit was blocked.\n`;
+              body += `Check the [Action logs](${repoUrl}/actions/runs/${context.runId}) for the build error.`;
             } else if (success && !hasChanges) {
               body += `⚠️ **AI ran but made no changes.**\n\n`;
               body += `Try adding more detail to the issue description.`;
