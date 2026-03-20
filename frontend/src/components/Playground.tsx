@@ -31,7 +31,9 @@ import {
   ChevronUp,
   Printer,
   X,
-  RotateCcw
+  RotateCcw,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import React, { useState, useMemo, useRef } from 'react';
 import { Doughnut, Pie, Line, Bar } from 'react-chartjs-2';
@@ -198,6 +200,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   const [maximizedId, setMaximizedId] = useState<string | null>(null);
   // Using a new version key to reset layout to the simplified structure
   const [layout, setLayout] = useLocalStorage<LayoutItem[]>('playground_layout_v6', DEFAULT_LAYOUT);
+  const [showFilters, setShowFilters] = useLocalStorage<boolean>('playground_show_filters', true);
   const tableRef = useRef<HTMLDivElement>(null);
   const expenseChartRef = useRef<any>(null);
   
@@ -1189,14 +1192,24 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
       {activeTab === 'transactions' && (
         <div className="flex flex-col lg:flex-row gap-6 items-start mt-4">
         {/* Sidebar Filters - Sticky on desktop */}
-        <div className="w-full lg:w-80 lg:sticky lg:top-24 space-y-4 flex-shrink-0">
-          <div className="rounded-2xl border overflow-hidden shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-            <div className="p-4 font-semibold text-text flex items-center gap-2 border-b" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
-              <Filter className="w-5 h-5" />
-              <span>Filtros Rápidos</span>
-            </div>
-            
-            <div className="p-4 space-y-4">
+        {showFilters && (
+          <div className="w-full lg:w-80 lg:sticky lg:top-24 space-y-4 flex-shrink-0 animate-in slide-in-from-left duration-300">
+            <div className="rounded-2xl border overflow-hidden shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+              <div className="p-4 font-semibold text-text flex items-center justify-between border-b" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+                <div className="flex items-center gap-2">
+                  <Filter className="w-5 h-5" />
+                  <span>Filtros Rápidos</span>
+                </div>
+                <button 
+                  onClick={() => setShowFilters(false)}
+                  className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+                  title="Esconder Filtros"
+                >
+                  <PanelLeftClose className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-4 space-y-4">
               <div>
                 <label className="block text-xs font-medium text-text opacity-70 mb-2">Tipo de Lançamento</label>
                 <div className="grid grid-cols-3 gap-1">
@@ -1354,9 +1367,19 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
             </div>
           </div>
         </div>
+        )}
 
         {/* Main Content Area */}
         <div className="flex-1 space-y-8 w-full">
+          {!showFilters && (
+            <button
+              onClick={() => setShowFilters(true)}
+              className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-md hover:scale-105 transition-all animate-in slide-in-from-left duration-300"
+            >
+              <PanelLeftOpen className="w-5 h-5" />
+              MOSTRAR FILTROS
+            </button>
+          )}
           {/* Summary Stats Row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
