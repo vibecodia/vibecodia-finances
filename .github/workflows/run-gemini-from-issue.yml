@@ -42,13 +42,13 @@ jobs:
 
       - name: "🔧 Configure Git"
         run: |
-          git config user.name "Aider Bot"
+          git config user.name "IA Bot"
           git config user.email "github-actions-bot@users.noreply.github.com"
 
       - name: "🔑 Validate secrets"
         run: |
           if [ -z "$OPENAI_API_KEY" ]; then
-            echo "::error::OPENAI_API_KEY não configurado — o workflow vai falhar"
+            echo "::error::OPENAI_API_KEY não configurado"
             exit 1
           fi
           echo "✅ Secrets OK"
@@ -76,36 +76,183 @@ jobs:
             echo "$ISSUE_BODY"
             echo ""
             echo "## Rules"
-            echo "- Follow existing code patterns, file structure and naming conventions in the project"
+            echo "- Follow existing code patterns, file structure and naming conventions"
             echo "- Frontend is under frontend/ (React, TypeScript, Vite, Tailwind CSS)"
             echo "- Backend is under backend/ (Node.js, Express, MongoDB/Mongoose)"
-            echo "- Do not create new files unless strictly necessary — prefer editing existing ones"
             echo "- Do not modify unrelated files"
-            echo "- Do not change package.json, lock files or config files unless the task explicitly requires it"
+            echo "- Do not change package.json, lock files or config files unless explicitly required"
           } > "$TASK_FILE"
-
-          # Garante que arquivos internos do aider nunca entram no commit
-          cat >> .gitignore << 'EOF'
-          # aider
-          .aider.chat.history.md
-          .aider.input.history
-          .aider.tags.cache.v3/
-          EOF
-
-          git add .gitignore
-          git commit -m "chore: ignore aider internal files" || true
 
           git checkout -b "$BRANCH_NAME"
 
-      - name: "🧠 Execute aider"
-        id: aider_run
+      # ────────────────────────────────────────────────────────────────────
+      # PRIMARY: OpenAI gpt-4o com function calling
+      # Passa o codebase relevante como contexto e força write_file calls
+      # ────────────────────────────────────────────────────────────────────
+      - name: "🧠 Primary: OpenAI gpt-4o + function calling"
+        id: openai_run
+        continue-on-error: true
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           TASK_FILE: ${{ steps.prepare.outputs.task_file }}
         run: |
-          echo "::group::Executing aider"
+          echo "::group::OpenAI function calling"
 
-          # Arquivos cirúrgicos — só o que é relevante para tarefas de playground/charts
+          node << 'JSEOF'
+          const fs   = require('fs');
+          const path = require('path');
+
+          // ── 1. Lê a tarefa ──────────────────────────────────────────────
+          const task = fs.readFileSync(process.env.TASK_FILE, 'utf8');
+
+          // ── 2. Monta snapshot do codebase ───────────────────────────────
+          // Lista de arquivos relevantes — edite conforme seu projeto
+          const RELEVANT = [
+            'frontend/src/components/Playground.tsx',
+            'frontend/src/types/transaction.ts',
+            'frontend/src/types/index.ts',
+            'frontend/src/hooks/useTransactions.ts',
+            'frontend/src/hooks/useDashboard.ts',
+            'backend/src/routes/transactions.ts',
+            'backend/src/routes/index.ts',
+            'backend/src/models/Transaction.ts',
+            'backend/src/models/transaction.model.ts',
+          ];
+
+          // Complementa com todos os charts/components da pasta playground
+          function walk(dir, exts) {
+            if (!fs.existsSync(dir)) return [];
+            const skip = new Set(['node_modules', 'dist', '.git', 'build', 'coverage']);
+            const out  = [];
+            for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+              if (skip.has(e.name)) continue;
+              const full = path.join(dir, e.name);
+              if (e.isDirectory()) out.push(...walk(full, exts));
+              else if (exts.some(x => e.name.endsWith(x))) out.push(full);
+            }
+            return out;
+          }
+
+          const chartFiles = walk('frontend/src/components/charts', ['.ts', '.tsx']);
+          const allFiles   = [...new Set([...RELEVANT, ...chartFiles])].filter(f => fs.existsSync(f));
+
+          const MAX_LINES = 250;
+          let codebaseContext = '';
+          for (const f of allFiles) {
+            const lines   = fs.readFileSync(f, 'utf8').split('\n');
+            const content = lines.slice(0, MAX_LINES).join('\n');
+            const note    = lines.length > MAX_LINES ? `\n... (+${lines.length - MAX_LINES} lines truncated)` : '';
+            codebaseContext += `\n\n### ${f}\n\`\`\`\n${content}${note}\n\`\`\``;
+          }
+
+          console.log(`📁 Context: ${allFiles.length} files loaded`);
+
+          // ── 3. Ferramentas ──────────────────────────────────────────────
+          const tools = [{
+            type: 'function',
+            function: {
+              name: 'write_file',
+              description: 'Write or overwrite a file in the repository. Call once per file that needs to be created or modified.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  path:    { type: 'string', description: 'Relative path from repo root, e.g. frontend/src/components/MyChart.tsx' },
+                  content: { type: 'string', description: 'Complete file content to write' },
+                  reason:  { type: 'string', description: 'One-line explanation of the change' },
+                },
+                required: ['path', 'content', 'reason'],
+              },
+            },
+          }];
+
+          // ── 4. Chama a API ──────────────────────────────────────────────
+          const systemPrompt = `You are a senior full-stack engineer working on a real codebase.
+          You will receive a task and the relevant source files of the project.
+          Implement the requested changes by calling write_file for every file you need to create or modify.
+          - Study the existing code carefully — follow its exact patterns, imports, naming and architecture.
+          - Call write_file once per file with the COMPLETE new content (not diffs or snippets).
+          - Do not touch unrelated files.
+          - New backend routes must follow the same pattern as existing routes.
+          - New frontend components must follow the same structure as existing components.`;
+
+          async function run() {
+            const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+              },
+              body: JSON.stringify({
+                model: 'gpt-4o',
+                temperature: 0.1,
+                tool_choice: 'required',
+                tools,
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user',   content: `## Task\n${task}\n\n## Codebase\n${codebaseContext}` },
+                ],
+              }),
+            });
+
+            const data = await resp.json();
+
+            if (!resp.ok) {
+              console.error('OpenAI error:', JSON.stringify(data, null, 2));
+              process.exit(1);
+            }
+
+            const calls = data.choices[0].message.tool_calls || [];
+
+            if (calls.length === 0) {
+              console.error('❌ No tool calls returned — nothing written');
+              process.exit(1);
+            }
+
+            // ── 5. Escreve os arquivos ──────────────────────────────────
+            const cwd = path.resolve(process.cwd());
+            for (const call of calls) {
+              if (call.function.name !== 'write_file') continue;
+              const { path: filePath, content, reason } = JSON.parse(call.function.arguments);
+
+              const fullPath = path.resolve(cwd, filePath);
+              if (!fullPath.startsWith(cwd + path.sep)) {
+                console.error(`❌ Path traversal bloqueado: ${filePath}`);
+                continue;
+              }
+
+              fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+              fs.writeFileSync(fullPath, content, 'utf8');
+              console.log(`✅ Written: ${filePath} — ${reason}`);
+            }
+
+            console.log(`\n🎉 Done. ${calls.length} file(s) written.`);
+
+            const summary = calls
+              .map(c => { const a = JSON.parse(c.function.arguments); return `- \`${a.path}\`: ${a.reason}`; })
+              .join('\n');
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `ai_summary<<EOF\n${summary}\nEOF\n`);
+          }
+
+          run().catch(err => { console.error(err); process.exit(1); });
+          JSEOF
+
+          echo "::endgroup::"
+
+      # ────────────────────────────────────────────────────────────────────
+      # FALLBACK: aider com arquivos cirúrgicos
+      # Só roda se o OpenAI falhar (rate limit, token limit, erro de API)
+      # ────────────────────────────────────────────────────────────────────
+      - name: "🔁 Fallback: aider + gpt-4o"
+        id: aider_run
+        if: steps.openai_run.outcome == 'failure'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TASK_FILE: ${{ steps.prepare.outputs.task_file }}
+        run: |
+          echo "::group::Aider fallback"
+          echo "⚠️ OpenAI function calling failed — trying aider with surgical context"
+
+          # Monta lista de arquivos existentes relevantes
           RELEVANT_FILES=""
           for f in \
             "frontend/src/components/Playground.tsx" \
@@ -121,7 +268,11 @@ jobs:
             [ -f "$f" ] && RELEVANT_FILES="$RELEVANT_FILES $f"
           done
 
-          echo "📄 Files passed to aider: $RELEVANT_FILES"
+          # Adiciona charts existentes (limitado a 10 para não estourar TPM)
+          CHART_FILES=$(find frontend/src/components/charts -type f \( -name "*.ts" -o -name "*.tsx" \) 2>/dev/null | head -10 | tr '\n' ' ')
+          RELEVANT_FILES="$RELEVANT_FILES $CHART_FILES"
+
+          echo "📄 Files: $RELEVANT_FILES"
 
           aider \
             --yes-always \
@@ -141,7 +292,6 @@ jobs:
           ISSUE_URL: ${{ github.event.issue.html_url }}
           BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
         run: |
-          # Exclui arquivos internos do aider antes de avaliar mudanças
           git reset HEAD .aider.chat.history.md .aider.input.history 2>/dev/null || true
           git add .
 
@@ -150,9 +300,13 @@ jobs:
             echo "ℹ️ No code changes detected."
           else
             echo "changes_detected=true" >> $GITHUB_OUTPUT
+
+            ENGINE="gpt-4o + function calling"
+            [ "${{ steps.openai_run.outcome }}" != "success" ] && ENGINE="aider fallback"
+
             git commit \
               -m "feat(ia): implement solution for #${ISSUE_NUMBER}" \
-              -m "Generated by aider + gpt-4o based on issue description." \
+              -m "Generated by ${ENGINE}." \
               -m "Issue: ${ISSUE_URL}"
           fi
 
@@ -162,7 +316,9 @@ jobs:
         if: always()
         env:
           CHANGES_DETECTED: ${{ steps.push_changes.outputs.changes_detected }}
+          OPENAI_OUTCOME: ${{ steps.openai_run.outcome }}
           AIDER_OUTCOME: ${{ steps.aider_run.outcome }}
+          AI_SUMMARY: ${{ steps.openai_run.outputs.ai_summary }}
           BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
         run: |
           echo "## 🤖 IA-Driven Workflow Summary" >> $GITHUB_STEP_SUMMARY
@@ -170,45 +326,61 @@ jobs:
           echo "| Status | Step | Details |" >> $GITHUB_STEP_SUMMARY
           echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
 
-          if [ "$AIDER_OUTCOME" == "success" ]; then
-            echo "| ✅ | aider execution | Successfully completed |" >> $GITHUB_STEP_SUMMARY
+          if [ "$OPENAI_OUTCOME" == "success" ]; then
+            echo "| ✅ | Primary (gpt-4o function calling) | Success |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$AIDER_OUTCOME" == "success" ]; then
+            echo "| ⚠️ | Primary (gpt-4o function calling) | Failed — used fallback |" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ | Fallback (aider) | Success |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| ❌ | aider execution | Failed — check logs |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ | Primary (gpt-4o function calling) | Failed |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ | Fallback (aider) | Failed |" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ "$CHANGES_DETECTED" == "true" ]; then
-            echo "| ✅ | Changes | Code changes pushed to \`$BRANCH_NAME\` |" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ | Changes | Pushed to \`$BRANCH_NAME\` |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| ℹ️ | Changes | No changes detected |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -n "$AI_SUMMARY" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Files modified" >> $GITHUB_STEP_SUMMARY
+            echo "$AI_SUMMARY" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: "🗣️ Comment on issue"
         if: always()
         uses: actions/github-script@v7
         env:
+          OPENAI_OUTCOME: ${{ steps.openai_run.outcome }}
           AIDER_OUTCOME: ${{ steps.aider_run.outcome }}
           CHANGES_DETECTED: ${{ steps.push_changes.outputs.changes_detected }}
           BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
+          AI_SUMMARY: ${{ steps.openai_run.outputs.ai_summary }}
         with:
           script: |
-            const { AIDER_OUTCOME, CHANGES_DETECTED, BRANCH_NAME } = process.env;
-            const success = AIDER_OUTCOME === 'success';
+            const { OPENAI_OUTCOME, AIDER_OUTCOME, CHANGES_DETECTED, BRANCH_NAME, AI_SUMMARY } = process.env;
+            const repoUrl    = context.payload.repository.html_url;
             const hasChanges = CHANGES_DETECTED === 'true';
-            const repoUrl = context.payload.repository.html_url;
+            const engine     = OPENAI_OUTCOME === 'success' ? 'gpt-4o + function calling' : 'aider fallback';
+            const success    = OPENAI_OUTCOME === 'success' || AIDER_OUTCOME === 'success';
 
             let body = `### 🤖 IA Workflow Results\n\n`;
 
             if (success && hasChanges) {
-              body += `✅ **Success!** aider + gpt-4o implemented the changes.\n\n`;
+              body += `✅ **Success!** Changes implemented via **${engine}**.\n\n`;
               body += `- **Branch**: [\`${BRANCH_NAME}\`](${repoUrl}/tree/${BRANCH_NAME})\n`;
-              body += `\nCheckout the branch to review the changes before merging into \`develop\`.`;
+              if (AI_SUMMARY) {
+                body += `\n**Files modified:**\n${AI_SUMMARY}\n`;
+              }
+              body += `\nCheckout the branch, review and merge into \`develop\` when ready.`;
             } else if (success && !hasChanges) {
-              body += `⚠️ **aider ran but made no changes.**\n\n`;
-              body += `The task description may not have been specific enough, or the code already satisfies the requirements.\n`;
-              body += `Try adding more details to this issue and it will re-run automatically.`;
+              body += `⚠️ **AI ran but made no changes.**\n\n`;
+              body += `Try adding more detail to the issue description.`;
             } else {
-              body += `❌ **Failed!** aider encountered an error.\n\n`;
-              body += `Please check the [Action logs](${repoUrl}/actions/runs/${context.runId}) for details.`;
+              body += `❌ **Both primary and fallback failed.**\n\n`;
+              body += `Check the [Action logs](${repoUrl}/actions/runs/${context.runId}) for details.\n\n`;
+              body += `Common causes: token limit exceeded, API quota, or task description too vague.`;
             }
 
             await github.rest.issues.createComment({
