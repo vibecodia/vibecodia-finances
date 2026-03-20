@@ -43,15 +43,15 @@ jobs:
         run: |
           mkdir -p ia/templates
           TEMPLATE_PATH="ia/templates/001-general.md"
-          
+
           if [ ! -s "$TEMPLATE_PATH" ]; then
             echo "⚠️ Template missing, creating a default one..."
             cat <<EOF > "$TEMPLATE_PATH"
-          You are an expert software engineer. Analyze the following task and implement the necessary changes.
-          Follow the project's coding standards and best practices.
-          EOF
+            You are an expert software engineer. Analyze the following task and implement the necessary changes.
+            Follow the project's coding standards and best practices.
+            EOF
           fi
-          
+
           TIMESTAMP=$(date +%Y%m%d%H%M%S)
           BRANCH_NAME="ia/task-${{ github.event.issue.number }}-$TIMESTAMP"
           PLAN_FILE_PATH="ia/plans/plan-${{ github.event.issue.number }}.md"
@@ -59,11 +59,11 @@ jobs:
 
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
           echo "plan_file_path=$PLAN_FILE_PATH" >> $GITHUB_OUTPUT
-          
+
           # Prepare Plan Content
           TASK_DESCRIPTION="${{ github.event.issue.body }}"
           TEMPLATE_CONTENT=$(cat "$TEMPLATE_PATH")
-          
+
           {
             echo "# 🧠 AI Action Plan - Issue #${{ github.event.issue.number }}"
             echo ""
@@ -73,8 +73,13 @@ jobs:
             echo "## 📋 Instructions"
             echo "$TEMPLATE_CONTENT"
             echo ""
-            echo "🛑 *Note: Do not use tools like write_file or replace directly. Generate code as text.*"
+            echo "🛑 *Note: Respond with the complete file content for each file you modify using the format: FILE:path/to/file.ext\n\`\`\`\nCONTENT\n\`\`\`\n*"
           } > "$PLAN_FILE_PATH"
+
+          # Export for use in steps
+          echo "plan_content<<EOF" >> $GITHUB_OUTPUT
+          cat "$PLAN_FILE_PATH" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: "🌱 Create branch and commit plan"
         run: |
@@ -84,23 +89,21 @@ jobs:
 
       - name: "🧠 Execute Gemini-CLI"
         id: gemini_run
+        continue-on-error: true
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          PLAN_CONTENT=$(cat ${{ steps.prepare_context.outputs.plan_file_path }})
-          
           echo "::group::Executing Gemini-CLI"
           set +e
-          # Using -p for non-interactive mode and yolo for automated tool approvals
-          RESULT=$(npx --yes @google/gemini-cli --approval-mode yolo -p "$PLAN_CONTENT" 2>&1)
+          # Tentativa com modelo flash para maior cota
+          RESULT=$(npx --yes @google/gemini-cli --approval-mode yolo -p "${{ steps.prepare_context.outputs.plan_content }}" 2>&1)
           EXIT_CODE=$?
           set -e
           echo "::endgroup::"
 
           if [ $EXIT_CODE -ne 0 ]; then
-            echo "❌ Gemini-CLI execution failed with exit code $EXIT_CODE"
-            echo "Error details: $RESULT"
-            echo "result=Error: $RESULT" >> $GITHUB_OUTPUT
+            echo "⚠️ Gemini-CLI failed (likely quota). Moving to fallback."
+            echo "error_msg=$RESULT" >> $GITHUB_OUTPUT
             exit 1
           fi
 
@@ -108,6 +111,64 @@ jobs:
           echo "$RESULT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+      - name: "🧠 Fallback: Execute OpenAI"
+        if: steps.gemini_run.outcome == 'failure'
+        id: openai_run
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PLAN_CONTENT: ${{ steps.prepare_context.outputs.plan_content }}
+          # Defina aqui o modelo desejado (gpt-4o-mini, gpt-4.1-mini, etc)
+          OPENAI_MODEL: "gpt-4o-mini"
+        run: |
+          echo "::group::Executing OpenAI Fallback"
+          node -e "
+          async function run() {
+            const prompt = process.env.PLAN_CONTENT;
+            const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': \`Bearer \${process.env.OPENAI_API_KEY}\`
+              },
+              body: JSON.stringify({
+                model: process.env.OPENAI_MODEL,
+                messages: [
+                  { role: 'system', content: 'You are a senior developer. Apply the plan and return the full content of modified files using the format: FILE:path/to/file\nCONTENT_START\n[FILE CONTENT]\nCONTENT_END' },
+                  { role: 'user', content: prompt }
+                ],
+                temperature: 0.2
+              })
+            });
+
+            const data = await resp.json();
+            if (!resp.ok) {
+              console.error('OpenAI Error:', data);
+              process.exit(1);
+            }
+
+            const text = data.choices[0].message.content;
+            console.log('OpenAI Response received');
+
+            // Parser simples para aplicar arquivos
+            const fileBlocks = text.split('FILE:');
+            for (let block of fileBlocks) {
+              if (!block.trim()) continue;
+              const lines = block.split('\n');
+              const filePath = lines[0].trim();
+              const content = block.split('CONTENT_START')[1]?.split('CONTENT_END')[0];
+
+              if (filePath && content) {
+                console.log('Writing to:', filePath);
+                const dir = filePath.substring(0, filePath.lastIndexOf('/'));
+                if (dir && !require('fs').existsSync(dir)) require('fs').mkdirSync(dir, { recursive: true });
+                require('fs').writeFileSync(filePath, content.trim());
+              }
+            }
+            console.log('::set-output name=result::' + text.substring(0, 500) + '...');
+          }
+          run().catch(err => { console.error(err); process.exit(1); });
+          "
+          echo "::endgroup::"
       - name: "💾 Commit and Push changes"
         id: push_changes
         run: |
