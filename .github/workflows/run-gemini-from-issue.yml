@@ -87,7 +87,6 @@ jobs:
 
       # ────────────────────────────────────────────────────────────────────
       # PRIMARY: OpenAI gpt-4o com function calling
-      # Passa o codebase relevante como contexto e força write_file calls
       # ────────────────────────────────────────────────────────────────────
       - name: "🧠 Primary: OpenAI gpt-4o + function calling"
         id: openai_run
@@ -106,9 +105,9 @@ jobs:
           const task = fs.readFileSync(process.env.TASK_FILE, 'utf8');
 
           // ── 2. Monta snapshot do codebase ───────────────────────────────
-          // Lista de arquivos relevantes — edite conforme seu projeto
           const RELEVANT = [
             'frontend/src/components/Playground.tsx',
+            'frontend/src/components/playground.tsx',
             'frontend/src/types/transaction.ts',
             'frontend/src/types/index.ts',
             'frontend/src/hooks/useTransactions.ts',
@@ -119,7 +118,6 @@ jobs:
             'backend/src/models/transaction.model.ts',
           ];
 
-          // Complementa com todos os charts/components da pasta playground
           function walk(dir, exts) {
             if (!fs.existsSync(dir)) return [];
             const skip = new Set(['node_modules', 'dist', '.git', 'build', 'coverage']);
@@ -152,12 +150,12 @@ jobs:
             type: 'function',
             function: {
               name: 'write_file',
-              description: 'Write or overwrite a file in the repository. Call once per file that needs to be created or modified.',
+              description: 'Write or overwrite a file in the repository. Call once per file that needs to be created or modified. Always include the COMPLETE file content.',
               parameters: {
                 type: 'object',
                 properties: {
                   path:    { type: 'string', description: 'Relative path from repo root, e.g. frontend/src/components/MyChart.tsx' },
-                  content: { type: 'string', description: 'Complete file content to write' },
+                  content: { type: 'string', description: 'Complete file content — every existing line preserved, plus your additions' },
                   reason:  { type: 'string', description: 'One-line explanation of the change' },
                 },
                 required: ['path', 'content', 'reason'],
@@ -165,16 +163,21 @@ jobs:
             },
           }];
 
-          // ── 4. Chama a API ──────────────────────────────────────────────
+          // ── 4. System prompt com regra explícita de não apagar conteúdo ─
           const systemPrompt = `You are a senior full-stack engineer working on a real codebase.
           You will receive a task and the relevant source files of the project.
           Implement the requested changes by calling write_file for every file you need to create or modify.
-          - Study the existing code carefully — follow its exact patterns, imports, naming and architecture.
-          - Call write_file once per file with the COMPLETE new content (not diffs or snippets).
+
+          CRITICAL RULES:
+          - When modifying an existing file, you MUST include the COMPLETE file content — every line that already existed, plus your additions. Never omit existing code.
+          - Before writing a file, mentally verify: "Does this output contain everything that was in the original file?"
+          - If you are adding a new component or function to a file, keep ALL existing imports, components, functions, types and exports intact. Only add what is new.
           - Do not touch unrelated files.
           - New backend routes must follow the same pattern as existing routes.
-          - New frontend components must follow the same structure as existing components.`;
+          - New frontend components must follow the same structure as existing components.
+          - Do not change package.json, lock files, or config files unless the task explicitly requires it.`;
 
+          // ── 5. Chama a API ──────────────────────────────────────────────
           async function run() {
             const resp = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
@@ -208,8 +211,10 @@ jobs:
               process.exit(1);
             }
 
-            // ── 5. Escreve os arquivos ──────────────────────────────────
+            // ── 6. Escreve os arquivos com verificação de content loss ────
             const cwd = path.resolve(process.cwd());
+            let warnings = 0;
+
             for (const call of calls) {
               if (call.function.name !== 'write_file') continue;
               const { path: filePath, content, reason } = JSON.parse(call.function.arguments);
@@ -220,9 +225,23 @@ jobs:
                 continue;
               }
 
+              // Verifica se o arquivo encolheu demais (provável perda de conteúdo)
+              if (fs.existsSync(fullPath)) {
+                const originalLines = fs.readFileSync(fullPath, 'utf8').split('\n').length;
+                const newLines      = content.split('\n').length;
+                if (newLines < originalLines * 0.7) {
+                  console.warn(`⚠️  WARNING: ${filePath} shrunk from ${originalLines} to ${newLines} lines — possible content loss!`);
+                  warnings++;
+                }
+              }
+
               fs.mkdirSync(path.dirname(fullPath), { recursive: true });
               fs.writeFileSync(fullPath, content, 'utf8');
               console.log(`✅ Written: ${filePath} — ${reason}`);
+            }
+
+            if (warnings > 0) {
+              console.warn(`\n⚠️  ${warnings} file(s) may have lost content. Review the branch carefully before merging.`);
             }
 
             console.log(`\n🎉 Done. ${calls.length} file(s) written.`);
@@ -238,10 +257,10 @@ jobs:
 
           echo "::endgroup::"
 
-      # ────────────────────────────────────────────────────────────────────
-      # FALLBACK: aider com arquivos cirúrgicos
-      # Só roda se o OpenAI falhar (rate limit, token limit, erro de API)
-      # ────────────────────────────────────────────────────────────────────
+          # ────────────────────────────────────────────────────────────────────
+          # FALLBACK: aider com arquivos cirúrgicos
+          # Só roda se o OpenAI falhar (rate limit, token limit, erro de API)
+          # ────────────────────────────────────────────────────────────────────
       - name: "🔁 Fallback: aider + gpt-4o"
         id: aider_run
         if: steps.openai_run.outcome == 'failure'
@@ -252,10 +271,10 @@ jobs:
           echo "::group::Aider fallback"
           echo "⚠️ OpenAI function calling failed — trying aider with surgical context"
 
-          # Monta lista de arquivos existentes relevantes
           RELEVANT_FILES=""
           for f in \
             "frontend/src/components/Playground.tsx" \
+            "frontend/src/components/playground.tsx" \
             "frontend/src/types/transaction.ts" \
             "frontend/src/types/index.ts" \
             "frontend/src/hooks/useTransactions.ts" \
@@ -268,7 +287,6 @@ jobs:
             [ -f "$f" ] && RELEVANT_FILES="$RELEVANT_FILES $f"
           done
 
-          # Adiciona charts existentes (limitado a 10 para não estourar TPM)
           CHART_FILES=$(find frontend/src/components/charts -type f \( -name "*.ts" -o -name "*.tsx" \) 2>/dev/null | head -10 | tr '\n' ' ')
           RELEVANT_FILES="$RELEVANT_FILES $CHART_FILES"
 
@@ -291,6 +309,7 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_URL: ${{ github.event.issue.html_url }}
           BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
+          OPENAI_OUTCOME: ${{ steps.openai_run.outcome }}
         run: |
           git reset HEAD .aider.chat.history.md .aider.input.history 2>/dev/null || true
           git add .
@@ -302,7 +321,7 @@ jobs:
             echo "changes_detected=true" >> $GITHUB_OUTPUT
 
             ENGINE="gpt-4o + function calling"
-            [ "${{ steps.openai_run.outcome }}" != "success" ] && ENGINE="aider fallback"
+            [ "$OPENAI_OUTCOME" != "success" ] && ENGINE="aider fallback"
 
             git commit \
               -m "feat(ia): implement solution for #${ISSUE_NUMBER}" \
@@ -362,8 +381,8 @@ jobs:
             const { OPENAI_OUTCOME, AIDER_OUTCOME, CHANGES_DETECTED, BRANCH_NAME, AI_SUMMARY } = process.env;
             const repoUrl    = context.payload.repository.html_url;
             const hasChanges = CHANGES_DETECTED === 'true';
-            const engine     = OPENAI_OUTCOME === 'success' ? 'gpt-4o + function calling' : 'aider fallback';
             const success    = OPENAI_OUTCOME === 'success' || AIDER_OUTCOME === 'success';
+            const engine     = OPENAI_OUTCOME === 'success' ? 'gpt-4o + function calling' : 'aider fallback';
 
             let body = `### 🤖 IA Workflow Results\n\n`;
 
@@ -373,7 +392,7 @@ jobs:
               if (AI_SUMMARY) {
                 body += `\n**Files modified:**\n${AI_SUMMARY}\n`;
               }
-              body += `\nCheckout the branch, review and merge into \`develop\` when ready.`;
+              body += `\n> Checkout the branch, review carefully and merge into \`develop\` when ready.`;
             } else if (success && !hasChanges) {
               body += `⚠️ **AI ran but made no changes.**\n\n`;
               body += `Try adding more detail to the issue description.`;
