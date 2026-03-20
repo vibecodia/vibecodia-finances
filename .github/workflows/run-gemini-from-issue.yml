@@ -90,9 +90,9 @@ jobs:
           PLAN_CONTENT=$(cat ${{ steps.prepare_context.outputs.plan_file_path }})
           
           echo "::group::Executing Gemini-CLI"
-          # Run Gemini with --yes to avoid interactive prompts in CI
+          # Using gemini-1.5-flash for higher quota limits and faster execution
           set +e
-          RESULT=$(npx --yes @google/gemini-cli <<< "$PLAN_CONTENT" 2>&1)
+          RESULT=$(npx --yes @google/gemini-cli --model gemini-1.5-flash <<< "$PLAN_CONTENT" 2>&1)
           EXIT_CODE=$?
           set -e
           echo "::endgroup::"
