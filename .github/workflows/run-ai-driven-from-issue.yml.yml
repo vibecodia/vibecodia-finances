@@ -91,16 +91,9 @@ jobs:
           TASK_FILE: ${{ steps.prepare.outputs.task_file }}
         run: |
           echo "::group::Aider"
-          echo "⚠️ Trying aider with surgical context"
+          echo "⚠️ Running aider with surgical context"
 
-          RELEVANT_FILES=""
-          for f in $(find frontend/src -name "*.tsx") $(find backend -name "*.js")
-          do
-            [ -f "$f" ] && RELEVANT_FILES="$RELEVANT_FILES $f"
-          done
-
-          CHART_FILES=$(find frontend/src/components/charts -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.css" -o -name "*.js" \) 2>/dev/null | head -10 | tr '\n' ' ')
-          RELEVANT_FILES="$RELEVANT_FILES $CHART_FILES"
+          RELEVANT_FILES=$(find frontend/src backend -type f \( -name "*.tsx" -o -name "*.js" \) | tr '\n' ' ')
 
           echo "📄 Files: $RELEVANT_FILES"
 
@@ -112,6 +105,13 @@ jobs:
             --no-auto-commits \
             --message "$(cat "$TASK_FILE")" \
             $RELEVANT_FILES
+
+          # Generate summary of modified files for GitHub Step Summary
+          {
+            echo "ai_summary<<EOF"
+            git diff --name-only HEAD | sed 's/^/- /'
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
           echo "::endgroup::"
 
@@ -189,8 +189,8 @@ jobs:
           else
             echo "changes_detected=true" >> $GITHUB_OUTPUT
 
-            ENGINE="gpt-5-mini + function calling"
-            [ "$OPENAI_OUTCOME" != "success" ] && ENGINE="aider"
+            ENGINE="gpt-5-mini + aider"
+            # [ "$OPENAI_OUTCOME" != "success" ] && ENGINE="aider"
 
             LINT_NOTE=""
             [ "${LINT_ERRORS}" != "0" ] && LINT_NOTE=" [lint warnings]"
