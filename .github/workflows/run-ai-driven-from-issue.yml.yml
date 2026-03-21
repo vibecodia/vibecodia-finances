@@ -94,9 +94,7 @@ jobs:
           echo "⚠️ Trying aider with surgical context"
 
           RELEVANT_FILES=""
-          for f in \
-            "frontend/src/*.tsx" \
-            "backend/*.js"
+          for f in $(find frontend/src -name "*.tsx") $(find backend -name "*.js")
           do
             [ -f "$f" ] && RELEVANT_FILES="$RELEVANT_FILES $f"
           done
