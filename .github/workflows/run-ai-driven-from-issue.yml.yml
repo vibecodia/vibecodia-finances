@@ -1,0 +1,309 @@
+name: "IA-Driven Development Workflow"
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+  contents: write
+
+concurrency:
+  group: ia-driven-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  ia_driven_task:
+    name: "🧠 IA-Driven Task (#${{ github.event.issue.number }})"
+    runs-on: ubuntu-latest
+    if: contains(github.event.issue.labels.*.name, 'ia-driven')
+
+    steps:
+      - name: "🔄 Checkout repository"
+        uses: actions/checkout@v4
+        with:
+          ref: 'develop'
+          fetch-depth: 0
+
+      - name: "📦 Setup Node.js 22"
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: "📥 Install aider"
+        run: pip install aider-chat --quiet
+
+      - name: "🔧 Configure Git"
+        run: |
+          git config user.name "IA Bot"
+          git config user.email "github-actions-bot@users.noreply.github.com"
+
+      - name: "🔑 Validate secrets"
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::OPENAI_API_KEY não configurado"
+            exit 1
+          fi
+          echo "✅ Secrets OK"
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: "📁 Prepare task and branch"
+        id: prepare
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          BRANCH_NAME="ia/task-${ISSUE_NUMBER}-${TIMESTAMP}"
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+          mkdir -p ia/tasks
+          TASK_FILE="ia/tasks/task-${ISSUE_NUMBER}.md"
+          echo "task_file=$TASK_FILE" >> $GITHUB_OUTPUT
+
+          {
+            echo "# Task — Issue #${ISSUE_NUMBER}"
+            echo ""
+            echo "## What needs to be done"
+            echo "$ISSUE_BODY"
+            echo ""
+            echo "## Rules"
+            echo "- Follow existing code patterns, file structure and naming conventions"
+            echo "- Frontend is under frontend/ (React, TypeScript, Vite, Tailwind CSS)"
+            echo "- Backend is under backend/ (Node.js, Express, MongoDB/Mongoose)"
+            echo "- Do not modify unrelated files"
+            echo "- Do not change package.json, lock files or config files unless explicitly required"
+          } > "$TASK_FILE"
+
+          git checkout -b "$BRANCH_NAME"
+
+      - name: "🔁 Aider + gpt-5-mini"
+        id: aider_run
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TASK_FILE: ${{ steps.prepare.outputs.task_file }}
+        run: |
+          echo "::group::Aider"
+          echo "⚠️ Trying aider with surgical context"
+
+          RELEVANT_FILES=""
+          for f in \
+            "frontend/src/*.tsx" \
+            "backend/*.js"
+          do
+            [ -f "$f" ] && RELEVANT_FILES="$RELEVANT_FILES $f"
+          done
+
+          CHART_FILES=$(find frontend/src/components/charts -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.css" -o -name "*.js" \) 2>/dev/null | head -10 | tr '\n' ' ')
+          RELEVANT_FILES="$RELEVANT_FILES $CHART_FILES"
+
+          echo "📄 Files: $RELEVANT_FILES"
+
+          aider \
+            --yes-always \
+            --no-pretty \
+            --model gpt-5-mini \
+            --map-tokens 512 \
+            --no-auto-commits \
+            --message "$(cat "$TASK_FILE")" \
+            $RELEVANT_FILES
+
+          echo "::endgroup::"
+
+      - name: "🔍 Validate: install dependencies"
+        id: install
+        if: steps.aider_run.outcome == 'success'
+        run: |
+          echo "::group::Installing dependencies"
+          cd frontend && npm ci --prefer-offline 2>&1 | tail -5
+          cd ../backend && npm ci --prefer-offline 2>&1 | tail -5
+          echo "::endgroup::"
+
+      - name: "🔍 Validate: lint"
+        id: lint
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        run: |
+          echo "::group::Lint"
+          LINT_ERRORS=0
+
+          cd frontend
+          echo "--- Frontend lint ---"
+          npm run lint 2>&1 || LINT_ERRORS=$((LINT_ERRORS + 1))
+          cd ..
+
+          cd backend
+          echo "--- Backend lint ---"
+          npm run lint 2>&1 || LINT_ERRORS=$((LINT_ERRORS + 1))
+          cd ..
+
+          echo "lint_errors=$LINT_ERRORS" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
+
+          if [ $LINT_ERRORS -gt 0 ]; then
+            echo "::warning::Lint encontrou erros — revise antes de fazer merge"
+          fi
+
+      - name: "🔍 Validate: build"
+        id: build
+        if: steps.install.outcome == 'success'
+        run: |
+          echo "::group::Build"
+          BUILD_FAILED=0
+
+          cd frontend
+          echo "--- Frontend build ---"
+          npm run build 2>&1 || BUILD_FAILED=1
+          cd ..
+
+          echo "build_failed=$BUILD_FAILED" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
+
+          # Build quebrado bloqueia o commit
+          if [ $BUILD_FAILED -eq 1 ]; then
+            echo "::error::Build do frontend falhou — as alterações da IA quebraram o projeto"
+            exit 1
+          fi
+
+      - name: "💾 Commit and push changes"
+        id: push_changes
+        if: steps.build.outcome == 'success' || steps.build.outcome == 'skipped'
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
+          AIDER_OUTCOME: ${{ steps.aider_run.outcome }}
+          LINT_ERRORS: ${{ steps.lint.outputs.lint_errors }}
+        run: |
+          git reset HEAD .aider.chat.history.md .aider.input.history 2>/dev/null || true
+          git add .
+
+          if git diff --staged --quiet; then
+            echo "changes_detected=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No code changes detected."
+          else
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+
+            ENGINE="gpt-5-mini + function calling"
+            [ "$OPENAI_OUTCOME" != "success" ] && ENGINE="aider"
+
+            LINT_NOTE=""
+            [ "${LINT_ERRORS}" != "0" ] && LINT_NOTE=" [lint warnings]"
+
+            git commit \
+              -m "feat(ia): implement solution for #${ISSUE_NUMBER}" \
+              -m "Generated by ${ENGINE}.${LINT_NOTE}" \
+              -m "Issue: ${ISSUE_URL}"
+          fi
+
+          git push origin "$BRANCH_NAME"
+
+      - name: "📝 Generate step summary"
+        if: always()
+        env:
+          CHANGES_DETECTED: ${{ steps.push_changes.outputs.changes_detected }}
+          AIDER_OUTCOME: ${{ steps.aider_run.outcome }}
+          LINT_OUTCOME: ${{ steps.lint.outcome }}
+          LINT_ERRORS: ${{ steps.lint.outputs.lint_errors }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          AI_SUMMARY: ${{ steps.aider_run.outputs.ai_summary }}
+          BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
+        run: |
+          echo "## 🤖 IA-Driven Workflow Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | Step | Details |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$AIDER_OUTCOME" == "success" ]; then
+            echo "| ✅ | Aider | Success |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| ❌ | Aider | Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$LINT_OUTCOME" == "success" ]; then
+            if [ "${LINT_ERRORS}" == "0" ]; then
+              echo "| ✅ | Lint | No errors |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| ⚠️ | Lint | Errors found — review before merging |" >> $GITHUB_STEP_SUMMARY
+            fi
+          elif [ "$LINT_OUTCOME" == "skipped" ]; then
+            echo "| ⏭️ | Lint | Skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$BUILD_OUTCOME" == "success" ]; then
+            echo "| ✅ | Build | Passed |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$BUILD_OUTCOME" == "failure" ]; then
+            echo "| ❌ | Build | Failed — commit blocked |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$BUILD_OUTCOME" == "skipped" ]; then
+            echo "| ⏭️ | Build | Skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$CHANGES_DETECTED" == "true" ]; then
+            echo "| ✅ | Changes | Pushed to \`$BRANCH_NAME\` |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| ℹ️ | Changes | No changes detected |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -n "$AI_SUMMARY" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Files modified" >> $GITHUB_STEP_SUMMARY
+            echo "$AI_SUMMARY" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: "🗣️ Comment on issue"
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          AIDER_OUTCOME: ${{ steps.aider_run.outcome }}
+          CHANGES_DETECTED: ${{ steps.push_changes.outputs.changes_detected }}
+          LINT_ERRORS: ${{ steps.lint.outputs.lint_errors }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
+          AI_SUMMARY: ${{ steps.aider_run.outputs.ai_summary }}
+        with:
+          script: |
+            const { AIDER_OUTCOME, CHANGES_DETECTED, LINT_ERRORS, BUILD_OUTCOME, BRANCH_NAME, AI_SUMMARY } = process.env;
+            const repoUrl    = context.payload.repository.html_url;
+            const hasChanges = CHANGES_DETECTED === 'true';
+            const success    = AIDER_OUTCOME === 'success';
+            const engine     = 'aider';
+            const buildOk    = BUILD_OUTCOME === 'success';
+            const lintErrors = parseInt(LINT_ERRORS || '0');
+
+            let body = `### 🤖 IA Workflow Results\n\n`;
+
+            if (success && hasChanges && buildOk) {
+              body += `✅ **Success!** Changes implemented via **${engine}**.\n\n`;
+              body += `- **Branch**: [\`${BRANCH_NAME}\`](${repoUrl}/tree/${BRANCH_NAME})\n`;
+              body += `- **Build**: ✅ passed\n`;
+              body += `- **Lint**: ${lintErrors === 0 ? '✅ no errors' : `⚠️ ${lintErrors} error(s) — review before merging`}\n`;
+              if (AI_SUMMARY) {
+                body += `\n**Files modified:**\n${AI_SUMMARY}\n`;
+              }
+              body += `\n> Checkout the branch, review and merge into \`develop\` when ready.`;
+            } else if (success && BUILD_OUTCOME === 'failure') {
+              body += `⚠️ **AI made changes but the build failed.**\n\n`;
+              body += `The generated code broke the frontend build — commit was blocked.\n`;
+              body += `Check the [Action logs](${repoUrl}/actions/runs/${context.runId}) for the build error.`;
+            } else if (success && !hasChanges) {
+              body += `⚠️ **AI ran but made no changes.**\n\n`;
+              body += `Try adding more detail to the issue description.`;
+            } else {
+              body += `❌ **Both primary and fallback failed.**\n\n`;
+              body += `Check the [Action logs](${repoUrl}/actions/runs/${context.runId}) for details.\n\n`;
+              body += `Common causes: token limit exceeded, API quota, or task description too vague.`;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
