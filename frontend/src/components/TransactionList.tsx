@@ -362,8 +362,14 @@ const TransactionList: React.FC<TransactionListProps> = ({
               <ChevronRight className="w-5 h-5 text-text" />
             </button>
           </div>
-          <p className="text-sm font-medium opacity-70 ml-9" style={{ color: type === 'income' ? theme.primary : theme.accent }}>
-            Total: {formatCurrency(currentTotal)}
+          <p className="text-sm font-medium opacity-70 ml-9 flex items-center" style={{ color: type === 'income' ? theme.primary : theme.accent }}>
+            <span>Total: {formatCurrency(currentTotal)}</span>
+            {sortedTransactions.length > 0 && (
+              <>
+                <span className="mx-2">•</span>
+                <span className="text-xs opacity-90">{sortedTransactions.length} {sortedTransactions.length === 1 ? 'item' : 'itens'}</span>
+              </>
+            )}
           </p>
         </div>
         <button
