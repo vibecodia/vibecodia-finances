@@ -33,7 +33,8 @@ import {
   X,
   RotateCcw,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Eye
 } from 'lucide-react';
 import React, { useState, useMemo, useRef } from 'react';
 import { Doughnut, Pie, Line, Bar } from 'react-chartjs-2';
@@ -202,7 +203,44 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   const [layout, setLayout] = useLocalStorage<LayoutItem[]>('playground_layout_v6', DEFAULT_LAYOUT);
   const [showFilters, setShowFilters] = useLocalStorage<boolean>('playground_show_filters', true);
   const tableRef = useRef<HTMLDivElement>(null);
+  const incomeChartRef = useRef<any>(null);
   const expenseChartRef = useRef<any>(null);
+  const categoryChartRef = useRef<any>(null);
+  const paymentChartRef = useRef<any>(null);
+  const priceChartRef = useRef<any>(null);
+  const maximizedChartRef = useRef<any>(null);
+
+  const toggleAll = (chartRef: React.MutableRefObject<any>) => {
+    const chart = chartRef.current;
+    if (!chart || !chart.config) return;
+
+    const isPieOrDoughnut = ['pie', 'doughnut'].includes(chart.config.type);
+    
+    if (isPieOrDoughnut) {
+      const metadata = chart.getDatasetMeta(0);
+      if (!metadata || !metadata.data) return;
+      
+      const allVisible = metadata.data.every((_: any, index: number) => chart.getDataVisibility(index) === true);
+      
+      metadata.data.forEach((_: any, index: number) => {
+        if (allVisible) {
+          chart.toggleDataVisibility(index);
+        } else {
+          if (chart.getDataVisibility(index) === false) {
+            chart.toggleDataVisibility(index);
+          }
+        }
+      });
+    } else {
+      if (!chart.data || !chart.data.datasets) return;
+      const allVisible = chart.data.datasets.every((_: any, index: number) => chart.isDatasetVisible(index));
+
+      chart.data.datasets.forEach((_: any, index: number) => {
+        chart.setDatasetVisibility(index, !allVisible);
+      });
+    }
+    chart.update();
+  };
   
   // Filters State
   const [startDate, setStartDate] = useState<string>(format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
@@ -901,13 +939,22 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
     );
   };
 
-  const renderCardHeader = (id: string, label: string, icon: React.ReactNode, index: number, isCollapsed: boolean) => (
+  const renderCardHeader = (id: string, label: string, icon: React.ReactNode, index: number, isCollapsed: boolean, onToggleAll?: () => void) => (
     <div className="p-4 border-b font-semibold text-text flex items-center justify-between group" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
       <div className="flex items-center gap-2">
         {icon}
         <span className="text-sm lg:text-base">{label}</span>
       </div>
       <div className="flex items-center gap-1">
+        {onToggleAll && !isCollapsed && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); onToggleAll(); }}
+            className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+            title="Alternar Todos"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+        )}
         <button 
           onClick={(e) => { e.stopPropagation(); moveItem(index, 'up'); }}
           disabled={index === 0}
@@ -964,12 +1011,24 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                 </span>
               )}
             </div>
-            <button 
-              onClick={() => setMaximizedId(null)}
-              className="p-2 hover:bg-cardBorder rounded-xl transition-all text-text"
-            >
-              <X className="w-6 h-6" />
-            </button>
+            <div className="flex items-center gap-2">
+              {maximizedId !== 'table' && (
+                <button 
+                  onClick={() => toggleAll(maximizedChartRef)}
+                  className="p-2 px-4 hover:bg-cardBorder rounded-xl transition-all text-text flex items-center gap-2 text-sm font-bold border border-cardBorder"
+                  title="Alternar Todos"
+                >
+                  <Eye className="w-5 h-5" />
+                  <span>Alternar Todos</span>
+                </button>
+              )}
+              <button 
+                onClick={() => setMaximizedId(null)}
+                className="p-2 hover:bg-cardBorder rounded-xl transition-all text-text"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
           </div>
 
           {/* Content */}
@@ -978,6 +1037,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
               <div className="h-full min-h-[500px]">
                 {incomeMode === 'range' ? (
                   <Line 
+                    ref={maximizedChartRef}
                     data={incomeTimelineChartData} 
                     options={{ 
                       maintainAspectRatio: false,
@@ -997,6 +1057,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                   />
                 ) : (
                   <Bar 
+                    ref={maximizedChartRef}
                     data={incomeTimelineChartData} 
                     options={{ 
                       maintainAspectRatio: false,
@@ -1026,6 +1087,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
             {maximizedId === 'expense_timeline' && (
               <div className="h-full min-h-[500px]">
                 <Bar 
+                  ref={maximizedChartRef}
                   data={expenseTimelineChartData} 
                   options={{ 
                     maintainAspectRatio: false,
@@ -1036,65 +1098,67 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                         grace: '10%',
                         ticks: { 
                           color: theme.text, 
-                          font: { size: 12 },
-                          callback: (value) => formatCurrency(value as number)
-                        }, 
-                        grid: { color: theme.cardBorder } 
-                      },
-                      x: { 
-                        stacked: true,
-                        ticks: { color: theme.text, font: { size: 12 } }, 
-                        grid: { color: theme.cardBorder } 
+                            font: { size: 12 },
+                            callback: (value) => formatCurrency(value as number)
+                          }, 
+                          grid: { color: theme.cardBorder } 
+                        },
+                        x: { 
+                          stacked: true,
+                          ticks: { color: theme.text, font: { size: 12 } }, 
+                          grid: { color: theme.cardBorder } 
+                        }
                       }
-                    }
-                  }} 
-                />
-              </div>
-            )}
-            {maximizedId === 'categories' && (
-              <div className="h-full min-h-[500px] flex items-center justify-center">
-                <div className="w-full h-full">
-                  <Doughnut 
-                    data={categoryChartData} 
-                    options={{ 
-                      maintainAspectRatio: false, 
-                      plugins: { legend: { position: 'right', labels: { color: theme.text, font: { size: 14 } } } } 
                     }} 
                   />
                 </div>
-              </div>
-            )}
-            {maximizedId === 'payments' && (
-              <div className="h-full min-h-[500px] flex items-center justify-center">
-                <div className="w-full h-full">
-                  <Pie 
-                    data={paymentChartData} 
-                    options={{ 
-                      maintainAspectRatio: false, 
-                      plugins: { legend: { position: 'right', labels: { color: theme.text, font: { size: 14 } } } } 
-                    }} 
-                  />
+              )}
+              {maximizedId === 'categories' && (
+                <div className="h-full min-h-[500px] flex items-center justify-center">
+                  <div className="w-full h-full">
+                    <Doughnut 
+                      ref={maximizedChartRef}
+                      data={categoryChartData} 
+                      options={{ 
+                        maintainAspectRatio: false, 
+                        plugins: { legend: { position: 'right', labels: { color: theme.text, font: { size: 14 } } } } 
+                      }} 
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
-            {maximizedId === 'price_evolution' && (
-              <div className="h-full min-h-[500px]">
-                {priceChartData ? (
-                  <Line data={priceChartData} options={{ 
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: true, labels: { color: theme.text } } },
-                    scales: {
-                      y: { 
-                        ticks: { 
-                          color: theme.text,
-                          callback: (value) => formatCurrency(value as number)
-                        }, 
-                        grid: { color: theme.cardBorder } 
-                      },
-                      x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
-                    }
-                  }} />
-                ) : (
+              )}
+              {maximizedId === 'payments' && (
+                <div className="h-full min-h-[500px] flex items-center justify-center">
+                  <div className="w-full h-full">
+                    <Pie 
+                      ref={maximizedChartRef}
+                      data={paymentChartData} 
+                      options={{ 
+                        maintainAspectRatio: false, 
+                        plugins: { legend: { position: 'right', labels: { color: theme.text, font: { size: 14 } } } } 
+                      }} 
+                    />
+                  </div>
+                </div>
+              )}
+              {maximizedId === 'price_evolution' && (
+                <div className="h-full min-h-[500px]">
+                  {priceChartData ? (
+                    <Line ref={maximizedChartRef} data={priceChartData} options={{ 
+                      maintainAspectRatio: false,
+                      plugins: { legend: { display: true, labels: { color: theme.text } } },
+                      scales: {
+                        y: { 
+                          ticks: { 
+                            color: theme.text,
+                            callback: (value) => formatCurrency(value as number)
+                          }, 
+                          grid: { color: theme.cardBorder } 
+                        },
+                        x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
+                      }
+                    }} />
+                  ) : (
                   <div className="h-full flex items-center justify-center text-text opacity-40 italic text-xl">
                     Nenhum item selecionado para evolução de preços
                   </div>
@@ -1504,7 +1568,17 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                                                   </div>
                                                 </div>
                                               )}
-                                              <div className="flex items-center gap-1 border-l pl-3" style={{ borderColor: theme.cardBorder }}>                          <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowUp className="w-4 h-4" /></button>
+                                              <div className="flex items-center gap-1 border-l pl-3" style={{ borderColor: theme.cardBorder }}>
+                                                {!item.collapsed && (
+                                                  <button 
+                                                    onClick={(e) => { e.stopPropagation(); toggleAll(incomeChartRef); }}
+                                                    className="p-1.5 hover:bg-cardBorder rounded-md transition-all"
+                                                    title="Alternar Todos"
+                                                  >
+                                                    <Eye className="w-4 h-4" />
+                                                  </button>
+                                                )}
+                                                <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowUp className="w-4 h-4" /></button>
                           <button onClick={() => moveItem(index, 'down')} disabled={index === layout.length - 1} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowDown className="w-4 h-4" /></button>
                           <button onClick={() => setMaximizedId(item.id)} className="p-1.5 hover:bg-cardBorder rounded-md transition-all ml-1" title="Maximizar"><Maximize2 className="w-4 h-4" /></button>
                           <button onClick={() => toggleCollapse(item.id)} className="p-1.5 hover:bg-cardBorder rounded-md transition-all ml-1" title={item.collapsed ? "Expandir" : "Minimizar"}>
@@ -1694,6 +1768,15 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                         )}
                         
                         <div className="flex items-center gap-1 border-l-2 pl-2 md:pl-4" style={{ borderColor: theme.cardBorder }}>
+                          {!item.collapsed && (
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); toggleAll(expenseChartRef); }}
+                              className="p-1.5 md:p-2 hover:bg-cardBorder rounded-xl transition-all"
+                              title="Alternar Todos"
+                            >
+                              <Eye className="w-4 h-4 md:w-5 md:h-5" />
+                            </button>
+                          )}
                           <button 
                             onClick={(e) => { e.stopPropagation(); handlePrintExpenseChart(); }}
                             className="p-1.5 md:p-2 hover:bg-cardBorder rounded-xl transition-colors text-text"
@@ -1751,11 +1834,11 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
               case 'categories':
                 return (
                   <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    {renderCardHeader(item.id, item.label, <PieChartIcon className="w-5 h-5 text-primary" />, index, item.collapsed)}
+                    {renderCardHeader(item.id, item.label, <PieChartIcon className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(categoryChartRef))}
                     {!item.collapsed && (
                       <div className="p-8 h-80">
                         {filteredTransactions.length > 0 ? (
-                          <Doughnut data={categoryChartData} options={{ maintainAspectRatio: false, plugins: { legend: { labels: { color: theme.text, font: { size: 12 } } } } }} />
+                          <Doughnut ref={categoryChartRef} data={categoryChartData} options={{ maintainAspectRatio: false, plugins: { legend: { labels: { color: theme.text, font: { size: 12 } } } } }} />
                         ) : (
                           <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
                             <BarChart3 className="w-12 h-12 opacity-10" />
@@ -1770,11 +1853,11 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
               case 'payments':
                 return (
                   <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    {renderCardHeader(item.id, item.label, <CreditCard className="w-5 h-5 text-primary" />, index, item.collapsed)}
+                    {renderCardHeader(item.id, item.label, <CreditCard className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(paymentChartRef))}
                     {!item.collapsed && (
                       <div className="p-8 h-80">
                         {filteredTransactions.filter(t => t.paymentMethod).length > 0 ? (
-                          <Pie data={paymentChartData} options={{ maintainAspectRatio: false, plugins: { legend: { labels: { color: theme.text, font: { size: 12 } } } } }} />
+                          <Pie ref={paymentChartRef} data={paymentChartData} options={{ maintainAspectRatio: false, plugins: { legend: { labels: { color: theme.text, font: { size: 12 } } } } }} />
                         ) : (
                           <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
                             <CreditCard className="w-12 h-12 opacity-10" />
@@ -1814,6 +1897,15 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                           </select>
                         )}
                         <div className="flex items-center gap-1 border-l pl-3" style={{ borderColor: theme.cardBorder }}>
+                          {!item.collapsed && (
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); toggleAll(priceChartRef); }}
+                              className="p-1.5 hover:bg-cardBorder rounded-md transition-all"
+                              title="Alternar Todos"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          )}
                           <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowUp className="w-4 h-4" /></button>
                           <button onClick={() => moveItem(index, 'down')} disabled={index === layout.length - 1} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowDown className="w-4 h-4" /></button>
                           <button onClick={() => setMaximizedId(item.id)} className="p-1.5 hover:bg-cardBorder rounded-md transition-all ml-1" title="Maximizar"><Maximize2 className="w-4 h-4" /></button>
@@ -1826,7 +1918,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                     {!item.collapsed && (
                       <div className="p-8 h-96">
                         {priceChartData ? (
-                          <Line data={priceChartData} options={{ 
+                          <Line ref={priceChartRef} data={priceChartData} options={{ 
                             maintainAspectRatio: false,
                             plugins: { legend: { display: false } },
                             scales: {

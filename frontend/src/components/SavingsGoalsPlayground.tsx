@@ -32,9 +32,10 @@ import {
   Calculator,
   Info,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Eye
 } from 'lucide-react';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Doughnut, Line, Pie, Scatter } from 'react-chartjs-2';
 
 import { useTheme } from '../contexts/ThemeContext';
@@ -97,6 +98,45 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
 
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   
+  const simChartRef = useRef<any>(null);
+  const timelineChartRef = useRef<any>(null);
+  const distributionChartRef = useRef<any>(null);
+  const savingsVsIncomeChartRef = useRef<any>(null);
+  const matrixChartRef = useRef<any>(null);
+  const goalsVsExpensesChartRef = useRef<any>(null);
+
+  const toggleAll = (chartRef: React.MutableRefObject<any>) => {
+    const chart = chartRef.current;
+    if (!chart || !chart.config) return;
+
+    const isPieOrDoughnut = ['pie', 'doughnut'].includes(chart.config.type);
+    
+    if (isPieOrDoughnut) {
+      const metadata = chart.getDatasetMeta(0);
+      if (!metadata || !metadata.data) return;
+      
+      const allVisible = metadata.data.every((_: any, index: number) => chart.getDataVisibility(index) === true);
+      
+      metadata.data.forEach((_: any, index: number) => {
+        if (allVisible) {
+          chart.toggleDataVisibility(index);
+        } else {
+          if (chart.getDataVisibility(index) === false) {
+            chart.toggleDataVisibility(index);
+          }
+        }
+      });
+    } else {
+      if (!chart.data || !chart.data.datasets) return;
+      const allVisible = chart.data.datasets.every((_: any, index: number) => chart.isDatasetVisible(index));
+
+      chart.data.datasets.forEach((_: any, index: number) => {
+        chart.setDatasetVisibility(index, !allVisible);
+      });
+    }
+    chart.update();
+  };
+
   // Simulator State
   const [simInitialAmount, setSimInitialAmount] = useState<number>(0);
   const [simMonthlyAmount, setSimMonthlyAmount] = useState<number>(500);
@@ -569,7 +609,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     };
   }, [transactions, savingsGoals, theme.cardBackground]);
 
-  const renderCardHeader = (id: string, label: string, icon: React.ReactNode, index: number, isCollapsed: boolean) => (
+  const renderCardHeader = (id: string, label: string, icon: React.ReactNode, index: number, isCollapsed: boolean, onToggleAll?: () => void) => (
     <div className="p-4 border-b font-semibold text-text flex items-center justify-between group" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
       <div className="flex items-center gap-3">
         <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/20 text-primary font-bold text-xs">
@@ -581,6 +621,15 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         </div>
       </div>
       <div className="flex items-center gap-1">
+        {onToggleAll && !isCollapsed && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); onToggleAll(); }}
+            className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+            title="Alternar Todos"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+        )}
         <button
           onClick={(e) => { e.stopPropagation(); moveItem(index, 'up'); }}
           disabled={index === 0}
@@ -720,7 +769,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               case 'financial_simulators':
                 return (
                   <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    {renderCardHeader(item.id, item.label, <Calculator className="w-5 h-5 text-primary" />, index, item.collapsed)}
+                    {renderCardHeader(item.id, item.label, <Calculator className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(simChartRef))}
                     {!item.collapsed && (
                       <div className="p-6 md:p-8 space-y-8">
                         {/* Simulation Controls */}
@@ -833,6 +882,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
 
                           <div className="h-full min-h-[300px]">
                             <Line 
+                              ref={simChartRef}
                               data={simChartData}
                               options={{
                                 maintainAspectRatio: false,
@@ -880,11 +930,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               case 'contribution_timeline':
                 return (
                   <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    {renderCardHeader(item.id, item.label, <TrendingUp className="w-5 h-5 text-primary" />, index, item.collapsed)}
+                    {renderCardHeader(item.id, item.label, <TrendingUp className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(timelineChartRef))}
                     {!item.collapsed && (
                       <div className="p-8 h-80">
                         {allContributions.length > 0 ? (
                           <Line
+                            ref={timelineChartRef}
                             data={timelineChartData}
                             options={{
                               maintainAspectRatio: false,
@@ -909,11 +960,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               case 'goals_distribution':
                 return (
                   <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    {renderCardHeader(item.id, item.label, <PieChartIcon className="w-5 h-5 text-primary" />, index, item.collapsed)}
+                    {renderCardHeader(item.id, item.label, <PieChartIcon className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(distributionChartRef))}
                     {!item.collapsed && (
                       <div className="p-8 h-80">
                         {savingsGoals.length > 0 ? (
                           <Doughnut
+                            ref={distributionChartRef}
                             data={distributionChartData}
                             options={{ maintainAspectRatio: false, plugins: { legend: { labels: { color: theme.text } } } }}
                           />
@@ -978,11 +1030,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               case 'savings_vs_income':
                 return (
                   <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    {renderCardHeader(item.id, item.label, <BarChart3 className="w-5 h-5 text-primary" />, index, item.collapsed)}
+                    {renderCardHeader(item.id, item.label, <BarChart3 className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(savingsVsIncomeChartRef))}
                     {!item.collapsed && (
                       <div className="p-8 h-80">
                         {transactions.some(t => t.type === 'income') ? (
                           <Line
+                            ref={savingsVsIncomeChartRef}
                             data={savingsVsIncomeChartData}
                             options={{
                               maintainAspectRatio: false,
@@ -1007,11 +1060,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               case 'priority_matrix':
                 return (
                   <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    {renderCardHeader(item.id, item.label, <AlertCircle className="w-5 h-5 text-primary" />, index, item.collapsed)}
+                    {renderCardHeader(item.id, item.label, <AlertCircle className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(matrixChartRef))}
                     {!item.collapsed && (
                       <div className="p-8 h-96">
                         {savingsGoals.some(g => g.deadline) ? (
                           <Scatter
+                            ref={matrixChartRef}
                             data={matrixChartData}
                             options={{
                               maintainAspectRatio: false,
@@ -1192,12 +1246,13 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               case 'goals_vs_expenses':
                 return (
                   <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    {renderCardHeader(item.id, item.label, <BarChart3 className="w-5 h-5 text-primary" />, index, item.collapsed)}
+                    {renderCardHeader(item.id, item.label, <BarChart3 className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(goalsVsExpensesChartRef))}
                     {!item.collapsed && (
                       <div className="p-8 space-y-6">
                         <div className="h-80">
                           {transactions.some(t => t.type === 'expense') ? (
                             <Pie
+                              ref={goalsVsExpensesChartRef}
                               data={goalsVsExpensesData}
                               options={{
                                 maintainAspectRatio: false,
