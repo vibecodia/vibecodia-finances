@@ -7,6 +7,7 @@ on:
 permissions:
   issues: write
   contents: write
+  pull-requests: write
 
 concurrency:
   group: ia-driven-${{ github.event.issue.number }}
@@ -59,6 +60,7 @@ jobs:
         env:
           ISSUE_BODY: ${{ github.event.issue.body }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_LABELS: ${{ join(github.event.issue.labels.*.name, ',') }}
         run: |
           TIMESTAMP=$(date +%Y%m%d%H%M%S)
           BRANCH_NAME="ia/task-${ISSUE_NUMBER}-${TIMESTAMP}"
@@ -67,6 +69,13 @@ jobs:
           mkdir -p ia/tasks
           TASK_FILE="ia/tasks/task-${ISSUE_NUMBER}.md"
           echo "task_file=$TASK_FILE" >> $GITHUB_OUTPUT
+
+          # Detectar modo rápido
+          FAST_MODE=false
+          if echo "$ISSUE_LABELS" | grep -q "ia-fast"; then
+            FAST_MODE=true
+          fi
+          echo "fast_mode=$FAST_MODE" >> $GITHUB_OUTPUT
 
           {
             echo "# Task — Issue #${ISSUE_NUMBER}"
@@ -80,34 +89,73 @@ jobs:
             echo "- Backend is under backend/ (Node.js, Express, MongoDB/Mongoose)"
             echo "- Do not modify unrelated files"
             echo "- Do not change package.json, lock files or config files unless explicitly required"
+            echo "- Never modify authentication, environment configuration or database schema unless explicitly requested"
+            echo "- Implement only minimal and safe changes"
+            echo "- Do not refactor unrelated code"
           } > "$TASK_FILE"
 
           git checkout -b "$BRANCH_NAME"
 
-      - name: "🔁 Aider + gpt-5-mini"
-        id: aider_run
-        timeout-minutes: 4
+      - name: "🧠 AI Planner"
+        id: planner
+        if: steps.prepare.outputs.fast_mode == 'false'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           TASK_FILE: ${{ steps.prepare.outputs.task_file }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          echo "::group::AI Planner"
+
+          PLAN_FILE="ia/tasks/plan-${ISSUE_NUMBER}.md"
+
+          curl https://api.openai.com/v1/responses \
+            -s \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -d "{
+              \"model\": \"gpt-4o-mini\",
+              \"input\": \"You are a senior software engineer planning a small change in a codebase.\n\nCreate a concise implementation plan for the following GitHub issue.\n\nRequirements:\n- Identify which files likely need modification\n- Describe the steps to implement the change\n- Avoid unnecessary refactoring\n- Keep the change minimal and safe\n\nIssue:\n$(cat "$TASK_FILE")\"
+            }" | jq -r '.output[0].content[0].text' > "$PLAN_FILE"
+
+          echo "Plan generated:"
+          cat "$PLAN_FILE"
+
+          echo "plan_file=$PLAN_FILE" >> $GITHUB_OUTPUT
+
+          echo "::endgroup::"
+
+      - name: "🔁 Aider"
+        id: aider_run
+        timeout-minutes: ${{ steps.prepare.outputs.fast_mode == 'true' && 2 || 4 }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TASK_FILE: ${{ steps.prepare.outputs.task_file }}
+          PLAN_FILE: ${{ steps.planner.outputs.plan_file }}
+          FAST_MODE: ${{ steps.prepare.outputs.fast_mode }}
         run: |
           echo "::group::Aider"
-          echo "⚠️ Running aider with surgical context"
 
-          RELEVANT_FILES=$(find frontend/src backend -type f \( -name "*.tsx" -o -name "*.js" \) | tr '\n' ' ')
-
+          RELEVANT_FILES=$(git ls-files 'frontend/src' 'backend' | grep -E '\.(tsx|ts|js)$' | head -n 80 | tr '\n' ' ')
           echo "📄 Files: $RELEVANT_FILES"
+
+          if [ "$FAST_MODE" = "true" ]; then
+            MESSAGE="$(cat "$TASK_FILE")"
+          else
+            MESSAGE="$(cat "$TASK_FILE")
+
+          Implementation Plan:
+          $(cat "$PLAN_FILE")"
+          fi
 
           aider \
             --yes-always \
             --no-pretty \
-            --model gpt-5-mini \
+            --model gpt-4o-mini \
             --map-tokens 512 \
             --no-auto-commits \
-            --message "$(cat "$TASK_FILE")" \
+            --message "$MESSAGE" \
             $RELEVANT_FILES
 
-          # Generate summary of modified files for GitHub Step Summary
           {
             echo "ai_summary<<EOF"
             git diff --name-only HEAD | sed 's/^/- /'
@@ -165,7 +213,6 @@ jobs:
           echo "build_failed=$BUILD_FAILED" >> $GITHUB_OUTPUT
           echo "::endgroup::"
 
-          # Build quebrado bloqueia o commit
           if [ $BUILD_FAILED -eq 1 ]; then
             echo "::error::Build do frontend falhou — as alterações da IA quebraram o projeto"
             exit 1
@@ -178,11 +225,10 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_URL: ${{ github.event.issue.html_url }}
           BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
-          AIDER_OUTCOME: ${{ steps.aider_run.outcome }}
           LINT_ERRORS: ${{ steps.lint.outputs.lint_errors }}
         run: |
           git reset HEAD .aider.chat.history.md .aider.input.history 2>/dev/null || true
-          git add .
+          git add frontend backend
 
           if git diff --staged --quiet; then
             echo "changes_detected=false" >> $GITHUB_OUTPUT
@@ -190,64 +236,125 @@ jobs:
           else
             echo "changes_detected=true" >> $GITHUB_OUTPUT
 
-            ENGINE="gpt-5-mini + aider"
-            # [ "$OPENAI_OUTCOME" != "success" ] && ENGINE="aider"
-
             LINT_NOTE=""
             [ "${LINT_ERRORS}" != "0" ] && LINT_NOTE=" [lint warnings]"
 
             git commit \
               -m "feat(ia): implement solution for #${ISSUE_NUMBER}" \
-              -m "Generated by ${ENGINE}.${LINT_NOTE}" \
+              -m "Generated by gpt-4o-mini + aider.${LINT_NOTE}" \
               -m "Issue: ${ISSUE_URL}"
           fi
 
           git push origin "$BRANCH_NAME"
+
+      - name: "🔀 Create Pull Request"
+        id: create_pr
+        if: steps.push_changes.outputs.changes_detected == 'true'
+        uses: actions/github-script@v7
+        env:
+          BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          AI_SUMMARY: ${{ steps.aider_run.outputs.ai_summary }}
+          PLAN_FILE: ${{ steps.planner.outputs.plan_file }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { BRANCH_NAME, ISSUE_NUMBER, AI_SUMMARY } = process.env;
+            const planFile = process.env.PLAN_FILE;
+
+            let planContent = '';
+            try {
+              const fs = require('fs');
+              if (planFile) planContent = fs.readFileSync(planFile, 'utf8');
+            } catch {}
+
+            const body = [
+              `Closes #${ISSUE_NUMBER}`,
+              '',
+              '### 🤖 AI Implementation',
+              '',
+              planContent ? `**Implementation Plan:**\n\`\`\`\n${planContent}\n\`\`\`` : '',
+              '',
+              AI_SUMMARY ? `**Files modified:**\n${AI_SUMMARY}` : '',
+              '',
+              '> Generated by gpt-4o-mini + aider. Review before merging.',
+            ].join('\n');
+
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `feat(ia): solution for #${ISSUE_NUMBER}`,
+              head: BRANCH_NAME,
+              base: 'develop',
+              body,
+            });
+
+            core.setOutput('pr_url', pr.data.html_url);
+            core.setOutput('pr_number', pr.data.number.toString());
 
       - name: "📝 Generate step summary"
         if: always()
         env:
           CHANGES_DETECTED: ${{ steps.push_changes.outputs.changes_detected }}
           AIDER_OUTCOME: ${{ steps.aider_run.outcome }}
+          PLANNER_OUTCOME: ${{ steps.planner.outcome }}
           LINT_OUTCOME: ${{ steps.lint.outcome }}
           LINT_ERRORS: ${{ steps.lint.outputs.lint_errors }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           AI_SUMMARY: ${{ steps.aider_run.outputs.ai_summary }}
           BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
+          PR_URL: ${{ steps.create_pr.outputs.pr_url }}
+          FAST_MODE: ${{ steps.prepare.outputs.fast_mode }}
         run: |
           echo "## 🤖 IA-Driven Workflow Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Status | Step | Details |" >> $GITHUB_STEP_SUMMARY
           echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
 
-          if [ "$AIDER_OUTCOME" == "success" ]; then
-            echo "| ✅ | Aider | Success |" >> $GITHUB_STEP_SUMMARY
+          if [ "$FAST_MODE" = "true" ]; then
+            echo "| ⚡ | Mode | Fast mode (2min timeout) |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| ❌ | Aider | Timeout has reached. Due to experimental ai-driven workflow timeout is set for 4 minutos only |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🧠 | Mode | Full mode with AI Planner |" >> $GITHUB_STEP_SUMMARY
           fi
 
-          if [ "$LINT_OUTCOME" == "success" ]; then
-            if [ "${LINT_ERRORS}" == "0" ]; then
+          if [ "$PLANNER_OUTCOME" = "success" ]; then
+            echo "| ✅ | AI Planner | Plan generated |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$PLANNER_OUTCOME" = "skipped" ]; then
+            echo "| ⏭️ | AI Planner | Skipped (fast mode) |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$AIDER_OUTCOME" = "success" ]; then
+            echo "| ✅ | Aider | Success |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| ❌ | Aider | Timeout reached (${FAST_MODE} == true ? 2min : 4min) |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$LINT_OUTCOME" = "success" ]; then
+            if [ "${LINT_ERRORS}" = "0" ]; then
               echo "| ✅ | Lint | No errors |" >> $GITHUB_STEP_SUMMARY
             else
               echo "| ⚠️ | Lint | Errors found — review before merging |" >> $GITHUB_STEP_SUMMARY
             fi
-          elif [ "$LINT_OUTCOME" == "skipped" ]; then
+          elif [ "$LINT_OUTCOME" = "skipped" ]; then
             echo "| ⏭️ | Lint | Skipped |" >> $GITHUB_STEP_SUMMARY
           fi
 
-          if [ "$BUILD_OUTCOME" == "success" ]; then
+          if [ "$BUILD_OUTCOME" = "success" ]; then
             echo "| ✅ | Build | Passed |" >> $GITHUB_STEP_SUMMARY
-          elif [ "$BUILD_OUTCOME" == "failure" ]; then
+          elif [ "$BUILD_OUTCOME" = "failure" ]; then
             echo "| ❌ | Build | Failed — commit blocked |" >> $GITHUB_STEP_SUMMARY
-          elif [ "$BUILD_OUTCOME" == "skipped" ]; then
+          elif [ "$BUILD_OUTCOME" = "skipped" ]; then
             echo "| ⏭️ | Build | Skipped |" >> $GITHUB_STEP_SUMMARY
           fi
 
-          if [ "$CHANGES_DETECTED" == "true" ]; then
+          if [ "$CHANGES_DETECTED" = "true" ]; then
             echo "| ✅ | Changes | Pushed to \`$BRANCH_NAME\` |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| ℹ️ | Changes | No changes detected |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -n "$PR_URL" ]; then
+            echo "| ✅ | PR | [View Pull Request]($PR_URL) |" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ -n "$AI_SUMMARY" ]; then
@@ -266,27 +373,33 @@ jobs:
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
           AI_SUMMARY: ${{ steps.aider_run.outputs.ai_summary }}
+          PR_URL: ${{ steps.create_pr.outputs.pr_url }}
+          FAST_MODE: ${{ steps.prepare.outputs.fast_mode }}
         with:
           script: |
-            const { AIDER_OUTCOME, CHANGES_DETECTED, LINT_ERRORS, BUILD_OUTCOME, BRANCH_NAME, AI_SUMMARY } = process.env;
+            const { AIDER_OUTCOME, CHANGES_DETECTED, LINT_ERRORS, BUILD_OUTCOME, BRANCH_NAME, AI_SUMMARY, PR_URL, FAST_MODE } = process.env;
             const repoUrl    = context.payload.repository.html_url;
             const hasChanges = CHANGES_DETECTED === 'true';
             const success    = AIDER_OUTCOME === 'success';
-            const engine     = 'aider';
             const buildOk    = BUILD_OUTCOME === 'success';
             const lintErrors = parseInt(LINT_ERRORS || '0');
+            const fastMode   = FAST_MODE === 'true';
 
             let body = `### 🤖 IA Workflow Results\n\n`;
+            body += `**Mode:** ${fastMode ? '⚡ Fast (2min)' : '🧠 Full with AI Planner'}\n\n`;
 
             if (success && hasChanges && buildOk) {
-              body += `✅ **Success!** Changes implemented via **${engine}**.\n\n`;
+              body += `✅ **Success!** Changes implemented via **gpt-4o-mini + aider**.\n\n`;
               body += `- **Branch**: [\`${BRANCH_NAME}\`](${repoUrl}/tree/${BRANCH_NAME})\n`;
               body += `- **Build**: ✅ passed\n`;
               body += `- **Lint**: ${lintErrors === 0 ? '✅ no errors' : `⚠️ ${lintErrors} error(s) — review before merging`}\n`;
+              if (PR_URL) {
+                body += `- **PR**: [View Pull Request](${PR_URL})\n`;
+              }
               if (AI_SUMMARY) {
                 body += `\n**Files modified:**\n${AI_SUMMARY}\n`;
               }
-              body += `\n> Checkout the branch, review and merge into \`develop\` when ready.`;
+              body += `\n> Review the PR and merge into \`develop\` when ready.`;
             } else if (success && BUILD_OUTCOME === 'failure') {
               body += `⚠️ **AI made changes but the build failed.**\n\n`;
               body += `The generated code broke the frontend build — commit was blocked.\n`;
@@ -296,7 +409,7 @@ jobs:
               body += `Try adding more detail to the issue description.`;
             } else if (AIDER_OUTCOME === 'failure' || AIDER_OUTCOME === 'cancelled') {
               body += `❌ **Workflow failed due to timeout.**\n\n`;
-              body += `The experimental AI-driven workflow has reached its **4-minute limit**.\n`;
+              body += `The experimental AI-driven workflow has reached its **${fastMode ? '2' : '4'}-minute limit**.\n`;
               body += `Check the [Action logs](${repoUrl}/actions/runs/${context.runId}) for details.`;
             } else {
               body += `❌ **Workflow failed.**\n\n`;
