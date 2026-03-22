@@ -86,6 +86,7 @@ jobs:
 
       - name: "🔁 Aider + gpt-5-mini"
         id: aider_run
+        timeout-minutes: 4
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           TASK_FILE: ${{ steps.prepare.outputs.task_file }}
@@ -222,7 +223,7 @@ jobs:
           if [ "$AIDER_OUTCOME" == "success" ]; then
             echo "| ✅ | Aider | Success |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| ❌ | Aider | Failed |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ | Aider | timeout has reached due to experimental ai-driven workflow, timeout is set for 4 minutos only |" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ "$LINT_OUTCOME" == "success" ]; then
@@ -293,8 +294,12 @@ jobs:
             } else if (success && !hasChanges) {
               body += `⚠️ **AI ran but made no changes.**\n\n`;
               body += `Try adding more detail to the issue description.`;
+            } else if (AIDER_OUTCOME === 'failure' || AIDER_OUTCOME === 'cancelled') {
+              body += `❌ **Workflow failed due to timeout.**\n\n`;
+              body += `The experimental AI-driven workflow has reached its **4-minute limit**.\n`;
+              body += `Check the [Action logs](${repoUrl}/actions/runs/${context.runId}) for details.`;
             } else {
-              body += `❌ **Both primary and fallback failed.**\n\n`;
+              body += `❌ **Workflow failed.**\n\n`;
               body += `Check the [Action logs](${repoUrl}/actions/runs/${context.runId}) for details.\n\n`;
               body += `Common causes: token limit exceeded, API quota, or task description too vague.`;
             }
