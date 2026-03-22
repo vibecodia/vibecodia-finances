@@ -223,7 +223,7 @@ jobs:
           if [ "$AIDER_OUTCOME" == "success" ]; then
             echo "| ✅ | Aider | Success |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| ❌ | Aider | timeout has reached due to experimental ai-driven workflow, timeout is set for 4 minutos only |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ | Aider | Timeout has reached. Due to experimental ai-driven workflow timeout is set for 4 minutos only |" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ "$LINT_OUTCOME" == "success" ]; then
