@@ -104,24 +104,33 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
           echo "::group::AI Planner"
-
           PLAN_FILE="ia/tasks/plan-${ISSUE_NUMBER}.md"
 
-          curl https://api.openai.com/v1/responses \
+          # 1. Endpoint correto: /v1/chat/completions
+          # 2. Estrutura correta: "messages" em vez de "input"
+          # 3. jq correto: .choices[0].message.content
+          
+          curl https://api.openai.com \
             -s \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $OPENAI_API_KEY" \
             -d "{
               \"model\": \"gpt-4o-mini\",
-              \"input\": \"You are a senior software engineer planning a small change in a codebase.\n\nCreate a concise implementation plan for the following GitHub issue.\n\nRequirements:\n- Identify which files likely need modification\n- Describe the steps to implement the change\n- Avoid unnecessary refactoring\n- Keep the change minimal and safe\n\nIssue:\n$(cat "$TASK_FILE")\"
-            }" | jq -r '.output[0].content[0].text' > "$PLAN_FILE"
-
-          echo "Plan generated:"
-          cat "$PLAN_FILE"
+              \"messages\": [
+                {
+                  \"role\": \"system\",
+                  \"content\": \"You are a senior software engineer planning a small change in a codebase.\"
+                },
+                {
+                  \"role\": \"user\",
+                  \"content\": \"Create a concise implementation plan for the following GitHub issue.\\n\\nRequirements:\\n- Identify which files likely need modification\\n- Describe the steps to implement the change\\n- Avoid unnecessary refactoring\\n- Keep the change minimal and safe\\n\\nIssue:\\n$(cat "$TASK_FILE" | sed 's/"/\\"/g' | tr -d '\n')\"
+                }
+              ]
+            }" | jq -r '.choices[0].message.content' > "$PLAN_FILE"
 
           echo "plan_file=$PLAN_FILE" >> $GITHUB_OUTPUT
-
           echo "::endgroup::"
+
 
       - name: "🔁 Aider"
         id: aider_run
