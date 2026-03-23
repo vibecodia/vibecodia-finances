@@ -219,7 +219,6 @@ jobs:
 
       - name: "💾 Commit and push changes"
         id: push_changes
-        if: steps.build.outcome == 'success' || steps.build.outcome == 'skipped'
         env:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_URL: ${{ github.event.issue.html_url }}
