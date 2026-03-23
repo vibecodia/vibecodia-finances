@@ -34,6 +34,7 @@ import {
   RotateCcw,
   PanelLeftClose,
   PanelLeftOpen,
+  ToggleRight,
   Eye
 } from 'lucide-react';
 import React, { useState, useMemo, useRef } from 'react';
@@ -1834,11 +1835,30 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
               case 'categories':
                 return (
                   <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    {renderCardHeader(item.id, item.label, <PieChartIcon className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(categoryChartRef))}
+                    {renderCardHeader(item.id, item.label, <PieChartIcon className="w-5 h-5 text-primary" />, index, item.collapsed)}
                     {!item.collapsed && (
-                      <div className="p-8 h-80">
+                      <div className="p-8 h-80 relative">
                         {filteredTransactions.length > 0 ? (
-                          <Doughnut ref={categoryChartRef} data={categoryChartData} options={{ maintainAspectRatio: false, plugins: { legend: { labels: { color: theme.text, font: { size: 12 } } } } }} />
+                          <>
+                            <Doughnut ref={categoryChartRef} data={categoryChartData} options={{ maintainAspectRatio: false, plugins: { legend: { labels: { color: theme.text, font: { size: 12 } } } } }} />
+                            <div className="mt-4 flex items-center justify-between">
+                              <div className="flex flex-wrap gap-2">
+                                {((categoryChartData.labels as string[]) || []).slice(0, 8).map((label: string, i: number) => (
+                                  <div key={label} className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs" style={{ backgroundColor: theme.cardBackground, border: `1px solid ${theme.cardBorder}` }}>
+                                    <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: ((categoryChartData.datasets?.[0]?.backgroundColor as string[]) || [])[i] || '#ccc' }} />
+                                    <span className="text-text">{label}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); toggleAll(categoryChartRef); }}
+                                className="p-2 rounded-lg bg-cardBorder hover:bg-cardBorder/80 transition-colors"
+                                title="Alternar visibilidade das categorias"
+                              >
+                                <ToggleRight className="w-5 h-5 text-text" />
+                              </button>
+                            </div>
+                          </>
                         ) : (
                           <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
                             <BarChart3 className="w-12 h-12 opacity-10" />
