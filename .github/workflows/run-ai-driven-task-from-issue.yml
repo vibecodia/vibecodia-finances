@@ -1,4 +1,4 @@
-name: "IA-Driven Development Workflow"
+name: "AI-Driven Development Workflow"
 
 on:
   issues:
@@ -10,14 +10,14 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: ia-driven-${{ github.event.issue.number }}
+  group: ai-driven-${{ github.event.issue.number }}
   cancel-in-progress: true
 
 jobs:
   ia_driven_task:
-    name: "🧠 IA-Driven Task (#${{ github.event.issue.number }})"
+    name: "🧠 AI-Driven Task (#${{ github.event.issue.number }})"
     runs-on: ubuntu-latest
-    if: contains(github.event.issue.labels.*.name, 'ia-driven')
+    if: contains(github.event.issue.labels.*.name, 'ai-driven')
 
     steps:
       - name: "🔄 Checkout repository"
@@ -318,7 +318,7 @@ jobs:
           FAST_MODE: ${{ steps.prepare.outputs.fast_mode }}
           ZEN_MODE: ${{ steps.prepare.outputs.zen_mode }}
         run: |
-          echo "## 🤖 IA-Driven Workflow Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🤖 AI-Driven Workflow Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Status | Step | Details |" >> $GITHUB_STEP_SUMMARY
           echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
