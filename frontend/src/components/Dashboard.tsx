@@ -10,6 +10,7 @@ import useWindowSize from '../hooks/useWindowSize';
 import { Transaction, SavingsGoal } from '../types';
 import { calculateBalances } from '../utils/balanceCalculations';
 import { formatCurrency, filterTransactionsByMonth, getCurrentBrazilDate, formatPaymentMethod } from '../utils/helpers';
+import RecentTransactionsFloatingCard from './RecentTransactionsFloatingCard';
 
 
 
@@ -443,6 +444,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
           </div>
         </div>
       )}
+
+      <RecentTransactionsFloatingCard transactions={transactions} />
     </div>
   );
 };

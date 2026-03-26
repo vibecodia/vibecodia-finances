@@ -116,7 +116,7 @@ export const useFinancialData = () => {
     calculateMonthlyBalances();
   }, [transactions, calculateMonthlyBalances]);
 
-  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'createdAt'>) => {
+  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!pin) throw new Error('PIN not verified');
     try {
       const response = await fetch(`${API_BASE_URL}/transactions`, {
@@ -189,7 +189,7 @@ export const useFinancialData = () => {
     }
   };
 
-  const addSavingsGoal = async (goal: Omit<SavingsGoal, 'id' | 'createdAt'>) => {
+  const addSavingsGoal = async (goal: Omit<SavingsGoal, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!pin) throw new Error('PIN not verified');
     try {
       const response = await fetch(`${API_BASE_URL}/goals`, {
@@ -233,7 +233,7 @@ export const useFinancialData = () => {
       const goalToUpdate = savingsGoals.find(g => g.id === goalId);
       if (!goalToUpdate) throw new Error('Goal not found');
 
-      const contribution: Omit<SavingsContribution, 'id' | 'createdAt'> = {
+      const contribution: Omit<SavingsContribution, 'id' | 'createdAt' | 'updatedAt'> = {
         amount,
         date: date || getBrazilDateString(),
       };

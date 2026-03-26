@@ -71,10 +71,16 @@ jobs:
           echo "task_file=$TASK_FILE" >> $GITHUB_OUTPUT
 
           FAST_MODE=false
-          if echo "$ISSUE_LABELS" | grep -q "ia-fast"; then
+          if echo "$ISSUE_LABELS" | grep -q "ai-fast"; then
             FAST_MODE=true
           fi
           echo "fast_mode=$FAST_MODE" >> $GITHUB_OUTPUT
+
+          ZEN_MODE=false
+          if echo "$ISSUE_LABELS" | grep -q "ai-zen"; then
+            ZEN_MODE=true
+          fi
+          echo "zen_mode=$ZEN_MODE" >> $GITHUB_OUTPUT
 
           {
             echo "# Task — Issue #${ISSUE_NUMBER}"
@@ -134,7 +140,7 @@ jobs:
 
       - name: "🔁 Aider"
         id: aider_run
-        timeout-minutes: ${{ steps.prepare.outputs.fast_mode == 'true' && 2 || 4 }}
+        timeout-minutes: ${{ steps.prepare.outputs.fast_mode == 'true' && 2 || 4 || steps.prepare.outputs.zen_mode == 'true' && 20 || 4 }}
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           TASK_FILE: ${{ steps.prepare.outputs.task_file }}
@@ -310,6 +316,7 @@ jobs:
           BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
           PR_URL: ${{ steps.create_pr.outputs.pr_url }}
           FAST_MODE: ${{ steps.prepare.outputs.fast_mode }}
+          ZEN_MODE: ${{ steps.prepare.outputs.zen_mode }}
         run: |
           echo "## 🤖 IA-Driven Workflow Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -318,8 +325,10 @@ jobs:
 
           if [ "$FAST_MODE" = "true" ]; then
             echo "| ⚡ | Mode | Fast mode (2min timeout) |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$ZEN_MODE" = "true" ]; then
+            echo "| 🧘 | Mode | Zen mode (20min timeout, no planner) |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| 🧠 | Mode | Full mode with AI Planner |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🧠 | Mode | Standard mode with AI Planner |" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ "$PLANNER_OUTCOME" = "success" ]; then
@@ -380,18 +389,20 @@ jobs:
           AI_SUMMARY: ${{ steps.aider_run.outputs.ai_summary }}
           PR_URL: ${{ steps.create_pr.outputs.pr_url }}
           FAST_MODE: ${{ steps.prepare.outputs.fast_mode }}
+          ZEN_MODE: ${{ steps.prepare.outputs.zen_mode }}
         with:
           script: |
-            const { AIDER_OUTCOME, CHANGES_DETECTED, LINT_ERRORS, BUILD_OUTCOME, BRANCH_NAME, AI_SUMMARY, PR_URL, FAST_MODE } = process.env;
+            const { AIDER_OUTCOME, CHANGES_DETECTED, LINT_ERRORS, BUILD_OUTCOME, BRANCH_NAME, AI_SUMMARY, PR_URL, FAST_MODE, ZEN_MODE } = process.env;
             const repoUrl    = context.payload.repository.html_url;
             const hasChanges = CHANGES_DETECTED === 'true';
             const success    = AIDER_OUTCOME === 'success';
             const buildOk    = BUILD_OUTCOME === 'success';
             const lintErrors = parseInt(LINT_ERRORS || '0');
             const fastMode   = FAST_MODE === 'true';
+            const zenMode    = ZEN_MODE === 'true';
 
             let body = `### 🤖 IA Workflow Results\n\n`;
-            body += `**Mode:** ${fastMode ? '⚡ Fast (2min)' : '🧠 Full with AI Planner'}\n\n`;
+            body += `**Mode:** ${fastMode ? '⚡ Fast (2min)' : zenMode ? '🧘 Zen (20min)' : '🧠 Full with AI Planner'}\n\n`;
 
             if (success && hasChanges && buildOk) {
               body += `✅ **Success!** Changes implemented via **gpt-5-mini + aider**.\n\n`;
