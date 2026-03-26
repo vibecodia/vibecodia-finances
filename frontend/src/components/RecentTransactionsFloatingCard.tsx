@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format, isToday, differenceInMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { X, Clock, ArrowUpRight, ArrowDownLeft, RefreshCw, Plus, Sparkles } from 'lucide-react';
+import { X, Clock, RefreshCw, Plus, Sparkles } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { Transaction } from '../types';
 import { formatCurrency } from '../utils/helpers';
