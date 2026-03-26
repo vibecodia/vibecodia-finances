@@ -52,6 +52,40 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
   const [showDeleted, setShowDeleted] = useState(false);
 
+  // Filter and split transactions early so useEffect and body can use them
+  const allMonthTransactions = filterTransactionsByMonth(
+    transactions.filter(t => t.type === type)
+      .filter(t => categoryFilter.includes('all') || categoryFilter.includes(t.category))
+      .filter(t => {
+        if (paymentFilter === 'all') return true;
+        if (paymentFilter === 'paid') return t.isPaid;
+        if (paymentFilter === 'pending') return !t.isPaid;
+        return true;
+      })
+      .filter(t => {
+        if (paymentMethodFilter.includes('all')) return true;
+        return t.paymentMethod && paymentMethodFilter.includes(formatPaymentMethod(t.paymentMethod));
+      })
+      .filter(t => {
+        if (type === 'expense' && searchTerm) {
+          return t.description.toLowerCase().includes(searchTerm.toLowerCase());
+        }
+        return true;
+      }), 
+    currentMonth, 
+    true
+  );
+  
+  const activeTransactions = allMonthTransactions.filter(t => t.status !== 'deleted');
+  const deletedTransactions = allMonthTransactions.filter(t => t.status === 'deleted');
+
+  // Auto-switch back to active view if no deleted transactions remain
+  useEffect(() => {
+    if (showDeleted && deletedTransactions.length === 0) {
+      setShowDeleted(false);
+    }
+  }, [deletedTransactions.length, showDeleted]);
+
   const toggleNotes = (id: string) => {
     setExpandedNotes(prev => ({
       ...prev,
@@ -165,35 +199,8 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
   const [transactionToReactivate, setTransactionToReactivate] = useState<string | null>(null);
   
-  const filteredTransactions = transactions
-    .filter(t => t.type === type)
-    .filter(t => categoryFilter.includes('all') || categoryFilter.includes(t.category))
-    .filter(t => {
-      if (paymentFilter === 'all') return true;
-      if (paymentFilter === 'paid') return t.isPaid;
-      if (paymentFilter === 'pending') return !t.isPaid;
-      return true;
-    })
-    .filter(t => {
-      if (paymentMethodFilter.includes('all')) return true;
-      return t.paymentMethod && paymentMethodFilter.includes(formatPaymentMethod(t.paymentMethod));
-    })
-    .filter(t => {
-      if (type === 'expense' && searchTerm) {
-        return t.description.toLowerCase().includes(searchTerm.toLowerCase());
-      }
-      return true;
-    });
-
   const categories = [...new Set(transactions.filter(t => t.type === type).map(t => t.category))];
   
-  // Filter transactions by the current month - always fetch deleted to count them
-  const allMonthTransactions = filterTransactionsByMonth(filteredTransactions, currentMonth, true);
-  
-  // Separate active and deleted for counting and display
-  const activeTransactions = allMonthTransactions.filter(t => t.status !== 'deleted');
-  const deletedTransactions = allMonthTransactions.filter(t => t.status === 'deleted');
-
   // Apply visibility toggle - if showDeleted is true, show ONLY deleted
   let transactionsForDisplay = showDeleted ? deletedTransactions : activeTransactions;
 
