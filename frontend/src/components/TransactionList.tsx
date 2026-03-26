@@ -163,7 +163,6 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
   
   const filteredTransactions = transactions
-    .filter(t => t.status !== 'deleted') // Filtra itens deletados da listagem principal
     .filter(t => t.type === type)
     .filter(t => categoryFilter.includes('all') || categoryFilter.includes(t.category))
     .filter(t => {
@@ -186,7 +185,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const categories = [...new Set(transactions.filter(t => t.type === type).map(t => t.category))];
   
   // Filter transactions by the current month
-  let transactionsForDisplay = filterTransactionsByMonth(filteredTransactions, currentMonth);
+  let transactionsForDisplay = filterTransactionsByMonth(filteredTransactions, currentMonth, true);
 
   // Apply daily filter if filters are set
   if (startDateFilter && endDateFilter) {
@@ -205,7 +204,11 @@ const TransactionList: React.FC<TransactionListProps> = ({
       })
     : transactionsForDisplay;
 
-  const currentTotal = sortedTransactions.reduce((acc, t) => acc + t.amount, 0);
+  const currentTotal = sortedTransactions.reduce((acc, t) => {
+    // Only add to total if not deleted
+    if (t.status === 'deleted') return acc;
+    return acc + t.amount;
+  }, 0);
 
   const handleEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction);
@@ -365,10 +368,10 @@ const TransactionList: React.FC<TransactionListProps> = ({
           </div>
           <p className="text-sm font-medium opacity-70 ml-9 flex items-center" style={{ color: type === 'income' ? theme.primary : theme.accent }}>
             <span>Total: {formatCurrency(currentTotal)}</span>
-            {sortedTransactions.length > 0 && (
+            {sortedTransactions.filter(t => t.status !== 'deleted').length > 0 && (
               <>
                 <span className="mx-2">•</span>
-                <span className="text-xs opacity-90">{sortedTransactions.length} {sortedTransactions.length === 1 ? 'item' : 'itens'}</span>
+                <span className="text-xs opacity-90">{sortedTransactions.filter(t => t.status !== 'deleted').length} {sortedTransactions.filter(t => t.status !== 'deleted').length === 1 ? 'item' : 'itens'}</span>
               </>
             )}
           </p>
@@ -540,21 +543,23 @@ const TransactionList: React.FC<TransactionListProps> = ({
             const overdue = isTransactionOverdue(transaction);
             const daysUntilDue = transaction.dueDate ? getDaysUntilDue(transaction.dueDate) : null;
             
+            const isDeleted = transaction.status === 'deleted';
+
             return (
               <div
                 key={`${transaction.id}-${index}`}
-                className={`relative border rounded-xl p-4 hover:shadow-md transition-shadow no-select ${animatedTransactionId === transaction.id ? 'animate-pulse-once' : ''}`}
+                className={`relative border rounded-xl p-4 hover:shadow-md transition-all no-select ${animatedTransactionId === transaction.id ? 'animate-pulse-once' : ''} ${isDeleted ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
                 style={{ 
-                  backgroundColor: theme.cardBackground,
-                  borderColor: overdue ? theme.primary : (!transaction.isPaid && type === 'expense' ? theme.accent : theme.cardBorder)
+                  backgroundColor: isDeleted ? theme.background : theme.cardBackground,
+                  borderColor: isDeleted ? theme.cardBorder : (overdue ? theme.primary : (!transaction.isPaid && type === 'expense' ? theme.accent : theme.cardBorder))
                 }}
-                onMouseDown={(e) => handlePressStart(e, transaction)}
+                onMouseDown={(e) => !isDeleted && handlePressStart(e, transaction)}
                 onMouseUp={handlePressEnd}
                 onMouseLeave={handlePressEnd}
-                onTouchStart={(e) => handlePressStart(e, transaction)}
+                onTouchStart={(e) => !isDeleted && handlePressStart(e, transaction)}
                 onTouchEnd={handlePressEnd}
                 onTouchCancel={handlePressEnd}
-                onTouchMove={handlePressEnd} // Added this line
+                onTouchMove={handlePressEnd}
               >
                 {activeTransactionId === transaction.id && countdown !== null && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-xl z-10">
@@ -564,24 +569,31 @@ const TransactionList: React.FC<TransactionListProps> = ({
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium text-text truncate">
+                      <h3 className={`font-medium text-text truncate ${isDeleted ? 'line-through' : ''}`}>
                         {transaction.description}
                       </h3>
-                      <button
-                        onClick={() => handleUpdatePaymentStatusAndAnimate(transaction.id, !transaction.isPaid)}
-                        className={`p-1 rounded-full transition-colors flex-shrink-0 ${
-                          transaction.isPaid 
-                            ? 'bg-[#D4EDDA]' 
-                            : 'bg-[#FFE0B2]'
-                        }`}
-                      >
-                        {transaction.isPaid ? <Check className="w-4 h-4 text-black" /> : <Clock className="w-4 h-4 text-black" />}
-                      </button>
+                      {!isDeleted && (
+                        <button
+                          onClick={() => handleUpdatePaymentStatusAndAnimate(transaction.id, !transaction.isPaid)}
+                          className={`p-1 rounded-full transition-colors flex-shrink-0 ${
+                            transaction.isPaid 
+                              ? 'bg-[#D4EDDA]' 
+                              : 'bg-[#FFE0B2]'
+                          }`}
+                        >
+                          {transaction.isPaid ? <Check className="w-4 h-4 text-black" /> : <Clock className="w-4 h-4 text-black" />}
+                        </button>
+                      )}
+                      {isDeleted && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-accent bg-accent/10 px-1.5 py-0.5 rounded">
+                          Excluído
+                        </span>
+                      )}
                     </div>
 
                     {transaction.notes && (
                       <div className="mb-2">
-                        <div className={`text-sm text-text opacity-80 whitespace-pre-wrap ${!expandedNotes[transaction.id] ? 'line-clamp-2' : ''}`}>
+                        <div className={`text-sm text-text opacity-80 whitespace-pre-wrap ${!expandedNotes[transaction.id] ? 'line-clamp-2' : ''} ${isDeleted ? 'line-through' : ''}`}>
                           {formatNotes(transaction.notes)}
                         </div>
                         {( (typeof transaction.notes === 'string' && (transaction.notes.length > 40 || transaction.notes.includes('\n') || transaction.notes.startsWith('{'))) || 
@@ -589,6 +601,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                           <button 
                             onClick={() => toggleNotes(transaction.id)}
                             className="mt-1 text-xs font-medium text-primary flex items-center gap-1 hover:underline"
+                            disabled={isDeleted}
                           >
                             {expandedNotes[transaction.id] ? (
                               <><ChevronUp className="w-3 h-3" /> Ver menos</>
@@ -626,52 +639,68 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
                     {/* Payment Status and Due Date Info */}
                     <div className="flex flex-wrap gap-2 text-xs">
-                      <span className={`px-2 py-1 rounded-full whitespace-nowrap`}
-                        style={{ 
-                          backgroundColor: transaction.isPaid ? '#D4EDDA' : '#FFE0B2',
-                          color: '#000000'
-                        }}>
-                        {transaction.isPaid 
-                          ? (type === 'expense' ? '✓ Pago' : '✓ Recebido') 
-                          : (type === 'expense' ? '⏳ Pendente' : '⏳ A Receber')}
-                      </span>
-                      
-                      {type === 'expense' && transaction.dueDate && (
-                        <span className={`px-2 py-1 rounded-full flex items-center gap-1 whitespace-nowrap`}
-                          style={{
-                            backgroundColor: '#FFE0B2',
-                            color: '#000000'
-                          }}>
-                          <Calendar className="w-3 h-3 flex-shrink-0" />
-                          <span className="truncate">
-                            {overdue ? 'Vencido' : 
-                             daysUntilDue === 0 ? 'Vence hoje' : 
-                             daysUntilDue === 1 ? 'Vence amanhã' :
-                             daysUntilDue !== null && daysUntilDue > 0 ? `${daysUntilDue} dias` :
-                             formatBrazilDate(transaction.dueDate)}
+                      {!isDeleted && (
+                        <>
+                          <span className={`px-2 py-1 rounded-full whitespace-nowrap`}
+                            style={{ 
+                              backgroundColor: transaction.isPaid ? '#D4EDDA' : '#FFE0B2',
+                              color: '#000000'
+                            }}>
+                            {transaction.isPaid 
+                              ? (type === 'expense' ? '✓ Pago' : '✓ Recebido') 
+                              : (type === 'expense' ? '⏳ Pendente' : '⏳ A Receber')}
                           </span>
-                        </span>
+                          
+                          {type === 'expense' && transaction.dueDate && (
+                            <span className={`px-2 py-1 rounded-full flex items-center gap-1 whitespace-nowrap`}
+                              style={{
+                                backgroundColor: '#FFE0B2',
+                                color: '#000000'
+                              }}>
+                              <Calendar className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate">
+                                {overdue ? 'Vencido' : 
+                                 daysUntilDue === 0 ? 'Vence hoje' : 
+                                 daysUntilDue === 1 ? 'Vence amanhã' :
+                                 daysUntilDue !== null && daysUntilDue > 0 ? `${daysUntilDue} dias` :
+                                 formatBrazilDate(transaction.dueDate)}
+                              </span>
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className={`font-semibold text-sm sm:text-lg`}
+                    <span className={`font-semibold text-sm sm:text-lg ${isDeleted ? 'line-through' : ''}`}
                       style={{ color: type === 'income' ? theme.primary : theme.accent }}>
                       {formatCurrency(transaction.amount)}
                     </span>
-                    <button
-                      onClick={() => handleEdit(transaction)}
-                      className="p-2 rounded-lg transition-colors text-text bg-cardBackground hover:text-primary hover:bg-cardBorder"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => openDeleteModal(transaction.id)}
-                      className="p-2 rounded-lg transition-colors text-text bg-cardBackground hover:text-accent hover:bg-cardBorder"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {isDeleted ? (
+                      <button
+                        onClick={() => onUpdate(transaction.id, { status: 'active', deletedAt: undefined })}
+                        className="p-2 rounded-lg transition-colors text-white bg-primary hover:bg-secondary shadow-sm"
+                        title="Reativar transação"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleEdit(transaction)}
+                          className="p-2 rounded-lg transition-colors text-text bg-cardBackground hover:text-primary hover:bg-cardBorder"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => openDeleteModal(transaction.id)}
+                          className="p-2 rounded-lg transition-colors text-text bg-cardBackground hover:text-accent hover:bg-cardBorder"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

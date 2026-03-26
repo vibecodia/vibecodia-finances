@@ -197,15 +197,7 @@ app.get('/api/transactions', dbMiddleware, async (req, res) => {
   const { search, type } = req.query;
   const Transaction = req.conn.model('Transaction', transactionSchema);
 
-  // Exceção para UI: itens deletados nos últimos 5 minutos
-  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-
-  let query = {
-    $or: [
-      { status: 'active' },
-      { status: 'deleted', deletedAt: { $gte: fiveMinutesAgo } }
-    ]
-  };
+  let query = {};
 
   if (type) query.type = type;
   if (search) query.description = { $regex: search, $options: 'i' };
