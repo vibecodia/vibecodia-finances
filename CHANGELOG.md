@@ -1,5 +1,13 @@
 # Changelog
 
+# [0.42.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.41.0...v0.42.0) (2026-03-26)
+
+
+### Features
+
+* fix new new ([5233e7d](https://github.com/vibecodia/vibecodia-finances/commit/5233e7d3789374ec934b610d45c7e42214e8d89d))
+* go ([6bcaa43](https://github.com/vibecodia/vibecodia-finances/commit/6bcaa43a54bf9896d7777d8ddbe25fccfbfd2ce1))
+
 # [0.41.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.41.0) (2026-03-26)
 
 
