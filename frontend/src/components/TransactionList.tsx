@@ -160,7 +160,9 @@ const TransactionList: React.FC<TransactionListProps> = ({
     }
   }, [startDateFilter, endDateFilter, currentMonth]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
+  const [transactionToReactivate, setTransactionToReactivate] = useState<string | null>(null);
   
   const filteredTransactions = transactions
     .filter(t => t.type === type)
@@ -244,9 +246,25 @@ const TransactionList: React.FC<TransactionListProps> = ({
     setIsDeleteModalOpen(false);
   };
 
+  const openReactivateModal = (id: string) => {
+    setTransactionToReactivate(id);
+    setIsReactivateModalOpen(true);
+  };
+
+  const closeReactivateModal = () => {
+    setTransactionToReactivate(null);
+    setIsReactivateModalOpen(false);
+  };
+
   const handleDeleteConfirm = () => {
     if (transactionToDelete) {
       onDelete(transactionToDelete);
+    }
+  };
+
+  const handleReactivateConfirm = () => {
+    if (transactionToReactivate) {
+      onUpdate(transactionToReactivate, { status: 'active', deletedAt: undefined });
     }
   };
 
@@ -679,7 +697,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                     </span>
                     {isDeleted ? (
                       <button
-                        onClick={() => onUpdate(transaction.id, { status: 'active', deletedAt: undefined })}
+                        onClick={() => openReactivateModal(transaction.id)}
                         className="p-2 rounded-lg transition-colors text-white bg-primary hover:bg-secondary shadow-sm"
                         title="Reativar transação"
                       >
@@ -727,6 +745,16 @@ const TransactionList: React.FC<TransactionListProps> = ({
         onConfirm={handleDeleteConfirm}
         title="Confirmar Exclusão"
         message="Tem certeza de que deseja excluir esta transação? Esta ação não pode ser desfeita."
+      />
+
+      {/* Reactivate Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isReactivateModalOpen}
+        onClose={closeReactivateModal}
+        onConfirm={handleReactivateConfirm}
+        title="Confirmar Reativação"
+        message="Deseja reativar esta transação? Ela voltará a ser contabilizada nos seus totais."
+        confirmText="Confirmar Reativação"
       />
     </div>
   );
