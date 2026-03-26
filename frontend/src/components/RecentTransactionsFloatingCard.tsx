@@ -126,16 +126,17 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
               <div key={t.id || t._id} className="relative flex items-start gap-4 group/item">
                 {/* Indicador de Status */}
                 <div className={`mt-1.5 w-2.5 h-2.5 rounded-full z-10 ring-4 ${
-                  t.type === 'income' ? 'bg-emerald-500 ring-emerald-500/10' : 'bg-rose-500 ring-rose-500/10'
+                  t.status === 'deleted' ? 'bg-slate-400 ring-slate-400/10' : 
+                  (t.type === 'income' ? 'bg-emerald-500 ring-emerald-500/10' : 'bg-rose-500 ring-rose-500/10')
                 }`} />
                 
                 <div className="flex-1 min-w-0 transition-transform group-hover/item:translate-x-1">
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <p className="text-sm font-medium text-text/90 truncate leading-tight">
+                    <p className={`text-sm font-medium text-text/90 truncate leading-tight ${t.status === 'deleted' ? 'line-through opacity-50' : ''}`}>
                       {t.description}
                     </p>
                     <div className={`flex items-center gap-0.5 font-bold text-sm ${
-                      t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'
+                      t.status === 'deleted' ? 'line-through opacity-50 text-text/40' : (t.type === 'income' ? 'text-emerald-500' : 'text-rose-500')
                     }`}>
                       {formatCurrency(t.amount)}
                     </div>
@@ -146,20 +147,28 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
                       {format(new Date(t.updatedAt || t.createdAt), "HH:mm", { locale: ptBR })}
                     </span>
 
-                    {isJustAdded && (
-                      <span className="flex items-center gap-1 text-[9px] bg-violet-500/10 text-violet-600 dark:text-violet-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider border border-violet-500/20">
-                        <Sparkles className="w-2.5 h-2.5" /> Adicionado
+                    {t.status === 'deleted' ? (
+                      <span className="flex items-center gap-1 text-[9px] bg-rose-500/10 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider border border-rose-500/20">
+                        <X className="w-2.5 h-2.5" /> Excluído
                       </span>
-                    )}
-                    {isNewToday && (
-                      <span className="flex items-center gap-1 text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">
-                        <Plus className="w-2.5 h-2.5" /> Novo
-                      </span>
-                    )}
-                    {isUpdated && (
-                      <span className="flex items-center gap-1 text-[9px] bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">
-                        <RefreshCw className="w-2.5 h-2.5" /> Editado
-                      </span>
+                    ) : (
+                      <>
+                        {isJustAdded && (
+                          <span className="flex items-center gap-1 text-[9px] bg-violet-500/10 text-violet-600 dark:text-violet-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider border border-violet-500/20">
+                            <Sparkles className="w-2.5 h-2.5" /> Adicionado
+                          </span>
+                        )}
+                        {isNewToday && (
+                          <span className="flex items-center gap-1 text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">
+                            <Plus className="w-2.5 h-2.5" /> Novo
+                          </span>
+                        )}
+                        {isUpdated && (
+                          <span className="flex items-center gap-1 text-[9px] bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">
+                            <RefreshCw className="w-2.5 h-2.5" /> Editado
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

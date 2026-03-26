@@ -164,7 +164,12 @@ export const useFinancialData = () => {
         headers,
       });
       if (!response.ok) throw new Error('Failed to delete transaction');
-      setTransactions(prev => prev.filter(t => t.id !== id));
+      
+      // Em vez de remover, marcamos como deletado para que o card de atividades
+      // possa mostrar o efeito visual de "riscado" por alguns segundos.
+      setTransactions(prev => prev.map(t => 
+        t.id === id ? { ...t, status: 'deleted', deletedAt: new Date().toISOString() } : t
+      ));
     } catch (error) {
       console.error('Error deleting transaction:', error);
     }

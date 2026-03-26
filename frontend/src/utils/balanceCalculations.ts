@@ -10,7 +10,10 @@ import { getCurrentBrazilDate } from './helpers';
  */
 const calculateTotalGoalsImpact = (savingsGoals: SavingsGoal[] = [], effectiveDate: string): number => {
   return savingsGoals.reduce((total, goal) => {
-    const goalTotal = goal.contributions.reduce((sum, contribution) => {
+    const goalTotal = (goal.contributions || []).reduce((sum, contribution) => {
+      // Ignora contribuições deletadas no cálculo
+      if (contribution.status === 'deleted') return sum;
+      
       const cDate = contribution.date.slice(0, 10);
       return sum + (cDate <= effectiveDate ? contribution.amount : 0);
     }, 0);
@@ -54,6 +57,9 @@ export const calculateBalances = (
 
   // 1. SALDO TOTAL ACUMULADO (transações pagas até a data efetiva)
   const paidTransactions = transactions.filter(t => {
+    // Ignora transações deletadas
+    if (t.status === 'deleted') return false;
+    
     const tDate = t.date.slice(0, 10);
     return t.isPaid && tDate <= effectiveDate;
   });
@@ -70,6 +76,9 @@ export const calculateBalances = (
 
   // 2. SALDO DO MÊS SELECIONADO (transações pagas dentro do mês)
   const currentMonthTransactions = transactions.filter(t => {
+    // Ignora transações deletadas
+    if (t.status === 'deleted') return false;
+
     const tDate = t.date.slice(0, 10);
     return tDate >= startOfCurrentMonth &&
            tDate <= endOfCurrentMonthStr &&
@@ -84,6 +93,9 @@ export const calculateBalances = (
 
   // 4. TRANSAÇÕES PENDENTES DO MÊS SELECIONADO
   const pendingTransactions = transactions.filter(t => {
+    // Ignora transações deletadas
+    if (t.status === 'deleted') return false;
+
     const tDate = t.date.slice(0, 10);
     return tDate >= startOfCurrentMonth &&
            tDate <= endOfCurrentMonthStr &&

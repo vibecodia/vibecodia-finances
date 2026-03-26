@@ -338,8 +338,9 @@ const GoalCard: React.FC<GoalCardProps> = ({
 
   const remainingAmount = goal.targetAmount - goal.currentAmount;
 
-  // Sort contributions by date (most recent first)
+  // Sort contributions by date (most recent first) and filter out deleted ones
   const sortedContributions = (goal.contributions || [])
+    .filter(c => c.status !== 'deleted')
     .sort((a, b) => {
       try {
         return new Date(b.date).getTime() - new Date(a.date).getTime();

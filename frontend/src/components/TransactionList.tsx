@@ -1,6 +1,6 @@
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight, Wallet, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight, Wallet, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
 import { useTheme } from '../contexts/ThemeContext';
@@ -163,6 +163,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
   
   const filteredTransactions = transactions
+    .filter(t => t.status !== 'deleted') // Filtra itens deletados da listagem principal
     .filter(t => t.type === type)
     .filter(t => categoryFilter.includes('all') || categoryFilter.includes(t.category))
     .filter(t => {

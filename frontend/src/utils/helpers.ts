@@ -214,6 +214,9 @@ export const getTransactionsWithRecurrence = (
   const allTransactions: Transaction[] = [];
 
   transactions.forEach(transaction => {
+    // Ignora transações deletadas
+    if (transaction.status === 'deleted') return;
+
     if (transaction.recurrence === 'none') {
       // Non-recurring transaction - include if within date range
       const transactionDate = transaction.type === 'income' 
@@ -276,6 +279,9 @@ export const calculateGoalsImpactForMonth = (savingsGoals: SavingsGoal[], date: 
     // Sum all contributions made in this specific month
     const monthlyContributions = goal.contributions
       .filter(contribution => {
+        // Ignora contribuições deletadas
+        if (contribution.status === 'deleted') return false;
+        
         const contributionDate = parseLocalDate(contribution.date);
         return isWithinInterval(contributionDate, { start, end });
       })
