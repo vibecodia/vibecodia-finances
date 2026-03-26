@@ -17,7 +17,7 @@ import TransactionForm from './TransactionForm';
 interface TransactionListProps {
   type: 'expense' | 'income';
   transactions: Transaction[];
-  onAdd: (transaction: Omit<Transaction, 'id' | 'createdAt'>) => Promise<Transaction>;
+  onAdd: (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Transaction>;
   onUpdate: (id: string, updates: Partial<Transaction>) => void;
   onDelete: (id: string) => void;
   onUpdatePaymentStatus: (id: string, isPaid: boolean) => void;
@@ -217,7 +217,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
     setTransactionToReplicate(null);
   };
 
-  const handleSubmit = async (transactionData: Omit<Transaction, 'id' | 'createdAt'>) => {
+  const handleSubmit = async (transactionData: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (editingTransaction) {
       await onUpdate(editingTransaction.id, transactionData);
     } else {

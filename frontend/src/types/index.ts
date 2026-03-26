@@ -13,6 +13,7 @@ export interface Transaction {
   recurrence: 'none' | 'weekly' | 'monthly' | 'yearly';
   paymentMethod?: PaymentMethod; // Adicionado para despesas
   createdAt: string;
+  updatedAt: string;
   notes?: any; // Adicionado para o campo de notas (pode ser string ou objeto estruturado)
   imageUrl?: string; // Link para o recibo/imagem
 }
@@ -22,6 +23,7 @@ export interface SavingsContribution {
   amount: number;
   date: string; // Data do aporte
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface SavingsGoal {
@@ -33,6 +35,7 @@ export interface SavingsGoal {
   deadline?: string;
   contributions: SavingsContribution[]; // Histórico de aportes
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface MonthlyData {

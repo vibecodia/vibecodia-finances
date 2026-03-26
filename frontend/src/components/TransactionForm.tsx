@@ -16,7 +16,7 @@ interface TransactionFormProps {
   type: 'expense' | 'income';
   transaction?: Transaction | null;
   replicateTransaction?: Transaction | null; // New prop for replication
-  onSubmit: (transaction: Omit<Transaction, 'id' | 'createdAt'>) => void;
+  onSubmit: (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onClose: () => void;
 }
 

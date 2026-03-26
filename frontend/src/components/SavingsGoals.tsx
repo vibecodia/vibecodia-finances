@@ -11,7 +11,7 @@ import ConfirmationModal from './ConfirmationModal';
 
 interface SavingsGoalsProps {
   goals: SavingsGoal[];
-  onAdd: (goal: Omit<SavingsGoal, 'id' | 'createdAt'>) => void;
+  onAdd: (goal: Omit<SavingsGoal, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onUpdate: (id: string, updates: Partial<SavingsGoal>) => void;
   onDelete: (id: string) => void;
   onAddContribution: (goalId: string, amount: number, date?: string) => void;
