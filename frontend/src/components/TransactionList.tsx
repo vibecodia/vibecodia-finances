@@ -50,6 +50,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [searchTerm, setSearchTerm] = useState(''); // Re-introduce searchTerm state
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
+  const [showDeleted, setShowDeleted] = useState(false);
 
   const toggleNotes = (id: string) => {
     setExpandedNotes(prev => ({
@@ -186,8 +187,15 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
   const categories = [...new Set(transactions.filter(t => t.type === type).map(t => t.category))];
   
-  // Filter transactions by the current month
-  let transactionsForDisplay = filterTransactionsByMonth(filteredTransactions, currentMonth, true);
+  // Filter transactions by the current month - always fetch deleted to count them
+  const allMonthTransactions = filterTransactionsByMonth(filteredTransactions, currentMonth, true);
+  
+  // Separate active and deleted for counting and display
+  const activeTransactions = allMonthTransactions.filter(t => t.status !== 'deleted');
+  const deletedTransactions = allMonthTransactions.filter(t => t.status === 'deleted');
+
+  // Apply visibility toggle
+  let transactionsForDisplay = showDeleted ? allMonthTransactions : activeTransactions;
 
   // Apply daily filter if filters are set
   if (startDateFilter && endDateFilter) {
@@ -206,11 +214,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
       })
     : transactionsForDisplay;
 
-  const currentTotal = sortedTransactions.reduce((acc, t) => {
-    // Only add to total if not deleted
-    if (t.status === 'deleted') return acc;
-    return acc + t.amount;
-  }, 0);
+  const currentTotal = activeTransactions.reduce((acc, t) => acc + t.amount, 0);
 
   const handleEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction);
@@ -384,12 +388,26 @@ const TransactionList: React.FC<TransactionListProps> = ({
               <ChevronRight className="w-5 h-5 text-text" />
             </button>
           </div>
-          <p className="text-sm font-medium opacity-70 ml-9 flex items-center" style={{ color: type === 'income' ? theme.primary : theme.accent }}>
+          <p className="text-sm font-medium opacity-70 ml-9 flex items-center flex-wrap gap-y-1" style={{ color: type === 'income' ? theme.primary : theme.accent }}>
             <span>Total: {formatCurrency(currentTotal)}</span>
-            {sortedTransactions.filter(t => t.status !== 'deleted').length > 0 && (
+            {activeTransactions.length > 0 && (
               <>
                 <span className="mx-2">•</span>
-                <span className="text-xs opacity-90">{sortedTransactions.filter(t => t.status !== 'deleted').length} {sortedTransactions.filter(t => t.status !== 'deleted').length === 1 ? 'item' : 'itens'}</span>
+                <span className="text-xs opacity-90">{activeTransactions.length} {activeTransactions.length === 1 ? 'item' : 'itens'}</span>
+              </>
+            )}
+            {deletedTransactions.length > 0 && (
+              <>
+                <span className="mx-2">•</span>
+                <button 
+                  onClick={() => setShowDeleted(!showDeleted)}
+                  className="text-xs opacity-90 hover:underline flex items-center gap-1"
+                >
+                  {deletedTransactions.length} {deletedTransactions.length === 1 ? 'excluído' : 'excluídos'}
+                  <span className={`transition-transform ${showDeleted ? 'rotate-180' : ''}`}>
+                    <ChevronDown className="w-3 h-3" />
+                  </span>
+                </button>
               </>
             )}
           </p>
