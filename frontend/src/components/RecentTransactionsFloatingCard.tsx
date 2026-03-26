@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format, isToday, differenceInMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { X, Clock, RefreshCw, Plus, Sparkles } from 'lucide-react';
+import { X, Clock, ArrowUpRight, ArrowDownLeft, RefreshCw, Plus, Sparkles } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { Transaction } from '../types';
 import { formatCurrency } from '../utils/helpers';
@@ -15,11 +15,10 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
   const [timerProgress, setTimerProgress] = useState(0);
   const { theme } = useTheme();
 
-  const DURATION = 15000; // 15 segundos
+  const DURATION = 15000; 
   const radius = 15;
   const circumference = 2 * Math.PI * radius;
 
-  // Ordena por updatedAt ou createdAt para pegar o que mudou por último
   const recentTransactions = [...transactions]
     .sort((a, b) => {
       const dateA = new Date(a.updatedAt || a.createdAt).getTime();
@@ -31,20 +30,13 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
   useEffect(() => {
     if (recentTransactions.length === 0) return;
 
-    // Dispara a aparição do card
     const showTimeout = setTimeout(() => {
       setIsVisible(true);
       setTimerProgress(0);
-      
-      // Delay técnico para o CSS registrar o início da transição
-      setTimeout(() => {
-        setTimerProgress(100);
-      }, 50);
+      setTimeout(() => setTimerProgress(100), 50);
     }, 500);
     
-    const hideTimeout = setTimeout(() => {
-      setIsVisible(false);
-    }, 500 + DURATION);
+    const hideTimeout = setTimeout(() => setIsVisible(false), 500 + DURATION);
 
     return () => {
       clearTimeout(showTimeout);
@@ -54,7 +46,6 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
 
   if (recentTransactions.length === 0) return null;
 
-  // Cálculo do offset do SVG (100% preenchido quando progress é 100)
   const strokeDashoffset = circumference - (timerProgress / 100) * circumference;
 
   return (
@@ -63,16 +54,10 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
     }`}>
       <div 
         className="w-85 rounded-[2.5rem] p-6 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] border backdrop-blur-2xl relative overflow-hidden"
-        style={{ 
-          backgroundColor: `${theme.cardBackground}cc`, 
-          borderColor: `${theme.cardBorder}44` 
-        }}
+        style={{ backgroundColor: `${theme.cardBackground}cc`, borderColor: `${theme.cardBorder}44` }}
       >
-        {/* Glow de fundo */}
-        <div 
-          className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-[60px] opacity-20 pointer-events-none"
-          style={{ backgroundColor: theme.primary }}
-        />
+        <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-[60px] opacity-20 pointer-events-none"
+             style={{ backgroundColor: theme.primary }} />
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -83,62 +68,52 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
             <p className="text-[10px] font-bold text-text/90 tracking-widest uppercase">Atividade Recente</p>
           </div>
 
-          {/* Botão com Timer Circular */}
-          <button 
-            onClick={() => setIsVisible(false)} 
-            className="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-text/5 transition-all group/btn"
-          >
+          <button onClick={() => setIsVisible(false)} className="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-text/5 transition-all group/btn">
             <svg className="absolute w-full h-full -rotate-90" viewBox="0 0 40 40">
               <circle cx="20" cy="20" r={radius} fill="none" stroke="currentColor" strokeWidth="2.5" className="text-text/5" />
               <circle 
-                cx="20" cy="20" r={radius} 
-                fill="none" 
-                stroke={theme.primary} 
-                strokeWidth="2.5" 
-                strokeDasharray={circumference}
+                cx="20" cy="20" r={radius} fill="none" stroke={theme.primary} strokeWidth="2.5" strokeDasharray={circumference}
                 style={{ 
                   strokeDashoffset,
                   transition: isVisible ? `stroke-dashoffset ${DURATION}ms linear` : 'none',
                   filter: `drop-shadow(0 0 4px ${theme.primary}66)`
-                }} 
-                strokeLinecap="round" 
+                }} strokeLinecap="round" 
               />
             </svg>
             <X className="w-4 h-4 text-text/40 group-hover/btn:text-text z-10 transition-colors" />
           </button>
         </div>
 
-        {/* Lista de Transações */}
+        {/* List */}
         <div className="space-y-5 relative">
-          {/* Linha Conectora Lateral */}
           <div className="absolute left-[15px] top-2 bottom-2 w-[1px] bg-gradient-to-b from-primary/20 via-primary/10 to-transparent" />
 
           {recentTransactions.map((t) => {
             const createdAt = new Date(t.createdAt);
-            const isUpdated = t.updatedAt && t.updatedAt !== t.createdAt;
+            // Verifica se houve update real comparando as datas (ignora milissegundos se necessário)
+            const isUpdated = t.updatedAt && Math.abs(new Date(t.updatedAt).getTime() - createdAt.getTime()) > 1000;
             
-            // Lógica de Tags
             const diffMin = Math.abs(differenceInMinutes(new Date(), createdAt));
-            const isJustAdded = !isUpdated && diffMin <= 30;
-            const isNewToday = !isUpdated && !isJustAdded && isToday(createdAt);
+            
+            // PRIORIDADE DE TAGS:
+            // 1. "Adicionado" se tiver menos de 30 min
+            // 2. "Novo" se for de hoje (e tiver mais de 30 min)
+            // 3. "Editado" se tiver updatedAt diferente de createdAt
+            const showJustAdded = diffMin <= 30;
+            const showNewToday = !showJustAdded && isToday(createdAt);
 
             return (
               <div key={t.id || t._id} className="relative flex items-start gap-4 group/item">
-                {/* Indicador de Status */}
                 <div className={`mt-1.5 w-2.5 h-2.5 rounded-full z-10 ring-4 ${
                   t.type === 'income' ? 'bg-emerald-500 ring-emerald-500/10' : 'bg-rose-500 ring-rose-500/10'
                 }`} />
                 
                 <div className="flex-1 min-w-0 transition-transform group-hover/item:translate-x-1">
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <p className="text-sm font-medium text-text/90 truncate leading-tight">
-                      {t.description}
-                    </p>
+                    <p className="text-sm font-medium text-text/90 truncate leading-tight">{t.description}</p>
                     <div className={`flex items-center gap-0.5 font-bold text-sm ${
                       t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'
-                    }`}>
-                      {formatCurrency(t.amount)}
-                    </div>
+                    }`}>{formatCurrency(t.amount)}</div>
                   </div>
                   
                   <div className="flex flex-wrap items-center gap-2">
@@ -146,18 +121,20 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
                       {format(new Date(t.updatedAt || t.createdAt), "HH:mm", { locale: ptBR })}
                     </span>
 
-                    {isJustAdded && (
+                    {showJustAdded && (
                       <span className="flex items-center gap-1 text-[9px] bg-violet-500/10 text-violet-600 dark:text-violet-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider border border-violet-500/20">
                         <Sparkles className="w-2.5 h-2.5" /> Adicionado
                       </span>
                     )}
-                    {isNewToday && (
-                      <span className="flex items-center gap-1 text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">
+                    
+                    {showNewToday && (
+                      <span className="flex items-center gap-1 text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider border border-emerald-500/20">
                         <Plus className="w-2.5 h-2.5" /> Novo
                       </span>
                     )}
+
                     {isUpdated && (
-                      <span className="flex items-center gap-1 text-[9px] bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">
+                      <span className="flex items-center gap-1 text-[9px] bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider border border-blue-500/20">
                         <RefreshCw className="w-2.5 h-2.5" /> Editado
                       </span>
                     )}
