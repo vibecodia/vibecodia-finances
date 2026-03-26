@@ -194,8 +194,8 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const activeTransactions = allMonthTransactions.filter(t => t.status !== 'deleted');
   const deletedTransactions = allMonthTransactions.filter(t => t.status === 'deleted');
 
-  // Apply visibility toggle
-  let transactionsForDisplay = showDeleted ? allMonthTransactions : activeTransactions;
+  // Apply visibility toggle - if showDeleted is true, show ONLY deleted
+  let transactionsForDisplay = showDeleted ? deletedTransactions : activeTransactions;
 
   // Apply daily filter if filters are set
   if (startDateFilter && endDateFilter) {
@@ -401,7 +401,12 @@ const TransactionList: React.FC<TransactionListProps> = ({
                 <span className="mx-2">•</span>
                 <button 
                   onClick={() => setShowDeleted(!showDeleted)}
-                  className="text-xs opacity-90 hover:underline flex items-center gap-1"
+                  className={`text-xs font-bold px-2 py-0.5 rounded-full transition-colors flex items-center gap-1 ${
+                    showDeleted 
+                      ? 'bg-accent text-white' 
+                      : 'opacity-90 hover:underline'
+                  }`}
+                  style={{ backgroundColor: showDeleted ? theme.accent : undefined }}
                 >
                   {deletedTransactions.length} {deletedTransactions.length === 1 ? 'excluído' : 'excluídos'}
                   <span className={`transition-transform ${showDeleted ? 'rotate-180' : ''}`}>

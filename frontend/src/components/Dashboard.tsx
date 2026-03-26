@@ -262,7 +262,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
           isPulsing ? 'scale-[1.02]' : 'scale-100'
         } ${adjustedBalance < -0.001 ? 'text-rose-950' : 'text-white'}`}
         style={{
-          background: adjustedBalance < -0.001
+          backgroundImage: adjustedBalance < -0.001
             ? 'radial-gradient(circle at top left, #fff1eb, #ffd1ff)'
             : `radial-gradient(circle at top left, ${theme.primary}, ${theme.primary}dd)`,
           backgroundColor: theme.primary,
