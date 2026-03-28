@@ -37,7 +37,9 @@ import {
   Eye,
   Sparkles,
   Bot,
-  Loader2
+  Loader2,
+  Clipboard,
+  Check
 } from 'lucide-react';
 import React, { useState, useMemo, useRef } from 'react';
 import { Doughnut, Pie, Line, Bar } from 'react-chartjs-2';
@@ -281,6 +283,21 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [aiStats, setAiStats] = useState<any>(null);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const copyToClipboard = () => {
+    if (!aiAnalysis) return;
+    navigator.clipboard.writeText(aiAnalysis);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const formatAIText = (text: string) => {
+    return text
+      .replace(/\n/g, '<br/>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>');
+  };
 
   const handleAnalyzeWithAI = async () => {
     setIsAnalyzing(true);
@@ -306,21 +323,30 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
       .slice(0, 5)
       .map(t => `- ${t.description}: ${formatCurrency(t.amount)} (${t.category})`);
 
-    const prompt = `Analise meus dados financeiros de ${startDate} até ${endDate}:
-- Receitas: ${formatCurrency(totalIncome)}
-- Despesas: ${formatCurrency(totalExpense)}
-- Saldo: ${formatCurrency(balance)}
+    const expenseRatio = totalIncome > 0 ? (totalExpense / totalIncome) * 100 : 0;
 
-Distribuição por Categoria:
+    const prompt = `Você é um Analista Financeiro Sênior e Mentor. Analise meus dados reais de ${startDate} até ${endDate}:
+- 💰 RECEITA TOTAL: ${formatCurrency(totalIncome)}
+- 💸 DESPESA TOTAL: ${formatCurrency(totalExpense)}
+- ⚖️ SALDO ATUAL: ${formatCurrency(balance)} (${expenseRatio.toFixed(1)}% da renda comprometida)
+
+📊 CATEGORIAS (Onde gastei):
 ${categories.join('\n')}
 
-Distribuição por Método de Pagamento:
+💳 MÉTODOS DE PAGAMENTO:
 ${payments.join('\n')}
 
-Top 5 maiores gastos:
+🔍 TOP 5 GASTOS CRÍTICOS:
 ${topExpenses.join('\n')}
 
-Com base nesses dados (exclusivamente), forneça uma análise rápida sobre meus hábitos de consumo e 3 sugestões práticas de economia.`;
+INSTRUÇÕES PARA SUA RESPOSTA:
+1. Seja direto e use um tom de "Raio-X Financeiro". Evite clichês como "economize mais".
+2. Identifique o "Vilão Silencioso": Olhe para as categorias e top gastos e aponte exatamente onde o padrão parece preocupante.
+3. Se o comprometimento da renda (${expenseRatio.toFixed(1)}%) for alto (acima de 70%), seja mais firme no alerta.
+4. Formate a resposta obrigatoriamente assim:
+   - 📌 **DIAGNÓSTICO CRÍTICO** (Um resumo real da situação em 2 linhas)
+   - 🕵️ **ONDE ESTÁ O PERIGO?** (Analise os dados e aponte um padrão de gasto específico que notei)
+   - 🚀 **PLANO DE CHOQUE (3 PASSOS)** (Sugestões práticas e fora da caixa, específicas para os gastos listados).`;
 
     try {
       // Usando o proxy local para evitar problemas de CORS
@@ -1347,14 +1373,32 @@ Com base nesses dados (exclusivamente), forneça uma análise rápida sobre meus
               </div>
             ) : (
               <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-                <div className="bg-primary/5 border border-primary/20 p-6 rounded-2xl relative">
-                  <Sparkles className="absolute top-4 right-4 w-5 h-5 text-primary opacity-30" />
-                  <div 
-                    className="text-text leading-relaxed whitespace-pre-wrap text-sm md:text-base"
-                    dangerouslySetInnerHTML={{ 
-                      __html: aiAnalysis?.replace(/\n/g, '<br/>') || '' 
-                    }}
-                  />
+                <div className="bg-primary/5 border border-primary/20 rounded-2xl overflow-hidden group">
+                  {/* Toolbar da Resposta */}
+                  <div className="flex items-center justify-between p-3 px-6 border-b border-primary/10 bg-primary/10">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      <span className="text-[10px] font-black uppercase text-primary tracking-widest">Insights Estratégicos</span>
+                    </div>
+                    <button 
+                      onClick={copyToClipboard}
+                      className="p-1.5 px-3 bg-white/20 hover:bg-white/40 rounded-lg transition-all text-primary border border-primary/20 flex items-center gap-2 text-[10px] font-bold shadow-sm"
+                      title="Copiar Texto"
+                    >
+                      {isCopied ? <Check className="w-3.5 h-3.5" /> : <Clipboard className="w-3.5 h-3.5" />}
+                      <span>{isCopied ? 'COPIADO!' : 'COPIAR ANÁLISE'}</span>
+                    </button>
+                  </div>
+
+                  {/* Texto da Resposta */}
+                  <div className="p-6 md:p-8">
+                    <div 
+                      className="text-text leading-relaxed whitespace-pre-wrap text-sm md:text-base prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ 
+                        __html: formatAIText(aiAnalysis || '') 
+                      }}
+                    />
+                  </div>
                 </div>
                 
                 <div className="flex flex-col gap-2 p-4 bg-cardBorder/20 rounded-xl border border-cardBorder">
