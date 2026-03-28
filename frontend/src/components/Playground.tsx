@@ -34,7 +34,10 @@ import {
   RotateCcw,
   PanelLeftClose,
   PanelLeftOpen,
-  Eye
+  Eye,
+  Sparkles,
+  Bot,
+  Loader2
 } from 'lucide-react';
 import React, { useState, useMemo, useRef } from 'react';
 import { Doughnut, Pie, Line, Bar } from 'react-chartjs-2';
@@ -273,6 +276,94 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
 
   // Price Comparison State
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
+
+  // AI Analysis State
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [aiStats, setAiStats] = useState<any>(null);
+
+  const handleAnalyzeWithAI = async () => {
+    setIsAnalyzing(true);
+    setAiAnalysis(null);
+    setAiStats(null);
+
+    // Prepare data summary
+    const totalIncome = filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+    const totalExpense = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+    const balance = totalIncome - totalExpense;
+
+    const categories = categoryChartData.labels?.map((label, i) => 
+      `${label}: ${formatCurrency(categoryChartData.datasets[0].data[i] as number)}`
+    ) || [];
+
+    const payments = paymentChartData.labels?.map((label, i) => 
+      `${label}: ${formatCurrency(paymentChartData.datasets[0].data[i] as number)}`
+    ) || [];
+
+    const topExpenses = filteredTransactions
+      .filter(t => t.type === 'expense')
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5)
+      .map(t => `- ${t.description}: ${formatCurrency(t.amount)} (${t.category})`);
+
+    const prompt = `Analise meus dados financeiros de ${startDate} até ${endDate}:
+- Receitas: ${formatCurrency(totalIncome)}
+- Despesas: ${formatCurrency(totalExpense)}
+- Saldo: ${formatCurrency(balance)}
+
+Distribuição por Categoria:
+${categories.join('\n')}
+
+Distribuição por Método de Pagamento:
+${payments.join('\n')}
+
+Top 5 maiores gastos:
+${topExpenses.join('\n')}
+
+Com base nesses dados (exclusivamente), forneça uma análise rápida sobre meus hábitos de consumo e 3 sugestões práticas de economia.`;
+
+    try {
+      // Usando o proxy local para evitar problemas de CORS
+      const response = await fetch('/api/ai-proxy', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          persona: "finances",
+          message: prompt,
+          max_tokens: null
+        })
+      });
+
+      if (!response.ok) throw new Error('Falha na resposta da API via Proxy');
+      
+      const data = await response.json();
+      console.log('🤖 Resposta bruta da IA:', data);
+      
+      // Salvar estatísticas de token se existirem
+      if (data.token_stats) {
+        setAiStats(data.token_stats);
+      }
+      
+      // Mapeamento prioritário para 'assistant_reply' conforme exemplo do usuário
+      const responseText = 
+        data.assistant_reply || 
+        data.response || 
+        data.message || 
+        data.text || 
+        (data.choices && data.choices[0]?.message?.content) ||
+        (typeof data === 'string' ? data : "Análise concluída, mas o formato da resposta é desconhecido.");
+        
+      setAiAnalysis(responseText);
+    } catch (error) {
+      console.error("Erro ao analisar com IA:", error);
+      setAiAnalysis("Desculpe, ocorreu um erro ao tentar processar sua análise. Por favor, tente novamente mais tarde.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   // Income Timeline Grouping State
   const [incomeGroupBy, setIncomeGroupBy] = useState<'category' | 'description'>('category');
@@ -1213,9 +1304,115 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
     );
   };
 
+  const renderAIAnalysisModal = () => {
+    if (!aiAnalysis && !isAnalyzing) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[110] p-4 md:p-6 animate-in fade-in duration-200">
+        <div 
+          className="w-full max-w-2xl bg-cardBackground rounded-3xl border-2 shadow-2xl flex flex-col overflow-hidden max-h-[90vh]"
+          style={{ borderColor: theme.primary, backgroundColor: theme.cardBackground }}
+        >
+          {/* Header */}
+          <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: theme.cardBorder }}>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/20 rounded-xl">
+                <Bot className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <span className="text-xl font-bold text-text block">Análise Inteligente (IA)</span>
+                <span className="text-xs text-text opacity-50 uppercase font-black tracking-widest">Powered by Vibecodia AI</span>
+              </div>
+            </div>
+            <button 
+              onClick={() => { setAiAnalysis(null); setIsAnalyzing(false); }}
+              className="p-2 hover:bg-cardBorder rounded-xl transition-all text-text"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-auto p-6 md:p-8 space-y-4">
+            {isAnalyzing ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-6 text-center">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl animate-pulse" />
+                  <Loader2 className="w-16 h-16 text-primary animate-spin relative z-10" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-text mb-2 animate-pulse">Cruzando dados e gerando insights...</h3>
+                  <p className="text-sm text-text opacity-60">Nossa inteligência artificial está analisando sua saúde financeira.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+                <div className="bg-primary/5 border border-primary/20 p-6 rounded-2xl relative">
+                  <Sparkles className="absolute top-4 right-4 w-5 h-5 text-primary opacity-30" />
+                  <div 
+                    className="text-text leading-relaxed whitespace-pre-wrap text-sm md:text-base"
+                    dangerouslySetInnerHTML={{ 
+                      __html: aiAnalysis?.replace(/\n/g, '<br/>') || '' 
+                    }}
+                  />
+                </div>
+                
+                <div className="flex flex-col gap-2 p-4 bg-cardBorder/20 rounded-xl border border-cardBorder">
+                  <div className="flex justify-between items-end mb-1">
+                    <p className="text-[10px] font-black uppercase text-text opacity-40">Uso da Inteligência (Tokens):</p>
+                    {aiStats && (
+                      <span className={`text-[10px] font-black ${aiStats.near_limit ? 'text-accent' : 'text-primary'}`}>
+                        {aiStats.usage_percentage.toFixed(1)}%
+                      </span>
+                    )}
+                  </div>
+                  
+                  {aiStats && (
+                    <div className="w-full h-1.5 bg-cardBorder/30 rounded-full overflow-hidden mb-2">
+                      <div 
+                        className={`h-full transition-all duration-1000 ${
+                          aiStats.usage_percentage > 80 ? 'bg-accent' : 
+                          aiStats.usage_percentage > 50 ? 'bg-yellow-500' : 'bg-primary'
+                        }`}
+                        style={{ width: `${aiStats.usage_percentage}%` }}
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-2">
+                    <span className="text-[10px] font-bold px-2 py-1 bg-primary/10 text-primary rounded">{filteredTransactions.length} Transações</span>
+                    <span className="text-[10px] font-bold px-2 py-1 bg-primary/10 text-primary rounded">{startDate} → {endDate}</span>
+                    {aiStats && (
+                      <span className="text-[10px] font-bold px-2 py-1 bg-cardBorder/40 text-text opacity-70 rounded">
+                        {aiStats.current_tokens} / {aiStats.token_limit} tokens
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          {!isAnalyzing && (
+            <div className="p-6 border-t flex justify-end" style={{ borderColor: theme.cardBorder }}>
+              <button 
+                onClick={() => setAiAnalysis(null)}
+                className="px-6 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-md hover:scale-105 transition-all"
+              >
+                ENTENDIDO
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 pb-10 max-w-full overflow-x-hidden relative">
       {renderMaximizedModal()}
+      {renderAIAnalysisModal()}
       {/* Tab Navigation */}
       <div className="flex items-center justify-between py-8 gap-4 border-b" style={{ borderColor: theme.cardBorder }}>
         <div className="flex-1">
@@ -1413,6 +1610,19 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                   ))}
                 </div>
               </div>
+
+              <button 
+                onClick={handleAnalyzeWithAI}
+                disabled={isAnalyzing || filteredTransactions.length === 0}
+                className="w-full py-4 text-xs bg-primary text-white font-black border border-primary rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all mt-4 shadow-lg flex items-center justify-center gap-2 group disabled:opacity-50 disabled:hover:scale-100"
+              >
+                {isAnalyzing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 group-hover:animate-pulse" />
+                )}
+                <span>ANALISAR COM IA</span>
+              </button>
 
               <button 
                 onClick={() => {
