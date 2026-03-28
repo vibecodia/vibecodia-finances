@@ -1,4 +1,4 @@
-import { Target, Plus, Trash2, Edit3, Calendar, TrendingUp, History, X, ChevronDown } from 'lucide-react';
+import { Target, Plus, Trash2, Edit3, Calendar, TrendingUp, History, X, ChevronDown, RotateCcw } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
 import { useTheme } from '../contexts/ThemeContext';
@@ -39,6 +39,8 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [goalToDelete, setGoalToDelete] = useState<string | null>(null);
+  const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
+  const [goalToReactivate, setGoalToReactivate] = useState<string | null>(null);
   const [showDeleted, setShowDeleted] = useState(false);
 
   const activeGoals = (goals || []).filter(g => g.status !== 'deleted');
@@ -61,11 +63,28 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
     setIsDeleteModalOpen(false);
   };
 
+  const openReactivateModal = (id: string) => {
+    setGoalToReactivate(id);
+    setIsReactivateModalOpen(true);
+  };
+
+  const closeReactivateModal = () => {
+    setGoalToReactivate(null);
+    setIsReactivateModalOpen(false);
+  };
+
   const handleDeleteConfirm = () => {
     if (goalToDelete) {
       onDelete(goalToDelete);
     }
     closeDeleteModal();
+  };
+
+  const handleReactivateConfirm = () => {
+    if (goalToReactivate) {
+      onUpdate(goalToReactivate, { status: 'active' });
+    }
+    closeReactivateModal();
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -193,6 +212,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 isComplete={isComplete}
                 onEdit={() => handleEdit(goal)}
                 onDelete={() => openDeleteModal(goal.id)}
+                onReactivate={() => openReactivateModal(goal.id)}
                 onAddContribution={onAddContribution}
                 onUpdateContribution={onUpdateContribution}
                 onDeleteContribution={onDeleteContribution}
@@ -299,7 +319,15 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
         onClose={closeDeleteModal}
         onConfirm={handleDeleteConfirm}
         title="Confirmar Exclusão"
-        message="Tem certeza de que deseja excluir esta meta de economia? Esta ação não pode ser desfeita."
+        message="Tem certeza de que deseja excluir esta meta de economia? Todos os aportes associados também serão marcados como excluídos."
+      />
+
+      <ConfirmationModal
+        isOpen={isReactivateModalOpen}
+        onClose={closeReactivateModal}
+        onConfirm={handleReactivateConfirm}
+        title="Restaurar Meta"
+        message="Deseja restaurar esta meta e todos os seus aportes?"
       />
     </div>
   );
@@ -312,6 +340,7 @@ interface GoalCardProps {
   isComplete: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onReactivate: () => void;
   onAddContribution: (goalId: string, amount: number, date?: string) => void;
   onUpdateContribution: (goalId: string, contributionId: string, updates: Partial<SavingsContribution>) => void;
   onDeleteContribution: (goalId: string, contributionId: string) => void;
@@ -324,6 +353,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
   isComplete, 
   onEdit, 
   onDelete, 
+  onReactivate,
   onAddContribution,
   onUpdateContribution,
   onDeleteContribution,
@@ -417,6 +447,15 @@ const GoalCard: React.FC<GoalCardProps> = ({
           )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          {isGoalDeleted && (
+            <button
+              onClick={onReactivate}
+              className="p-2 rounded-lg transition-colors text-accent hover:text-primary hover:bg-cardBorder"
+              title="Restaurar meta"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          )}
           {!isGoalDeleted && (
             <>
               {sortedContributions.length > 0 && (
@@ -444,7 +483,6 @@ const GoalCard: React.FC<GoalCardProps> = ({
           )}
         </div>
       </div>
-
       <div className="mb-4">
         <div className="flex justify-between text-sm mb-2">
           <span className="text-text opacity-90 truncate pr-2">Progresso</span>

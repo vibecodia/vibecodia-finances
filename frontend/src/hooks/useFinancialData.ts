@@ -224,14 +224,28 @@ export const useFinancialData = () => {
       });
       if (!response.ok) throw new Error('Failed to update savings goal');
       const updatedGoal = await response.json();
-      setSavingsGoals(prev => prev.map(goal =>
-        goal.id === id ? updatedGoal : goal
-      ));
+
+      // If we are restoring, also restore contributions in local state
+      if (updates.status === 'active') {
+        setSavingsGoals(prev => prev.map(g => 
+          g.id === id ? { 
+            ...updatedGoal, 
+            status: 'active', 
+            deletedAt: undefined,
+            contributions: (g.contributions || []).map(c => ({
+              ...c,
+              status: 'active',
+              deletedAt: undefined
+            }))
+          } : g
+        ));
+      } else {
+        setSavingsGoals(prev => prev.map(g => (g.id === id ? { ...g, ...updatedGoal } : g)));
+      }
     } catch (error) {
       console.error('Error updating savings goal:', error);
     }
   };
-
   const addSavingsContribution = async (goalId: string, amount: number, date?: string) => {
     if (!pin) throw new Error('PIN not verified');
     try {
@@ -306,8 +320,18 @@ export const useFinancialData = () => {
       if (!response.ok) throw new Error('Failed to delete savings goal');
       
       // Soft delete in local state
+      const now = new Date().toISOString();
       setSavingsGoals(prev => prev.map(g => 
-        g.id === id ? { ...g, status: 'deleted', deletedAt: new Date().toISOString() } : g
+        g.id === id ? { 
+          ...g, 
+          status: 'deleted', 
+          deletedAt: now,
+          contributions: (g.contributions || []).map(c => ({
+            ...c,
+            status: 'deleted',
+            deletedAt: c.status === 'deleted' ? c.deletedAt : now
+          }))
+        } : g
       ));
     } catch (error) {
       console.error('Error deleting savings goal:', error);

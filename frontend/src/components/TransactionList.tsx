@@ -774,7 +774,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
         onClose={closeDeleteModal}
         onConfirm={handleDeleteConfirm}
         title="Confirmar Exclusão"
-        message="Tem certeza de que deseja excluir esta transação? Esta ação não pode ser desfeita."
+        message="Tem certeza de que deseja excluir esta transação?"
       />
 
       {/* Reactivate Confirmation Modal */}

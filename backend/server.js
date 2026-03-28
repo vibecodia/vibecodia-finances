@@ -183,10 +183,27 @@ app.get('/api/admin/migrate-status', dbMiddleware, async (req, res) => {
       { $set: { status: 'active', deletedAt: null } }
     );
 
+    // Update individual contributions that don't have status
+    const allGoals = await SavingsGoal.find({ 'contributions.status': { $exists: false } });
+    let contributionsUpdated = 0;
+    for (const goal of allGoals) {
+      let modified = false;
+      goal.contributions.forEach(c => {
+        if (!c.status) {
+          c.status = 'active';
+          c.deletedAt = null;
+          modified = true;
+          contributionsUpdated++;
+        }
+      });
+      if (modified) await goal.save();
+    }
+
     res.json({
       message: 'Migração concluída com sucesso!',
       transactionsUpdated: resT.modifiedCount,
-      goalsUpdated: resS.modifiedCount
+      goalsUpdated: resS.modifiedCount,
+      contributionsUpdated
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -310,19 +327,33 @@ app.post('/api/goals', dbMiddleware, async (req, res) => {
 app.put('/api/goals/:id', dbMiddleware, async (req, res) => {
   const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
   try {
-    const updateData = {
-      ...req.body,
-      deadline: req.body.deadline ? createLocalDateForStorage(req.body.deadline) : undefined,
-    };
-    const updatedGoal = await SavingsGoal.findByIdAndUpdate(
-      req.params.id, 
-      updateData, 
-      { new: true }
-    );
-    if (!updatedGoal) {
-      return res.status(404).json({ message: 'Goal not found' });
+    const { name, targetAmount, deadline, status } = req.body;
+    const goal = await SavingsGoal.findById(req.params.id);
+    if (!goal) return res.status(404).json({ message: 'Goal not found' });
+
+    if (name) goal.name = name;
+    if (targetAmount !== undefined) goal.targetAmount = targetAmount;
+    if (deadline !== undefined) goal.deadline = createLocalDateForStorage(deadline);
+    
+    // Handle restoration
+    if (status === 'active' && goal.status === 'deleted') {
+      goal.status = 'active';
+      goal.deletedAt = null;
+      // Also restore all contributions
+      if (goal.contributions) {
+        goal.contributions.forEach(c => {
+          if (c.status === 'deleted') {
+            c.status = 'active';
+            c.deletedAt = null;
+          }
+        });
+      }
+    } else if (status) {
+      goal.status = status;
     }
-    res.json(updatedGoal);
+
+    await goal.save();
+    res.json(goal);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -331,15 +362,27 @@ app.put('/api/goals/:id', dbMiddleware, async (req, res) => {
 app.delete('/api/goals/:id', dbMiddleware, async (req, res) => {
   const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
   try {
-    const deletedGoal = await SavingsGoal.findByIdAndUpdate(
-      req.params.id,
-      { status: 'deleted', deletedAt: new Date() },
-      { new: true }
-    );
-    if (!deletedGoal) {
+    const goal = await SavingsGoal.findById(req.params.id);
+    if (!goal) {
       return res.status(404).json({ message: 'Goal not found' });
     }
-    res.json({ message: 'Savings goal deleted' });
+
+    const now = new Date();
+    goal.status = 'deleted';
+    goal.deletedAt = now;
+
+    // Mark all contributions as deleted too
+    if (goal.contributions && goal.contributions.length > 0) {
+      goal.contributions.forEach(contrib => {
+        if (contrib.status !== 'deleted') {
+          contrib.status = 'deleted';
+          contrib.deletedAt = now;
+        }
+      });
+    }
+
+    await goal.save();
+    res.json({ message: 'Savings goal and its contributions deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
