@@ -515,6 +515,7 @@ export const EXPENSE_CATEGORIES = [
   'Beleza',
   'Compras',
   'Consumo',
+  'Aporte',
   'Outro'
 ];
 

@@ -7,6 +7,11 @@ export const useCategories = () => {
   const [expenseCategories, setExpenseCategories] = useLocalStorage<string[]>('manageable_expense_categories', EXPENSE_CATEGORIES);
   const [incomeCategories, setIncomeCategories] = useLocalStorage<string[]>('manageable_income_categories', INCOME_CATEGORIES);
 
+  // Ensure 'Aporte' is always in expense categories for existing users
+  if (!expenseCategories.includes('Aporte')) {
+    setExpenseCategories([...expenseCategories, 'Aporte']);
+  }
+
   const addCategory = (type: 'expense' | 'income', newCategory: string) => {
     const list = type === 'expense' ? expenseCategories : incomeCategories;
     const setList = type === 'expense' ? setExpenseCategories : setIncomeCategories;
@@ -30,9 +35,9 @@ export const useCategories = () => {
     }
 
     if (type === 'expense') {
-      setExpenseCategories(expenseCategories.filter(cat => cat !== categoryToRemove));
+      setExpenseCategories(expenseCategories.filter((cat: string) => cat !== categoryToRemove));
     } else {
-      setIncomeCategories(incomeCategories.filter(cat => cat !== categoryToRemove));
+      setIncomeCategories(incomeCategories.filter((cat: string) => cat !== categoryToRemove));
     }
     
     return { success: true };

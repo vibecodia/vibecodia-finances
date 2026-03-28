@@ -565,9 +565,12 @@ const GoalCard: React.FC<GoalCardProps> = ({
                   <div className="flex justify-between items-center">
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-center mb-1">
-                        <span className={cn("text-sm text-text opacity-90 truncate pr-2", contribution.status === 'deleted' && "line-through opacity-60")}>
-                          {formatBrazilDate(new Date(contribution.date))}
-                        </span>
+                        <div className="flex flex-col min-w-0 pr-2">
+                          <span className={cn("text-sm text-text opacity-90 truncate", contribution.status === 'deleted' && "line-through opacity-60")}>
+                            {formatBrazilDate(new Date(contribution.date))}
+                          </span>
+                          <span className="text-[10px] font-bold text-primary/70 uppercase tracking-wider">Aporte</span>
+                        </div>
                         <span className={cn("font-medium text-primary flex-shrink-0", contribution.status === 'deleted' && "text-accent line-through opacity-60")}>
                           +{formatCurrency(contribution.amount)}
                         </span>
@@ -613,10 +616,13 @@ const GoalCard: React.FC<GoalCardProps> = ({
           </h4>
           <div className="space-y-1">
             {sortedContributions.slice(0, 2).map(contribution => (
-              <div key={contribution.id} className="flex justify-between text-xs rounded p-2" style={{ backgroundColor: theme.cardBorder }}>
-                <span className={cn("text-text opacity-90 truncate pr-2", contribution.status === 'deleted' && "line-through opacity-60")}>
-                  {formatBrazilDate(new Date(contribution.date))}
-                </span>
+              <div key={contribution.id} className="flex justify-between items-center text-xs rounded p-2" style={{ backgroundColor: theme.cardBorder }}>
+                <div className="flex flex-col min-w-0 pr-2">
+                  <span className={cn("text-text opacity-90 truncate", contribution.status === 'deleted' && "line-through opacity-60")}>
+                    {formatBrazilDate(new Date(contribution.date))}
+                  </span>
+                  <span className="text-[9px] font-bold text-primary/70 uppercase tracking-wider">Aporte</span>
+                </div>
                 <span className={cn("font-medium text-primary flex-shrink-0", contribution.status === 'deleted' && "text-accent line-through opacity-60")}>
                   +{formatCurrency(contribution.amount)}
                 </span>
