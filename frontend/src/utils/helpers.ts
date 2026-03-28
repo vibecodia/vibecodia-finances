@@ -319,6 +319,9 @@ const calculateBalanceFromTransactionList = (transactions: Transaction[]): numbe
     // Ignora transações deletadas no saldo
     if (transaction.status === 'deleted') return balance;
 
+    // Ignora 'Aporte' no saldo real, pois é calculado separadamente como impacto de metas
+    if (transaction.category === 'Aporte') return balance;
+
     if (transaction.type === 'income') {
       return balance + transaction.amount;
     } else {

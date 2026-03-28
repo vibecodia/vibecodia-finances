@@ -19,6 +19,40 @@ export const useFinancialData = () => {
     'x-pin': pin || '',
   }), [pin]);
 
+  const fetchData = async () => {
+    if (isInitializing) {
+      return; // Wait for verification context to initialize
+    }
+    if (!pin) {
+      setTransactions([]);
+      setSavingsGoals([]);
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const [transactionsRes, goalsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/transactions`, { headers }),
+        fetch(`${API_BASE_URL}/goals`, { headers }),
+      ]);
+
+      if (!transactionsRes.ok || !goalsRes.ok) {
+        throw new Error('Failed to fetch data');
+      }
+
+      const transactionsData = await transactionsRes.json();
+      const goalsData = await goalsRes.json();
+      setTransactions(transactionsData);
+      setSavingsGoals(goalsData);
+    } catch (error) {
+      console.error('Error fetching financial data:', error);
+      setTransactions([]);
+      setSavingsGoals([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const calculateMonthlyBalances = useMemo(() => {
     return () => {
       const now = getCurrentBrazilDate();
@@ -74,41 +108,6 @@ export const useFinancialData = () => {
   }, [transactions]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (isInitializing) {
-        return; // Wait for verification context to initialize
-      }
-      if (!pin) {
-        setTransactions([]);
-        setSavingsGoals([]);
-        setIsLoading(false);
-        return;
-      }
-      setIsLoading(true);
-      try {
-        const [transactionsRes, goalsRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/transactions`, { headers }),
-          fetch(`${API_BASE_URL}/goals`, { headers }),
-        ]);
-
-        if (!transactionsRes.ok || !goalsRes.ok) {
-          throw new Error('Failed to fetch data');
-        }
-
-        const transactionsData = await transactionsRes.json();
-        const goalsData = await goalsRes.json();
-
-        setTransactions(transactionsData);
-        setSavingsGoals(goalsData);
-      } catch (error) {
-        console.error('Error fetching financial data:', error);
-        setTransactions([]);
-        setSavingsGoals([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchData();
   }, [pin, headers, isInitializing]);
 
@@ -268,6 +267,8 @@ export const useFinancialData = () => {
       setSavingsGoals(prev => prev.map(goal =>
         goal.id === goalId ? updatedGoal : goal
       ));
+      // Refresh transactions since a new one was created
+      fetchData();
     } catch (error) {
       console.error('Error adding savings contribution:', error);
     }
@@ -287,6 +288,8 @@ export const useFinancialData = () => {
       setSavingsGoals(prev => prev.map(goal =>
         goal.id === goalId ? updatedGoal : goal
       ));
+      // Refresh transactions since one was updated
+      fetchData();
     } catch (error) {
       console.error('Error updating savings contribution:', error);
     }
@@ -305,6 +308,8 @@ export const useFinancialData = () => {
       setSavingsGoals(prev => prev.map(goal =>
         goal.id === goalId ? updatedGoal : goal
       ));
+      // Refresh transactions since one was deleted
+      fetchData();
     } catch (error) {
       console.error('Error deleting savings contribution:', error);
     }
@@ -333,6 +338,8 @@ export const useFinancialData = () => {
           }))
         } : g
       ));
+      // Refresh transactions since all related transactions were deleted
+      fetchData();
     } catch (error) {
       console.error('Error deleting savings goal:', error);
     }

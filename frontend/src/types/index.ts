@@ -16,6 +16,8 @@ export interface Transaction {
   updatedAt: string;
   notes?: any; // Adicionado para o campo de notas (pode ser string ou objeto estruturado)
   imageUrl?: string; // Link para o recibo/imagem
+  savingsGoalId?: string; // ID da meta vinculada
+  savingsGoalContributionId?: string; // ID da contribuição original
   status?: 'active' | 'deleted'; // Adicionado para Soft Delete
   deletedAt?: string; // Adicionado para Soft Delete
 }

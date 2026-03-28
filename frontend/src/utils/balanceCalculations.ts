@@ -63,6 +63,11 @@ export const calculateBalances = (
     // Ignora transações deletadas
     if (t.status === 'deleted') return false;
     
+    // CRITICAL: Exclude 'Aporte' category from the "real" balance calculation 
+    // because it will be accounted for in adjustedBalance/totalGoalsImpact.
+    // This avoids double-counting since contributions are now also transactions.
+    if (t.category === 'Aporte') return false;
+    
     const tDate = t.date.slice(0, 10);
     return t.isPaid && tDate <= effectiveDate;
   });
@@ -81,6 +86,9 @@ export const calculateBalances = (
   const currentMonthTransactions = transactions.filter(t => {
     // Ignora transações deletadas
     if (t.status === 'deleted') return false;
+    
+    // Exclude Aporte to avoid double-counting with adjustedBalance
+    if (t.category === 'Aporte') return false;
 
     const tDate = t.date.slice(0, 10);
     return tDate >= startOfCurrentMonth &&
