@@ -303,7 +303,9 @@ app.post('/api/transactions', dbMiddleware, async (req, res) => {
 
 app.put('/api/transactions/:id', dbMiddleware, async (req, res) => {
   const Transaction = req.conn.model('Transaction', transactionSchema);
+  const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
   try {
+    console.log(`[PUT Transaction] ID: ${req.params.id}, Status: ${req.body.status}, Amount: ${req.body.amount}`);
     const updateData = {
       ...req.body,
     };
@@ -320,28 +322,139 @@ app.put('/api/transactions/:id', dbMiddleware, async (req, res) => {
       updateData,
       { new: true, runValidators: true }
     );
+
     if (!updatedTransaction) {
+      console.log(`[PUT Transaction] Not found: ${req.params.id}`);
       return res.status(404).json({ message: 'Transaction not found' });
     }
+
+    console.log(`[PUT Transaction] Updated. Category: ${updatedTransaction.category}, GoalID: ${updatedTransaction.savingsGoalId}, ContribID: ${updatedTransaction.savingsGoalContributionId}`);
+
+    // Sincronizar com SavingsGoal se for um aporte
+    if (updatedTransaction.category === 'Aporte' && updatedTransaction.savingsGoalId && updatedTransaction.savingsGoalContributionId) {
+      const goal = await SavingsGoal.findById(updatedTransaction.savingsGoalId);
+      if (goal) {
+        console.log(`[PUT Transaction] Goal found: ${goal.name}`);
+        // Refined search: try both .id() and manual find by string
+        let contribution = goal.contributions.id(updatedTransaction.savingsGoalContributionId);
+        if (!contribution) {
+          contribution = goal.contributions.find(c => c._id.toString() === updatedTransaction.savingsGoalContributionId.toString());
+        }
+
+        if (contribution) {
+          console.log(`[PUT Transaction] Contribution found. Current status in goal: ${contribution.status}`);
+          let modified = false;
+          
+          if (req.body.amount !== undefined && contribution.amount !== updatedTransaction.amount) {
+            contribution.amount = updatedTransaction.amount;
+            modified = true;
+          }
+          
+          if (req.body.date !== undefined && contribution.date.toISOString() !== updatedTransaction.date.toISOString()) {
+            contribution.date = updatedTransaction.date;
+            modified = true;
+          }
+
+          // Se houve restauração da transação
+          if (req.body.status === 'active' && contribution.status === 'deleted') {
+            console.log(`[PUT Transaction] RESTORING contribution in goal.`);
+            contribution.status = 'active';
+            contribution.deletedAt = null;
+            modified = true;
+          }
+
+          // Se houve exclusão via status
+          if (req.body.status === 'deleted' && contribution.status !== 'deleted') {
+            console.log(`[PUT Transaction] DELETING contribution in goal via status update.`);
+            contribution.status = 'deleted';
+            contribution.deletedAt = new Date();
+            modified = true;
+          }
+
+          if (modified) {
+            // Recalcular currentAmount
+            const allActiveTransactions = await Transaction.find({ 
+              savingsGoalId: goal._id, 
+              status: 'active' 
+            });
+            goal.currentAmount = allActiveTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+            
+            await goal.save();
+            console.log(`[PUT Transaction] Goal ${goal.name} updated successfully.`);
+          }
+        } else {
+          console.log(`[PUT Transaction] Contribution NOT found in goal. ContribID searched: ${updatedTransaction.savingsGoalContributionId}`);
+          console.log(`[PUT Transaction] Available contrib IDs: ${goal.contributions.map(c => c._id.toString()).join(', ')}`);
+        }
+      } else {
+        console.log(`[PUT Transaction] Goal NOT found with ID: ${updatedTransaction.savingsGoalId}`);
+      }
+    }
+
     res.json(updatedTransaction);
   } catch (err) {
+    console.error(`[PUT Transaction] Error: ${err.message}`);
     res.status(400).json({ message: err.message });
   }
 });
 
 app.delete('/api/transactions/:id', dbMiddleware, async (req, res) => {
   const Transaction = req.conn.model('Transaction', transactionSchema);
+  const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
   try {
+    console.log(`[DELETE Transaction] ID: ${req.params.id}`);
+    const now = new Date();
     const deletedTransaction = await Transaction.findByIdAndUpdate(
       req.params.id,
-      { status: 'deleted', deletedAt: new Date() },
+      { status: 'deleted', deletedAt: now },
       { new: true }
     );
     if (!deletedTransaction) {
+      console.log(`[DELETE Transaction] Not found: ${req.params.id}`);
       return res.status(404).json({ message: 'Transaction not found' });
     }
+
+    console.log(`[DELETE Transaction] Category: ${deletedTransaction.category}, GoalID: ${deletedTransaction.savingsGoalId}, ContribID: ${deletedTransaction.savingsGoalContributionId}`);
+
+    // Se a transação for um aporte, sincronizar com a meta de economia
+    if (deletedTransaction.category === 'Aporte' && deletedTransaction.savingsGoalId && deletedTransaction.savingsGoalContributionId) {
+      const goal = await SavingsGoal.findById(deletedTransaction.savingsGoalId);
+      if (goal) {
+        console.log(`[DELETE Transaction] Goal found: ${goal.name}`);
+        // Refined search: try both .id() and manual find by string
+        let contribution = goal.contributions.id(deletedTransaction.savingsGoalContributionId);
+        if (!contribution) {
+          contribution = goal.contributions.find(c => c._id.toString() === deletedTransaction.savingsGoalContributionId.toString());
+        }
+
+        if (contribution) {
+          console.log(`[DELETE Transaction] Contribution found, current status: ${contribution.status}`);
+          if (contribution.status !== 'deleted') {
+            contribution.status = 'deleted';
+            contribution.deletedAt = now;
+            
+            // Recalcular currentAmount
+            const allActiveTransactions = await Transaction.find({ 
+              savingsGoalId: goal._id, 
+              status: 'active' 
+            });
+            goal.currentAmount = allActiveTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+            
+            await goal.save();
+            console.log(`[DELETE Transaction] Goal ${goal.name} updated successfully.`);
+          }
+        } else {
+          console.log(`[DELETE Transaction] Contribution NOT found in goal. ContribID searched: ${deletedTransaction.savingsGoalContributionId}`);
+          console.log(`[DELETE Transaction] Available contrib IDs: ${goal.contributions.map(c => c._id.toString()).join(', ')}`);
+        }
+      } else {
+        console.log(`[DELETE Transaction] Goal NOT found with ID: ${deletedTransaction.savingsGoalId}`);
+      }
+    }
+
     res.json({ message: 'Transaction deleted' });
   } catch (err) {
+    console.error(`[DELETE Transaction] Error: ${err.message}`);
     res.status(500).json({ message: err.message });
   }
 });

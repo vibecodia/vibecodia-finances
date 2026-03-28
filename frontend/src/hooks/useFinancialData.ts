@@ -149,6 +149,8 @@ export const useFinancialData = () => {
       setTransactions(prev => prev.map(transaction =>
         transaction.id === id ? updatedTransaction : transaction
       ));
+      // Refresh both because update might sync with goals
+      fetchData();
     } catch (error) {
       console.error('Error updating transaction:', error);
       throw new Error('Failed to update transaction');
@@ -169,6 +171,9 @@ export const useFinancialData = () => {
       setTransactions(prev => prev.map(t => 
         t.id === id ? { ...t, status: 'deleted', deletedAt: new Date().toISOString() } : t
       ));
+      // Refresh both transactions and goals because deleting a transaction 
+      // might also delete a savings contribution (sync)
+      fetchData();
     } catch (error) {
       console.error('Error deleting transaction:', error);
     }
