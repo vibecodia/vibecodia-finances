@@ -39,8 +39,7 @@ import {
   Bot,
   Loader2,
   Clipboard,
-  Check,
-  Share2
+  Check
 } from 'lucide-react';
 import React, { useState, useMemo, useRef } from 'react';
 import { Doughnut, Pie, Line, Bar } from 'react-chartjs-2';
