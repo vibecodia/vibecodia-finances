@@ -286,6 +286,8 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [aiStats, setAiStats] = useState<any>(null);
   const [isCopied, setIsCopied] = useState(false);
+  const [showAIObsModal, setShowAIObsModal] = useState(false);
+  const [aiObservation, setAiObservation] = useState('');
 
   const copyToClipboard = () => {
     if (!aiAnalysis) return;
@@ -305,50 +307,72 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
     setIsAnalyzing(true);
     setAiAnalysis(null);
     setAiStats(null);
+    setShowAIObsModal(false);
 
     // Prepare data summary
-    const totalIncome = filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-    const totalExpense = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+    const totalIncome = filteredTransactions.filter((t: Transaction) => t.type === 'income').reduce((acc: number, t: Transaction) => acc + t.amount, 0);
+    const totalExpense = filteredTransactions.filter((t: Transaction) => t.type === 'expense').reduce((acc: number, t: Transaction) => acc + t.amount, 0);
     const balance = totalIncome - totalExpense;
 
-    const categories = categoryChartData.labels?.map((label, i) => 
+    // Prepare active filters summary
+    const activeFilters: string[] = [];
+    if (selectedCategories.length > 0) activeFilters.push(`Categorias: ${selectedCategories.join(', ')}`);
+    if (selectedPaymentMethods.length > 0) activeFilters.push(`Métodos: ${selectedPaymentMethods.join(', ')}`);
+    if (searchTerm) activeFilters.push(`Busca: "${searchTerm}"`);
+    if (typeFilter !== 'all') activeFilters.push(`Tipo: ${typeFilter === 'income' ? 'Apenas Receitas' : 'Apenas Despesas'}`);
+    if (statusFilter !== 'all') activeFilters.push(`Status: ${statusFilter}`);
+    
+    const filterContext = activeFilters.length > 0 
+      ? `⚠️ ATENÇÃO: Os dados estão FILTRADOS por: ${activeFilters.join(' | ')}. Analise APENAS o que está visível e não considere a ausência de receitas/despesas como um erro se o filtro for específico.`
+      : 'Análise de visão geral (sem filtros ativos).';
+
+    const categories = categoryChartData.labels?.map((label: string, i: number) => 
       `${label}: ${formatCurrency(categoryChartData.datasets[0].data[i] as number)}`
     ) || [];
 
-    const payments = paymentChartData.labels?.map((label, i) => 
+    const payments = paymentChartData.labels?.map((label: string, i: number) => 
       `${label}: ${formatCurrency(paymentChartData.datasets[0].data[i] as number)}`
     ) || [];
 
     const topExpenses = filteredTransactions
-      .filter(t => t.type === 'expense')
-      .sort((a, b) => b.amount - a.amount)
+      .filter((t: Transaction) => t.type === 'expense')
+      .sort((a: Transaction, b: Transaction) => b.amount - a.amount)
       .slice(0, 5)
-      .map(t => `- ${t.description}: ${formatCurrency(t.amount)} (${t.category})`);
+      .map((t: Transaction) => `- ${t.description}: ${formatCurrency(t.amount)} (${t.category})`);
 
     const expenseRatio = totalIncome > 0 ? (totalExpense / totalIncome) * 100 : 0;
 
-    const prompt = `Você é um Analista Financeiro Sênior e Mentor. Analise meus dados reais de ${startDate} até ${endDate}:
+    let prompt = `Você é um Analista Financeiro Sênior e Mentor. 
+CONTEXTO ATUAL:
+- Período Analisado: ${startDate} até ${endDate}
+- ${filterContext}
+
+DADOS DO PERÍODO:
 - 💰 RECEITA TOTAL: ${formatCurrency(totalIncome)}
 - 💸 DESPESA TOTAL: ${formatCurrency(totalExpense)}
-- ⚖️ SALDO ATUAL: ${formatCurrency(balance)} (${expenseRatio.toFixed(1)}% da renda comprometida)
+- ⚖️ SALDO NO PERÍODO: ${formatCurrency(balance)} ${totalIncome > 0 ? `(${expenseRatio.toFixed(1)}% da renda comprometida)` : ''}
 
-📊 CATEGORIAS (Onde gastei):
+📊 DISTRIBUIÇÃO POR CATEGORIA:
 ${categories.join('\n')}
 
 💳 MÉTODOS DE PAGAMENTO:
 ${payments.join('\n')}
 
-🔍 TOP 5 GASTOS CRÍTICOS:
+🔍 DETALHES DOS MAIORES GASTOS:
 ${topExpenses.join('\n')}
 
 INSTRUÇÕES PARA SUA RESPOSTA:
-1. Seja direto e use um tom de "Raio-X Financeiro". Evite clichês como "economize mais".
-2. Identifique o "Vilão Silencioso": Olhe para as categorias e top gastos e aponte exatamente onde o padrão parece preocupante.
-3. Se o comprometimento da renda (${expenseRatio.toFixed(1)}%) for alto (acima de 70%), seja mais firme no alerta.
+1. Analise os dados exatamente como foram fornecidos. Se houver filtros ativos, identifique qual categoria ou padrão domina o volume financeiro e foque sua análise nisso.
+2. Identifique o "Padrão Real": Olhe para a distribuição de categorias e os maiores gastos. Aponte o que é mais significativo em termos de volume e impacto para o período de ${startDate} a ${endDate}.
+3. Não use clichês. Se os dados mostram um alto volume em uma categoria específica (seja investimentos, lazer ou moradia), analise a relevância disso dentro do contexto visível.
 4. Formate a resposta obrigatoriamente assim:
-   - 📌 **DIAGNÓSTICO CRÍTICO** (Um resumo real da situação em 2 linhas)
-   - 🕵️ **ONDE ESTÁ O PERIGO?** (Analise os dados e aponte um padrão de gasto específico que notei)
-   - 🚀 **PLANO DE CHOQUE (3 PASSOS)** (Sugestões práticas e fora da caixa, específicas para os gastos listados).`;
+   - 📌 **DIAGNÓSTICO DO PERÍODO** (Resumo real e específico das datas e dados informados)
+   - 🕵️ **ANÁLISE DE PADRÃO** (O que os dados revelam sobre o comportamento ou foco financeiro neste intervalo)
+   - 🚀 **RECOMENDAÇÃO ESTRATÉGICA** (Sugestões práticas baseadas estritamente no que foi visto nos dados).`;
+
+    if (aiObservation.trim()) {
+      prompt += `\n\n⚠️ **OBSERVAÇÃO DO USUÁRIO:**\n${aiObservation.trim()}\n(Leve esta observação em conta na sua análise).`;
+    }
 
     try {
       // Usando o proxy local para evitar problemas de CORS
@@ -1493,10 +1517,74 @@ INSTRUÇÕES PARA SUA RESPOSTA:
     );
   };
 
+  const renderAIObsModal = () => {
+    if (!showAIObsModal) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[120] p-4 md:p-6 animate-in fade-in duration-200">
+        <div 
+          className="w-full max-w-lg bg-cardBackground rounded-3xl border-2 shadow-2xl flex flex-col overflow-hidden"
+          style={{ borderColor: theme.primary, backgroundColor: theme.cardBackground }}
+        >
+          {/* Header */}
+          <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: theme.cardBorder }}>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/20 rounded-xl">
+                <Sparkles className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <span className="text-lg font-bold text-text block">Deseja adicionar alguma observação?</span>
+                <span className="text-xs text-text opacity-50 uppercase font-bold tracking-widest">Opcional • Enriquecer análise</span>
+              </div>
+            </div>
+            <button 
+              onClick={() => setShowAIObsModal(false)}
+              className="p-2 hover:bg-cardBorder rounded-xl transition-all text-text"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 space-y-4">
+            <p className="text-sm text-text opacity-70 leading-relaxed">
+              Conte para a IA detalhes que os números não mostram. Ex: "Este mês tive um gasto extra com conserto de carro" ou "Quero focar em reduzir gastos com lazer".
+            </p>
+            <textarea
+              value={aiObservation}
+              onChange={(e) => setAiObservation(e.target.value)}
+              placeholder="Digite sua observação aqui..."
+              className="w-full h-32 p-4 rounded-2xl border-2 bg-transparent text-text text-sm focus:ring-2 focus:ring-primary/20 outline-none resize-none transition-all"
+              style={{ borderColor: theme.cardBorder }}
+              autoFocus
+            />
+          </div>
+
+          {/* Footer */}
+          <div className="p-6 border-t flex gap-3" style={{ borderColor: theme.cardBorder }}>
+            <button 
+              onClick={() => { setAiObservation(''); handleAnalyzeWithAI(); }}
+              className="flex-1 py-3 px-4 bg-cardBorder/30 text-text rounded-xl font-bold text-sm hover:bg-cardBorder/50 transition-all"
+            >
+              IGNORAR
+            </button>
+            <button 
+              onClick={handleAnalyzeWithAI}
+              className="flex-[2] py-3 px-4 bg-primary text-white rounded-xl font-bold text-sm shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              ENVIAR PARA ANÁLISE
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 pb-10 max-w-full overflow-x-hidden relative">
       {renderMaximizedModal()}
       {renderAIAnalysisModal()}
+      {renderAIObsModal()}
       {/* Tab Navigation */}
       <div className="flex items-center justify-between py-8 gap-4 border-b" style={{ borderColor: theme.cardBorder }}>
         <div className="flex-1">
@@ -1717,7 +1805,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
               </div>
 
               <button 
-                onClick={handleAnalyzeWithAI}
+                onClick={() => setShowAIObsModal(true)}
                 disabled={isAnalyzing || filteredTransactions.length === 0}
                 className="w-full py-4 text-xs bg-primary text-white font-black border border-primary rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all mt-4 shadow-lg flex items-center justify-center gap-2 group disabled:opacity-50 disabled:hover:scale-100"
               >
