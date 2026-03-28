@@ -1,4 +1,5 @@
 import fs from 'fs';
+import https from 'https';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -100,7 +101,9 @@ const savingsGoalSchema = new mongoose.Schema({
   targetAmount: { type: Number, required: true },
   currentAmount: { type: Number, default: 0 },
   deadline: { type: Date },
-  contributions: [savingsContributionSchema]
+  contributions: [savingsContributionSchema],
+  status: { type: String, enum: ['active', 'deleted'], default: 'active' },
+  deletedAt: { type: Date }
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 const shoppingItemSchema = new mongoose.Schema({
@@ -165,8 +168,7 @@ const dbMiddleware = (req, res, next) => {
 ////////////
 app.get('/api/admin/migrate-status', dbMiddleware, async (req, res) => {
   const Transaction = req.conn.model('Transaction', transactionSchema);
-  // Se tiver o SavingsGoal, importe o schema dele também
-  // const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
+  const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
 
   try {
     // Atualiza Transactions
@@ -175,16 +177,16 @@ app.get('/api/admin/migrate-status', dbMiddleware, async (req, res) => {
       { $set: { status: 'active', deletedAt: null } }
     );
 
-    // Se tiver SavingsGoal, descomente abaixo:
-    // const resS = await SavingsGoal.updateMany(
-    //   { status: { $exists: false } }, 
-    //   { $set: { status: 'active', deletedAt: null } }
-    // );
+    // Atualiza SavingsGoal
+    const resS = await SavingsGoal.updateMany(
+      { status: { $exists: false } }, 
+      { $set: { status: 'active', deletedAt: null } }
+    );
 
     res.json({
       message: 'Migração concluída com sucesso!',
       transactionsUpdated: resT.modifiedCount,
-      // goalsUpdated: resS.modifiedCount
+      goalsUpdated: resS.modifiedCount
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -329,7 +331,11 @@ app.put('/api/goals/:id', dbMiddleware, async (req, res) => {
 app.delete('/api/goals/:id', dbMiddleware, async (req, res) => {
   const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
   try {
-    const deletedGoal = await SavingsGoal.findByIdAndDelete(req.params.id);
+    const deletedGoal = await SavingsGoal.findByIdAndUpdate(
+      req.params.id,
+      { status: 'deleted', deletedAt: new Date() },
+      { new: true }
+    );
     if (!deletedGoal) {
       return res.status(404).json({ message: 'Goal not found' });
     }
@@ -639,6 +645,48 @@ app.get('/api/fetch-receipt-data', async (req, res) => {
       error: 'Não foi possível ler os dados da SEFAZ diretamente. Verifique a conexão ou o link.',
       details: error.message 
     });
+  }
+});
+
+// AI Proxy Route to bypass CORS
+app.post('/api/ai-proxy', async (req, res) => {
+  console.log('🤖 Recebida requisição para AI Proxy...');
+  try {
+    const { persona, message, max_tokens } = req.body;
+    
+    console.log('📡 Enviando para Vibecodia API:', { persona, messageLength: message?.length });
+
+    const response = await axios.post('https://api.vibecodia.com.br/chat', {
+      persona: persona || "finances",
+      message: message,
+      max_tokens: max_tokens || null
+    }, {
+      headers: {
+        'accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      timeout: 45000,
+      httpsAgent: new https.Agent({ rejectUnauthorized: false }) // Ignora erro de certificado expirado
+    });
+
+    console.log('✅ Resposta da IA recebida com sucesso.');
+    res.json(response.data);
+  } catch (error) {
+    console.error('❌ ERRO DETALHADO NO AI PROXY:');
+    if (error.response) {
+      // A API respondeu com um código de erro (4xx, 5xx)
+      console.error('Status:', error.response.status);
+      console.error('Data:', JSON.stringify(error.response.data));
+      res.status(error.response.status).json(error.response.data);
+    } else if (error.request) {
+      // A requisição foi feita mas não houve resposta
+      console.error('Nenhuma resposta recebida do servidor da Vibecodia (Timeout/Rede)');
+      res.status(504).json({ error: 'Timeout ou erro de rede na API externa' });
+    } else {
+      // Erro ao configurar a requisição
+      console.error('Erro de configuração:', error.message);
+      res.status(500).json({ error: error.message });
+    }
   }
 });
 

@@ -274,6 +274,9 @@ export const calculateGoalsImpactForMonth = (savingsGoals: SavingsGoal[], date: 
   const end = endOfMonth(date);
   
   return savingsGoals.reduce((total, goal) => {
+    // Ignora metas deletadas
+    if (goal.status === 'deleted') return total;
+    
     if (!goal.contributions) return total;
     
     // Sum all contributions made in this specific month

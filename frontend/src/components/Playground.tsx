@@ -34,7 +34,13 @@ import {
   RotateCcw,
   PanelLeftClose,
   PanelLeftOpen,
-  Eye
+  Eye,
+  Trash2,
+  Sparkles,
+  Bot,
+  Loader2,
+  Clipboard,
+  Check
 } from 'lucide-react';
 import React, { useState, useMemo, useRef } from 'react';
 import { Doughnut, Pie, Line, Bar } from 'react-chartjs-2';
@@ -250,6 +256,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'expense' | 'income'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
+  const [showDeleted, setShowDeleted] = useState(false);
 
   // Removed Transactions State
   const [removedTransactionIds, setRemovedTransactionIds] = useState<string[]>([]);
@@ -273,6 +280,118 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
 
   // Price Comparison State
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
+
+  // AI Analysis State
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [aiStats, setAiStats] = useState<any>(null);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const copyToClipboard = () => {
+    if (!aiAnalysis) return;
+    navigator.clipboard.writeText(aiAnalysis);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const formatAIText = (text: string) => {
+    return text
+      .replace(/\n/g, '<br/>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>');
+  };
+
+  const handleAnalyzeWithAI = async () => {
+    setIsAnalyzing(true);
+    setAiAnalysis(null);
+    setAiStats(null);
+
+    // Prepare data summary
+    const totalIncome = filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+    const totalExpense = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+    const balance = totalIncome - totalExpense;
+
+    const categories = categoryChartData.labels?.map((label, i) => 
+      `${label}: ${formatCurrency(categoryChartData.datasets[0].data[i] as number)}`
+    ) || [];
+
+    const payments = paymentChartData.labels?.map((label, i) => 
+      `${label}: ${formatCurrency(paymentChartData.datasets[0].data[i] as number)}`
+    ) || [];
+
+    const topExpenses = filteredTransactions
+      .filter(t => t.type === 'expense')
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5)
+      .map(t => `- ${t.description}: ${formatCurrency(t.amount)} (${t.category})`);
+
+    const expenseRatio = totalIncome > 0 ? (totalExpense / totalIncome) * 100 : 0;
+
+    const prompt = `Você é um Analista Financeiro Sênior e Mentor. Analise meus dados reais de ${startDate} até ${endDate}:
+- 💰 RECEITA TOTAL: ${formatCurrency(totalIncome)}
+- 💸 DESPESA TOTAL: ${formatCurrency(totalExpense)}
+- ⚖️ SALDO ATUAL: ${formatCurrency(balance)} (${expenseRatio.toFixed(1)}% da renda comprometida)
+
+📊 CATEGORIAS (Onde gastei):
+${categories.join('\n')}
+
+💳 MÉTODOS DE PAGAMENTO:
+${payments.join('\n')}
+
+🔍 TOP 5 GASTOS CRÍTICOS:
+${topExpenses.join('\n')}
+
+INSTRUÇÕES PARA SUA RESPOSTA:
+1. Seja direto e use um tom de "Raio-X Financeiro". Evite clichês como "economize mais".
+2. Identifique o "Vilão Silencioso": Olhe para as categorias e top gastos e aponte exatamente onde o padrão parece preocupante.
+3. Se o comprometimento da renda (${expenseRatio.toFixed(1)}%) for alto (acima de 70%), seja mais firme no alerta.
+4. Formate a resposta obrigatoriamente assim:
+   - 📌 **DIAGNÓSTICO CRÍTICO** (Um resumo real da situação em 2 linhas)
+   - 🕵️ **ONDE ESTÁ O PERIGO?** (Analise os dados e aponte um padrão de gasto específico que notei)
+   - 🚀 **PLANO DE CHOQUE (3 PASSOS)** (Sugestões práticas e fora da caixa, específicas para os gastos listados).`;
+
+    try {
+      // Usando o proxy local para evitar problemas de CORS
+      const response = await fetch('/api/ai-proxy', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          persona: "finances",
+          message: prompt,
+          max_tokens: null
+        })
+      });
+
+      if (!response.ok) throw new Error('Falha na resposta da API via Proxy');
+      
+      const data = await response.json();
+      console.log('🤖 Resposta bruta da IA:', data);
+      
+      // Salvar estatísticas de token se existirem
+      if (data.token_stats) {
+        setAiStats(data.token_stats);
+      }
+      
+      // Mapeamento prioritário para 'assistant_reply' conforme exemplo do usuário
+      const responseText = 
+        data.assistant_reply || 
+        data.response || 
+        data.message || 
+        data.text || 
+        (data.choices && data.choices[0]?.message?.content) ||
+        (typeof data === 'string' ? data : "Análise concluída, mas o formato da resposta é desconhecido.");
+        
+      setAiAnalysis(responseText);
+    } catch (error) {
+      console.error("Erro ao analisar com IA:", error);
+      setAiAnalysis("Desculpe, ocorreu um erro ao tentar processar sua análise. Por favor, tente novamente mais tarde.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   // Income Timeline Grouping State
   const [incomeGroupBy, setIncomeGroupBy] = useState<'category' | 'description'>('category');
@@ -300,8 +419,15 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   // Filtered Transactions
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
-      // Skip removed transactions
+      // Skip removed transactions (manual playground hide)
       if (removedTransactionIds.includes(t.id)) return false;
+
+      // Handle soft-deleted status
+      if (showDeleted) {
+        if (t.status !== 'deleted') return false;
+      } else {
+        if (t.status === 'deleted') return false;
+      }
 
       const date = parseLocalDate(t.date);
       const start = parseLocalDate(startDate);
@@ -318,7 +444,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
 
       return isInDateRange && isInCategory && isInPaymentMethod && matchesSearch && matchesType && matchesStatus;
     });
-  }, [transactions, startDate, endDate, selectedCategories, selectedPaymentMethods, searchTerm, typeFilter, statusFilter, removedTransactionIds]);
+  }, [transactions, startDate, endDate, selectedCategories, selectedPaymentMethods, searchTerm, typeFilter, statusFilter, removedTransactionIds, showDeleted]);
 
   // Chart Data: Category Distribution
   const categoryChartData = useMemo(() => {
@@ -378,6 +504,13 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
     const incomeTransactions = transactions.filter((t: any) => {
       const isIncome = t.type === 'income';
       if (!isIncome) return false;
+
+      // Handle soft-deleted status
+      if (showDeleted) {
+        if (t.status !== 'deleted') return false;
+      } else {
+        if (t.status === 'deleted') return false;
+      }
 
       const matchesStatus = statusFilter === 'all' || 
         (statusFilter === 'paid' ? t.isPaid : !t.isPaid);
@@ -444,13 +577,20 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
       labels: sortedDates,
       datasets,
     };
-  }, [transactions, incomeGroupBy, statusFilter, theme.cardBackground, startDate, endDate, incomeMode, incomeComparisonMonth1, incomeComparisonMonth2]);
+  }, [transactions, incomeGroupBy, statusFilter, theme.cardBackground, startDate, endDate, incomeMode, incomeComparisonMonth1, incomeComparisonMonth2, showDeleted]);
 
   // Expense Timeline Chart Data
   const expenseTimelineChartData = useMemo(() => {
     const expenseTransactions = transactions.filter((t: any) => {
       const isExpense = t.type === 'expense';
       if (!isExpense) return false;
+
+      // Handle soft-deleted status
+      if (showDeleted) {
+        if (t.status !== 'deleted') return false;
+      } else {
+        if (t.status === 'deleted') return false;
+      }
 
       const matchesStatus = expenseStatusFilter === 'all' || 
         (expenseStatusFilter === 'paid' ? t.isPaid : !t.isPaid);
@@ -517,13 +657,20 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
       labels: sortedDates,
       datasets,
     };
-  }, [transactions, expenseGroupBy, expenseStatusFilter, theme.cardBackground, expenseTimelineStartDate, expenseTimelineEndDate, expenseMode, expenseComparisonMonth1, expenseComparisonMonth2]);
+  }, [transactions, expenseGroupBy, expenseStatusFilter, theme.cardBackground, expenseTimelineStartDate, expenseTimelineEndDate, expenseMode, expenseComparisonMonth1, expenseComparisonMonth2, showDeleted]);
 
   // Extract Items from Notes for Price Comparison
   const allItems = useMemo(() => {
     const itemsMap: Record<string, { date: string, price: number }[]> = {};
     
     transactions.forEach((t: any) => {
+      // Handle soft-deleted status
+      if (showDeleted) {
+        if (t.status !== 'deleted') return;
+      } else {
+        if (t.status === 'deleted') return;
+      }
+
       let items: any[] = [];
       if (t.notes) {
         if (typeof t.notes === 'object' && Array.isArray(t.notes.items)) {
@@ -551,7 +698,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
     });
 
     return itemsMap;
-  }, [transactions]);
+  }, [transactions, showDeleted]);
 
   const sortedItemNames = useMemo(() => {
     const keys = Object.keys(allItems);
@@ -1174,31 +1321,41 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                       <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>Descrição</th>
                       <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>Categoria</th>
                       <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>Pagamento</th>
+                      <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider text-center" style={{ borderColor: theme.cardBorder }}>
+                        <Trash2 className="w-4 h-4 mx-auto" />
+                      </th>
                       <th className="p-4 border-b font-bold uppercase text-xs tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Valor</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
                     {getSortedTransactions().map(t => (
-                      <tr key={t.id} className="text-text hover:bg-primary/5 transition-colors group">
-                        <td className="p-4 whitespace-nowrap border-r font-mono text-sm opacity-70" style={{ borderColor: theme.cardBorder }}>
+                      <tr key={t.id} className={`text-text hover:bg-primary/5 transition-colors group ${t.status === 'deleted' ? 'opacity-50 grayscale-[0.5]' : ''}`}>
+                        <td className={`p-4 whitespace-nowrap border-r font-mono text-sm opacity-70 ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
                           {formatBrazilDate(t.date, 'dd/MM/yyyy')}
                         </td>
-                        <td className="p-4 font-bold border-r text-base" style={{ borderColor: theme.cardBorder }}>
+                        <td className={`p-4 font-bold border-r text-base ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
                           {t.description}
                         </td>
-                        <td className="p-4 border-r" style={{ borderColor: theme.cardBorder }}>
+                        <td className={`p-4 border-r ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
                           <span className="px-3 py-1 rounded-full text-xs font-bold bg-cardBorder/50">
                             {t.category}
                           </span>
                         </td>
-                        <td className="p-4 border-r" style={{ borderColor: theme.cardBorder }}>
+                        <td className={`p-4 border-r ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
                           {t.paymentMethod ? (
                             <span className="text-xs opacity-80 uppercase font-black bg-primary/10 px-2 py-1 rounded text-primary">
                               {formatPaymentMethod(t.paymentMethod)}
                             </span>
                           ) : <span className="opacity-20">-</span>}
                         </td>
-                        <td className={`p-4 text-right font-black text-xl ${t.type === 'income' ? 'text-orange-500' : 'text-accent'}`}>
+                        <td className="p-4 border-r text-center" style={{ borderColor: theme.cardBorder }}>
+                          {t.status === 'deleted' && (
+                            <span className="text-[10px] font-black bg-accent/20 text-accent px-2 py-1 rounded-full uppercase">
+                              EXCLUÍDA
+                            </span>
+                          )}
+                        </td>
+                        <td className={`p-4 text-right font-black text-xl ${t.type === 'income' ? 'text-orange-500' : 'text-accent'} ${t.status === 'deleted' ? 'line-through opacity-60' : ''}`}>
                           {formatCurrency(t.amount)}
                         </td>
                       </tr>
@@ -1213,9 +1370,133 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
     );
   };
 
+  const renderAIAnalysisModal = () => {
+    if (!aiAnalysis && !isAnalyzing) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[110] p-4 md:p-6 animate-in fade-in duration-200">
+        <div 
+          className="w-full max-w-2xl bg-cardBackground rounded-3xl border-2 shadow-2xl flex flex-col overflow-hidden max-h-[90vh]"
+          style={{ borderColor: theme.primary, backgroundColor: theme.cardBackground }}
+        >
+          {/* Header */}
+          <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: theme.cardBorder }}>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/20 rounded-xl">
+                <Bot className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <span className="text-xl font-bold text-text block">Análise Inteligente (IA)</span>
+                <span className="text-xs text-text opacity-50 uppercase font-black tracking-widest">Powered by Vibecodia AI</span>
+              </div>
+            </div>
+            <button 
+              onClick={() => { setAiAnalysis(null); setIsAnalyzing(false); }}
+              className="p-2 hover:bg-cardBorder rounded-xl transition-all text-text"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-auto p-6 md:p-8 space-y-4">
+            {isAnalyzing ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-6 text-center">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl animate-pulse" />
+                  <Loader2 className="w-16 h-16 text-primary animate-spin relative z-10" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-text mb-2 animate-pulse">Cruzando dados e gerando insights...</h3>
+                  <p className="text-sm text-text opacity-60">Nossa inteligência artificial está analisando sua saúde financeira.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+                <div className="bg-primary/5 border border-primary/20 rounded-2xl overflow-hidden group">
+                  {/* Toolbar da Resposta */}
+                  <div className="flex items-center justify-between p-3 px-6 border-b border-primary/10 bg-primary/10">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      <span className="text-[10px] font-black uppercase text-primary tracking-widest">Insights Estratégicos</span>
+                    </div>
+                    <button 
+                      onClick={copyToClipboard}
+                      className="p-1.5 px-3 bg-white/20 hover:bg-white/40 rounded-lg transition-all text-primary border border-primary/20 flex items-center gap-2 text-[10px] font-bold shadow-sm"
+                      title="Copiar Texto"
+                    >
+                      {isCopied ? <Check className="w-3.5 h-3.5" /> : <Clipboard className="w-3.5 h-3.5" />}
+                      <span>{isCopied ? 'COPIADO!' : 'COPIAR ANÁLISE'}</span>
+                    </button>
+                  </div>
+
+                  {/* Texto da Resposta */}
+                  <div className="p-6 md:p-8">
+                    <div 
+                      className="text-text leading-relaxed whitespace-pre-wrap text-sm md:text-base prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ 
+                        __html: formatAIText(aiAnalysis || '') 
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex flex-col gap-2 p-4 bg-cardBorder/20 rounded-xl border border-cardBorder">
+                  <div className="flex justify-between items-end mb-1">
+                    <p className="text-[10px] font-black uppercase text-text opacity-40">Uso da Inteligência (Tokens):</p>
+                    {aiStats && (
+                      <span className={`text-[10px] font-black ${aiStats.near_limit ? 'text-accent' : 'text-primary'}`}>
+                        {aiStats.usage_percentage.toFixed(1)}%
+                      </span>
+                    )}
+                  </div>
+                  
+                  {aiStats && (
+                    <div className="w-full h-1.5 bg-cardBorder/30 rounded-full overflow-hidden mb-2">
+                      <div 
+                        className={`h-full transition-all duration-1000 ${
+                          aiStats.usage_percentage > 80 ? 'bg-accent' : 
+                          aiStats.usage_percentage > 50 ? 'bg-yellow-500' : 'bg-primary'
+                        }`}
+                        style={{ width: `${aiStats.usage_percentage}%` }}
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-2">
+                    <span className="text-[10px] font-bold px-2 py-1 bg-primary/10 text-primary rounded">{filteredTransactions.length} Transações</span>
+                    <span className="text-[10px] font-bold px-2 py-1 bg-primary/10 text-primary rounded">{startDate} → {endDate}</span>
+                    {aiStats && (
+                      <span className="text-[10px] font-bold px-2 py-1 bg-cardBorder/40 text-text opacity-70 rounded">
+                        {aiStats.current_tokens} / {aiStats.token_limit} tokens
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          {!isAnalyzing && (
+            <div className="p-6 border-t flex justify-end" style={{ borderColor: theme.cardBorder }}>
+              <button 
+                onClick={() => setAiAnalysis(null)}
+                className="px-6 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-md hover:scale-105 transition-all"
+              >
+                ENTENDIDO
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 pb-10 max-w-full overflow-x-hidden relative">
       {renderMaximizedModal()}
+      {renderAIAnalysisModal()}
       {/* Tab Navigation */}
       <div className="flex items-center justify-between py-8 gap-4 border-b" style={{ borderColor: theme.cardBorder }}>
         <div className="flex-1">
@@ -1320,6 +1601,27 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                 </div>
               </div>
 
+              {transactions.some(t => t.status === 'deleted') && (
+                <div>
+                  <label className="block text-xs font-medium text-text opacity-70 mb-2">Visibilidade</label>
+                  <button
+                    onClick={() => setShowDeleted(!showDeleted)}
+                    className={`w-full py-2 rounded-md text-[10px] transition-all border font-bold uppercase flex items-center justify-center gap-2 ${
+                      showDeleted 
+                        ? 'bg-accent text-white border-accent shadow-sm' 
+                        : 'bg-transparent text-text opacity-70 border-cardBorder hover:bg-cardBorder/30'
+                    }`}
+                    style={{ 
+                      backgroundColor: showDeleted ? theme.accent : 'transparent',
+                      color: showDeleted ? '#fff' : theme.text 
+                    }}
+                  >
+                    <Trash2 className={`w-3 h-3 ${showDeleted ? 'animate-pulse' : ''}`} />
+                    {showDeleted ? 'Mostrando Excluídos' : 'Ver Excluídos'}
+                  </button>
+                </div>
+              )}
+
               <div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -1413,6 +1715,19 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                   ))}
                 </div>
               </div>
+
+              <button 
+                onClick={handleAnalyzeWithAI}
+                disabled={isAnalyzing || filteredTransactions.length === 0}
+                className="w-full py-4 text-xs bg-primary text-white font-black border border-primary rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all mt-4 shadow-lg flex items-center justify-center gap-2 group disabled:opacity-50 disabled:hover:scale-100"
+              >
+                {isAnalyzing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 group-hover:animate-pulse" />
+                )}
+                <span>ANALISAR COM IA</span>
+              </button>
 
               <button 
                 onClick={() => {
@@ -2023,40 +2338,52 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
                               <th onClick={() => handleSort('description')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Descrição {sortBy === 'description' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
                               <th onClick={() => handleSort('category')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Categoria {sortBy === 'category' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
                               <th onClick={() => handleSort('paymentMethod')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Pagamento {sortBy === 'paymentMethod' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-center" style={{ borderColor: theme.cardBorder }}>
+                                <Trash2 className="w-3 h-3 mx-auto" />
+                              </th>
                               <th onClick={() => handleSort('amount')} className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Valor {sortBy === 'amount' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
                             {getSortedTransactions().map(t => (
-                              <tr key={t.id} className="text-text hover:bg-primary/5 transition-colors group">
-                                <td className="p-4 whitespace-nowrap border-r font-mono text-xs opacity-70" style={{ borderColor: theme.cardBorder }}>
+                              <tr key={t.id} className={`text-text hover:bg-primary/5 transition-colors group ${t.status === 'deleted' ? 'opacity-50 grayscale-[0.5]' : ''}`}>
+                                <td className={`p-4 whitespace-nowrap border-r font-mono text-xs opacity-70 ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
                                   {formatBrazilDate(t.date, 'dd/MM/yyyy')}
                                 </td>
-                                <td className="p-4 font-bold border-r" style={{ borderColor: theme.cardBorder }}>
+                                <td className={`p-4 font-bold border-r ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
                                   <div className="flex items-center gap-2">
                                     {highlightText(t.description, searchTerm)}
-                                    <button
-                                      onClick={() => removeTransaction(t.id)}
-                                      className="p-1 hover:bg-accent/10 rounded transition-colors text-accent flex-shrink-0"
-                                      title="Remover da Visualização"
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                    </button>
+                                    {t.status !== 'deleted' && (
+                                      <button
+                                        onClick={() => removeTransaction(t.id)}
+                                        className="p-1 hover:bg-accent/10 rounded transition-colors text-accent flex-shrink-0"
+                                        title="Remover da Visualização"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
                                   </div>
                                 </td>
-                                <td className="p-4 border-r" style={{ borderColor: theme.cardBorder }}>
+                                <td className={`p-4 border-r ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
                                   <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-cardBorder/50" style={{ color: theme.text }}>
                                     {t.category}
                                   </span>
                                 </td>
-                                <td className="p-4 border-r" style={{ borderColor: theme.cardBorder }}>
+                                <td className={`p-4 border-r ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
                                   {t.paymentMethod ? (
                                     <span className="text-[10px] opacity-80 uppercase font-black bg-primary/10 px-2 py-1 rounded text-primary">
                                       {formatPaymentMethod(t.paymentMethod)}
                                     </span>
                                   ) : <span className="opacity-20">-</span>}
                                 </td>
-                                <td className={`p-4 text-right font-black text-base ${t.type === 'income' ? 'text-orange-500' : 'text-accent'}`}>
+                                <td className="p-4 border-r text-center" style={{ borderColor: theme.cardBorder }}>
+                                  {t.status === 'deleted' && (
+                                    <span className="text-[8px] font-black bg-accent/20 text-accent px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
+                                      EXCLUÍDA
+                                    </span>
+                                  )}
+                                </td>
+                                <td className={`p-4 text-right font-black text-base ${t.type === 'income' ? 'text-orange-500' : 'text-accent'} ${t.status === 'deleted' ? 'line-through opacity-60' : ''}`}>
                                   {formatCurrency(t.amount)}
                                 </td>
                               </tr>

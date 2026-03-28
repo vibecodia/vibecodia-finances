@@ -10,6 +10,9 @@ import { getCurrentBrazilDate } from './helpers';
  */
 const calculateTotalGoalsImpact = (savingsGoals: SavingsGoal[] = [], effectiveDate: string): number => {
   return savingsGoals.reduce((total, goal) => {
+    // Ignora metas deletadas no cálculo
+    if (goal.status === 'deleted') return total;
+    
     const goalTotal = (goal.contributions || []).reduce((sum, contribution) => {
       // Ignora contribuições deletadas no cálculo
       if (contribution.status === 'deleted') return sum;

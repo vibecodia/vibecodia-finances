@@ -304,7 +304,11 @@ export const useFinancialData = () => {
         headers,
       });
       if (!response.ok) throw new Error('Failed to delete savings goal');
-      setSavingsGoals(prev => prev.filter(g => g.id !== id));
+      
+      // Soft delete in local state
+      setSavingsGoals(prev => prev.map(g => 
+        g.id === id ? { ...g, status: 'deleted', deletedAt: new Date().toISOString() } : g
+      ));
     } catch (error) {
       console.error('Error deleting savings goal:', error);
     }
