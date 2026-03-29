@@ -66,7 +66,7 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
             <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 border border-primary/20">
               <Clock className="w-4 h-4 text-primary" />
             </div>
-            <p className="text-[10px] font-bold text-text/90 tracking-widest uppercase">Atividade Recente</p>
+            <p className="text-[10px] font-bold text-text/90 tracking-widest uppercase">Recentes</p>
           </div>
 
           <button onClick={() => setIsVisible(false)} className="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-text/5 transition-all group/btn">
