@@ -538,6 +538,7 @@ export const PAYMENT_METHODS = [
   { id: 'nubank', label: 'Nubank' },
   { id: 'vero_card', label: 'Vero Card' },
   { id: 'flash', label: 'Flash' },
+  { id: 'saldo_conta', label: 'Saldo em Conta' },
 ] as const;
 
 export const formatPaymentMethod = (method?: string): string => {

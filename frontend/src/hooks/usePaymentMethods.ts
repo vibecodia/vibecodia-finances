@@ -9,6 +9,13 @@ const DEFAULT_PAYMENT_METHODS = PAYMENT_METHODS.map(m => m.label as string);
 export const usePaymentMethods = () => {
   const [paymentMethods, setPaymentMethods] = useLocalStorage<string[]>('manageable_payment_methods', DEFAULT_PAYMENT_METHODS);
 
+  // Ensure 'Saldo em Conta' is always in payment methods for existing users
+  useEffect(() => {
+    if (!paymentMethods.includes('Saldo em Conta')) {
+      setPaymentMethods(prev => [...prev, 'Saldo em Conta']);
+    }
+  }, [paymentMethods, setPaymentMethods]);
+
   // Automatically normalize the list to labels (migrates legacy IDs to Labels in local storage)
   useEffect(() => {
     const normalized = paymentMethods.map(m => formatPaymentMethod(m));
