@@ -76,10 +76,25 @@ const TransactionList: React.FC<TransactionListProps> = ({
     true
   );
   
-  const activeTransactions = allMonthTransactions.filter(t => t.status !== 'deleted');
-  const deletedTransactions = allMonthTransactions.filter(t => t.status === 'deleted');
+  const baseActiveTransactions = allMonthTransactions.filter(t => t.status !== 'deleted');
+  const baseDeletedTransactions = allMonthTransactions.filter(t => t.status === 'deleted');
 
-  // Auto-switch back to active view if no deleted transactions remain
+  // Aplicar filtro diário (slider) para as listas base
+  const activeTransactions = (startDateFilter && endDateFilter)
+    ? baseActiveTransactions.filter(t => {
+        const transactionDate = parseLocalDate(t.date);
+        return transactionDate >= startDateFilter && transactionDate <= endDateFilter;
+      })
+    : baseActiveTransactions;
+
+  const deletedTransactions = (startDateFilter && endDateFilter)
+    ? baseDeletedTransactions.filter(t => {
+        const transactionDate = parseLocalDate(t.date);
+        return transactionDate >= startDateFilter && transactionDate <= endDateFilter;
+      })
+    : baseDeletedTransactions;
+
+  // Auto-switch back to active view if no deleted transactions remain in the current range
   useEffect(() => {
     if (showDeleted && deletedTransactions.length === 0) {
       setShowDeleted(false);
@@ -202,15 +217,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const categories = [...new Set(transactions.filter(t => t.type === type).map(t => t.category))];
   
   // Apply visibility toggle - if showDeleted is true, show ONLY deleted
-  let transactionsForDisplay = showDeleted ? deletedTransactions : activeTransactions;
-
-  // Apply daily filter if filters are set
-  if (startDateFilter && endDateFilter) {
-    transactionsForDisplay = transactionsForDisplay.filter(t => {
-      const transactionDate = parseLocalDate(t.date);
-      return transactionDate >= startDateFilter && transactionDate <= endDateFilter;
-    });
-  }
+  const transactionsForDisplay = showDeleted ? deletedTransactions : activeTransactions;
 
   // Sort expenses by due date
   const sortedTransactions = type === 'expense'
