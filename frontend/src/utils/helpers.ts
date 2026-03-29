@@ -209,11 +209,14 @@ export const getTransactionsWithRecurrence = (
   transactions: Transaction[], 
   startDate: Date, 
   endDate: Date,
-  currentMonthOnly: boolean = false // New parameter for context-aware logic
+  currentMonthOnly: boolean = false, // New parameter for context-aware logic
+  includeDeleted: boolean = false // New parameter
 ): Transaction[] => {
   const allTransactions: Transaction[] = [];
 
   transactions.forEach(transaction => {
+    if (!includeDeleted && transaction.status === 'deleted') return;
+
     if (transaction.recurrence === 'none') {
       // Non-recurring transaction - include if within date range
       const transactionDate = transaction.type === 'income' 
@@ -252,7 +255,7 @@ export const getTransactionsWithRecurrence = (
   return allTransactions;
 };
 
-export const filterTransactionsByMonth = (transactions: Transaction[], date: Date): Transaction[] => {
+export const filterTransactionsByMonth = (transactions: Transaction[], date: Date, includeDeleted: boolean = false): Transaction[] => {
   const start = startOfMonth(date);
   const end = endOfMonth(date);
   
@@ -260,7 +263,7 @@ export const filterTransactionsByMonth = (transactions: Transaction[], date: Dat
   const currentBrazilDate = getCurrentBrazilDate();
   const isCurrentMonth = getMonthKey(date) === getMonthKey(currentBrazilDate);
   
-  return getTransactionsWithRecurrence(transactions, start, end, isCurrentMonth);
+  return getTransactionsWithRecurrence(transactions, start, end, isCurrentMonth, includeDeleted);
 };
 
 // Calculate actual contributions made to goals in a specific month
@@ -271,11 +274,17 @@ export const calculateGoalsImpactForMonth = (savingsGoals: SavingsGoal[], date: 
   const end = endOfMonth(date);
   
   return savingsGoals.reduce((total, goal) => {
+    // Ignora metas deletadas
+    if (goal.status === 'deleted') return total;
+    
     if (!goal.contributions) return total;
     
     // Sum all contributions made in this specific month
     const monthlyContributions = goal.contributions
       .filter(contribution => {
+        // Ignora contribuições deletadas
+        if (contribution.status === 'deleted') return false;
+        
         const contributionDate = parseLocalDate(contribution.date);
         return isWithinInterval(contributionDate, { start, end });
       })
@@ -307,6 +316,12 @@ export const calculateMonthlyBalance = (transactions: Transaction[], date?: Date
 // FIXED: Helper function to calculate balance from a list of transactions
 const calculateBalanceFromTransactionList = (transactions: Transaction[]): number => {
   return transactions.reduce((balance, transaction) => {
+    // Ignora transações deletadas no saldo
+    if (transaction.status === 'deleted') return balance;
+
+    // Ignora 'Aporte' no saldo real, pois é calculado separadamente como impacto de metas
+    if (transaction.category === 'Aporte') return balance;
+
     if (transaction.type === 'income') {
       return balance + transaction.amount;
     } else {
@@ -336,15 +351,15 @@ export const getMonthlyData = (
     const monthTransactions = filterTransactionsByMonth(transactions, date);
     
     const income = monthTransactions
-      .filter(t => t.type === 'income' && t.isPaid)
+      .filter(t => t.type === 'income' && t.isPaid && t.status !== 'deleted')
       .reduce((sum, t) => sum + t.amount, 0);
     
     const expenses = monthTransactions
-      .filter(t => t.type === 'expense' && t.isPaid)
+      .filter(t => t.type === 'expense' && t.isPaid && t.status !== 'deleted')
       .reduce((sum, t) => sum + t.amount, 0);
 
     const unpaidExpenses = monthTransactions
-      .filter(t => t.type === 'expense' && !t.isPaid)
+      .filter(t => t.type === 'expense' && !t.isPaid && t.status !== 'deleted')
       .reduce((sum, t) => sum + t.amount, 0);
 
     const goalsImpact = calculateGoalsImpactForMonth(savingsGoals, date);
@@ -369,7 +384,7 @@ export const getCategoryData = (transactions: Transaction[], date: Date = getCur
   const currentMonthTransactions = getTransactionsWithRecurrence(transactions, start, end, true);
   
   // FIXED: Only consider paid expenses for category analysis
-  const expenses = currentMonthTransactions.filter(t => t.type === 'expense' && t.isPaid);
+  const expenses = currentMonthTransactions.filter(t => t.type === 'expense' && t.isPaid && t.status !== 'deleted');
   
   const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
   
@@ -500,6 +515,7 @@ export const EXPENSE_CATEGORIES = [
   'Beleza',
   'Compras',
   'Consumo',
+  'Aporte',
   'Outro'
 ];
 

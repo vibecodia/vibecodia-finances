@@ -19,6 +19,40 @@ export const useFinancialData = () => {
     'x-pin': pin || '',
   }), [pin]);
 
+  const fetchData = async () => {
+    if (isInitializing) {
+      return; // Wait for verification context to initialize
+    }
+    if (!pin) {
+      setTransactions([]);
+      setSavingsGoals([]);
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const [transactionsRes, goalsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/transactions`, { headers }),
+        fetch(`${API_BASE_URL}/goals`, { headers }),
+      ]);
+
+      if (!transactionsRes.ok || !goalsRes.ok) {
+        throw new Error('Failed to fetch data');
+      }
+
+      const transactionsData = await transactionsRes.json();
+      const goalsData = await goalsRes.json();
+      setTransactions(transactionsData);
+      setSavingsGoals(goalsData);
+    } catch (error) {
+      console.error('Error fetching financial data:', error);
+      setTransactions([]);
+      setSavingsGoals([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const calculateMonthlyBalances = useMemo(() => {
     return () => {
       const now = getCurrentBrazilDate();
@@ -74,41 +108,6 @@ export const useFinancialData = () => {
   }, [transactions]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (isInitializing) {
-        return; // Wait for verification context to initialize
-      }
-      if (!pin) {
-        setTransactions([]);
-        setSavingsGoals([]);
-        setIsLoading(false);
-        return;
-      }
-      setIsLoading(true);
-      try {
-        const [transactionsRes, goalsRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/transactions`, { headers }),
-          fetch(`${API_BASE_URL}/goals`, { headers }),
-        ]);
-
-        if (!transactionsRes.ok || !goalsRes.ok) {
-          throw new Error('Failed to fetch data');
-        }
-
-        const transactionsData = await transactionsRes.json();
-        const goalsData = await goalsRes.json();
-
-        setTransactions(transactionsData);
-        setSavingsGoals(goalsData);
-      } catch (error) {
-        console.error('Error fetching financial data:', error);
-        setTransactions([]);
-        setSavingsGoals([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchData();
   }, [pin, headers, isInitializing]);
 
@@ -150,6 +149,8 @@ export const useFinancialData = () => {
       setTransactions(prev => prev.map(transaction =>
         transaction.id === id ? updatedTransaction : transaction
       ));
+      // Refresh both because update might sync with goals
+      fetchData();
     } catch (error) {
       console.error('Error updating transaction:', error);
       throw new Error('Failed to update transaction');
@@ -164,7 +165,15 @@ export const useFinancialData = () => {
         headers,
       });
       if (!response.ok) throw new Error('Failed to delete transaction');
-      setTransactions(prev => prev.filter(t => t.id !== id));
+      
+      // Em vez de remover, marcamos como deletado para que o card de atividades
+      // possa mostrar o efeito visual de "riscado" por alguns segundos.
+      setTransactions(prev => prev.map(t => 
+        t.id === id ? { ...t, status: 'deleted', deletedAt: new Date().toISOString() } : t
+      ));
+      // Refresh both transactions and goals because deleting a transaction 
+      // might also delete a savings contribution (sync)
+      fetchData();
     } catch (error) {
       console.error('Error deleting transaction:', error);
     }
@@ -219,14 +228,28 @@ export const useFinancialData = () => {
       });
       if (!response.ok) throw new Error('Failed to update savings goal');
       const updatedGoal = await response.json();
-      setSavingsGoals(prev => prev.map(goal =>
-        goal.id === id ? updatedGoal : goal
-      ));
+
+      // If we are restoring, also restore contributions in local state
+      if (updates.status === 'active') {
+        setSavingsGoals(prev => prev.map(g => 
+          g.id === id ? { 
+            ...updatedGoal, 
+            status: 'active', 
+            deletedAt: undefined,
+            contributions: (g.contributions || []).map(c => ({
+              ...c,
+              status: 'active',
+              deletedAt: undefined
+            }))
+          } : g
+        ));
+      } else {
+        setSavingsGoals(prev => prev.map(g => (g.id === id ? { ...g, ...updatedGoal } : g)));
+      }
     } catch (error) {
       console.error('Error updating savings goal:', error);
     }
   };
-
   const addSavingsContribution = async (goalId: string, amount: number, date?: string) => {
     if (!pin) throw new Error('PIN not verified');
     try {
@@ -249,6 +272,8 @@ export const useFinancialData = () => {
       setSavingsGoals(prev => prev.map(goal =>
         goal.id === goalId ? updatedGoal : goal
       ));
+      // Refresh transactions since a new one was created
+      fetchData();
     } catch (error) {
       console.error('Error adding savings contribution:', error);
     }
@@ -268,6 +293,8 @@ export const useFinancialData = () => {
       setSavingsGoals(prev => prev.map(goal =>
         goal.id === goalId ? updatedGoal : goal
       ));
+      // Refresh transactions since one was updated
+      fetchData();
     } catch (error) {
       console.error('Error updating savings contribution:', error);
     }
@@ -286,6 +313,8 @@ export const useFinancialData = () => {
       setSavingsGoals(prev => prev.map(goal =>
         goal.id === goalId ? updatedGoal : goal
       ));
+      // Refresh transactions since one was deleted
+      fetchData();
     } catch (error) {
       console.error('Error deleting savings contribution:', error);
     }
@@ -299,7 +328,23 @@ export const useFinancialData = () => {
         headers,
       });
       if (!response.ok) throw new Error('Failed to delete savings goal');
-      setSavingsGoals(prev => prev.filter(g => g.id !== id));
+      
+      // Soft delete in local state
+      const now = new Date().toISOString();
+      setSavingsGoals(prev => prev.map(g => 
+        g.id === id ? { 
+          ...g, 
+          status: 'deleted', 
+          deletedAt: now,
+          contributions: (g.contributions || []).map(c => ({
+            ...c,
+            status: 'deleted',
+            deletedAt: c.status === 'deleted' ? c.deletedAt : now
+          }))
+        } : g
+      ));
+      // Refresh transactions since all related transactions were deleted
+      fetchData();
     } catch (error) {
       console.error('Error deleting savings goal:', error);
     }

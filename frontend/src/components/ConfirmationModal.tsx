@@ -9,6 +9,7 @@ interface ConfirmationModalProps {
   onConfirm: () => void;
   title: string;
   message: string;
+  confirmText?: string;
 }
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -17,6 +18,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   onConfirm,
   title,
   message,
+  confirmText = 'Confirmar Exclusão',
 }) => {
   const { theme } = useTheme();
   if (!isOpen) return null;
@@ -49,7 +51,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
               onClose();
             }}
           >
-            Confirmar Exclusão
+            {confirmText}
           </button>
           <button
             type="button"

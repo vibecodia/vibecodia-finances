@@ -10,7 +10,13 @@ import { getCurrentBrazilDate } from './helpers';
  */
 const calculateTotalGoalsImpact = (savingsGoals: SavingsGoal[] = [], effectiveDate: string): number => {
   return savingsGoals.reduce((total, goal) => {
-    const goalTotal = goal.contributions.reduce((sum, contribution) => {
+    // Ignora metas deletadas no cálculo
+    if (goal.status === 'deleted') return total;
+    
+    const goalTotal = (goal.contributions || []).reduce((sum, contribution) => {
+      // Ignora contribuições deletadas no cálculo
+      if (contribution.status === 'deleted') return sum;
+      
       const cDate = contribution.date.slice(0, 10);
       return sum + (cDate <= effectiveDate ? contribution.amount : 0);
     }, 0);
@@ -54,6 +60,14 @@ export const calculateBalances = (
 
   // 1. SALDO TOTAL ACUMULADO (transações pagas até a data efetiva)
   const paidTransactions = transactions.filter(t => {
+    // Ignora transações deletadas
+    if (t.status === 'deleted') return false;
+    
+    // CRITICAL: Exclude 'Aporte' category from the "real" balance calculation 
+    // because it will be accounted for in adjustedBalance/totalGoalsImpact.
+    // This avoids double-counting since contributions are now also transactions.
+    if (t.category === 'Aporte') return false;
+    
     const tDate = t.date.slice(0, 10);
     return t.isPaid && tDate <= effectiveDate;
   });
@@ -70,6 +84,12 @@ export const calculateBalances = (
 
   // 2. SALDO DO MÊS SELECIONADO (transações pagas dentro do mês)
   const currentMonthTransactions = transactions.filter(t => {
+    // Ignora transações deletadas
+    if (t.status === 'deleted') return false;
+    
+    // Exclude Aporte to avoid double-counting with adjustedBalance
+    if (t.category === 'Aporte') return false;
+
     const tDate = t.date.slice(0, 10);
     return tDate >= startOfCurrentMonth &&
            tDate <= endOfCurrentMonthStr &&
@@ -84,6 +104,9 @@ export const calculateBalances = (
 
   // 4. TRANSAÇÕES PENDENTES DO MÊS SELECIONADO
   const pendingTransactions = transactions.filter(t => {
+    // Ignora transações deletadas
+    if (t.status === 'deleted') return false;
+
     const tDate = t.date.slice(0, 10);
     return tDate >= startOfCurrentMonth &&
            tDate <= endOfCurrentMonthStr &&

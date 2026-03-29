@@ -74,6 +74,8 @@ const createLocalDateForStorage = (dateString) => {
 const savingsContributionSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   date: { type: Date, required: true },
+  status: { type: String, enum: ['active', 'deleted'], default: 'active' },
+  deletedAt: { type: Date }
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 const transactionSchema = new mongoose.Schema({
@@ -89,7 +91,11 @@ const transactionSchema = new mongoose.Schema({
     type: String, 
     default: 'PIX' 
   },
-  notes: { type: mongoose.Schema.Types.Mixed }
+  notes: { type: mongoose.Schema.Types.Mixed },
+  savingsGoalId: { type: mongoose.Schema.Types.ObjectId, ref: 'SavingsGoal' },
+  savingsGoalContributionId: { type: String }, // ID original da contribuição se migrado
+  status: { type: String, enum: ['active', 'deleted'], default: 'active' },
+  deletedAt: { type: Date }
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 const savingsGoalSchema = new mongoose.Schema({
@@ -97,7 +103,9 @@ const savingsGoalSchema = new mongoose.Schema({
   targetAmount: { type: Number, required: true },
   currentAmount: { type: Number, default: 0 },
   deadline: { type: Date },
-  contributions: [savingsContributionSchema]
+  contributions: [savingsContributionSchema],
+  status: { type: String, enum: ['active', 'deleted'], default: 'active' },
+  deletedAt: { type: Date }
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 const shoppingItemSchema = new mongoose.Schema({
@@ -159,11 +167,113 @@ const dbMiddleware = (req, res, next) => {
   }
 };
 
+////////////
+app.get('/api/admin/migrate-status', dbMiddleware, async (req, res) => {
+  const Transaction = req.conn.model('Transaction', transactionSchema);
+  const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
+
+  try {
+    // Atualiza Transactions
+    const resT = await Transaction.updateMany(
+      { status: { $exists: false } }, 
+      { $set: { status: 'active', deletedAt: null } }
+    );
+
+    // Atualiza SavingsGoal
+    const resS = await SavingsGoal.updateMany(
+      { status: { $exists: false } }, 
+      { $set: { status: 'active', deletedAt: null } }
+    );
+
+    // Update individual contributions that don't have status
+    const allGoals = await SavingsGoal.find({ 'contributions.status': { $exists: false } });
+    let contributionsUpdated = 0;
+    for (const goal of allGoals) {
+      let modified = false;
+      goal.contributions.forEach(c => {
+        if (!c.status) {
+          c.status = 'active';
+          c.deletedAt = null;
+          modified = true;
+          contributionsUpdated++;
+        }
+      });
+      if (modified) await goal.save();
+    }
+
+    res.json({
+      message: 'Migração concluída com sucesso!',
+      transactionsUpdated: resT.modifiedCount,
+      goalsUpdated: resS.modifiedCount,
+      contributionsUpdated
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/migrate-contributions', dbMiddleware, async (req, res) => {
+  const Transaction = req.conn.model('Transaction', transactionSchema);
+  const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
+
+  try {
+    const allGoals = await SavingsGoal.find();
+    let createdTransactions = 0;
+    let skippedTransactions = 0;
+
+    for (const goal of allGoals) {
+      if (!goal.contributions || goal.contributions.length === 0) continue;
+
+      for (const contrib of goal.contributions) {
+        // Check if transaction already exists for this contribution
+        const existing = await Transaction.findOne({ 
+          savingsGoalId: goal._id, 
+          savingsGoalContributionId: contrib._id.toString() 
+        });
+
+        if (existing) {
+          skippedTransactions++;
+          continue;
+        }
+
+        // Create new transaction
+        const newTransaction = new Transaction({
+          description: `Aporte: ${goal.name}`,
+          amount: contrib.amount,
+          type: 'expense',
+          category: 'Aporte',
+          date: contrib.date,
+          isPaid: true,
+          paymentMethod: 'Saldo em Conta',
+          savingsGoalId: goal._id,
+          savingsGoalContributionId: contrib._id.toString(),
+          status: contrib.status || 'active',
+          deletedAt: contrib.deletedAt
+        });
+
+        await newTransaction.save();
+        createdTransactions++;
+      }
+    }
+
+    res.json({
+      message: 'Migração de contribuições concluída!',
+      createdTransactions,
+      skippedTransactions
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // Transações
 app.get('/api/transactions', dbMiddleware, async (req, res) => {
   const { search, type } = req.query;
   const Transaction = req.conn.model('Transaction', transactionSchema);
+
   let query = {};
+
   if (type) query.type = type;
   if (search) query.description = { $regex: search, $options: 'i' };
   try {
@@ -193,7 +303,9 @@ app.post('/api/transactions', dbMiddleware, async (req, res) => {
 
 app.put('/api/transactions/:id', dbMiddleware, async (req, res) => {
   const Transaction = req.conn.model('Transaction', transactionSchema);
+  const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
   try {
+    console.log(`[PUT Transaction] ID: ${req.params.id}, Status: ${req.body.status}, Amount: ${req.body.amount}`);
     const updateData = {
       ...req.body,
     };
@@ -210,24 +322,139 @@ app.put('/api/transactions/:id', dbMiddleware, async (req, res) => {
       updateData,
       { new: true, runValidators: true }
     );
+
     if (!updatedTransaction) {
+      console.log(`[PUT Transaction] Not found: ${req.params.id}`);
       return res.status(404).json({ message: 'Transaction not found' });
     }
+
+    console.log(`[PUT Transaction] Updated. Category: ${updatedTransaction.category}, GoalID: ${updatedTransaction.savingsGoalId}, ContribID: ${updatedTransaction.savingsGoalContributionId}`);
+
+    // Sincronizar com SavingsGoal se for um aporte
+    if (updatedTransaction.category === 'Aporte' && updatedTransaction.savingsGoalId && updatedTransaction.savingsGoalContributionId) {
+      const goal = await SavingsGoal.findById(updatedTransaction.savingsGoalId);
+      if (goal) {
+        console.log(`[PUT Transaction] Goal found: ${goal.name}`);
+        // Refined search: try both .id() and manual find by string
+        let contribution = goal.contributions.id(updatedTransaction.savingsGoalContributionId);
+        if (!contribution) {
+          contribution = goal.contributions.find(c => c._id.toString() === updatedTransaction.savingsGoalContributionId.toString());
+        }
+
+        if (contribution) {
+          console.log(`[PUT Transaction] Contribution found. Current status in goal: ${contribution.status}`);
+          let modified = false;
+          
+          if (req.body.amount !== undefined && contribution.amount !== updatedTransaction.amount) {
+            contribution.amount = updatedTransaction.amount;
+            modified = true;
+          }
+          
+          if (req.body.date !== undefined && contribution.date.toISOString() !== updatedTransaction.date.toISOString()) {
+            contribution.date = updatedTransaction.date;
+            modified = true;
+          }
+
+          // Se houve restauração da transação
+          if (req.body.status === 'active' && contribution.status === 'deleted') {
+            console.log(`[PUT Transaction] RESTORING contribution in goal.`);
+            contribution.status = 'active';
+            contribution.deletedAt = null;
+            modified = true;
+          }
+
+          // Se houve exclusão via status
+          if (req.body.status === 'deleted' && contribution.status !== 'deleted') {
+            console.log(`[PUT Transaction] DELETING contribution in goal via status update.`);
+            contribution.status = 'deleted';
+            contribution.deletedAt = new Date();
+            modified = true;
+          }
+
+          if (modified) {
+            // Recalcular currentAmount
+            const allActiveTransactions = await Transaction.find({ 
+              savingsGoalId: goal._id, 
+              status: 'active' 
+            });
+            goal.currentAmount = allActiveTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+            
+            await goal.save();
+            console.log(`[PUT Transaction] Goal ${goal.name} updated successfully.`);
+          }
+        } else {
+          console.log(`[PUT Transaction] Contribution NOT found in goal. ContribID searched: ${updatedTransaction.savingsGoalContributionId}`);
+          console.log(`[PUT Transaction] Available contrib IDs: ${goal.contributions.map(c => c._id.toString()).join(', ')}`);
+        }
+      } else {
+        console.log(`[PUT Transaction] Goal NOT found with ID: ${updatedTransaction.savingsGoalId}`);
+      }
+    }
+
     res.json(updatedTransaction);
   } catch (err) {
+    console.error(`[PUT Transaction] Error: ${err.message}`);
     res.status(400).json({ message: err.message });
   }
 });
 
 app.delete('/api/transactions/:id', dbMiddleware, async (req, res) => {
   const Transaction = req.conn.model('Transaction', transactionSchema);
+  const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
   try {
-    const deletedTransaction = await Transaction.findByIdAndDelete(req.params.id);
+    console.log(`[DELETE Transaction] ID: ${req.params.id}`);
+    const now = new Date();
+    const deletedTransaction = await Transaction.findByIdAndUpdate(
+      req.params.id,
+      { status: 'deleted', deletedAt: now },
+      { new: true }
+    );
     if (!deletedTransaction) {
+      console.log(`[DELETE Transaction] Not found: ${req.params.id}`);
       return res.status(404).json({ message: 'Transaction not found' });
     }
+
+    console.log(`[DELETE Transaction] Category: ${deletedTransaction.category}, GoalID: ${deletedTransaction.savingsGoalId}, ContribID: ${deletedTransaction.savingsGoalContributionId}`);
+
+    // Se a transação for um aporte, sincronizar com a meta de economia
+    if (deletedTransaction.category === 'Aporte' && deletedTransaction.savingsGoalId && deletedTransaction.savingsGoalContributionId) {
+      const goal = await SavingsGoal.findById(deletedTransaction.savingsGoalId);
+      if (goal) {
+        console.log(`[DELETE Transaction] Goal found: ${goal.name}`);
+        // Refined search: try both .id() and manual find by string
+        let contribution = goal.contributions.id(deletedTransaction.savingsGoalContributionId);
+        if (!contribution) {
+          contribution = goal.contributions.find(c => c._id.toString() === deletedTransaction.savingsGoalContributionId.toString());
+        }
+
+        if (contribution) {
+          console.log(`[DELETE Transaction] Contribution found, current status: ${contribution.status}`);
+          if (contribution.status !== 'deleted') {
+            contribution.status = 'deleted';
+            contribution.deletedAt = now;
+            
+            // Recalcular currentAmount
+            const allActiveTransactions = await Transaction.find({ 
+              savingsGoalId: goal._id, 
+              status: 'active' 
+            });
+            goal.currentAmount = allActiveTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+            
+            await goal.save();
+            console.log(`[DELETE Transaction] Goal ${goal.name} updated successfully.`);
+          }
+        } else {
+          console.log(`[DELETE Transaction] Contribution NOT found in goal. ContribID searched: ${deletedTransaction.savingsGoalContributionId}`);
+          console.log(`[DELETE Transaction] Available contrib IDs: ${goal.contributions.map(c => c._id.toString()).join(', ')}`);
+        }
+      } else {
+        console.log(`[DELETE Transaction] Goal NOT found with ID: ${deletedTransaction.savingsGoalId}`);
+      }
+    }
+
     res.json({ message: 'Transaction deleted' });
   } catch (err) {
+    console.error(`[DELETE Transaction] Error: ${err.message}`);
     res.status(500).json({ message: err.message });
   }
 });
@@ -235,9 +462,30 @@ app.delete('/api/transactions/:id', dbMiddleware, async (req, res) => {
 // ---------- Metas de Poupança ----------
 app.get('/api/goals', dbMiddleware, async (req, res) => {
   const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
+  const Transaction = req.conn.model('Transaction', transactionSchema);
   try {
     const goals = await SavingsGoal.find();
-    res.json(goals);
+    
+    // Get all contribution transactions to calculate currentAmount dynamically
+    const allAportes = await Transaction.find({ 
+      category: 'Aporte', 
+      status: 'active',
+      savingsGoalId: { $exists: true }
+    });
+
+    const filteredGoals = goals.map(goal => {
+      const goalObj = goal.toObject();
+      
+      // Calculate currentAmount based on transactions
+      const goalAportes = allAportes.filter(t => t.savingsGoalId.toString() === goal._id.toString());
+      goalObj.currentAmount = goalAportes.reduce((sum, t) => sum + (t.amount || 0), 0);
+      
+      // Contributions are still kept in the response for frontend compatibility
+      goalObj.contributions = (goalObj.contributions || []).filter(c => c.status === 'active');
+      
+      return goalObj;
+    });
+    res.json(filteredGoals);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -260,20 +508,41 @@ app.post('/api/goals', dbMiddleware, async (req, res) => {
 
 app.put('/api/goals/:id', dbMiddleware, async (req, res) => {
   const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
+  const Transaction = req.conn.model('Transaction', transactionSchema);
   try {
-    const updateData = {
-      ...req.body,
-      deadline: req.body.deadline ? createLocalDateForStorage(req.body.deadline) : undefined,
-    };
-    const updatedGoal = await SavingsGoal.findByIdAndUpdate(
-      req.params.id, 
-      updateData, 
-      { new: true }
-    );
-    if (!updatedGoal) {
-      return res.status(404).json({ message: 'Goal not found' });
+    const { name, targetAmount, deadline, status } = req.body;
+    const goal = await SavingsGoal.findById(req.params.id);
+    if (!goal) return res.status(404).json({ message: 'Goal not found' });
+
+    if (name) goal.name = name;
+    if (targetAmount !== undefined) goal.targetAmount = targetAmount;
+    if (deadline !== undefined) goal.deadline = createLocalDateForStorage(deadline);
+    
+    // Handle restoration
+    if (status === 'active' && goal.status === 'deleted') {
+      goal.status = 'active';
+      goal.deletedAt = null;
+      // Also restore all contributions
+      if (goal.contributions) {
+        goal.contributions.forEach(c => {
+          if (c.status === 'deleted') {
+            c.status = 'active';
+            c.deletedAt = null;
+          }
+        });
+      }
+      
+      // Also restore all related transactions
+      await Transaction.updateMany(
+        { savingsGoalId: goal._id, status: 'deleted' },
+        { $set: { status: 'active', deletedAt: null } }
+      );
+    } else if (status) {
+      goal.status = status;
     }
-    res.json(updatedGoal);
+
+    await goal.save();
+    res.json(goal);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -281,12 +550,35 @@ app.put('/api/goals/:id', dbMiddleware, async (req, res) => {
 
 app.delete('/api/goals/:id', dbMiddleware, async (req, res) => {
   const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
+  const Transaction = req.conn.model('Transaction', transactionSchema);
   try {
-    const deletedGoal = await SavingsGoal.findByIdAndDelete(req.params.id);
-    if (!deletedGoal) {
+    const goal = await SavingsGoal.findById(req.params.id);
+    if (!goal) {
       return res.status(404).json({ message: 'Goal not found' });
     }
-    res.json({ message: 'Savings goal deleted' });
+
+    const now = new Date();
+    goal.status = 'deleted';
+    goal.deletedAt = now;
+
+    // Mark all contributions as deleted too
+    if (goal.contributions && goal.contributions.length > 0) {
+      goal.contributions.forEach(contrib => {
+        if (contrib.status !== 'deleted') {
+          contrib.status = 'deleted';
+          contrib.deletedAt = now;
+        }
+      });
+    }
+
+    // Mark all related transactions as deleted too
+    await Transaction.updateMany(
+      { savingsGoalId: goal._id, status: 'active' },
+      { $set: { status: 'deleted', deletedAt: now } }
+    );
+
+    await goal.save();
+    res.json({ message: 'Savings goal and its contributions/transactions deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -294,6 +586,7 @@ app.delete('/api/goals/:id', dbMiddleware, async (req, res) => {
 
 app.post('/api/goals/:id/contributions', dbMiddleware, async (req, res) => {
   const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
+  const Transaction = req.conn.model('Transaction', transactionSchema);
   try {
     const goal = await SavingsGoal.findById(req.params.id);
     if (!goal) {
@@ -301,16 +594,45 @@ app.post('/api/goals/:id/contributions', dbMiddleware, async (req, res) => {
     }
 
     const { amount, date } = req.body;
+    const contributionDate = date ? createLocalDateForStorage(date) : new Date();
+    
     const contribution = {
       amount,
-      date: date ? createLocalDateForStorage(date) : new Date(),
+      date: contributionDate,
+      status: 'active'
     };
 
     goal.contributions.push(contribution);
-    goal.currentAmount += amount;
+    const savedGoal = await goal.save();
+    
+    // Get the newly created contribution ID
+    const newContrib = savedGoal.contributions[savedGoal.contributions.length - 1];
 
-    const updatedGoal = await goal.save();
-    res.status(201).json(updatedGoal);
+    // Create a corresponding transaction
+    const newTransaction = new Transaction({
+      description: `Aporte: ${goal.name}`,
+      amount: amount,
+      type: 'expense',
+      category: 'Aporte',
+      date: contributionDate,
+      isPaid: true,
+      paymentMethod: 'Saldo em Conta',
+      savingsGoalId: goal._id,
+      savingsGoalContributionId: newContrib._id.toString(),
+      status: 'active'
+    });
+
+    await newTransaction.save();
+    
+    // Calculate current amount for the goal (legacy field update)
+    const allTransactions = await Transaction.find({ 
+      savingsGoalId: goal._id, 
+      status: 'active' 
+    });
+    goal.currentAmount = allTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+    await goal.save();
+
+    res.status(201).json(goal);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -318,6 +640,7 @@ app.post('/api/goals/:id/contributions', dbMiddleware, async (req, res) => {
 
 app.put('/api/goals/:goalId/contributions/:contributionId', dbMiddleware, async (req, res) => {
   const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
+  const Transaction = req.conn.model('Transaction', transactionSchema);
   try {
     const goal = await SavingsGoal.findById(req.params.goalId);
     if (!goal) {
@@ -325,17 +648,32 @@ app.put('/api/goals/:goalId/contributions/:contributionId', dbMiddleware, async 
     }
 
     const contribution = goal.contributions.id(req.params.contributionId);
-    if (!contribution) {
+    if (!contribution || contribution.status === 'deleted') {
       return res.status(404).json({ message: 'Contribution not found' });
     }
 
-    const oldAmount = contribution.amount;
     const newAmount = req.body.amount;
+    const newDate = req.body.date ? createLocalDateForStorage(req.body.date) : contribution.date;
 
     contribution.amount = newAmount;
-    contribution.date = req.body.date;
+    contribution.date = newDate;
 
-    goal.currentAmount = goal.currentAmount - oldAmount + newAmount;
+    // Update the corresponding transaction
+    await Transaction.findOneAndUpdate(
+      { savingsGoalContributionId: req.params.contributionId },
+      { 
+        amount: newAmount, 
+        date: newDate,
+        description: `Aporte: ${goal.name}`
+      }
+    );
+
+    // Recalcular currentAmount considerando as transações ativas
+    const allTransactions = await Transaction.find({ 
+      savingsGoalId: goal._id, 
+      status: 'active' 
+    });
+    goal.currentAmount = allTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
 
     await goal.save();
     res.json(goal);
@@ -346,6 +684,7 @@ app.put('/api/goals/:goalId/contributions/:contributionId', dbMiddleware, async 
 
 app.delete('/api/goals/:goalId/contributions/:contributionId', dbMiddleware, async (req, res) => {
   const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
+  const Transaction = req.conn.model('Transaction', transactionSchema);
   try {
     const goal = await SavingsGoal.findById(req.params.goalId);
     if (!goal) {
@@ -353,12 +692,30 @@ app.delete('/api/goals/:goalId/contributions/:contributionId', dbMiddleware, asy
     }
 
     const contribution = goal.contributions.id(req.params.contributionId);
-    if (!contribution) {
+    if (!contribution || contribution.status === 'deleted') {
       return res.status(404).json({ message: 'Contribution not found' });
     }
 
-    goal.currentAmount -= contribution.amount;
-    goal.contributions.pull(req.params.contributionId);
+    const now = new Date();
+    // Soft delete na contribuição
+    contribution.status = 'deleted';
+    contribution.deletedAt = now;
+
+    // Soft delete na transação correspondente
+    await Transaction.findOneAndUpdate(
+      { savingsGoalContributionId: req.params.contributionId },
+      { 
+        status: 'deleted', 
+        deletedAt: now 
+      }
+    );
+
+    // Recalcular currentAmount
+    const allTransactions = await Transaction.find({ 
+      savingsGoalId: goal._id, 
+      status: 'active' 
+    });
+    goal.currentAmount = allTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
 
     await goal.save();
     res.json(goal);

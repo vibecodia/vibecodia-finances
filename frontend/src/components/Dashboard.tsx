@@ -211,8 +211,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   const adjustedBalance = balanceData.adjustedBalance;
   const displayBalance = Math.abs(adjustedBalance) < 0.001 ? 0 : adjustedBalance;
 
-  const totalSavingsGoals = savingsGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
-  const totalSaved = savingsGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
+  const activeGoals = savingsGoals.filter(goal => goal.status !== 'deleted');
+  const totalSavingsGoals = activeGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
+  const totalSaved = activeGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
 
   const getBalanceIcon = () => {
     if (adjustedBalance < -0.001) return <AlertTriangle className="w-6 h-6 opacity-90" />;
@@ -262,7 +263,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
           isPulsing ? 'scale-[1.02]' : 'scale-100'
         } ${adjustedBalance < -0.001 ? 'text-rose-950' : 'text-white'}`}
         style={{
-          background: adjustedBalance < -0.001
+          backgroundImage: adjustedBalance < -0.001
             ? 'radial-gradient(circle at top left, #fff1eb, #ffd1ff)'
             : `radial-gradient(circle at top left, ${theme.primary}, ${theme.primary}dd)`,
           backgroundColor: theme.primary,

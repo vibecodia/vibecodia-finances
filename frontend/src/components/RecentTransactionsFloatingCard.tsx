@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format, isToday, differenceInMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { X, Clock, RefreshCw, Plus, Sparkles } from 'lucide-react';
+import { X, Clock, RefreshCw, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { Transaction } from '../types';
 import { formatCurrency } from '../utils/helpers';
@@ -30,6 +30,7 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
   useEffect(() => {
     if (recentTransactions.length === 0) return;
 
+    // Dispara a aparição do card
     const showTimeout = setTimeout(() => {
       setIsVisible(true);
       setTimerProgress(0);
@@ -65,7 +66,7 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
             <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 border border-primary/20">
               <Clock className="w-4 h-4 text-primary" />
             </div>
-            <p className="text-[10px] font-bold text-text/90 tracking-widest uppercase">Atividade Recente</p>
+            <p className="text-[10px] font-bold text-text/90 tracking-widest uppercase">Recentes</p>
           </div>
 
           <button onClick={() => setIsVisible(false)} className="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-text/5 transition-all group/btn">
@@ -90,36 +91,52 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
 
           {recentTransactions.map((t) => {
             const createdAt = new Date(t.createdAt);
-            // Verifica se houve update real comparando as datas (ignora milissegundos se necessário)
-            const isUpdated = t.updatedAt && Math.abs(new Date(t.updatedAt).getTime() - createdAt.getTime()) > 1000;
+            const isDeleted = t.status === 'deleted';
+            // Se foi deletado recentemente (updatedAt no caso de delete reflete o momento da exclusão)
+            const isUpdated = !isDeleted && t.updatedAt && Math.abs(new Date(t.updatedAt).getTime() - createdAt.getTime()) > 1000;
             
             const diffMin = Math.abs(differenceInMinutes(new Date(), createdAt));
             
             // PRIORIDADE DE TAGS:
-            // 1. "Adicionado" se tiver menos de 30 min
-            // 2. "Novo" se for de hoje (e tiver mais de 30 min)
-            // 3. "Editado" se tiver updatedAt diferente de createdAt
-            const showJustAdded = diffMin <= 30;
-            const showNewToday = !showJustAdded && isToday(createdAt);
+            // 1. "Removido" se status for deleted
+            // 2. "Adicionado" se tiver menos de 30 min
+            // 3. "Novo" se for de hoje (e tiver mais de 30 min)
+            // 4. "Editado" se tiver updatedAt diferente de createdAt
+            const showJustAdded = !isDeleted && diffMin <= 30;
+            const showNewToday = !isDeleted && !showJustAdded && isToday(createdAt);
 
             return (
               <div key={t.id || t._id} className="relative flex items-start gap-4 group/item">
                 <div className={`mt-1.5 w-2.5 h-2.5 rounded-full z-10 ring-4 ${
+                  isDeleted ? 'bg-text/20 ring-text/5' :
                   t.type === 'income' ? 'bg-emerald-500 ring-emerald-500/10' : 'bg-rose-500 ring-rose-500/10'
                 }`} />
                 
                 <div className="flex-1 min-w-0 transition-transform group-hover/item:translate-x-1">
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <p className="text-sm font-medium text-text/90 truncate leading-tight">{t.description}</p>
-                    <div className={`flex items-center gap-0.5 font-bold text-sm ${
+                    <p className={`text-sm font-medium truncate leading-tight transition-colors ${
+                      isDeleted ? 'text-text/30 line-through' : 'text-text/90'
+                    }`}>
+                      {t.description}
+                    </p>
+                    <div className={`flex items-center gap-0.5 font-bold text-sm transition-colors ${
+                      isDeleted ? 'text-text/20 line-through' :
                       t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'
-                    }`}>{formatCurrency(t.amount)}</div>
+                    }`}>
+                      {formatCurrency(t.amount)}
+                    </div>
                   </div>
                   
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[10px] text-text/40 font-medium tabular-nums">
                       {format(new Date(t.updatedAt || t.createdAt), "HH:mm", { locale: ptBR })}
                     </span>
+
+                    {isDeleted && (
+                      <span className="flex items-center gap-1 text-[9px] bg-text/5 text-text/40 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider border border-text/10">
+                        <Trash2 className="w-2.5 h-2.5" /> Removido
+                      </span>
+                    )}
 
                     {showJustAdded && (
                       <span className="flex items-center gap-1 text-[9px] bg-violet-500/10 text-violet-600 dark:text-violet-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider border border-violet-500/20">

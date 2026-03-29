@@ -33,7 +33,8 @@ import {
   Info,
   PanelLeftClose,
   PanelLeftOpen,
-  Eye
+  Eye,
+  Trash2
 } from 'lucide-react';
 import React, { useState, useMemo, useRef } from 'react';
 import { Doughnut, Line, Pie, Scatter } from 'react-chartjs-2';
@@ -149,6 +150,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const [neededUnit, setNeededUnit] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
   const [daysUnit, setDaysUnit] = useState<'days' | 'weeks' | 'months'>('months');
   const [showCountdownPrintDialog, setShowCountdownPrintDialog] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
   const [countdownPrintSettings, setCountdownPrintSettings] = useState({
     title: 'Contagem Regressiva de Metas',
     subtitle: '',
@@ -264,8 +266,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             <h1>${countdownPrintSettings.title}</h1>
             ${countdownPrintSettings.subtitle ? `<p style="font-size: 14px; color: #555; margin-top: 5px;">${countdownPrintSettings.subtitle}</p>` : ''}
             <div style="margin-top: 15px; padding: 12px; background-color: #f0f0f0; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 13px; color: #666;"><strong>${savingsGoals.length} metas</strong></span>
-              <span style="font-size: 14px; color: #000; font-weight: bold;">Total Alvo: ${formatCurrency(savingsGoals.reduce((sum, g) => sum + g.targetAmount, 0))}</span>
+              <span style="font-size: 13px; color: #666;"><strong>${activeGoals.length} metas</strong></span>
+              <span style="font-size: 14px; color: #000; font-weight: bold;">Total Alvo: ${formatCurrency(activeGoals.reduce((sum, g) => sum + g.targetAmount, 0))}</span>
             </div>
           </div>
           
@@ -299,16 +301,29 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     }
   };
 
-  // Flatten all contributions for timeline
+  // Filter out deleted goals for calculations and display
+  const activeGoals = useMemo(() => {
+    return savingsGoals.filter(g => {
+      if (showDeleted) return g.status === 'deleted';
+      return g.status !== 'deleted';
+    });
+  }, [savingsGoals, showDeleted]);
+
+  // Flatten all contributions for timeline - only relevant ones from active/deleted goals
   const allContributions = useMemo(() => {
-    return savingsGoals.flatMap(goal =>
-      goal.contributions.map(contrib => ({
-        ...contrib,
-        goalId: goal.id,
-        goalName: goal.name,
-      }))
+    return activeGoals.flatMap(goal =>
+      (goal.contributions || [])
+        .filter(c => {
+          if (showDeleted) return c.status === 'deleted';
+          return c.status !== 'deleted';
+        })
+        .map(contrib => ({
+          ...contrib,
+          goalId: goal.id,
+          goalName: goal.name,
+        }))
     ).sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
-  }, [savingsGoals]);
+  }, [activeGoals, showDeleted]);
 
   // Simulator Calculations
   const simulationResults = useMemo(() => {
@@ -709,11 +724,33 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                   style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
                 >
                   <option value="">Todas as Metas</option>
-                  {savingsGoals.map(goal => (
+                  {activeGoals.map(goal => (
                     <option key={goal.id} value={goal.id}>{goal.name}</option>
                   ))}
                 </select>
               </div>
+
+              {(savingsGoals.some(g => g.status === 'deleted') || 
+                savingsGoals.some(g => g.contributions.some(c => c.status === 'deleted'))) && (
+                <div>
+                  <label className="block text-xs font-medium text-text opacity-70 mb-2">Visibilidade</label>
+                  <button
+                    onClick={() => setShowDeleted(!showDeleted)}
+                    className={`w-full py-2 rounded-md text-[10px] transition-all border font-bold uppercase flex items-center justify-center gap-2 ${
+                      showDeleted 
+                        ? 'bg-accent text-white border-accent shadow-sm' 
+                        : 'bg-transparent text-text opacity-70 border-cardBorder hover:bg-cardBorder/30'
+                    }`}
+                    style={{ 
+                      backgroundColor: showDeleted ? theme.accent : 'transparent',
+                      color: showDeleted ? '#fff' : theme.text 
+                    }}
+                  >
+                    <Trash2 className={`w-3 h-3 ${showDeleted ? 'animate-pulse' : ''}`} />
+                    {showDeleted ? 'Mostrando Excluídos' : 'Ver Excluídos'}
+                  </button>
+                </div>
+              )}
 
               <button
                 onClick={() => {
@@ -746,19 +783,19 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
               <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Total em Metas</p>
               <p className="text-2xl font-black text-primary">
-                {formatCurrency(savingsGoals.reduce((sum, g) => sum + g.currentAmount, 0))}
+                {formatCurrency(activeGoals.reduce((sum, g) => sum + g.currentAmount, 0))}
               </p>
             </div>
             <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
               <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Total Alvo</p>
               <p className="text-2xl font-black text-accent">
-                {formatCurrency(savingsGoals.reduce((sum, g) => sum + g.targetAmount, 0))}
+                {formatCurrency(activeGoals.reduce((sum, g) => sum + g.targetAmount, 0))}
               </p>
             </div>
             <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
               <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Qtd. de Metas</p>
               <p className="text-2xl font-black text-primary">
-                {savingsGoals.length}
+                {activeGoals.length}
               </p>
             </div>
           </div>
@@ -842,7 +879,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                   onChange={(e) => {
                                     const goalId = e.target.value;
                                     setSimTargetGoalId(goalId);
-                                    const goal = savingsGoals.find(g => g.id === goalId);
+                                    const goal = activeGoals.find(g => g.id === goalId);
                                     if (goal) {
                                       setSimInitialAmount(goal.currentAmount);
                                       // Calculate months needed based on current sim settings if target is to reach goal
@@ -856,7 +893,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                   style={{ borderColor: theme.cardBorder }}
                                 >
                                   <option value="">Nenhuma Meta</option>
-                                  {savingsGoals.map(g => (
+                                  {activeGoals.map(g => (
                                     <option key={g.id} value={g.id}>{g.name} ({formatCurrency(g.targetAmount)})</option>
                                   ))}
                                 </select>
@@ -963,7 +1000,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                     {renderCardHeader(item.id, item.label, <PieChartIcon className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(distributionChartRef))}
                     {!item.collapsed && (
                       <div className="p-8 h-80">
-                        {savingsGoals.length > 0 ? (
+                        {activeGoals.length > 0 ? (
                           <Doughnut
                             ref={distributionChartRef}
                             data={distributionChartData}
@@ -992,30 +1029,43 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                               <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Data</th>
                               <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Meta</th>
                               <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Aporte</th>
+                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-center" style={{ borderColor: theme.cardBorder }}>
+                                <Trash2 className="w-3 h-3 mx-auto" />
+                              </th>
                               <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>% da Meta</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
                             {contributionTableData.length > 0 ? (
-                              contributionTableData.map(c => (
-                                <tr key={c.id} className="text-text hover:bg-primary/5 transition-colors">
-                                  <td className="p-4 whitespace-nowrap border-r font-mono text-xs opacity-70" style={{ borderColor: theme.cardBorder }}>
-                                    {formatBrazilDate(c.date, 'dd/MM/yyyy')}
-                                  </td>
-                                  <td className="p-4 border-r" style={{ borderColor: theme.cardBorder }}>
-                                    <span className="font-semibold">{c.goalName}</span>
-                                  </td>
-                                  <td className="p-4 border-r font-black text-primary" style={{ borderColor: theme.cardBorder }}>
-                                    {formatCurrency(c.amount)}
-                                  </td>
-                                  <td className="p-4 text-right text-xs font-bold opacity-70">
-                                    {c.percentOfGoal.toFixed(1)}%
-                                  </td>
-                                </tr>
-                              ))
+                              contributionTableData.map(c => {
+                                const isDeleted = c.status === 'deleted' || showDeleted;
+                                return (
+                                  <tr key={c.id} className={`text-text hover:bg-primary/5 transition-colors ${isDeleted ? 'opacity-50 grayscale-[0.5]' : ''}`}>
+                                    <td className={`p-4 whitespace-nowrap border-r font-mono text-xs opacity-70 ${isDeleted ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
+                                      {formatBrazilDate(c.date, 'dd/MM/yyyy')}
+                                    </td>
+                                    <td className={`p-4 border-r ${isDeleted ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
+                                      <span className="font-semibold">{c.goalName}</span>
+                                    </td>
+                                    <td className={`p-4 border-r font-black text-primary ${isDeleted ? 'line-through opacity-60' : ''}`} style={{ borderColor: theme.cardBorder }}>
+                                      {formatCurrency(c.amount)}
+                                    </td>
+                                    <td className="p-4 border-r text-center" style={{ borderColor: theme.cardBorder }}>
+                                      {isDeleted && (
+                                        <span className="text-[8px] font-black bg-accent/20 text-accent px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
+                                          EXCLUÍDO
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className={`p-4 text-right text-xs font-bold opacity-70 ${isDeleted ? 'line-through' : ''}`}>
+                                      {c.percentOfGoal.toFixed(1)}%
+                                    </td>
+                                  </tr>
+                                );
+                              })
                             ) : (
                               <tr>
-                                <td colSpan={4} className="p-8 text-center text-text opacity-40 text-sm italic">
+                                <td colSpan={5} className="p-8 text-center text-text opacity-40 text-sm italic">
                                   Nenhum aporte encontrado
                                 </td>
                               </tr>
@@ -1063,7 +1113,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                     {renderCardHeader(item.id, item.label, <AlertCircle className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(matrixChartRef))}
                     {!item.collapsed && (
                       <div className="p-8 h-96">
-                        {savingsGoals.some(g => g.deadline) ? (
+                        {activeGoals.some(g => g.deadline) ? (
                           <Scatter
                             ref={matrixChartRef}
                             data={matrixChartData}

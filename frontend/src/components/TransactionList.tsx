@@ -1,6 +1,6 @@
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight, Wallet, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight, Wallet, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
 import { useTheme } from '../contexts/ThemeContext';
@@ -50,6 +50,41 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [searchTerm, setSearchTerm] = useState(''); // Re-introduce searchTerm state
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
+  const [showDeleted, setShowDeleted] = useState(false);
+
+  // Filter and split transactions early so useEffect and body can use them
+  const allMonthTransactions = filterTransactionsByMonth(
+    transactions.filter(t => t.type === type)
+      .filter(t => categoryFilter.includes('all') || categoryFilter.includes(t.category))
+      .filter(t => {
+        if (paymentFilter === 'all') return true;
+        if (paymentFilter === 'paid') return t.isPaid;
+        if (paymentFilter === 'pending') return !t.isPaid;
+        return true;
+      })
+      .filter(t => {
+        if (paymentMethodFilter.includes('all')) return true;
+        return t.paymentMethod && paymentMethodFilter.includes(formatPaymentMethod(t.paymentMethod));
+      })
+      .filter(t => {
+        if (type === 'expense' && searchTerm) {
+          return t.description.toLowerCase().includes(searchTerm.toLowerCase());
+        }
+        return true;
+      }), 
+    currentMonth, 
+    true
+  );
+  
+  const activeTransactions = allMonthTransactions.filter(t => t.status !== 'deleted');
+  const deletedTransactions = allMonthTransactions.filter(t => t.status === 'deleted');
+
+  // Auto-switch back to active view if no deleted transactions remain
+  useEffect(() => {
+    if (showDeleted && deletedTransactions.length === 0) {
+      setShowDeleted(false);
+    }
+  }, [deletedTransactions.length, showDeleted]);
 
   const toggleNotes = (id: string) => {
     setExpandedNotes(prev => ({
@@ -160,32 +195,14 @@ const TransactionList: React.FC<TransactionListProps> = ({
     }
   }, [startDateFilter, endDateFilter, currentMonth]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
+  const [transactionToReactivate, setTransactionToReactivate] = useState<string | null>(null);
   
-  const filteredTransactions = transactions
-    .filter(t => t.type === type)
-    .filter(t => categoryFilter.includes('all') || categoryFilter.includes(t.category))
-    .filter(t => {
-      if (paymentFilter === 'all') return true;
-      if (paymentFilter === 'paid') return t.isPaid;
-      if (paymentFilter === 'pending') return !t.isPaid;
-      return true;
-    })
-    .filter(t => {
-      if (paymentMethodFilter.includes('all')) return true;
-      return t.paymentMethod && paymentMethodFilter.includes(formatPaymentMethod(t.paymentMethod));
-    })
-    .filter(t => {
-      if (type === 'expense' && searchTerm) {
-        return t.description.toLowerCase().includes(searchTerm.toLowerCase());
-      }
-      return true;
-    });
-
   const categories = [...new Set(transactions.filter(t => t.type === type).map(t => t.category))];
   
-  // Filter transactions by the current month
-  let transactionsForDisplay = filterTransactionsByMonth(filteredTransactions, currentMonth);
+  // Apply visibility toggle - if showDeleted is true, show ONLY deleted
+  let transactionsForDisplay = showDeleted ? deletedTransactions : activeTransactions;
 
   // Apply daily filter if filters are set
   if (startDateFilter && endDateFilter) {
@@ -204,7 +221,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
       })
     : transactionsForDisplay;
 
-  const currentTotal = sortedTransactions.reduce((acc, t) => acc + t.amount, 0);
+  const currentTotal = activeTransactions.reduce((acc, t) => acc + t.amount, 0);
 
   const handleEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction);
@@ -240,9 +257,25 @@ const TransactionList: React.FC<TransactionListProps> = ({
     setIsDeleteModalOpen(false);
   };
 
+  const openReactivateModal = (id: string) => {
+    setTransactionToReactivate(id);
+    setIsReactivateModalOpen(true);
+  };
+
+  const closeReactivateModal = () => {
+    setTransactionToReactivate(null);
+    setIsReactivateModalOpen(false);
+  };
+
   const handleDeleteConfirm = () => {
     if (transactionToDelete) {
       onDelete(transactionToDelete);
+    }
+  };
+
+  const handleReactivateConfirm = () => {
+    if (transactionToReactivate) {
+      onUpdate(transactionToReactivate, { status: 'active', deletedAt: undefined });
     }
   };
 
@@ -362,12 +395,31 @@ const TransactionList: React.FC<TransactionListProps> = ({
               <ChevronRight className="w-5 h-5 text-text" />
             </button>
           </div>
-          <p className="text-sm font-medium opacity-70 ml-9 flex items-center" style={{ color: type === 'income' ? theme.primary : theme.accent }}>
+          <p className="text-sm font-medium opacity-70 ml-9 flex items-center flex-wrap gap-y-1" style={{ color: type === 'income' ? theme.primary : theme.accent }}>
             <span>Total: {formatCurrency(currentTotal)}</span>
-            {sortedTransactions.length > 0 && (
+            {activeTransactions.length > 0 && (
               <>
                 <span className="mx-2">•</span>
-                <span className="text-xs opacity-90">{sortedTransactions.length} {sortedTransactions.length === 1 ? 'item' : 'itens'}</span>
+                <span className="text-xs opacity-90">{activeTransactions.length} {activeTransactions.length === 1 ? 'item' : 'itens'}</span>
+              </>
+            )}
+            {deletedTransactions.length > 0 && (
+              <>
+                <span className="mx-2">•</span>
+                <button 
+                  onClick={() => setShowDeleted(!showDeleted)}
+                  className={`text-xs font-bold px-2 py-0.5 rounded-full transition-colors flex items-center gap-1 ${
+                    showDeleted 
+                      ? 'bg-accent text-white' 
+                      : 'opacity-90 hover:underline'
+                  }`}
+                  style={{ backgroundColor: showDeleted ? theme.accent : undefined }}
+                >
+                  {deletedTransactions.length} {deletedTransactions.length === 1 ? 'excluído' : 'excluídos'}
+                  <span className={`transition-transform ${showDeleted ? 'rotate-180' : ''}`}>
+                    <ChevronDown className="w-3 h-3" />
+                  </span>
+                </button>
               </>
             )}
           </p>
@@ -539,21 +591,23 @@ const TransactionList: React.FC<TransactionListProps> = ({
             const overdue = isTransactionOverdue(transaction);
             const daysUntilDue = transaction.dueDate ? getDaysUntilDue(transaction.dueDate) : null;
             
+            const isDeleted = transaction.status === 'deleted';
+
             return (
               <div
                 key={`${transaction.id}-${index}`}
-                className={`relative border rounded-xl p-4 hover:shadow-md transition-shadow no-select ${animatedTransactionId === transaction.id ? 'animate-pulse-once' : ''}`}
+                className={`relative border rounded-xl p-4 hover:shadow-md transition-all no-select ${animatedTransactionId === transaction.id ? 'animate-pulse-once' : ''} ${isDeleted ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
                 style={{ 
-                  backgroundColor: theme.cardBackground,
-                  borderColor: overdue ? theme.primary : (!transaction.isPaid && type === 'expense' ? theme.accent : theme.cardBorder)
+                  backgroundColor: isDeleted ? theme.background : theme.cardBackground,
+                  borderColor: isDeleted ? theme.cardBorder : (overdue ? theme.primary : (!transaction.isPaid && type === 'expense' ? theme.accent : theme.cardBorder))
                 }}
-                onMouseDown={(e) => handlePressStart(e, transaction)}
+                onMouseDown={(e) => !isDeleted && handlePressStart(e, transaction)}
                 onMouseUp={handlePressEnd}
                 onMouseLeave={handlePressEnd}
-                onTouchStart={(e) => handlePressStart(e, transaction)}
+                onTouchStart={(e) => !isDeleted && handlePressStart(e, transaction)}
                 onTouchEnd={handlePressEnd}
                 onTouchCancel={handlePressEnd}
-                onTouchMove={handlePressEnd} // Added this line
+                onTouchMove={handlePressEnd}
               >
                 {activeTransactionId === transaction.id && countdown !== null && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-xl z-10">
@@ -563,24 +617,31 @@ const TransactionList: React.FC<TransactionListProps> = ({
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium text-text truncate">
+                      <h3 className={`font-medium text-text truncate ${isDeleted ? 'line-through' : ''}`}>
                         {transaction.description}
                       </h3>
-                      <button
-                        onClick={() => handleUpdatePaymentStatusAndAnimate(transaction.id, !transaction.isPaid)}
-                        className={`p-1 rounded-full transition-colors flex-shrink-0 ${
-                          transaction.isPaid 
-                            ? 'bg-[#D4EDDA]' 
-                            : 'bg-[#FFE0B2]'
-                        }`}
-                      >
-                        {transaction.isPaid ? <Check className="w-4 h-4 text-black" /> : <Clock className="w-4 h-4 text-black" />}
-                      </button>
+                      {!isDeleted && (
+                        <button
+                          onClick={() => handleUpdatePaymentStatusAndAnimate(transaction.id, !transaction.isPaid)}
+                          className={`p-1 rounded-full transition-colors flex-shrink-0 ${
+                            transaction.isPaid 
+                              ? 'bg-[#D4EDDA]' 
+                              : 'bg-[#FFE0B2]'
+                          }`}
+                        >
+                          {transaction.isPaid ? <Check className="w-4 h-4 text-black" /> : <Clock className="w-4 h-4 text-black" />}
+                        </button>
+                      )}
+                      {isDeleted && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-accent bg-accent/10 px-1.5 py-0.5 rounded">
+                          Excluído
+                        </span>
+                      )}
                     </div>
 
                     {transaction.notes && (
                       <div className="mb-2">
-                        <div className={`text-sm text-text opacity-80 whitespace-pre-wrap ${!expandedNotes[transaction.id] ? 'line-clamp-2' : ''}`}>
+                        <div className={`text-sm text-text opacity-80 whitespace-pre-wrap ${!expandedNotes[transaction.id] ? 'line-clamp-2' : ''} ${isDeleted ? 'line-through' : ''}`}>
                           {formatNotes(transaction.notes)}
                         </div>
                         {( (typeof transaction.notes === 'string' && (transaction.notes.length > 40 || transaction.notes.includes('\n') || transaction.notes.startsWith('{'))) || 
@@ -588,6 +649,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                           <button 
                             onClick={() => toggleNotes(transaction.id)}
                             className="mt-1 text-xs font-medium text-primary flex items-center gap-1 hover:underline"
+                            disabled={isDeleted}
                           >
                             {expandedNotes[transaction.id] ? (
                               <><ChevronUp className="w-3 h-3" /> Ver menos</>
@@ -625,52 +687,68 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
                     {/* Payment Status and Due Date Info */}
                     <div className="flex flex-wrap gap-2 text-xs">
-                      <span className={`px-2 py-1 rounded-full whitespace-nowrap`}
-                        style={{ 
-                          backgroundColor: transaction.isPaid ? '#D4EDDA' : '#FFE0B2',
-                          color: '#000000'
-                        }}>
-                        {transaction.isPaid 
-                          ? (type === 'expense' ? '✓ Pago' : '✓ Recebido') 
-                          : (type === 'expense' ? '⏳ Pendente' : '⏳ A Receber')}
-                      </span>
-                      
-                      {type === 'expense' && transaction.dueDate && (
-                        <span className={`px-2 py-1 rounded-full flex items-center gap-1 whitespace-nowrap`}
-                          style={{
-                            backgroundColor: '#FFE0B2',
-                            color: '#000000'
-                          }}>
-                          <Calendar className="w-3 h-3 flex-shrink-0" />
-                          <span className="truncate">
-                            {overdue ? 'Vencido' : 
-                             daysUntilDue === 0 ? 'Vence hoje' : 
-                             daysUntilDue === 1 ? 'Vence amanhã' :
-                             daysUntilDue !== null && daysUntilDue > 0 ? `${daysUntilDue} dias` :
-                             formatBrazilDate(transaction.dueDate)}
+                      {!isDeleted && (
+                        <>
+                          <span className={`px-2 py-1 rounded-full whitespace-nowrap`}
+                            style={{ 
+                              backgroundColor: transaction.isPaid ? '#D4EDDA' : '#FFE0B2',
+                              color: '#000000'
+                            }}>
+                            {transaction.isPaid 
+                              ? (type === 'expense' ? '✓ Pago' : '✓ Recebido') 
+                              : (type === 'expense' ? '⏳ Pendente' : '⏳ A Receber')}
                           </span>
-                        </span>
+                          
+                          {type === 'expense' && transaction.dueDate && (
+                            <span className={`px-2 py-1 rounded-full flex items-center gap-1 whitespace-nowrap`}
+                              style={{
+                                backgroundColor: '#FFE0B2',
+                                color: '#000000'
+                              }}>
+                              <Calendar className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate">
+                                {overdue ? 'Vencido' : 
+                                 daysUntilDue === 0 ? 'Vence hoje' : 
+                                 daysUntilDue === 1 ? 'Vence amanhã' :
+                                 daysUntilDue !== null && daysUntilDue > 0 ? `${daysUntilDue} dias` :
+                                 formatBrazilDate(transaction.dueDate)}
+                              </span>
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className={`font-semibold text-sm sm:text-lg`}
+                    <span className={`font-semibold text-sm sm:text-lg ${isDeleted ? 'line-through' : ''}`}
                       style={{ color: type === 'income' ? theme.primary : theme.accent }}>
                       {formatCurrency(transaction.amount)}
                     </span>
-                    <button
-                      onClick={() => handleEdit(transaction)}
-                      className="p-2 rounded-lg transition-colors text-text bg-cardBackground hover:text-primary hover:bg-cardBorder"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => openDeleteModal(transaction.id)}
-                      className="p-2 rounded-lg transition-colors text-text bg-cardBackground hover:text-accent hover:bg-cardBorder"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {isDeleted ? (
+                      <button
+                        onClick={() => openReactivateModal(transaction.id)}
+                        className="p-2 rounded-lg transition-colors text-white bg-primary hover:bg-secondary shadow-sm"
+                        title="Reativar transação"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleEdit(transaction)}
+                          className="p-2 rounded-lg transition-colors text-text bg-cardBackground hover:text-primary hover:bg-cardBorder"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => openDeleteModal(transaction.id)}
+                          className="p-2 rounded-lg transition-colors text-text bg-cardBackground hover:text-accent hover:bg-cardBorder"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -696,7 +774,17 @@ const TransactionList: React.FC<TransactionListProps> = ({
         onClose={closeDeleteModal}
         onConfirm={handleDeleteConfirm}
         title="Confirmar Exclusão"
-        message="Tem certeza de que deseja excluir esta transação? Esta ação não pode ser desfeita."
+        message="Tem certeza de que deseja excluir esta transação?"
+      />
+
+      {/* Reactivate Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isReactivateModalOpen}
+        onClose={closeReactivateModal}
+        onConfirm={handleReactivateConfirm}
+        title="Confirmar Reativação"
+        message="Deseja reativar esta transação? Ela voltará a ser contabilizada nos seus totais."
+        confirmText="Confirmar Reativação"
       />
     </div>
   );
