@@ -209,6 +209,7 @@ type PlaygroundFilterState = {
   typeFilter: 'all' | 'expense' | 'income';
   statusFilter: 'all' | 'paid' | 'pending';
   showDeleted: boolean;
+  dateField: 'date' | 'createdAt';
 };
 
 const isValidYyyyMmDd = (value: string | null): value is string => {
@@ -237,6 +238,7 @@ const serializePlaygroundFiltersToSearch = (filters: PlaygroundFilterState): str
   if (filters.typeFilter !== 'all') sp.set('tipo', filters.typeFilter);
   if (filters.statusFilter !== 'all') sp.set('status', filters.statusFilter);
   if (filters.showDeleted) sp.set('excluidos', '1');
+  if (filters.dateField !== 'date') sp.set('campoDat', filters.dateField);
 
   return sp.toString();
 };
@@ -301,6 +303,15 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   const [typeFilter, setTypeFilter] = useState<'all' | 'expense' | 'income'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
   const [showDeleted, setShowDeleted] = useState(false);
+  const [dateField, setDateField] = useState<'date' | 'createdAt'>('date');
+
+  const getTransactionDateSource = (t: Transaction): string => {
+    if (dateField === 'createdAt') return t.createdAt || t.date;
+    if (t.type === 'expense' && t.dueDate) return t.dueDate;
+    return t.date;
+  };
+
+  const dateColumnLabel = dateField === 'createdAt' ? 'Criação' : 'Vencimento';
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
@@ -312,8 +323,9 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
     if (typeFilter !== 'all') count++;
     if (statusFilter !== 'all') count++;
     if (showDeleted) count++;
+    if (dateField !== 'date') count++;
     return count;
-  }, [startDate, endDate, selectedCategories.length, selectedPaymentMethods.length, searchTerm, typeFilter, statusFilter, showDeleted]);
+  }, [startDate, endDate, selectedCategories.length, selectedPaymentMethods.length, searchTerm, typeFilter, statusFilter, showDeleted, dateField]);
 
   // Removed Transactions State
   const [removedTransactionIds, setRemovedTransactionIds] = useState<string[]>([]);
@@ -371,6 +383,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
     const tipo = sp.get('tipo');
     const status = sp.get('status');
     const excluidos = sp.get('excluidos');
+    const campoDat = sp.get('campoDat');
 
     if (isValidYyyyMmDd(de)) setStartDate(de);
     if (isValidYyyyMmDd(ate)) setEndDate(ate);
@@ -380,6 +393,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
     if (tipo === 'all' || tipo === 'income' || tipo === 'expense') setTypeFilter(tipo);
     if (status === 'all' || status === 'paid' || status === 'pending') setStatusFilter(status);
     if (excluidos !== null) setShowDeleted(excluidos === '1' || excluidos === 'true');
+    if (campoDat === 'createdAt') setDateField('createdAt');
   }, [location.search]);
 
   useEffect(() => {
@@ -397,6 +411,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
       typeFilter,
       statusFilter,
       showDeleted,
+      dateField,
     });
 
     const currentSearchString = location.search.startsWith('?') ? location.search.slice(1) : location.search;
@@ -433,6 +448,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
       typeFilter,
       statusFilter,
       showDeleted,
+      dateField,
     });
 
     const currentSearchString = location.search.startsWith('?') ? location.search.slice(1) : location.search;
@@ -600,6 +616,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
   // Expense Timeline Grouping State
   const [expenseGroupBy, setExpenseGroupBy] = useState<'category' | 'paymentMethod'>('category');
   const [expenseStatusFilter, setExpenseStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
+  const [expenseDateField, setExpenseDateField] = useState<'date' | 'createdAt'>('date');
 
   // Expense Timeline Date Range State (default to last 6 months for better closing view)
   const [expenseTimelineStartDate, setExpenseTimelineStartDate] = useState<string>(format(startOfMonth(subMonths(getCurrentBrazilDate(), 6)), 'yyyy-MM-dd'));
@@ -625,7 +642,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
         if (t.status === 'deleted') return false;
       }
 
-      const date = parseLocalDate(t.date);
+      const date = parseLocalDate(getTransactionDateSource(t));
       const start = parseLocalDate(startDate);
       const end = parseLocalDate(endDate);
       
@@ -640,7 +657,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
       return isInDateRange && isInCategory && isInPaymentMethod && matchesSearch && matchesType && matchesStatus;
     });
-  }, [transactions, startDate, endDate, selectedCategories, selectedPaymentMethods, searchTerm, typeFilter, statusFilter, removedTransactionIds, showDeleted]);
+  }, [transactions, startDate, endDate, selectedCategories, selectedPaymentMethods, searchTerm, typeFilter, statusFilter, removedTransactionIds, showDeleted, dateField]);
 
   // Chart Data: Category Distribution
   const categoryChartData = useMemo(() => {
@@ -777,6 +794,11 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
   // Expense Timeline Chart Data
   const expenseTimelineChartData = useMemo(() => {
+    const getExpenseTimelineDateSource = (t: any): string => {
+      if (expenseDateField === 'createdAt') return t.createdAt || t.date;
+      return t.date;
+    };
+
     const expenseTransactions = transactions.filter((t: any) => {
       const isExpense = t.type === 'expense';
       if (!isExpense) return false;
@@ -792,7 +814,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
         (expenseStatusFilter === 'paid' ? t.isPaid : !t.isPaid);
       if (!matchesStatus) return false;
 
-      const date = parseLocalDate(t.date);
+      const date = parseLocalDate(getExpenseTimelineDateSource(t));
       
       if (expenseMode === 'range') {
         const start = parseLocalDate(expenseTimelineStartDate);
@@ -808,9 +830,9 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
     // Group by month/year and selected criteria (description or category)
     expenseTransactions.sort((a: any, b: any) => 
-      parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime()
+      parseLocalDate(getExpenseTimelineDateSource(a)).getTime() - parseLocalDate(getExpenseTimelineDateSource(b)).getTime()
     ).forEach((t: any) => {
-      const date = parseLocalDate(t.date);
+      const date = parseLocalDate(getExpenseTimelineDateSource(t));
       const dateStr = format(date, 'MMM/yy'); // e.g., Jan/26
       const groupKey = expenseGroupBy === 'category' ? t.category : (t.paymentMethod ? formatPaymentMethod(t.paymentMethod) : 'Sem Pagamento');
       
@@ -853,7 +875,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
       labels: sortedDates,
       datasets,
     };
-  }, [transactions, expenseGroupBy, expenseStatusFilter, theme.cardBackground, expenseTimelineStartDate, expenseTimelineEndDate, expenseMode, expenseComparisonMonth1, expenseComparisonMonth2, showDeleted]);
+  }, [transactions, expenseGroupBy, expenseStatusFilter, theme.cardBackground, expenseTimelineStartDate, expenseTimelineEndDate, expenseMode, expenseComparisonMonth1, expenseComparisonMonth2, showDeleted, expenseDateField]);
 
   // Extract Items from Notes for Price Comparison
   const allItems = useMemo(() => {
@@ -967,8 +989,8 @@ INSTRUÇÕES PARA SUA RESPOSTA:
       let bVal: any = b[sortBy as keyof Transaction];
 
       if (sortBy === 'date') {
-        aVal = parseLocalDate(a.date).getTime();
-        bVal = parseLocalDate(b.date).getTime();
+        aVal = parseLocalDate(getTransactionDateSource(a)).getTime();
+        bVal = parseLocalDate(getTransactionDateSource(b)).getTime();
       } else if (sortBy === 'amount') {
         aVal = a.amount;
         bVal = b.amount;
@@ -1513,7 +1535,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                 <table className="w-full text-left text-sm border-collapse">
                   <thead>
                     <tr className="bg-cardBorder bg-opacity-40" style={{ color: theme.text }}>
-                      <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>Data</th>
+                      <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>{dateColumnLabel}</th>
                       <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>Descrição</th>
                       <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>Categoria</th>
                       <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>Pagamento</th>
@@ -1527,7 +1549,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                     {getSortedTransactions().map(t => (
                       <tr key={t.id} className={`text-text hover:bg-primary/5 transition-colors group ${t.status === 'deleted' ? 'opacity-50 grayscale-[0.5]' : ''}`}>
                         <td className={`p-4 whitespace-nowrap border-r font-mono text-sm opacity-70 ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
-                          {formatBrazilDate(t.date, 'dd/MM/yyyy')}
+                          {formatBrazilDate(getTransactionDateSource(t), 'dd/MM/yyyy')}
                         </td>
                         <td className={`p-4 font-bold border-r text-base ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
                           {t.description}
@@ -1894,6 +1916,26 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
               <div>
                 <div className="space-y-2">
+                <label className="block text-xs font-medium text-text opacity-70 mb-2">Campo de Data</label>
+                <div className="grid grid-cols-2 gap-1 mb-2">
+                  {(['date', 'createdAt'] as const).map((field) => (
+                    <button
+                      key={field}
+                      onClick={() => setDateField(field)}
+                      className={`py-1.5 rounded-md text-[10px] transition-all border font-bold uppercase ${
+                        dateField === field 
+                          ? 'bg-primary text-white border-primary shadow-sm' 
+                          : 'bg-transparent text-text opacity-70 border-cardBorder hover:bg-cardBorder/30'
+                      }`}
+                      style={{ 
+                        backgroundColor: dateField === field ? theme.primary : 'transparent',
+                        color: dateField === field ? '#fff' : theme.text 
+                      }}
+                    >
+                      {field === 'date' ? 'Vencimento' : 'Criação'}
+                    </button>
+                  ))}
+                </div>
                   <div className="flex items-center gap-2">
                     <input 
                       type="date" 
@@ -2272,6 +2314,30 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                               </button>
                             </div>
 
+                            {/* Date Field Toggle */}
+                            <div className="flex gap-1 border-2 rounded-xl p-1" style={{ borderColor: theme.cardBorder }}>
+                              <button
+                                onClick={() => setExpenseDateField('date')}
+                                className={`px-2 md:px-3 py-1 rounded-lg text-[9px] md:text-[10px] font-black transition-all uppercase ${
+                                  expenseDateField === 'date'
+                                    ? 'bg-accent text-white shadow-sm'
+                                    : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                }`}
+                              >
+                                Venc.
+                              </button>
+                              <button
+                                onClick={() => setExpenseDateField('createdAt')}
+                                className={`px-2 md:px-3 py-1 rounded-lg text-[9px] md:text-[10px] font-black transition-all uppercase ${
+                                  expenseDateField === 'createdAt'
+                                    ? 'bg-accent text-white shadow-sm'
+                                    : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                }`}
+                              >
+                                Criação
+                              </button>
+                            </div>
+
                             {/* Date/Month Inputs */}
                             <div className="flex items-center gap-1 border-2 rounded-xl p-1 px-2 md:px-3" style={{ borderColor: theme.cardBorder }}>
                               {expenseMode === 'range' ? (
@@ -2612,7 +2678,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                         <table className="w-full text-left text-sm border-collapse">
                           <thead>
                             <tr className="bg-cardBorder bg-opacity-40" style={{ color: theme.text }}>
-                              <th onClick={() => handleSort('date')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Data {sortBy === 'date' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+                              <th onClick={() => handleSort('date')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>{dateColumnLabel} {sortBy === 'date' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
                               <th onClick={() => handleSort('description')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Descrição {sortBy === 'description' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
                               <th onClick={() => handleSort('category')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Categoria {sortBy === 'category' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
                               <th onClick={() => handleSort('paymentMethod')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Pagamento {sortBy === 'paymentMethod' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
@@ -2626,7 +2692,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                             {getSortedTransactions().map(t => (
                               <tr key={t.id} className={`text-text hover:bg-primary/5 transition-colors group ${t.status === 'deleted' ? 'opacity-50 grayscale-[0.5]' : ''}`}>
                                 <td className={`p-4 whitespace-nowrap border-r font-mono text-xs opacity-70 ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
-                                  {formatBrazilDate(t.date, 'dd/MM/yyyy')}
+                                  {formatBrazilDate(getTransactionDateSource(t), 'dd/MM/yyyy')}
                                 </td>
                                 <td className={`p-4 font-bold border-r ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
                                   <div className="flex items-center gap-2">
