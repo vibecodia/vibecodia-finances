@@ -1,7 +1,7 @@
 {
   "name": "financial-dashboard",
   "private": true,
-  "version": "0.48.344",
+  "version": "0.48.345",
   "type": "module",
   "scripts": {
     "dev": "vite --config frontend/config/vite.config.ts",
