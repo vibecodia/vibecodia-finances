@@ -1,7 +1,7 @@
 import { format, addMonths, subMonths, getDate, getDaysInMonth, isBefore, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Wallet, Target, AlertTriangle, ChevronLeft, ChevronRight, CreditCard, Eye, EyeOff } from 'lucide-react';
-import React, { useState , useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Confetti from 'react-confetti';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,7 +9,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import useWindowSize from '../hooks/useWindowSize';
 import { Transaction, SavingsGoal } from '../types';
 import { calculateBalances } from '../utils/balanceCalculations';
-import { formatCurrency, filterTransactionsByMonth, getCurrentBrazilDate, formatPaymentMethod } from '../utils/helpers';
+import { attachSwipeNavigation, formatCurrency, filterTransactionsByMonth, formatPaymentMethod, getCurrentBrazilDate } from '../utils/helpers';
 import RecentTransactionsFloatingCard from './RecentTransactionsFloatingCard';
 
 
@@ -155,10 +155,21 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   const [currentMonth, setCurrentMonth] = useState<Date>(getCurrentBrazilDate());
   const [showBalance, setShowBalance] = useState(true);
   const { theme, setThemeMonth } = useTheme();
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setThemeMonth(currentMonth);
   }, [currentMonth, setThemeMonth]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    return attachSwipeNavigation(el, {
+      onSwipeLeft: () => navigate('/income'),
+      onSwipeRight: () => navigate('/expenses'),
+    });
+  }, [navigate]);
 
   const today = getCurrentBrazilDate();
   const isSelectedMonthCurrent = format(currentMonth, 'yyyy-MM') === format(today, 'yyyy-MM');
@@ -232,7 +243,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
     : ['#a8e063', '#56ab2f', '#4CAF50', '#8BC34A'];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div ref={containerRef} className="max-w-6xl mx-auto space-y-6">
       {showConfetti && (
         <Confetti
           width={width}
