@@ -622,3 +622,13 @@ export const attachSwipeNavigation = (
     element.removeEventListener('touchend', onTouchEnd);
   };
 };
+
+export type SwipeRouteTransitionDetail = {
+  to: string;
+  direction: SwipeDirection;
+};
+
+export const requestSwipeRouteTransition = (to: string, direction: SwipeDirection): void => {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent<SwipeRouteTransitionDetail>('swipe-route-transition', { detail: { to, direction } }));
+};

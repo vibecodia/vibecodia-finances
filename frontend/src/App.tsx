@@ -1,6 +1,6 @@
 import { Moon, Sun } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import Calendar from './components/Calendar';
 import Dashboard from './components/Dashboard';
@@ -20,7 +20,7 @@ import ShoppingCartButton from './components/ShoppingCartButton';
 import ShoppingListModal from './components/ShoppingListModal';
 import { useFinancialData } from './hooks/useFinancialData';
 import { useShoppingList } from './hooks/useShoppingList';
-import { getBrazilDateString } from './utils/helpers';
+import { getBrazilDateString, isTouchNavigationEnabled } from './utils/helpers';
 
 function App() {
   const { pin, isInitializing } = useVerification();
@@ -50,8 +50,16 @@ function App() {
 
   // Rotas onde o menu lateral não fica expandido no desktop
   const location = useLocation();
+  const navigate = useNavigate();
   const routesWithoutDesktopMenu = ['/playground'];
   const hideMenuOnDesktop = routesWithoutDesktopMenu.includes(location.pathname);
+  const [isSwipeTransitionActive, setIsSwipeTransitionActive] = useState(false);
+  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right'>('left');
+  const [cubeTransform, setCubeTransform] = useState('rotateY(0deg)');
+  const [cubeTransition, setCubeTransition] = useState('transform 0ms');
+  const swipeTransitionRef = useRef(false);
+  const pendingToRef = useRef<string | null>(null);
+  const bodyOverflowRef = useRef<string>('');
 
   useEffect(() => {
     if (isInitializing) return;
@@ -78,6 +86,59 @@ function App() {
       return () => clearInterval(interval);
     }
   }, [shoppingList]);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      if (!isTouchNavigationEnabled()) return;
+      if (swipeTransitionRef.current) return;
+
+      const detail = (event as CustomEvent<{ to: string; direction: 'left' | 'right' }>).detail;
+      if (!detail?.to) return;
+      if (detail.to === location.pathname) return;
+
+      const startTransition = () => {
+        swipeTransitionRef.current = true;
+        pendingToRef.current = detail.to;
+        setSwipeDirection(detail.direction);
+        setIsSwipeTransitionActive(true);
+
+        bodyOverflowRef.current = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        const halfDurationMs = 200;
+        setCubeTransition(`transform ${halfDurationMs}ms ease-in-out`);
+        setCubeTransform(detail.direction === 'left' ? 'rotateY(-90deg)' : 'rotateY(90deg)');
+
+        window.setTimeout(() => {
+          const pendingTo = pendingToRef.current;
+
+          setCubeTransition('none');
+          setCubeTransform(detail.direction === 'left' ? 'rotateY(90deg)' : 'rotateY(-90deg)');
+
+          if (pendingTo) navigate(pendingTo);
+
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              setCubeTransition(`transform ${halfDurationMs}ms ease-in-out`);
+              setCubeTransform('rotateY(0deg)');
+            });
+          });
+
+          window.setTimeout(() => {
+            setIsSwipeTransitionActive(false);
+            swipeTransitionRef.current = false;
+            pendingToRef.current = null;
+            document.body.style.overflow = bodyOverflowRef.current;
+          }, halfDurationMs);
+        }, halfDurationMs);
+      };
+
+      startTransition();
+    };
+
+    window.addEventListener('swipe-route-transition', handler as EventListener);
+    return () => window.removeEventListener('swipe-route-transition', handler as EventListener);
+  }, [location.pathname, navigate]);
 
   const handleConfirmInitialBalance = (amount: number, type: 'income' | 'expense') => {
     addTransaction({
@@ -142,19 +203,31 @@ function App() {
         />
 
         {/* No /playground, remove o lg:pl-72 para ocupar toda a largura */}
-        <main className={`w-full px-4 sm:px-6 lg:px-12 pb-20 transition-all duration-300 ${hideMenuOnDesktop ? '' : 'lg:pl-72'}`}>
-          <Routes>
-            <Route path="/" element={<Dashboard transactions={transactions} savingsGoals={savingsGoals} />} />
-            <Route path="/expenses" element={<TransactionList type="expense" transactions={transactions} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} />} />
-            <Route path="/income" element={<TransactionList type="income" transactions={transactions} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} />} />
-            <Route path="/calendar" element={<Calendar transactions={transactions} onUpdatePaymentStatus={updatePaymentStatus} />} />
-            <Route path="/reports" element={<Reports transactions={transactions} savingsGoals={savingsGoals} />} />
-            <Route path="/playground" element={<Playground transactions={transactions} savingsGoals={savingsGoals} />} />
-            <Route path="/goals" element={<SavingsGoals goals={savingsGoals} onAdd={addSavingsGoal} onUpdate={updateSavingsGoal} onDelete={deleteSavingsGoal} onAddContribution={addSavingsContribution} onUpdateContribution={updateSavingsContribution} onDeleteContribution={deleteSavingsContribution} />} />
-            <Route path="/settings" element={<Settings transactions={transactions} savingsGoals={savingsGoals} onImportData={importData} onClearAllData={clearAllData} />} />
-            <Route path="/tasks" element={<TrelloBoard />} />
-          </Routes>
-        </main>
+        <div style={{ perspective: '1400px' }}>
+          <div
+            style={{
+              transform: cubeTransform,
+              transition: cubeTransition,
+              transformStyle: 'preserve-3d',
+              transformOrigin: swipeDirection === 'left' ? 'left center' : 'right center',
+              willChange: isSwipeTransitionActive ? 'transform' : undefined,
+            }}
+          >
+            <main className={`w-full px-4 sm:px-6 lg:px-12 pb-20 transition-all duration-300 ${hideMenuOnDesktop ? '' : 'lg:pl-72'}`}>
+              <Routes>
+                <Route path="/" element={<Dashboard transactions={transactions} savingsGoals={savingsGoals} />} />
+                <Route path="/expenses" element={<TransactionList type="expense" transactions={transactions} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} />} />
+                <Route path="/income" element={<TransactionList type="income" transactions={transactions} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} />} />
+                <Route path="/calendar" element={<Calendar transactions={transactions} onUpdatePaymentStatus={updatePaymentStatus} />} />
+                <Route path="/reports" element={<Reports transactions={transactions} savingsGoals={savingsGoals} />} />
+                <Route path="/playground" element={<Playground transactions={transactions} savingsGoals={savingsGoals} />} />
+                <Route path="/goals" element={<SavingsGoals goals={savingsGoals} onAdd={addSavingsGoal} onUpdate={updateSavingsGoal} onDelete={deleteSavingsGoal} onAddContribution={addSavingsContribution} onUpdateContribution={updateSavingsContribution} onDeleteContribution={deleteSavingsContribution} />} />
+                <Route path="/settings" element={<Settings transactions={transactions} savingsGoals={savingsGoals} onImportData={importData} onClearAllData={clearAllData} />} />
+                <Route path="/tasks" element={<TrelloBoard />} />
+              </Routes>
+            </main>
+          </div>
+        </div>
         <VerificationModal />
         <InitialBalanceModal 
           isOpen={showInitialBalanceModal}

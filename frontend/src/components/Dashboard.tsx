@@ -9,7 +9,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import useWindowSize from '../hooks/useWindowSize';
 import { Transaction, SavingsGoal } from '../types';
 import { calculateBalances } from '../utils/balanceCalculations';
-import { attachSwipeNavigation, formatCurrency, filterTransactionsByMonth, formatPaymentMethod, getCurrentBrazilDate } from '../utils/helpers';
+import { attachSwipeNavigation, formatCurrency, filterTransactionsByMonth, formatPaymentMethod, getCurrentBrazilDate, requestSwipeRouteTransition } from '../utils/helpers';
 import RecentTransactionsFloatingCard from './RecentTransactionsFloatingCard';
 
 
@@ -166,10 +166,10 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
     if (!el) return;
 
     return attachSwipeNavigation(el, {
-      onSwipeLeft: () => navigate('/income'),
-      onSwipeRight: () => navigate('/expenses'),
+      onSwipeLeft: () => requestSwipeRouteTransition('/income', 'left'),
+      onSwipeRight: () => requestSwipeRouteTransition('/expenses', 'right'),
     });
-  }, [navigate]);
+  }, []);
 
   const today = getCurrentBrazilDate();
   const isSelectedMonthCurrent = format(currentMonth, 'yyyy-MM') === format(today, 'yyyy-MM');

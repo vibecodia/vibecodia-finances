@@ -2,12 +2,11 @@ import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameDay } fro
 import { ptBR } from 'date-fns/locale';
 import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight, Wallet, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import { useTheme } from '../contexts/ThemeContext';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { Transaction } from '../types';
-import { attachSwipeNavigation, formatBrazilDate, formatCurrency, formatPaymentMethod, filterTransactionsByMonth, getCurrentBrazilDate, getDaysUntilDue, isTransactionOverdue, parseLocalDate } from '../utils/helpers';
+import { attachSwipeNavigation, formatBrazilDate, formatCurrency, formatPaymentMethod, filterTransactionsByMonth, getCurrentBrazilDate, getDaysUntilDue, isTransactionOverdue, parseLocalDate, requestSwipeRouteTransition } from '../utils/helpers';
 
 import ConfirmationModal from './ConfirmationModal';
 import DailyDateSlider from './DailyDateSlider';
@@ -32,7 +31,6 @@ const TransactionList: React.FC<TransactionListProps> = ({
   onDelete,
   onUpdatePaymentStatus
 }) => {
-  const navigate = useNavigate();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -109,10 +107,9 @@ const TransactionList: React.FC<TransactionListProps> = ({
     if (!el) return;
 
     return attachSwipeNavigation(el, {
-      onSwipeLeft: () => navigate('/'),
-      onSwipeRight: () => navigate('/'),
+      onSwipe: (direction) => requestSwipeRouteTransition('/', direction),
     });
-  }, [navigate]);
+  }, []);
 
   const toggleNotes = (id: string) => {
     setExpandedNotes(prev => ({
