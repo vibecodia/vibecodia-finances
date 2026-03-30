@@ -222,7 +222,7 @@ jobs:
               core.setFailed('Timeout aguardando build das imagens');
             }
 
-  trigger + wait:
+  trigger_and_wait:
     needs: [release, build-images]
     runs-on: ubuntu-latest
     steps:

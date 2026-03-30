@@ -546,3 +546,79 @@ export const formatPaymentMethod = (method?: string): string => {
   const found = PAYMENT_METHODS.find(m => m.id === method || m.label === method);
   return found ? found.label : method;
 };
+
+export type SwipeDirection = 'left' | 'right';
+
+export type SwipeNavigationHandlers = {
+  onSwipeLeft?: () => void;
+  onSwipeRight?: () => void;
+  onSwipe?: (direction: SwipeDirection) => void;
+};
+
+export type SwipeNavigationOptions = {
+  minDistance?: number;
+  dominanceRatio?: number;
+};
+
+export const isTouchNavigationEnabled = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  if ('ontouchstart' in window) return true;
+  if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true;
+  return false;
+};
+
+export const attachSwipeNavigation = (
+  element: HTMLElement,
+  handlers: SwipeNavigationHandlers,
+  options: SwipeNavigationOptions = {}
+): (() => void) => {
+  if (!isTouchNavigationEnabled()) return () => {};
+
+  const minDistance = options.minDistance ?? 50;
+  const dominanceRatio = options.dominanceRatio ?? 1.2;
+
+  let startX: number | null = null;
+  let startY: number | null = null;
+
+  const onTouchStart = (e: TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+  };
+
+  const onTouchEnd = (e: TouchEvent) => {
+    if (startX === null || startY === null) return;
+    if (e.changedTouches.length !== 1) return;
+
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - startX;
+    const dy = touch.clientY - startY;
+
+    startX = null;
+    startY = null;
+
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    if (absDx < minDistance) return;
+    if (absDx <= absDy * dominanceRatio) return;
+
+    const direction: SwipeDirection = dx > 0 ? 'right' : 'left';
+    handlers.onSwipe?.(direction);
+
+    if (direction === 'right') {
+      handlers.onSwipeRight?.();
+    } else {
+      handlers.onSwipeLeft?.();
+    }
+  };
+
+  element.addEventListener('touchstart', onTouchStart, { passive: true });
+  element.addEventListener('touchend', onTouchEnd, { passive: true });
+
+  return () => {
+    element.removeEventListener('touchstart', onTouchStart);
+    element.removeEventListener('touchend', onTouchEnd);
+  };
+};

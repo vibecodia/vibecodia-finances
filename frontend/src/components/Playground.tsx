@@ -42,8 +42,9 @@ import {
   Clipboard,
   Check
 } from 'lucide-react';
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Doughnut, Pie, Line, Bar } from 'react-chartjs-2';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useTheme } from '../contexts/ThemeContext';
 // import { ptBR } from 'date-fns/locale';
@@ -199,10 +200,55 @@ const DEFAULT_LAYOUT: LayoutItem[] = [
   { id: 'price_evolution', label: 'Evolução de Preços', collapsed: false },
 ];
 
+type PlaygroundFilterState = {
+  startDate: string;
+  endDate: string;
+  selectedCategories: string[];
+  selectedPaymentMethods: string[];
+  searchTerm: string;
+  typeFilter: 'all' | 'expense' | 'income';
+  statusFilter: 'all' | 'paid' | 'pending';
+  showDeleted: boolean;
+  dateField: 'date' | 'createdAt';
+};
+
+const isValidYyyyMmDd = (value: string | null): value is string => {
+  if (!value) return false;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+};
+
+const parseCsvParam = (value: string | null): string[] => {
+  if (!value) return [];
+  return value
+    .split(',')
+    .map(v => v.trim())
+    .filter(Boolean);
+};
+
+const serializePlaygroundFiltersToSearch = (filters: PlaygroundFilterState): string => {
+  const sp = new URLSearchParams();
+
+  if (filters.startDate) sp.set('de', filters.startDate);
+  if (filters.endDate) sp.set('ate', filters.endDate);
+  if (filters.selectedCategories.length > 0) sp.set('categoria', filters.selectedCategories.join(','));
+  if (filters.selectedPaymentMethods.length > 0) sp.set('pagamento', filters.selectedPaymentMethods.join(','));
+
+  const trimmedSearch = filters.searchTerm.trim();
+  if (trimmedSearch) sp.set('busca', trimmedSearch);
+  if (filters.typeFilter !== 'all') sp.set('tipo', filters.typeFilter);
+  if (filters.statusFilter !== 'all') sp.set('status', filters.statusFilter);
+  if (filters.showDeleted) sp.set('excluidos', '1');
+  if (filters.dateField !== 'date') sp.set('campoDat', filters.dateField);
+
+  return sp.toString();
+};
+
 const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) => {
   const { theme } = useTheme();
   const { expenseCategories, incomeCategories } = useCategories();
   const { paymentMethods } = usePaymentMethods();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'transactions' | 'savings'>('transactions');
   const [maximizedId, setMaximizedId] = useState<string | null>(null);
   // Using a new version key to reset layout to the simplified structure
@@ -257,6 +303,29 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   const [typeFilter, setTypeFilter] = useState<'all' | 'expense' | 'income'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
   const [showDeleted, setShowDeleted] = useState(false);
+  const [dateField, setDateField] = useState<'date' | 'createdAt'>('date');
+
+  const getTransactionDateSource = (t: Transaction): string => {
+    if (dateField === 'createdAt') return t.createdAt || t.date;
+    if (t.type === 'expense' && t.dueDate) return t.dueDate;
+    return t.date;
+  };
+
+  const dateColumnLabel = dateField === 'createdAt' ? 'Criação' : 'Vencimento';
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (startDate) count++;
+    if (endDate) count++;
+    count += selectedCategories.length;
+    count += selectedPaymentMethods.length;
+    if (searchTerm.trim()) count++;
+    if (typeFilter !== 'all') count++;
+    if (statusFilter !== 'all') count++;
+    if (showDeleted) count++;
+    if (dateField !== 'date') count++;
+    return count;
+  }, [startDate, endDate, selectedCategories.length, selectedPaymentMethods.length, searchTerm, typeFilter, statusFilter, showDeleted, dateField]);
 
   // Removed Transactions State
   const [removedTransactionIds, setRemovedTransactionIds] = useState<string[]>([]);
@@ -286,6 +355,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [aiStats, setAiStats] = useState<any>(null);
   const [isCopied, setIsCopied] = useState(false);
+  const [isShareCopied, setIsShareCopied] = useState(false);
   const [showAIObsModal, setShowAIObsModal] = useState(false);
   const [aiObservation, setAiObservation] = useState('');
 
@@ -294,6 +364,124 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
     navigator.clipboard.writeText(aiAnalysis);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const didInitFiltersFromUrlRef = useRef(false);
+  const skipFirstUrlSyncRef = useRef(true);
+
+  useEffect(() => {
+    if (didInitFiltersFromUrlRef.current) return;
+    didInitFiltersFromUrlRef.current = true;
+
+    const sp = new URLSearchParams(location.search);
+
+    const de = sp.get('de');
+    const ate = sp.get('ate');
+    const categoria = sp.get('categoria');
+    const pagamento = sp.get('pagamento');
+    const busca = sp.get('busca');
+    const tipo = sp.get('tipo');
+    const status = sp.get('status');
+    const excluidos = sp.get('excluidos');
+    const campoDat = sp.get('campoDat');
+
+    if (isValidYyyyMmDd(de)) setStartDate(de);
+    if (isValidYyyyMmDd(ate)) setEndDate(ate);
+    if (categoria !== null) setSelectedCategories(parseCsvParam(categoria));
+    if (pagamento !== null) setSelectedPaymentMethods(parseCsvParam(pagamento));
+    if (busca !== null) setSearchTerm(busca);
+    if (tipo === 'all' || tipo === 'income' || tipo === 'expense') setTypeFilter(tipo);
+    if (status === 'all' || status === 'paid' || status === 'pending') setStatusFilter(status);
+    if (excluidos !== null) setShowDeleted(excluidos === '1' || excluidos === 'true');
+    if (campoDat === 'createdAt') setDateField('createdAt');
+  }, [location.search]);
+
+  useEffect(() => {
+    if (skipFirstUrlSyncRef.current) {
+      skipFirstUrlSyncRef.current = false;
+      return;
+    }
+
+    const nextSearchString = serializePlaygroundFiltersToSearch({
+      startDate,
+      endDate,
+      selectedCategories,
+      selectedPaymentMethods,
+      searchTerm,
+      typeFilter,
+      statusFilter,
+      showDeleted,
+      dateField,
+    });
+
+    const currentSearchString = location.search.startsWith('?') ? location.search.slice(1) : location.search;
+    if (nextSearchString === currentSearchString) return;
+
+    navigate(
+      {
+        pathname: location.pathname,
+        search: nextSearchString ? `?${nextSearchString}` : '',
+      },
+      { replace: true }
+    );
+  }, [
+    startDate,
+    endDate,
+    selectedCategories,
+    selectedPaymentMethods,
+    searchTerm,
+    typeFilter,
+    statusFilter,
+    showDeleted,
+    location.pathname,
+    location.search,
+    navigate,
+  ]);
+
+  const handleShareUrl = async () => {
+    const nextSearchString = serializePlaygroundFiltersToSearch({
+      startDate,
+      endDate,
+      selectedCategories,
+      selectedPaymentMethods,
+      searchTerm,
+      typeFilter,
+      statusFilter,
+      showDeleted,
+      dateField,
+    });
+
+    const currentSearchString = location.search.startsWith('?') ? location.search.slice(1) : location.search;
+    if (nextSearchString !== currentSearchString) {
+      navigate(
+        {
+          pathname: location.pathname,
+          search: nextSearchString ? `?${nextSearchString}` : '',
+        },
+        { replace: true }
+      );
+    }
+
+    const url = new URL(window.location.href);
+    url.search = nextSearchString ? `?${nextSearchString}` : '';
+    const shareUrl = url.toString();
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = shareUrl;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      textarea.style.top = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+
+    setIsShareCopied(true);
+    setTimeout(() => setIsShareCopied(false), 2000);
   };
 
   const formatAIText = (text: string) => {
@@ -428,6 +616,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
   // Expense Timeline Grouping State
   const [expenseGroupBy, setExpenseGroupBy] = useState<'category' | 'paymentMethod'>('category');
   const [expenseStatusFilter, setExpenseStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
+  const [expenseDateField, setExpenseDateField] = useState<'date' | 'createdAt'>('date');
 
   // Expense Timeline Date Range State (default to last 6 months for better closing view)
   const [expenseTimelineStartDate, setExpenseTimelineStartDate] = useState<string>(format(startOfMonth(subMonths(getCurrentBrazilDate(), 6)), 'yyyy-MM-dd'));
@@ -453,7 +642,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
         if (t.status === 'deleted') return false;
       }
 
-      const date = parseLocalDate(t.date);
+      const date = parseLocalDate(getTransactionDateSource(t));
       const start = parseLocalDate(startDate);
       const end = parseLocalDate(endDate);
       
@@ -468,7 +657,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
       return isInDateRange && isInCategory && isInPaymentMethod && matchesSearch && matchesType && matchesStatus;
     });
-  }, [transactions, startDate, endDate, selectedCategories, selectedPaymentMethods, searchTerm, typeFilter, statusFilter, removedTransactionIds, showDeleted]);
+  }, [transactions, startDate, endDate, selectedCategories, selectedPaymentMethods, searchTerm, typeFilter, statusFilter, removedTransactionIds, showDeleted, dateField]);
 
   // Chart Data: Category Distribution
   const categoryChartData = useMemo(() => {
@@ -605,6 +794,11 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
   // Expense Timeline Chart Data
   const expenseTimelineChartData = useMemo(() => {
+    const getExpenseTimelineDateSource = (t: any): string => {
+      if (expenseDateField === 'createdAt') return t.createdAt || t.date;
+      return t.date;
+    };
+
     const expenseTransactions = transactions.filter((t: any) => {
       const isExpense = t.type === 'expense';
       if (!isExpense) return false;
@@ -620,7 +814,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
         (expenseStatusFilter === 'paid' ? t.isPaid : !t.isPaid);
       if (!matchesStatus) return false;
 
-      const date = parseLocalDate(t.date);
+      const date = parseLocalDate(getExpenseTimelineDateSource(t));
       
       if (expenseMode === 'range') {
         const start = parseLocalDate(expenseTimelineStartDate);
@@ -636,9 +830,9 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
     // Group by month/year and selected criteria (description or category)
     expenseTransactions.sort((a: any, b: any) => 
-      parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime()
+      parseLocalDate(getExpenseTimelineDateSource(a)).getTime() - parseLocalDate(getExpenseTimelineDateSource(b)).getTime()
     ).forEach((t: any) => {
-      const date = parseLocalDate(t.date);
+      const date = parseLocalDate(getExpenseTimelineDateSource(t));
       const dateStr = format(date, 'MMM/yy'); // e.g., Jan/26
       const groupKey = expenseGroupBy === 'category' ? t.category : (t.paymentMethod ? formatPaymentMethod(t.paymentMethod) : 'Sem Pagamento');
       
@@ -681,7 +875,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
       labels: sortedDates,
       datasets,
     };
-  }, [transactions, expenseGroupBy, expenseStatusFilter, theme.cardBackground, expenseTimelineStartDate, expenseTimelineEndDate, expenseMode, expenseComparisonMonth1, expenseComparisonMonth2, showDeleted]);
+  }, [transactions, expenseGroupBy, expenseStatusFilter, theme.cardBackground, expenseTimelineStartDate, expenseTimelineEndDate, expenseMode, expenseComparisonMonth1, expenseComparisonMonth2, showDeleted, expenseDateField]);
 
   // Extract Items from Notes for Price Comparison
   const allItems = useMemo(() => {
@@ -795,8 +989,8 @@ INSTRUÇÕES PARA SUA RESPOSTA:
       let bVal: any = b[sortBy as keyof Transaction];
 
       if (sortBy === 'date') {
-        aVal = parseLocalDate(a.date).getTime();
-        bVal = parseLocalDate(b.date).getTime();
+        aVal = parseLocalDate(getTransactionDateSource(a)).getTime();
+        bVal = parseLocalDate(getTransactionDateSource(b)).getTime();
       } else if (sortBy === 'amount') {
         aVal = a.amount;
         bVal = b.amount;
@@ -1341,7 +1535,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                 <table className="w-full text-left text-sm border-collapse">
                   <thead>
                     <tr className="bg-cardBorder bg-opacity-40" style={{ color: theme.text }}>
-                      <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>Data</th>
+                      <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>{dateColumnLabel}</th>
                       <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>Descrição</th>
                       <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>Categoria</th>
                       <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>Pagamento</th>
@@ -1355,7 +1549,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                     {getSortedTransactions().map(t => (
                       <tr key={t.id} className={`text-text hover:bg-primary/5 transition-colors group ${t.status === 'deleted' ? 'opacity-50 grayscale-[0.5]' : ''}`}>
                         <td className={`p-4 whitespace-nowrap border-r font-mono text-sm opacity-70 ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
-                          {formatBrazilDate(t.date, 'dd/MM/yyyy')}
+                          {formatBrazilDate(getTransactionDateSource(t), 'dd/MM/yyyy')}
                         </td>
                         <td className={`p-4 font-bold border-r text-base ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
                           {t.description}
@@ -1633,13 +1827,23 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                   <Filter className="w-5 h-5" />
                   <span>Filtros Rápidos</span>
                 </div>
-                <button 
-                  onClick={() => setShowFilters(false)}
-                  className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
-                  title="Esconder Filtros"
-                >
-                  <PanelLeftClose className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={handleShareUrl}
+                    className="px-2.5 py-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-70 hover:opacity-100 text-xs font-bold flex items-center gap-1.5"
+                    title="Compartilhar"
+                  >
+                    {isShareCopied ? <Check className="w-4 h-4" /> : <Clipboard className="w-4 h-4" />}
+                    <span>{isShareCopied ? 'Copiado!' : 'Compartilhar'}</span>
+                  </button>
+                  <button 
+                    onClick={() => setShowFilters(false)}
+                    className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+                    title="Esconder Filtros"
+                  >
+                    <PanelLeftClose className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
               
               <div className="p-4 space-y-4">
@@ -1712,6 +1916,26 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
               <div>
                 <div className="space-y-2">
+                <label className="block text-xs font-medium text-text opacity-70 mb-2">Campo de Data</label>
+                <div className="grid grid-cols-2 gap-1 mb-2">
+                  {(['date', 'createdAt'] as const).map((field) => (
+                    <button
+                      key={field}
+                      onClick={() => setDateField(field)}
+                      className={`py-1.5 rounded-md text-[10px] transition-all border font-bold uppercase ${
+                        dateField === field 
+                          ? 'bg-primary text-white border-primary shadow-sm' 
+                          : 'bg-transparent text-text opacity-70 border-cardBorder hover:bg-cardBorder/30'
+                      }`}
+                      style={{ 
+                        backgroundColor: dateField === field ? theme.primary : 'transparent',
+                        color: dateField === field ? '#fff' : theme.text 
+                      }}
+                    >
+                      {field === 'date' ? 'Vencimento' : 'Criação'}
+                    </button>
+                  ))}
+                </div>
                   <div className="flex items-center gap-2">
                     <input 
                       type="date" 
@@ -1831,6 +2055,14 @@ INSTRUÇÕES PARA SUA RESPOSTA:
               >
                 LIMPAR TODOS OS FILTROS
               </button>
+              {activeFiltersCount > 0 && (
+                <p
+                  className="text-[10px] font-bold mt-1 text-right"
+                  style={{ color: theme.text, opacity: 0.6 }}
+                >
+                  {activeFiltersCount} {activeFiltersCount === 1 ? 'filtro aplicado' : 'filtros aplicados'}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -2079,6 +2311,30 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                                 }`}
                               >
                                 COMPARAÇÃO
+                              </button>
+                            </div>
+
+                            {/* Date Field Toggle */}
+                            <div className="flex gap-1 border-2 rounded-xl p-1" style={{ borderColor: theme.cardBorder }}>
+                              <button
+                                onClick={() => setExpenseDateField('date')}
+                                className={`px-2 md:px-3 py-1 rounded-lg text-[9px] md:text-[10px] font-black transition-all uppercase ${
+                                  expenseDateField === 'date'
+                                    ? 'bg-accent text-white shadow-sm'
+                                    : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                }`}
+                              >
+                                Venc.
+                              </button>
+                              <button
+                                onClick={() => setExpenseDateField('createdAt')}
+                                className={`px-2 md:px-3 py-1 rounded-lg text-[9px] md:text-[10px] font-black transition-all uppercase ${
+                                  expenseDateField === 'createdAt'
+                                    ? 'bg-accent text-white shadow-sm'
+                                    : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                }`}
+                              >
+                                Criação
                               </button>
                             </div>
 
@@ -2422,7 +2678,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                         <table className="w-full text-left text-sm border-collapse">
                           <thead>
                             <tr className="bg-cardBorder bg-opacity-40" style={{ color: theme.text }}>
-                              <th onClick={() => handleSort('date')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Data {sortBy === 'date' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+                              <th onClick={() => handleSort('date')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>{dateColumnLabel} {sortBy === 'date' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
                               <th onClick={() => handleSort('description')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Descrição {sortBy === 'description' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
                               <th onClick={() => handleSort('category')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Categoria {sortBy === 'category' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
                               <th onClick={() => handleSort('paymentMethod')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Pagamento {sortBy === 'paymentMethod' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
@@ -2436,7 +2692,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                             {getSortedTransactions().map(t => (
                               <tr key={t.id} className={`text-text hover:bg-primary/5 transition-colors group ${t.status === 'deleted' ? 'opacity-50 grayscale-[0.5]' : ''}`}>
                                 <td className={`p-4 whitespace-nowrap border-r font-mono text-xs opacity-70 ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
-                                  {formatBrazilDate(t.date, 'dd/MM/yyyy')}
+                                  {formatBrazilDate(getTransactionDateSource(t), 'dd/MM/yyyy')}
                                 </td>
                                 <td className={`p-4 font-bold border-r ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
                                   <div className="flex items-center gap-2">
