@@ -198,6 +198,7 @@ const DEFAULT_LAYOUT: LayoutItem[] = [
   { id: 'payments', label: 'Distribuição por Pagamento', collapsed: false },
   { id: 'table', label: 'Planilha de Transações', collapsed: false },
   { id: 'price_evolution', label: 'Evolução de Preços', collapsed: false },
+  { id: 'discount_analysis', label: 'Análise de Descontos', collapsed: false },
 ];
 
 type PlaygroundFilterState = {
@@ -254,7 +255,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   const [activeTab, setActiveTab] = useState<'transactions' | 'savings'>('transactions');
   const [maximizedId, setMaximizedId] = useState<string | null>(null);
   // Using a new version key to reset layout to the simplified structure
-  const [layout, setLayout] = useLocalStorage<LayoutItem[]>('playground_layout_v6', DEFAULT_LAYOUT);
+  const [layout, setLayout] = useLocalStorage<LayoutItem[]>('playground_layout_v7', DEFAULT_LAYOUT);
   const [showFilters, setShowFilters] = useLocalStorage<boolean>('playground_show_filters', true);
   const tableRef = useRef<HTMLDivElement>(null);
   const incomeChartRef = useRef<any>(null);
@@ -262,7 +263,15 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
   const categoryChartRef = useRef<any>(null);
   const paymentChartRef = useRef<any>(null);
   const priceChartRef = useRef<any>(null);
+  const discountChartRef = useRef<any>(null);
   const maximizedChartRef = useRef<any>(null);
+
+  useEffect(() => {
+    setLayout(prev => {
+      if (prev.some(i => i.id === 'discount_analysis')) return prev;
+      return [...prev, { id: 'discount_analysis', label: 'Análise de Descontos', collapsed: false }];
+    });
+  }, []);
 
   const toggleAll = (chartRef: React.MutableRefObject<any>) => {
     const chart = chartRef.current;
@@ -956,6 +965,115 @@ INSTRUÇÕES PARA SUA RESPOSTA:
     };
   }, [selectedItem, allItems, theme.primary]);
 
+  const weekdaysPt = useMemo(() => (['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] as const), []);
+  const weekdaysPtMondayFirst = useMemo(() => (['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'] as const), []);
+
+  const discountEvents = useMemo(() => {
+    const events: { store: string; weekday: typeof weekdaysPt[number]; discount: number }[] = [];
+
+    filteredTransactions.forEach((t: any) => {
+      if (!t?.notes) return;
+
+      let notes: any = null;
+      if (typeof t.notes === 'object') {
+        notes = t.notes;
+      } else if (typeof t.notes === 'string') {
+        try {
+          notes = JSON.parse(t.notes);
+        } catch {
+          notes = null;
+        }
+      }
+
+      if (!notes || notes.source !== 'SEFAZ') return;
+
+      const items: any[] = Array.isArray(notes.items) ? notes.items : [];
+      const discountTotal = items.reduce((acc, item) => {
+        if (item?.description === '(-) DESCONTOS TOTAIS' && typeof item.unitPrice === 'number' && item.unitPrice < 0) {
+          return acc + Math.abs(item.unitPrice);
+        }
+        return acc;
+      }, 0);
+
+      if (discountTotal <= 0) return;
+
+      const createdAt = t.createdAt || t.date;
+      const weekday = weekdaysPt[parseLocalDate(createdAt).getDay()];
+      const store = typeof notes.store === 'string' && notes.store.trim() ? notes.store.trim() : 'Loja desconhecida';
+
+      events.push({ store, weekday, discount: discountTotal });
+    });
+
+    return events;
+  }, [filteredTransactions, weekdaysPt]);
+
+  const discountAnalysis = useMemo(() => {
+    const discountByWeekday: Record<string, number> = {};
+    const storeTotals: Record<string, { total: number; visits: number }> = {};
+    const comboTotals: Record<string, { store: string; weekday: string; total: number; visits: number }> = {};
+
+    let totalDiscount = 0;
+
+    discountEvents.forEach(e => {
+      totalDiscount += e.discount;
+      discountByWeekday[e.weekday] = (discountByWeekday[e.weekday] || 0) + e.discount;
+
+      if (!storeTotals[e.store]) storeTotals[e.store] = { total: 0, visits: 0 };
+      storeTotals[e.store].total += e.discount;
+      storeTotals[e.store].visits += 1;
+
+      const comboKey = `${e.store}__${e.weekday}`;
+      if (!comboTotals[comboKey]) comboTotals[comboKey] = { store: e.store, weekday: e.weekday, total: 0, visits: 0 };
+      comboTotals[comboKey].total += e.discount;
+      comboTotals[comboKey].visits += 1;
+    });
+
+    const storeRanking = Object.entries(storeTotals)
+      .map(([store, v]) => ({
+        store,
+        total: v.total,
+        visits: v.visits,
+        avg: v.total / Math.max(1, v.visits),
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    const bestCombos = Object.values(comboTotals)
+      .map(v => ({
+        store: v.store,
+        weekday: v.weekday,
+        total: v.total,
+        visits: v.visits,
+        avg: v.total / Math.max(1, v.visits),
+      }))
+      .sort((a, b) => b.avg - a.avg)
+      .slice(0, 5);
+
+    return {
+      totalDiscount,
+      discountByWeekday,
+      storeRanking,
+      bestCombos,
+      visits: discountEvents.length,
+      uniqueStores: Object.keys(storeTotals).length,
+    };
+  }, [discountEvents]);
+
+  const discountByWeekdayChartData = useMemo(() => {
+    const labels = [...weekdaysPtMondayFirst];
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Descontos',
+          data: labels.map(d => discountAnalysis.discountByWeekday[d] || 0),
+          backgroundColor: theme.primary + '66',
+          borderColor: theme.primary,
+          borderWidth: 2,
+        },
+      ],
+    };
+  }, [discountAnalysis.discountByWeekday, theme.primary, weekdaysPtMondayFirst]);
+
   const toggleCategory = (cat: string) => {
     setSelectedCategories(prev => 
       prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
@@ -1534,6 +1652,119 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                   ) : (
                   <div className="h-full flex items-center justify-center text-text opacity-40 italic text-xl">
                     Nenhum item selecionado para evolução de preços
+                  </div>
+                )}
+              </div>
+            )}
+            {maximizedId === 'discount_analysis' && (
+              <div className="space-y-10">
+                {discountEvents.length > 0 ? (
+                  <>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs font-bold">
+                        Total: {formatCurrency(discountAnalysis.totalDiscount)}
+                      </span>
+                      <span className="px-3 py-1 bg-cardBorder/40 text-text rounded-full text-xs font-bold">
+                        Visitas: {discountAnalysis.visits}
+                      </span>
+                      <span className="px-3 py-1 bg-cardBorder/40 text-text rounded-full text-xs font-bold">
+                        Lojas: {discountAnalysis.uniqueStores}
+                      </span>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between gap-4 mb-3">
+                        <div className="text-sm font-black text-text uppercase tracking-wide">Descontos por dia da semana</div>
+                      </div>
+                      <div className="h-[520px]">
+                        <Bar
+                          ref={maximizedChartRef}
+                          data={discountByWeekdayChartData}
+                          options={{
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                              y: {
+                                ticks: {
+                                  color: theme.text,
+                                  font: { size: 12 },
+                                  callback: (value) => formatCurrency(value as number),
+                                },
+                                grid: { color: theme.cardBorder },
+                              },
+                              x: {
+                                ticks: { color: theme.text, font: { size: 12 } },
+                                grid: { color: theme.cardBorder },
+                              },
+                            },
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                      <div className="rounded-2xl border overflow-hidden" style={{ borderColor: theme.cardBorder }}>
+                        <div className="px-5 py-4 border-b font-black text-text uppercase tracking-wide text-xs bg-cardBorder bg-opacity-40" style={{ borderColor: theme.cardBorder }}>
+                          Ranking de lojas por desconto
+                        </div>
+                        <div className="overflow-auto max-h-[520px]">
+                          <table className="w-full text-left text-sm border-collapse">
+                            <thead>
+                              <tr className="bg-cardBorder bg-opacity-30" style={{ color: theme.text }}>
+                                <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Loja</th>
+                                <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Visitas</th>
+                                <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Desconto</th>
+                                <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Médio/visita</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
+                              {discountAnalysis.storeRanking.map(row => (
+                                <tr key={row.store} className="text-text hover:bg-primary/5 transition-colors">
+                                  <td className="p-4 font-bold">{row.store}</td>
+                                  <td className="p-4 text-right font-mono opacity-80">{row.visits}</td>
+                                  <td className="p-4 text-right font-black text-primary">{formatCurrency(row.total)}</td>
+                                  <td className="p-4 text-right font-bold opacity-90">{formatCurrency(row.avg)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border overflow-hidden" style={{ borderColor: theme.cardBorder }}>
+                        <div className="px-5 py-4 border-b font-black text-text uppercase tracking-wide text-xs bg-cardBorder bg-opacity-40" style={{ borderColor: theme.cardBorder }}>
+                          Melhor combinação loja + dia (top 5)
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-sm border-collapse">
+                            <thead>
+                              <tr className="bg-cardBorder bg-opacity-30" style={{ color: theme.text }}>
+                                <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Loja</th>
+                                <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Dia</th>
+                                <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Médio/visita</th>
+                                <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Visitas</th>
+                                <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Total</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
+                              {discountAnalysis.bestCombos.map(row => (
+                                <tr key={`${row.store}__${row.weekday}`} className="text-text hover:bg-primary/5 transition-colors">
+                                  <td className="p-4 font-bold">{row.store}</td>
+                                  <td className="p-4 font-mono opacity-80">{row.weekday}</td>
+                                  <td className="p-4 text-right font-black text-primary">{formatCurrency(row.avg)}</td>
+                                  <td className="p-4 text-right font-mono opacity-80">{row.visits}</td>
+                                  <td className="p-4 text-right font-bold opacity-90">{formatCurrency(row.total)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="h-full min-h-[500px] flex items-center justify-center text-text opacity-40 italic text-xl">
+                    Nenhum desconto SEFAZ encontrado com os filtros atuais
                   </div>
                 )}
               </div>
@@ -2609,6 +2840,122 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                                 ? "Escolha um produto no menu acima para visualizar a evolução do preço ao longo dos meses." 
                                 : "Você ainda não possui itens itemizados em suas notas (Use o QR Code no mercado!)."}</p>
                             </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+
+              case 'discount_analysis':
+                return (
+                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                    {renderCardHeader(item.id, item.label, <Sparkles className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(discountChartRef))}
+                    {!item.collapsed && (
+                      <div className="p-8 space-y-8">
+                        {discountEvents.length > 0 ? (
+                          <>
+                            <div className="flex flex-wrap gap-2">
+                              <span className="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs font-bold">
+                                Total: {formatCurrency(discountAnalysis.totalDiscount)}
+                              </span>
+                              <span className="px-3 py-1 bg-cardBorder/40 text-text rounded-full text-xs font-bold">
+                                Visitas: {discountAnalysis.visits}
+                              </span>
+                              <span className="px-3 py-1 bg-cardBorder/40 text-text rounded-full text-xs font-bold">
+                                Lojas: {discountAnalysis.uniqueStores}
+                              </span>
+                            </div>
+
+                            <div>
+                              <div className="text-xs font-black text-text uppercase tracking-wide mb-3">
+                                Descontos por dia da semana
+                              </div>
+                              <div className="h-64">
+                                <Bar
+                                  ref={discountChartRef}
+                                  data={discountByWeekdayChartData}
+                                  options={{
+                                    maintainAspectRatio: false,
+                                    plugins: { legend: { display: false } },
+                                    scales: {
+                                      y: {
+                                        ticks: {
+                                          color: theme.text,
+                                          callback: (value) => formatCurrency(value as number),
+                                        },
+                                        grid: { color: theme.cardBorder },
+                                      },
+                                      x: {
+                                        ticks: { color: theme.text },
+                                        grid: { color: theme.cardBorder },
+                                      },
+                                    },
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                              <div className="rounded-2xl border overflow-hidden" style={{ borderColor: theme.cardBorder }}>
+                                <div className="px-5 py-4 border-b font-black text-text uppercase tracking-wide text-xs bg-cardBorder bg-opacity-40" style={{ borderColor: theme.cardBorder }}>
+                                  Ranking de lojas por desconto
+                                </div>
+                                <div className="overflow-auto max-h-80">
+                                  <table className="w-full text-left text-sm border-collapse">
+                                    <thead>
+                                      <tr className="bg-cardBorder bg-opacity-30" style={{ color: theme.text }}>
+                                        <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Loja</th>
+                                        <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Visitas</th>
+                                        <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Desconto</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
+                                      {discountAnalysis.storeRanking.map(row => (
+                                        <tr key={row.store} className="text-text hover:bg-primary/5 transition-colors">
+                                          <td className="p-4 font-bold">{row.store}</td>
+                                          <td className="p-4 text-right font-mono opacity-80">{row.visits}</td>
+                                          <td className="p-4 text-right font-black text-primary">{formatCurrency(row.total)}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+
+                              <div className="rounded-2xl border overflow-hidden" style={{ borderColor: theme.cardBorder }}>
+                                <div className="px-5 py-4 border-b font-black text-text uppercase tracking-wide text-xs bg-cardBorder bg-opacity-40" style={{ borderColor: theme.cardBorder }}>
+                                  Melhor combinação loja + dia (top 5)
+                                </div>
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-left text-sm border-collapse">
+                                    <thead>
+                                      <tr className="bg-cardBorder bg-opacity-30" style={{ color: theme.text }}>
+                                        <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Loja</th>
+                                        <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Dia</th>
+                                        <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Médio/visita</th>
+                                        <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Visitas</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
+                                      {discountAnalysis.bestCombos.map(row => (
+                                        <tr key={`${row.store}__${row.weekday}`} className="text-text hover:bg-primary/5 transition-colors">
+                                          <td className="p-4 font-bold">{row.store}</td>
+                                          <td className="p-4 font-mono opacity-80">{row.weekday}</td>
+                                          <td className="p-4 text-right font-black text-primary">{formatCurrency(row.avg)}</td>
+                                          <td className="p-4 text-right font-mono opacity-80">{row.visits}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="h-80 flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2 border-2 border-dashed rounded-3xl" style={{ borderColor: theme.cardBorder }}>
+                            <Sparkles className="w-12 h-12 opacity-10" />
+                            <span>Nenhum desconto SEFAZ encontrado com os filtros atuais</span>
                           </div>
                         )}
                       </div>
