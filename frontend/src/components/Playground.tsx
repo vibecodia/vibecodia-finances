@@ -210,6 +210,7 @@ type PlaygroundFilterState = {
   statusFilter: 'all' | 'paid' | 'pending';
   showDeleted: boolean;
   dateField: 'date' | 'createdAt';
+  removedTransactionIds: string[];
 };
 
 const isValidYyyyMmDd = (value: string | null): value is string => {
@@ -239,6 +240,7 @@ const serializePlaygroundFiltersToSearch = (filters: PlaygroundFilterState): str
   if (filters.statusFilter !== 'all') sp.set('status', filters.statusFilter);
   if (filters.showDeleted) sp.set('excluidos', '1');
   if (filters.dateField !== 'date') sp.set('campoDat', filters.dateField);
+  if (filters.removedTransactionIds.length > 0) sp.set('removidos', filters.removedTransactionIds.join(','));
 
   return sp.toString();
 };
@@ -384,6 +386,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
     const status = sp.get('status');
     const excluidos = sp.get('excluidos');
     const campoDat = sp.get('campoDat');
+    const removidos = sp.get('removidos');
 
     if (isValidYyyyMmDd(de)) setStartDate(de);
     if (isValidYyyyMmDd(ate)) setEndDate(ate);
@@ -394,6 +397,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
     if (status === 'all' || status === 'paid' || status === 'pending') setStatusFilter(status);
     if (excluidos !== null) setShowDeleted(excluidos === '1' || excluidos === 'true');
     if (campoDat === 'createdAt') setDateField('createdAt');
+    if (removidos !== null) setRemovedTransactionIds(parseCsvParam(removidos));
   }, [location.search]);
 
   useEffect(() => {
@@ -412,6 +416,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
       statusFilter,
       showDeleted,
       dateField,
+      removedTransactionIds,
     });
 
     const currentSearchString = location.search.startsWith('?') ? location.search.slice(1) : location.search;
@@ -433,6 +438,8 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
     typeFilter,
     statusFilter,
     showDeleted,
+    dateField,
+    removedTransactionIds,
     location.pathname,
     location.search,
     navigate,
@@ -449,6 +456,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) =
       statusFilter,
       showDeleted,
       dateField,
+      removedTransactionIds,
     });
 
     const currentSearchString = location.search.startsWith('?') ? location.search.slice(1) : location.search;
@@ -2050,6 +2058,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                   setStatusFilter('all');
                   setStartDate(format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
                   setEndDate(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
+                  setDateField('date');
                 }}
                 className="w-full py-2.5 text-xs text-primary font-bold border border-primary rounded-xl hover:bg-primary hover:text-white transition-all mt-2 shadow-sm"
               >
