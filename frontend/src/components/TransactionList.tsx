@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { Transaction } from '../types';
-import { attachSwipeNavigation, formatBrazilDate, formatCurrency, formatPaymentMethod, filterTransactionsByMonth, getCurrentBrazilDate, getDaysUntilDue, isTransactionOverdue, parseLocalDate, requestSwipeRouteTransition } from '../utils/helpers';
+import { formatBrazilDate, formatCurrency, formatPaymentMethod, filterTransactionsByMonth, getCurrentBrazilDate, getDaysUntilDue, isTransactionOverdue, parseLocalDate } from '../utils/helpers';
 
 import ConfirmationModal from './ConfirmationModal';
 import DailyDateSlider from './DailyDateSlider';
@@ -31,7 +31,6 @@ const TransactionList: React.FC<TransactionListProps> = ({
   onDelete,
   onUpdatePaymentStatus
 }) => {
-  const containerRef = React.useRef<HTMLDivElement>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [transactionToReplicate, setTransactionToReplicate] = useState<Transaction | null>(null);
@@ -101,15 +100,6 @@ const TransactionList: React.FC<TransactionListProps> = ({
       setShowDeleted(false);
     }
   }, [deletedTransactions.length, showDeleted]);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    return attachSwipeNavigation(el, {
-      onSwipe: (direction) => requestSwipeRouteTransition('/', direction),
-    });
-  }, []);
 
   const toggleNotes = (id: string) => {
     setExpandedNotes(prev => ({
@@ -397,7 +387,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
   };
 
   return (
-    <div ref={containerRef} className="space-y-4">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
@@ -634,9 +624,14 @@ const TransactionList: React.FC<TransactionListProps> = ({
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className={`font-medium text-text truncate ${isDeleted ? 'line-through' : ''}`}>
-                        {transaction.description}
-                      </h3>
+                      <div
+                        className="border shadow-sm rounded-lg px-3 py-1 min-w-0 flex-1"
+                        style={{ backgroundColor: theme.primary + '10', borderColor: theme.cardBorder + '80' }}
+                      >
+                        <h3 className={`font-bold text-base text-text break-words ${isDeleted ? 'line-through' : ''}`}>
+                          {transaction.description}
+                        </h3>
+                      </div>
                       {!isDeleted && (
                         <button
                           onClick={() => handleUpdatePaymentStatusAndAnimate(transaction.id, !transaction.isPaid)}

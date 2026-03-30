@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { format, isToday, differenceInMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { X, Clock, RefreshCw, Plus, Sparkles, Trash2 } from 'lucide-react';
@@ -49,8 +50,10 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
 
   const strokeDashoffset = circumference - (timerProgress / 100) * circumference;
 
-  return (
-    <div className={`fixed bottom-8 right-8 z-[100] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] transform ${
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className={`fixed bottom-4 right-8 z-[100] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] transform ${
       isVisible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-12 opacity-0 scale-95 pointer-events-none'
     }`}>
       <div 
@@ -163,7 +166,7 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
         </div>
       </div>
     </div>
-  );
+  , document.body);
 };
 
 export default RecentTransactionsFloatingCard;
