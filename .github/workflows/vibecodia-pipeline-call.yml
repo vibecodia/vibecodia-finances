@@ -62,9 +62,7 @@ jobs:
 
   detect-change-type:
     needs: check-conflicts
-    if: |
-      needs.check-conflicts.outputs.mergeable == 'true' &&
-      startsWith(github.head_ref, 'feature/')
+    if: needs.check-conflicts.outputs.mergeable == 'true'
     runs-on: ubuntu-latest
     outputs:
       app: ${{ steps.detect.outputs.app }}
@@ -128,14 +126,33 @@ jobs:
           else
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
+      
+      - name: Detectar tipo de versão pela branch
+        id: semver
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          echo "Branch: $BRANCH"
 
-      - name: Release app version
+          case "$BRANCH" in
+            feature/*) TYPE="minor" ;;
+            fix/*) TYPE="patch" ;;
+            breaking/*) TYPE="major" ;;
+            *) TYPE="patch" ;;
+          esac
+          echo "type=$TYPE" >> $GITHUB_OUTPUT
+          echo "Tipo semver: $TYPE"
+
+      - name: Bump version
         if: |
           needs.detect-change-type.outputs.app == 'true' &&
           steps.tag-check.outputs.exists == 'false'
-        run: npm run release -- --ci
-        env:
-          MY_PAT: ${{ secrets.MY_PAT }}
+        run: npm version ${{ steps.semver.outputs.type }} -m "release: %s"
+      
+      - name: Enviar tag e commit
+        if: |
+          needs.detect-change-type.outputs.app == 'true' &&
+          steps.tag-check.outputs.exists == 'false'
+        run: git push origin HEAD --tags
 
       - name: Release build version
         if: |
