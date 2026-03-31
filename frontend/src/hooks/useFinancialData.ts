@@ -53,6 +53,18 @@ export const useFinancialData = () => {
     }
   };
 
+  const refreshGoals = async () => {
+    if (isInitializing || !pin) return;
+    try {
+      const goalsRes = await fetch(`${API_BASE_URL}/goals`, { headers });
+      if (!goalsRes.ok) return;
+      const goalsData = await goalsRes.json();
+      setSavingsGoals(goalsData);
+    } catch {
+      return;
+    }
+  };
+
   const calculateMonthlyBalances = useMemo(() => {
     return () => {
       const now = getCurrentBrazilDate();
@@ -126,9 +138,21 @@ export const useFinancialData = () => {
           createdAt: getCurrentBrazilDate().toISOString(),
         }),
       });
-      if (!response.ok) throw new Error('Failed to add transaction');
+      if (!response.ok) {
+        let message = 'Falha ao adicionar transação';
+        try {
+          const body = await response.json();
+          if (body?.message) message = body.message;
+        } catch {
+          message = 'Falha ao adicionar transação';
+        }
+        throw new Error(message);
+      }
       const newTransaction = await response.json();
       setTransactions(prev => [newTransaction, ...prev]);
+      if (newTransaction?.category === 'Aporte' && newTransaction?.savingsGoalId) {
+        refreshGoals();
+      }
       return newTransaction;
     } catch (error) {
       console.error('Error adding transaction:', error);
@@ -193,6 +217,9 @@ export const useFinancialData = () => {
       setTransactions(prev => prev.map(transaction =>
         transaction.id === id ? updatedTransaction : transaction
       ));
+      if (updatedTransaction?.category === 'Aporte' && updatedTransaction?.savingsGoalId) {
+        fetchData();
+      }
     } catch (error) {
       console.error('Error updating payment status:', error);
     }

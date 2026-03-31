@@ -284,6 +284,7 @@ export const calculateGoalsImpactForMonth = (savingsGoals: SavingsGoal[], date: 
       .filter(contribution => {
         // Ignora contribuições deletadas
         if (contribution.status === 'deleted') return false;
+        if (contribution.isPaid === false) return false;
         
         const contributionDate = parseLocalDate(contribution.date);
         return isWithinInterval(contributionDate, { start, end });

@@ -1,4 +1,4 @@
-import { Target, Plus, Trash2, Edit3, Calendar, TrendingUp, History, X, ChevronDown, RotateCcw } from 'lucide-react';
+import { Target, Plus, Trash2, Edit3, Calendar, TrendingUp, History, X, ChevronDown, RotateCcw, Check } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
 import { useTheme } from '../contexts/ThemeContext';
@@ -17,6 +17,7 @@ interface SavingsGoalsProps {
   onAddContribution: (goalId: string, amount: number, date?: string) => void;
   onUpdateContribution: (goalId: string, contributionId: string, updates: Partial<SavingsContribution>) => void;
   onDeleteContribution: (goalId: string, contributionId: string) => void;
+  onUpdatePaymentStatus: (transactionId: string, isPaid: boolean) => void;
 }
 
 const SavingsGoals: React.FC<SavingsGoalsProps> = ({ 
@@ -26,7 +27,8 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
   onDelete, 
   onAddContribution,
   onUpdateContribution,
-  onDeleteContribution
+  onDeleteContribution,
+  onUpdatePaymentStatus
 }) => {
   const { theme } = useTheme();
   const [showForm, setShowForm] = useState(false);
@@ -216,6 +218,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 onAddContribution={onAddContribution}
                 onUpdateContribution={onUpdateContribution}
                 onDeleteContribution={onDeleteContribution}
+                onUpdatePaymentStatus={onUpdatePaymentStatus}
                 showDeleted={showDeleted}
               />
             );
@@ -344,6 +347,7 @@ interface GoalCardProps {
   onAddContribution: (goalId: string, amount: number, date?: string) => void;
   onUpdateContribution: (goalId: string, contributionId: string, updates: Partial<SavingsContribution>) => void;
   onDeleteContribution: (goalId: string, contributionId: string) => void;
+  onUpdatePaymentStatus: (transactionId: string, isPaid: boolean) => void;
   showDeleted?: boolean;
 }
 
@@ -357,6 +361,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
   onAddContribution,
   onUpdateContribution,
   onDeleteContribution,
+  onUpdatePaymentStatus,
   showDeleted = false
 }) => {
   const { theme } = useTheme();
@@ -569,7 +574,14 @@ const GoalCard: React.FC<GoalCardProps> = ({
                           <span className={cn("text-sm text-text opacity-90 truncate", contribution.status === 'deleted' && "line-through opacity-60")}>
                             {formatBrazilDate(new Date(contribution.date))}
                           </span>
-                          <span className="text-[10px] font-bold text-primary/70 uppercase tracking-wider">Aporte</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-primary/70 uppercase tracking-wider">Aporte</span>
+                            {contribution.isPaid === false && (
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#FFE0B2] text-black">
+                                pending
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <span className={cn("font-medium text-primary flex-shrink-0", contribution.status === 'deleted' && "text-accent line-through opacity-60")}>
                           +{formatCurrency(contribution.amount)}
@@ -583,6 +595,15 @@ const GoalCard: React.FC<GoalCardProps> = ({
                     </div>
                     {!isGoalDeleted && contribution.status !== 'deleted' && (
                       <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                        {contribution.isPaid === false && contribution.transactionId && (
+                          <button
+                            onClick={() => onUpdatePaymentStatus(contribution.transactionId!, true)}
+                            className="p-1 rounded transition-colors text-text hover:text-primary hover:bg-cardBorder"
+                            title="Marcar como pago"
+                          >
+                            <Check className="w-3 h-3" />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleEditContribution(contribution)}
                           className="p-1 rounded transition-colors text-text hover:text-primary hover:bg-cardBorder"
@@ -621,7 +642,14 @@ const GoalCard: React.FC<GoalCardProps> = ({
                   <span className={cn("text-text opacity-90 truncate", contribution.status === 'deleted' && "line-through opacity-60")}>
                     {formatBrazilDate(new Date(contribution.date))}
                   </span>
-                  <span className="text-[9px] font-bold text-primary/70 uppercase tracking-wider">Aporte</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-bold text-primary/70 uppercase tracking-wider">Aporte</span>
+                    {contribution.isPaid === false && (
+                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#FFE0B2] text-black">
+                        pending
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <span className={cn("font-medium text-primary flex-shrink-0", contribution.status === 'deleted' && "text-accent line-through opacity-60")}>
                   +{formatCurrency(contribution.amount)}

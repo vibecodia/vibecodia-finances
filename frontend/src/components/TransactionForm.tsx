@@ -1,12 +1,12 @@
 import { addMonths } from 'date-fns';
 import { Plus, X, Calendar, CreditCard, Calculator, Wallet, Receipt } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 import { useTheme } from '../contexts/ThemeContext';
 import { useCategories } from '../hooks/useCategories';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
-import { Transaction, PaymentMethod } from '../types';
-import { getBrazilDateString } from '../utils/helpers';
+import { SavingsGoal, Transaction, PaymentMethod } from '../types';
+import { formatCurrency, getBrazilDateString } from '../utils/helpers';
 
 
 import ImageUpload from './ImageUpload';
@@ -16,21 +16,25 @@ interface TransactionFormProps {
   type: 'expense' | 'income';
   transaction?: Transaction | null;
   replicateTransaction?: Transaction | null; // New prop for replication
+  savingsGoals?: SavingsGoal[];
+  submitError?: string | null;
   onSubmit: (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onClose: () => void;
 }
 
-const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, replicateTransaction, onSubmit, onClose }) => {
+const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, replicateTransaction, savingsGoals = [], submitError, onSubmit, onClose }) => {
   const { theme } = useTheme();
   const { expenseCategories, incomeCategories } = useCategories();
   const { paymentMethods } = usePaymentMethods();
   
   const defaultPaymentMethod = paymentMethods.includes('PIX') ? 'PIX' : (paymentMethods[0] || '');
+  const submitErrorRef = useRef<HTMLDivElement | null>(null);
 
   const [formData, setFormData] = useState<{
     amount: string;
     description: string;
     category: string;
+    savingsGoalId: string;
     date: string;
     dueDate: string;
     isPaid: boolean;
@@ -41,6 +45,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     amount: '',
     description: '',
     category: '',
+    savingsGoalId: '',
     date: getBrazilDateString(),
     dueDate: getBrazilDateString(),
     isPaid: type === 'expense' ? false : false, // Receitas e despesas são marcadas como não pagas por padrão
@@ -53,6 +58,14 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   const [calculatorInput, setCalculatorInput] = useState('');
   const [currentSum, setCurrentSum] = useState(0);
 
+  useEffect(() => {
+    if (!submitError) return;
+    window.setTimeout(() => {
+      submitErrorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      submitErrorRef.current?.focus({ preventScroll: true });
+    }, 0);
+  }, [submitError]);
+
   // Populate form when editing
   useEffect(() => {
     if (transaction) {
@@ -60,6 +73,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         amount: transaction.amount.toString(),
         description: transaction.description,
         category: transaction.category,
+        savingsGoalId: transaction.savingsGoalId || '',
         date: getBrazilDateString(new Date(transaction.date)),
         dueDate: transaction.dueDate ? getBrazilDateString(new Date(transaction.dueDate)) : '',
         isPaid: transaction.isPaid,
@@ -79,6 +93,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         amount: replicateTransaction.amount.toString(),
         description: replicateTransaction.description,
         category: replicateTransaction.category,
+        savingsGoalId: replicateTransaction.savingsGoalId || '',
         date: nextMonthDateString, // Next month's date for replication
         dueDate: nextMonthDueDateString, // Next month's due date for replication
         isPaid: false, // Replicated transactions are initially unpaid
@@ -92,6 +107,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         amount: '',
         description: '',
         category: '',
+        savingsGoalId: '',
         date: getBrazilDateString(),
         dueDate: getBrazilDateString(),
         isPaid: type === 'expense' ? false : false,
@@ -105,11 +121,18 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   }, [transaction, replicateTransaction, type, defaultPaymentMethod]);
 
   const categories = type === 'expense' ? expenseCategories : incomeCategories;
+  const showGoalSelect = type === 'expense' && formData.category === 'Aporte';
+  const activeGoals = savingsGoals
+    .filter(g => (g.status || 'active') !== 'deleted')
+    .filter(g => (g.currentAmount || 0) < (g.targetAmount || 0));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.amount || !formData.description || !formData.category) {
+      return;
+    }
+    if (showGoalSelect && !formData.savingsGoalId) {
       return;
     }
 
@@ -132,6 +155,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
       recurrence: formData.recurrence,
       paymentMethod: type === 'expense' ? formData.paymentMethod : undefined,
       notes: formData.notes,
+      savingsGoalId: showGoalSelect ? formData.savingsGoalId : undefined,
     });
   };
 
@@ -154,6 +178,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     setFormData(prev => ({
       ...prev,
       [name]: inputType === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
+      ...(name === 'category' && value !== 'Aporte' ? { savingsGoalId: '' } : {}),
     }));
   };
 
@@ -192,6 +217,18 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {submitError && (
+            <div
+              ref={submitErrorRef}
+              tabIndex={-1}
+              role="alert"
+              aria-live="assertive"
+              className="rounded-xl border px-4 py-3 text-sm font-medium outline-none"
+              style={{ borderColor: theme.accent, color: theme.text }}
+            >
+              {submitError}
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-text mb-2">
               Valor (R$)
@@ -291,6 +328,32 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
               ))}
             </select>
           </div>
+
+          {showGoalSelect && (
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">
+                Meta para o aporte
+              </label>
+              <select
+                name="savingsGoalId"
+                value={formData.savingsGoalId}
+                onChange={handleChange}
+                className="w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
+                required
+              >
+                <option value="">Selecione uma meta</option>
+                {activeGoals.map(goal => {
+                  const id = goal.id || goal._id || '';
+                  return (
+                    <option key={id} value={id}>
+                      {goal.name}: {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          )}
 
           {type === 'expense' && (
             <div>

@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 
 import { useTheme } from '../contexts/ThemeContext';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
-import { Transaction } from '../types';
+import { SavingsGoal, Transaction } from '../types';
 import { formatBrazilDate, formatCurrency, formatPaymentMethod, filterTransactionsByMonth, getCurrentBrazilDate, getDaysUntilDue, isTransactionOverdue, parseLocalDate } from '../utils/helpers';
 
 import ConfirmationModal from './ConfirmationModal';
@@ -17,6 +17,7 @@ import TransactionForm from './TransactionForm';
 interface TransactionListProps {
   type: 'expense' | 'income';
   transactions: Transaction[];
+  savingsGoals?: SavingsGoal[];
   onAdd: (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Transaction>;
   onUpdate: (id: string, updates: Partial<Transaction>) => void;
   onDelete: (id: string) => void;
@@ -26,6 +27,7 @@ interface TransactionListProps {
 const TransactionList: React.FC<TransactionListProps> = ({
   type,
   transactions,
+  savingsGoals = [],
   onAdd,
   onUpdate,
   onDelete,
@@ -51,6 +53,8 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [searchTerm, setSearchTerm] = useState(''); // Re-introduce searchTerm state
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
   const [showDeleted, setShowDeleted] = useState(false);
+  const [apporteMessage, setApporteMessage] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Filter and split transactions early so useEffect and body can use them
   const allMonthTransactions = filterTransactionsByMonth(
@@ -239,19 +243,31 @@ const TransactionList: React.FC<TransactionListProps> = ({
     setShowForm(false);
     setEditingTransaction(null);
     setTransactionToReplicate(null);
+    setFormError(null);
   };
 
   const handleSubmit = async (transactionData: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (editingTransaction) {
-      await onUpdate(editingTransaction.id, transactionData);
-    } else {
-      const newTransaction = await onAdd(transactionData);
-      // Trigger animation for newly added transaction
-      if (newTransaction && newTransaction.id) {
-        setAnimatedTransactionId(newTransaction.id);
+    setFormError(null);
+    try {
+      if (editingTransaction) {
+        await onUpdate(editingTransaction.id, transactionData);
+      } else {
+        const newTransaction = await onAdd(transactionData);
+        if (newTransaction && newTransaction.id) {
+          setAnimatedTransactionId(newTransaction.id);
+        }
+        if (newTransaction?.category === 'Aporte' && newTransaction?.savingsGoalId) {
+          const goal = savingsGoals.find(g => (g.id || g._id) === newTransaction.savingsGoalId);
+          const goalLabel = goal ? goal.name : 'meta';
+          setApporteMessage(`Aporte vinculado à ${goalLabel}.`);
+          window.setTimeout(() => setApporteMessage(null), 4000);
+        }
       }
+      handleCloseForm();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Não foi possível salvar a transação.';
+      setFormError(message);
     }
-    handleCloseForm();
   };
 
   const openDeleteModal = (id: string) => {
@@ -388,6 +404,11 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
   return (
     <div className="space-y-4">
+      {apporteMessage && (
+        <div className="rounded-2xl border-2 p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}>
+          <div className="font-medium">{apporteMessage}</div>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
@@ -432,7 +453,10 @@ const TransactionList: React.FC<TransactionListProps> = ({
           </p>
         </div>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => {
+            setFormError(null);
+            setShowForm(true);
+          }}
           className={`p-3 rounded-full text-white shadow-lg transition-all hover:scale-105 flex-shrink-0 bg-primary hover:bg-secondary`}
         >
           <Plus className="w-5 h-5" />
@@ -775,6 +799,8 @@ const TransactionList: React.FC<TransactionListProps> = ({
           type={type}
           transaction={editingTransaction}
           replicateTransaction={transactionToReplicate}
+          savingsGoals={savingsGoals}
+          submitError={formError}
           onSubmit={handleSubmit}
           onClose={handleCloseForm}
         />
