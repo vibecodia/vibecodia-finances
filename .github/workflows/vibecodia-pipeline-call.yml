@@ -131,11 +131,11 @@ jobs:
           PR_BODY="${{ github.event.pull_request.body }}"
           BRANCH="${{ github.head_ref }}"
 
-          if echo "$PR_BODY" | grep -qiE "breaking change"; then
+          if echo "$PR_BODY" | grep -qiE "breaking change|BREAKING CHANGE"; then
             TYPE="major"
           else
             case "$BRANCH" in
-              feat/*)    TYPE="minor" ;;
+              feature/*)    TYPE="minor" ;;
               fix/*)     TYPE="patch" ;;
               hotfix/*)  TYPE="patch" ;;
               chore/*)   TYPE="patch" ;;
