@@ -1,13 +1,17 @@
-name: CI Feature & Auto PR
+name: CI & Auto PR
 on:
   push:
     branches:
       - 'feature/*'
       - 'fix/*'
       - 'chore/*'
+      - 'hotfix/*'
+      - 'release/*'
+
 permissions:
   contents: write
   pull-requests: write
+
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -29,11 +33,24 @@ jobs:
         with:
           fetch-depth: 2
 
+      - name: Detectar tipo de branch
+        id: branch-type
+        run: |
+          BRANCH="${{ github.ref_name }}"
+
+          if [[ "$BRANCH" == release/* ]]; then
+            echo "type=release" >> $GITHUB_OUTPUT
+          else
+            echo "type=feature" >> $GITHUB_OUTPUT
+          fi
+
       - name: Verificar alterações relevantes
+        if: steps.branch-type.outputs.type == 'feature'
         id: check
         run: |
           CHANGED=$(git diff --name-only HEAD~1 HEAD)
-          echo "$CHANGED"
+          echo "Arquivos alterados: $CHANGED"
+
           if echo "$CHANGED" | grep -qE '^(frontend|backend|infra/docker)/'; then
             echo "relevant=true" >> $GITHUB_OUTPUT
           else
@@ -41,21 +58,45 @@ jobs:
           fi
 
       - name: Sem alterações relevantes
-        if: steps.check.outputs.relevant == 'false'
+        if: steps.branch-type.outputs.type == 'feature' && steps.check.outputs.relevant == 'false'
         run: |
           echo "⚠️ Nenhuma alteração em frontend/, backend/ ou infra/docker/."
-          echo "O PR automático não será criado e nenhum deploy será disparado no servidor."
+          echo "PR automático não será criado."
 
-      - name: Create Pull Request
-        if: steps.check.outputs.relevant == 'true'
+      - name: PR para develop (feature/fix/chore/hotfix)
+        if: steps.branch-type.outputs.type == 'feature' && steps.check.outputs.relevant == 'true'
         env:
           GH_TOKEN: ${{ secrets.MY_PAT }}
         run: |
-          PR_EXISTS=$(gh pr list --head ${{ github.ref_name }} --base develop --json number --jq '.[0].number')
+          BRANCH="${{ github.ref_name }}"
+          PR_EXISTS=$(gh pr list --head "$BRANCH" --base develop --json number --jq '.[0].number')
+
           if [ -z "$PR_EXISTS" ]; then
             gh pr create \
               --base develop \
-              --head ${{ github.ref_name }} \
-              --title "PR Automático: ${{ github.ref_name }}" \
-              --body "PR gerado automaticamente após sucesso do CI na branch de feature."
+              --head "$BRANCH" \
+              --title "PR: $BRANCH" \
+              --body "PR gerado automaticamente após CI na branch $BRANCH."
+            echo "✅ PR criado: $BRANCH → develop"
+          else
+            echo "ℹ️ PR já existe (#$PR_EXISTS), nada a fazer."
+          fi
+
+      - name: PR para main (release/*)
+        if: steps.branch-type.outputs.type == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.MY_PAT }}
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          PR_EXISTS=$(gh pr list --head "$BRANCH" --base main --json number --jq '.[0].number')
+
+          if [ -z "$PR_EXISTS" ]; then
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "Release: $BRANCH" \
+              --body "PR de release gerado automaticamente. BREAKING CHANGE."
+            echo "✅ PR criado: $BRANCH → main"
+          else
+            echo "ℹ️ PR já existe (#$PR_EXISTS), nada a fazer."
           fi
