@@ -105,6 +105,7 @@ jobs:
 
   release:
     needs: detect-change-type
+    if: needs.detect-change-type.result == 'success'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -143,7 +144,9 @@ jobs:
         id: tag-check
         run: |
           git fetch --tags
-          NEXT_TAG=$(npm version "${{ steps.semver.outputs.type }}" --dry-run | tail -n 1 | tr -d '\r')
+          npm version "${{ steps.semver.outputs.type }}" --no-git-tag-version
+          NEXT_TAG="v$(node -p "require('./package.json').version")"
+          git checkout -- package.json package-lock.json
           echo "next_tag=$NEXT_TAG" >> $GITHUB_OUTPUT
           if git tag | grep -q "^${NEXT_TAG}$"; then
             echo "exists=true" >> $GITHUB_OUTPUT
@@ -152,22 +155,16 @@ jobs:
           fi
 
       - name: Bump version
-        if: |
-          needs.detect-change-type.outputs.app == 'true' &&
-          steps.tag-check.outputs.exists == 'false'
+        if: needs.detect-change-type.outputs.app == 'true' && steps.tag-check.outputs.exists == 'false'
         run: |
           npm version "${{ steps.semver.outputs.type }}" -m "release: %s"
       
       - name: Enviar tag e commit
-        if: |
-          needs.detect-change-type.outputs.app == 'true' &&
-          steps.tag-check.outputs.exists == 'false'
+        if: needs.detect-change-type.outputs.app == 'true' && steps.tag-check.outputs.exists == 'false'
         run: git push origin HEAD --tags
 
       - name: Release build version
-        if: |
-          needs.detect-change-type.outputs.build == 'true' &&
-          needs.detect-change-type.outputs.app == 'false'
+        if: needs.detect-change-type.outputs.build == 'true' && needs.detect-change-type.outputs.app == 'false'
         run: |
           CURRENT=$(node -p "require('./package.json').version")
           BUILD_NUM=$(git tag | grep '^build-' | wc -l)
