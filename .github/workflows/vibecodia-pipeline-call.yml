@@ -76,7 +76,15 @@ jobs:
       - name: Detectar tipo de mudança
         id: detect
         run: |
-          CHANGED=$(git diff --name-only origin/develop...HEAD)
+          BASE_REF="${{ github.base_ref }}"
+          if [ -z "$BASE_REF" ]; then
+            BASE_REF="develop"
+          fi
+
+          echo "Base ref: $BASE_REF"
+          git fetch origin "$BASE_REF:refs/remotes/origin/$BASE_REF" --depth=1
+
+          CHANGED=$(git diff --name-only "origin/$BASE_REF"...HEAD)
           echo "Arquivos alterados:"
           echo "$CHANGED"
 
@@ -116,17 +124,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Verificar se tag app já existe
-        id: tag-check
-        run: |
-          git fetch --tags
-          VERSION=$(node -p "require('./package.json').version")
-          if git tag | grep -q "^v$VERSION$"; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-      
       - name: Detectar tipo de versão pela branch
         id: semver
         run: |
@@ -141,6 +138,18 @@ jobs:
           esac
           echo "type=$TYPE" >> $GITHUB_OUTPUT
           echo "Tipo semver: $TYPE"
+
+      - name: Verificar se próxima tag app já existe
+        id: tag-check
+        run: |
+          git fetch --tags
+          NEXT_TAG=$(npm version "${{ steps.semver.outputs.type }}" --dry-run | tail -n 1 | tr -d '\r')
+          echo "next_tag=$NEXT_TAG" >> $GITHUB_OUTPUT
+          if git tag | grep -q "^${NEXT_TAG}$"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Bump version
         if: |
