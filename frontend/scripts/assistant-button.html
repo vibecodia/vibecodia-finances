@@ -1,0 +1,183 @@
+<script src="vibecodia-assist.min.js"></script>
+<script>
+(function () {
+  const OriginalChat = window.VibeCodiaChat;
+
+  class VibeCodiaChatWithVoice extends OriginalChat {
+    constructor(options = {}) {
+      super(options);
+      this.initVoice();
+      this.initStopVoice();
+    }
+
+    // 🎤 Botão de microfone
+    initVoice() {
+      this.voiceBtn = document.createElement("button");
+      this.voiceBtn.textContent = "🎤";
+      this.voiceBtn.style.marginLeft = "10px";
+      this.voiceBtn.style.border = "none";
+      this.voiceBtn.style.background = "transparent";
+      this.voiceBtn.style.fontSize = "18px";
+      this.voiceBtn.style.cursor = "pointer";
+      this.voiceBtn.style.transition = "all 0.3s ease";
+
+      // Animação pulsante
+      const style = document.createElement("style");
+      style.textContent = `
+        @keyframes pulse {
+          0% { transform: scale(1); box-shadow: 0 0 5px rgba(233,30,99,0.5); }
+          50% { transform: scale(1.1); box-shadow: 0 0 15px rgba(233,30,99,0.8); }
+          100% { transform: scale(1); box-shadow: 0 0 5px rgba(233,30,99,0.5); }
+        }
+        .listening { animation: pulse 1s infinite; }
+      `;
+      document.head.appendChild(style);
+
+      this.chatModal
+        .querySelector(".vibecodia-chat-input-container")
+        .appendChild(this.voiceBtn);
+
+      if ("webkitSpeechRecognition" in window) {
+        this.recognition = new webkitSpeechRecognition();
+        this.recognition.lang = "pt-BR";
+        this.recognition.continuous = false;
+        this.recognition.interimResults = false;
+
+        let resultText = "";
+
+        this.recognition.onstart = () => {
+          this.voiceBtn.classList.add("listening");
+        };
+
+        this.recognition.onresult = (event) => {
+          resultText = event.results[0][0].transcript;
+        };
+
+        this.recognition.onend = () => {
+          this.voiceBtn.classList.remove("listening");
+          // Delay de 1.5s antes de enviar
+          setTimeout(() => {
+            if (resultText) {
+              this.addMessage("user", resultText);
+              this.ws.send(JSON.stringify({
+                type: "chat",
+                message: resultText,
+                sessionId: this.sessionId,
+                timestamp: new Date().toISOString()
+              }));
+            }
+            resultText = "";
+          }, 1500);
+        };
+
+        this.recognition.onerror = (event) => {
+          console.error("Erro de voz:", event.error);
+          this.voiceBtn.classList.remove("listening");
+        };
+
+        this.voiceBtn.onclick = () => {
+          try {
+            if (this.recognition) {
+              this.recognition.stop();
+              setTimeout(() => this.recognition.start(), 200);
+            }
+          } catch (err) {
+            console.error("Erro ao iniciar reconhecimento:", err);
+          }
+        };
+      } else {
+        this.voiceBtn.disabled = true;
+        this.voiceBtn.title = "Seu navegador não suporta voz";
+      }
+    }
+
+    // ⏹️ Botão para parar a voz
+    initStopVoice() {
+      this.stopVoiceBtn = document.createElement("button");
+      this.stopVoiceBtn.textContent = "⏹️";
+      this.stopVoiceBtn.style.marginLeft = "5px";
+      this.stopVoiceBtn.style.border = "none";
+      this.stopVoiceBtn.style.background = "transparent";
+      this.stopVoiceBtn.style.fontSize = "18px";
+      this.stopVoiceBtn.style.cursor = "pointer";
+      this.stopVoiceBtn.title = "Parar voz";
+
+      this.stopVoiceBtn.onclick = () => {
+        speechSynthesis.cancel(); // para imediatamente a leitura
+      };
+
+      this.chatModal
+        .querySelector(".vibecodia-chat-input-container")
+        .appendChild(this.stopVoiceBtn);
+    }
+
+    // Leitura da resposta em voz
+    handleMessage(msg) {
+      super.handleMessage(msg);
+      if (msg.type === "response") {
+        const reply = msg.data.assistant_reply;
+        const utterance = new SpeechSynthesisUtterance(reply);
+        utterance.lang = "pt-BR";
+        speechSynthesis.speak(utterance);
+      }
+    }
+  }
+
+  window.VibeCodiaChat = VibeCodiaChatWithVoice;
+})();
+
+// Botão flutuante principal
+let finChat = null;
+
+const createfinButton = () => {
+  const finBtn = document.createElement("button");
+  finBtn.innerHTML = "Assistente";
+  finBtn.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 999998;
+      padding: 10px 20px;
+      background: linear-gradient(135deg, #e91e63 0%, #ad1457 100%);
+      color: white;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: 0 3px 15px rgba(233, 30, 99, 0.4);
+      transition: all 0.3s ease;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  `;
+
+  finBtn.onmouseover = () => {
+    finBtn.style.transform = "translateY(-1px) scale(1.03)";
+    finBtn.style.boxShadow = "0 5px 20px rgba(233, 30, 99, 0.5)";
+  };
+  finBtn.onmouseout = () => {
+    finBtn.style.transform = "translateY(0) scale(1)";
+    finBtn.style.boxShadow = "0 3px 15px rgba(233, 30, 99, 0.4)";
+  };
+
+  finBtn.onclick = () => openfinChat();
+
+  document.body.appendChild(finBtn);
+};
+
+const openfinChat = () => {
+  if (finChat) finChat.destroy();
+
+  finChat = new VibeCodiaChat({
+    wsUrl: "wss://api.vibecodia.com.br/ws/chat/juca",
+  });
+
+  setTimeout(() => {
+    const defaultToggle = document.querySelector(".vibecodia-chat-toggle");
+    if (defaultToggle) defaultToggle.remove();
+
+    if (finChat && finChat.openChat) finChat.openChat();
+  }, 200);
+};
+
+document.addEventListener("DOMContentLoaded", createfinButton);
+</script>

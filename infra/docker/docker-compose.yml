@@ -1,0 +1,36 @@
+services:
+  frontend:
+    build:
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.frontend
+      target: build
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../../frontend:/app/frontend
+      - /app/node_modules
+    env_file:
+      - .env
+    environment:
+      - VITE_BACKEND_URL=http://backend:3001
+    depends_on:
+      - backend
+    restart: unless-stopped
+    container_name: financial-app-frontend
+    command: npm run dev -- --host
+
+  backend:
+    build:
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.backend
+    ports:
+      - "3001:3001"
+    volumes:
+      - ../../backend:/app/backend
+      - ../../uploads:/app/uploads
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+    restart: unless-stopped
+    container_name: financial-app-backend

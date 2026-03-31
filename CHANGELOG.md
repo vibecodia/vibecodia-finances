@@ -1,6 +1,658 @@
 # Changelog
 
+# [0.52.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.52.0) (2026-03-30)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+* gem 1.5 ([47cf00f](https://github.com/vibecodia/vibecodia-finances/commit/47cf00ff3e91f4972f72702d5186993aece9d489))
+* hide/show filters in playgroud ([77465e5](https://github.com/vibecodia/vibecodia-finances/commit/77465e52b2bf1dae76937604cff95fbe974be2dc))
+* hide/show filters in playgroud ([6f79da7](https://github.com/vibecodia/vibecodia-finances/commit/6f79da7929fcb8d2e95318ddc8ccf74a94fe2dc0))
+* new versions for build and app ([9f8155e](https://github.com/vibecodia/vibecodia-finances/commit/9f8155e019ae07295333de472c8316208343cd0d))
+* primeiro teste com issue novamente ([9928630](https://github.com/vibecodia/vibecodia-finances/commit/9928630e0c0550790cd4b02f27d0204400562937))
+* wip ([f134629](https://github.com/vibecodia/vibecodia-finances/commit/f134629771ed737429a5e58cc83a1f021d7de5ce))
+* yolo ([e37765a](https://github.com/vibecodia/vibecodia-finances/commit/e37765a22616a8fdd5778eefdcdea47920b02aa8))
+
+
+### Features
+
+* analisando descontos ([dbbb952](https://github.com/vibecodia/vibecodia-finances/commit/dbbb952f3a8006451a75cde786848091e80ad371))
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+
+# [0.51.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.51.0) (2026-03-30)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+* gem 1.5 ([47cf00f](https://github.com/vibecodia/vibecodia-finances/commit/47cf00ff3e91f4972f72702d5186993aece9d489))
+* hide/show filters in playgroud ([77465e5](https://github.com/vibecodia/vibecodia-finances/commit/77465e52b2bf1dae76937604cff95fbe974be2dc))
+* hide/show filters in playgroud ([6f79da7](https://github.com/vibecodia/vibecodia-finances/commit/6f79da7929fcb8d2e95318ddc8ccf74a94fe2dc0))
+* new versions for build and app ([9f8155e](https://github.com/vibecodia/vibecodia-finances/commit/9f8155e019ae07295333de472c8316208343cd0d))
+* primeiro teste com issue novamente ([9928630](https://github.com/vibecodia/vibecodia-finances/commit/9928630e0c0550790cd4b02f27d0204400562937))
+* wip ([f134629](https://github.com/vibecodia/vibecodia-finances/commit/f134629771ed737429a5e58cc83a1f021d7de5ce))
+* yolo ([e37765a](https://github.com/vibecodia/vibecodia-finances/commit/e37765a22616a8fdd5778eefdcdea47920b02aa8))
+
+
+### Features
+
+* deploy ([ab18aa0](https://github.com/vibecodia/vibecodia-finances/commit/ab18aa0d5432efe4844934758f03a83eee4853df))
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+* revert alguns exageros ([75d2587](https://github.com/vibecodia/vibecodia-finances/commit/75d2587375fb3f52cc075d7d0ae4d6ff52998600))
+
+# [0.50.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.50.0) (2026-03-30)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+* gem 1.5 ([47cf00f](https://github.com/vibecodia/vibecodia-finances/commit/47cf00ff3e91f4972f72702d5186993aece9d489))
+* hide/show filters in playgroud ([77465e5](https://github.com/vibecodia/vibecodia-finances/commit/77465e52b2bf1dae76937604cff95fbe974be2dc))
+* hide/show filters in playgroud ([6f79da7](https://github.com/vibecodia/vibecodia-finances/commit/6f79da7929fcb8d2e95318ddc8ccf74a94fe2dc0))
+* new versions for build and app ([9f8155e](https://github.com/vibecodia/vibecodia-finances/commit/9f8155e019ae07295333de472c8316208343cd0d))
+* primeiro teste com issue novamente ([9928630](https://github.com/vibecodia/vibecodia-finances/commit/9928630e0c0550790cd4b02f27d0204400562937))
+* wip ([f134629](https://github.com/vibecodia/vibecodia-finances/commit/f134629771ed737429a5e58cc83a1f021d7de5ce))
+* yolo ([e37765a](https://github.com/vibecodia/vibecodia-finances/commit/e37765a22616a8fdd5778eefdcdea47920b02aa8))
+
+
+### Features
+
+* bora 3 ([512d943](https://github.com/vibecodia/vibecodia-finances/commit/512d94357f94a16e3296fb667cd54ba8d3fc9f20))
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+
+# [0.49.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.49.0) (2026-03-30)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+* gem 1.5 ([47cf00f](https://github.com/vibecodia/vibecodia-finances/commit/47cf00ff3e91f4972f72702d5186993aece9d489))
+* hide/show filters in playgroud ([77465e5](https://github.com/vibecodia/vibecodia-finances/commit/77465e52b2bf1dae76937604cff95fbe974be2dc))
+* hide/show filters in playgroud ([6f79da7](https://github.com/vibecodia/vibecodia-finances/commit/6f79da7929fcb8d2e95318ddc8ccf74a94fe2dc0))
+* new versions for build and app ([9f8155e](https://github.com/vibecodia/vibecodia-finances/commit/9f8155e019ae07295333de472c8316208343cd0d))
+* primeiro teste com issue novamente ([9928630](https://github.com/vibecodia/vibecodia-finances/commit/9928630e0c0550790cd4b02f27d0204400562937))
+* wip ([f134629](https://github.com/vibecodia/vibecodia-finances/commit/f134629771ed737429a5e58cc83a1f021d7de5ce))
+* yolo ([e37765a](https://github.com/vibecodia/vibecodia-finances/commit/e37765a22616a8fdd5778eefdcdea47920b02aa8))
+
+
+### Features
+
+* bora ([2d9e23c](https://github.com/vibecodia/vibecodia-finances/commit/2d9e23c8d7f2813a958bf4f2859a8609335ffa95))
+* bora ([4e47162](https://github.com/vibecodia/vibecodia-finances/commit/4e471623453edc232be86f89caca483d803ca70d))
+* bora 2 ([81a3ce4](https://github.com/vibecodia/vibecodia-finances/commit/81a3ce45e3eb276e89456ddfcd290b53af96af6b))
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+* news with trae ([d8c39f1](https://github.com/vibecodia/vibecodia-finances/commit/d8c39f158e6f8d565febac73e2be6ebb8b49d29d))
+* share filtered and swiper ([9c15225](https://github.com/vibecodia/vibecodia-finances/commit/9c15225e8bbfd08542d335bfde097d982dcf2c2d))
+* share filtered and swiper ([94da404](https://github.com/vibecodia/vibecodia-finances/commit/94da40491a3d54f46cbcb49bdfb4210a5b8de383))
+
+# [0.48.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.48.0) (2026-03-29)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+* gem 1.5 ([47cf00f](https://github.com/vibecodia/vibecodia-finances/commit/47cf00ff3e91f4972f72702d5186993aece9d489))
+* hide/show filters in playgroud ([77465e5](https://github.com/vibecodia/vibecodia-finances/commit/77465e52b2bf1dae76937604cff95fbe974be2dc))
+* hide/show filters in playgroud ([6f79da7](https://github.com/vibecodia/vibecodia-finances/commit/6f79da7929fcb8d2e95318ddc8ccf74a94fe2dc0))
+* new versions for build and app ([9f8155e](https://github.com/vibecodia/vibecodia-finances/commit/9f8155e019ae07295333de472c8316208343cd0d))
+* primeiro teste com issue novamente ([9928630](https://github.com/vibecodia/vibecodia-finances/commit/9928630e0c0550790cd4b02f27d0204400562937))
+* wip ([f134629](https://github.com/vibecodia/vibecodia-finances/commit/f134629771ed737429a5e58cc83a1f021d7de5ce))
+* yolo ([e37765a](https://github.com/vibecodia/vibecodia-finances/commit/e37765a22616a8fdd5778eefdcdea47920b02aa8))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+
+# [0.47.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.47.0) (2026-03-29)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+* gem 1.5 ([47cf00f](https://github.com/vibecodia/vibecodia-finances/commit/47cf00ff3e91f4972f72702d5186993aece9d489))
+* hide/show filters in playgroud ([77465e5](https://github.com/vibecodia/vibecodia-finances/commit/77465e52b2bf1dae76937604cff95fbe974be2dc))
+* hide/show filters in playgroud ([6f79da7](https://github.com/vibecodia/vibecodia-finances/commit/6f79da7929fcb8d2e95318ddc8ccf74a94fe2dc0))
+* new versions for build and app ([9f8155e](https://github.com/vibecodia/vibecodia-finances/commit/9f8155e019ae07295333de472c8316208343cd0d))
+* primeiro teste com issue novamente ([9928630](https://github.com/vibecodia/vibecodia-finances/commit/9928630e0c0550790cd4b02f27d0204400562937))
+* wip ([f134629](https://github.com/vibecodia/vibecodia-finances/commit/f134629771ed737429a5e58cc83a1f021d7de5ce))
+* yolo ([e37765a](https://github.com/vibecodia/vibecodia-finances/commit/e37765a22616a8fdd5778eefdcdea47920b02aa8))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+
+# [0.46.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.46.0) (2026-03-29)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+* gem 1.5 ([47cf00f](https://github.com/vibecodia/vibecodia-finances/commit/47cf00ff3e91f4972f72702d5186993aece9d489))
+* hide/show filters in playgroud ([77465e5](https://github.com/vibecodia/vibecodia-finances/commit/77465e52b2bf1dae76937604cff95fbe974be2dc))
+* hide/show filters in playgroud ([6f79da7](https://github.com/vibecodia/vibecodia-finances/commit/6f79da7929fcb8d2e95318ddc8ccf74a94fe2dc0))
+* new versions for build and app ([9f8155e](https://github.com/vibecodia/vibecodia-finances/commit/9f8155e019ae07295333de472c8316208343cd0d))
+* primeiro teste com issue novamente ([9928630](https://github.com/vibecodia/vibecodia-finances/commit/9928630e0c0550790cd4b02f27d0204400562937))
+* wip ([f134629](https://github.com/vibecodia/vibecodia-finances/commit/f134629771ed737429a5e58cc83a1f021d7de5ce))
+* yolo ([e37765a](https://github.com/vibecodia/vibecodia-finances/commit/e37765a22616a8fdd5778eefdcdea47920b02aa8))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+* notification ([d19a542](https://github.com/vibecodia/vibecodia-finances/commit/d19a54266c808fa914b2f3dfcd9fbd408dff0084))
+* v1 ([6de0195](https://github.com/vibecodia/vibecodia-finances/commit/6de019534e1c730052822a2c663b1a9e3a4438be))
+
+# [0.45.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.45.0) (2026-03-28)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+* gem 1.5 ([47cf00f](https://github.com/vibecodia/vibecodia-finances/commit/47cf00ff3e91f4972f72702d5186993aece9d489))
+* hide/show filters in playgroud ([77465e5](https://github.com/vibecodia/vibecodia-finances/commit/77465e52b2bf1dae76937604cff95fbe974be2dc))
+* hide/show filters in playgroud ([6f79da7](https://github.com/vibecodia/vibecodia-finances/commit/6f79da7929fcb8d2e95318ddc8ccf74a94fe2dc0))
+* new versions for build and app ([9f8155e](https://github.com/vibecodia/vibecodia-finances/commit/9f8155e019ae07295333de472c8316208343cd0d))
+* primeiro teste com issue novamente ([9928630](https://github.com/vibecodia/vibecodia-finances/commit/9928630e0c0550790cd4b02f27d0204400562937))
+* wip ([f134629](https://github.com/vibecodia/vibecodia-finances/commit/f134629771ed737429a5e58cc83a1f021d7de5ce))
+* yolo ([e37765a](https://github.com/vibecodia/vibecodia-finances/commit/e37765a22616a8fdd5778eefdcdea47920b02aa8))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+* só ver ([0c228b9](https://github.com/vibecodia/vibecodia-finances/commit/0c228b995feec58c140f31a32c2ab8e503465fdf))
+
+# [0.44.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.44.0) (2026-03-28)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+* gem 1.5 ([47cf00f](https://github.com/vibecodia/vibecodia-finances/commit/47cf00ff3e91f4972f72702d5186993aece9d489))
+* hide/show filters in playgroud ([77465e5](https://github.com/vibecodia/vibecodia-finances/commit/77465e52b2bf1dae76937604cff95fbe974be2dc))
+* hide/show filters in playgroud ([6f79da7](https://github.com/vibecodia/vibecodia-finances/commit/6f79da7929fcb8d2e95318ddc8ccf74a94fe2dc0))
+* new versions for build and app ([9f8155e](https://github.com/vibecodia/vibecodia-finances/commit/9f8155e019ae07295333de472c8316208343cd0d))
+* primeiro teste com issue novamente ([9928630](https://github.com/vibecodia/vibecodia-finances/commit/9928630e0c0550790cd4b02f27d0204400562937))
+* wip ([f134629](https://github.com/vibecodia/vibecodia-finances/commit/f134629771ed737429a5e58cc83a1f021d7de5ce))
+* yolo ([e37765a](https://github.com/vibecodia/vibecodia-finances/commit/e37765a22616a8fdd5778eefdcdea47920b02aa8))
+
+
+### Features
+
+* bora ([3f6ae77](https://github.com/vibecodia/vibecodia-finances/commit/3f6ae771d87ac996569a17e41bfca74ba391d5ba))
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+* wiiip ([c859393](https://github.com/vibecodia/vibecodia-finances/commit/c8593937636f374b760050df479142f7fa74589c))
+
+# [0.43.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.43.0) (2026-03-28)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+* gem 1.5 ([47cf00f](https://github.com/vibecodia/vibecodia-finances/commit/47cf00ff3e91f4972f72702d5186993aece9d489))
+* hide/show filters in playgroud ([77465e5](https://github.com/vibecodia/vibecodia-finances/commit/77465e52b2bf1dae76937604cff95fbe974be2dc))
+* hide/show filters in playgroud ([6f79da7](https://github.com/vibecodia/vibecodia-finances/commit/6f79da7929fcb8d2e95318ddc8ccf74a94fe2dc0))
+* new versions for build and app ([9f8155e](https://github.com/vibecodia/vibecodia-finances/commit/9f8155e019ae07295333de472c8316208343cd0d))
+* primeiro teste com issue novamente ([9928630](https://github.com/vibecodia/vibecodia-finances/commit/9928630e0c0550790cd4b02f27d0204400562937))
+* wip ([f134629](https://github.com/vibecodia/vibecodia-finances/commit/f134629771ed737429a5e58cc83a1f021d7de5ce))
+* yolo ([e37765a](https://github.com/vibecodia/vibecodia-finances/commit/e37765a22616a8fdd5778eefdcdea47920b02aa8))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+
+# [0.42.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.41.0...v0.42.0) (2026-03-26)
+
+
+### Features
+
+* fix new new ([5233e7d](https://github.com/vibecodia/vibecodia-finances/commit/5233e7d3789374ec934b610d45c7e42214e8d89d))
+* go ([6bcaa43](https://github.com/vibecodia/vibecodia-finances/commit/6bcaa43a54bf9896d7777d8ddbe25fccfbfd2ce1))
+
+# [0.41.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.41.0) (2026-03-26)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+* gem 1.5 ([47cf00f](https://github.com/vibecodia/vibecodia-finances/commit/47cf00ff3e91f4972f72702d5186993aece9d489))
+* hide/show filters in playgroud ([77465e5](https://github.com/vibecodia/vibecodia-finances/commit/77465e52b2bf1dae76937604cff95fbe974be2dc))
+* hide/show filters in playgroud ([6f79da7](https://github.com/vibecodia/vibecodia-finances/commit/6f79da7929fcb8d2e95318ddc8ccf74a94fe2dc0))
+* new versions for build and app ([9f8155e](https://github.com/vibecodia/vibecodia-finances/commit/9f8155e019ae07295333de472c8316208343cd0d))
+* primeiro teste com issue novamente ([9928630](https://github.com/vibecodia/vibecodia-finances/commit/9928630e0c0550790cd4b02f27d0204400562937))
+* wip ([f134629](https://github.com/vibecodia/vibecodia-finances/commit/f134629771ed737429a5e58cc83a1f021d7de5ce))
+* yolo ([e37765a](https://github.com/vibecodia/vibecodia-finances/commit/e37765a22616a8fdd5778eefdcdea47920b02aa8))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+* notification ([d19a542](https://github.com/vibecodia/vibecodia-finances/commit/d19a54266c808fa914b2f3dfcd9fbd408dff0084))
+
+# [0.40.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.40.0) (2026-03-26)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+* gem 1.5 ([47cf00f](https://github.com/vibecodia/vibecodia-finances/commit/47cf00ff3e91f4972f72702d5186993aece9d489))
+* hide/show filters in playgroud ([77465e5](https://github.com/vibecodia/vibecodia-finances/commit/77465e52b2bf1dae76937604cff95fbe974be2dc))
+* hide/show filters in playgroud ([6f79da7](https://github.com/vibecodia/vibecodia-finances/commit/6f79da7929fcb8d2e95318ddc8ccf74a94fe2dc0))
+* new versions for build and app ([9f8155e](https://github.com/vibecodia/vibecodia-finances/commit/9f8155e019ae07295333de472c8316208343cd0d))
+* primeiro teste com issue novamente ([9928630](https://github.com/vibecodia/vibecodia-finances/commit/9928630e0c0550790cd4b02f27d0204400562937))
+* wip ([f134629](https://github.com/vibecodia/vibecodia-finances/commit/f134629771ed737429a5e58cc83a1f021d7de5ce))
+* yolo ([e37765a](https://github.com/vibecodia/vibecodia-finances/commit/e37765a22616a8fdd5778eefdcdea47920b02aa8))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+
+# [0.39.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.39.0) (2026-03-23)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+* gem 1.5 ([47cf00f](https://github.com/vibecodia/vibecodia-finances/commit/47cf00ff3e91f4972f72702d5186993aece9d489))
+* hide/show filters in playgroud ([77465e5](https://github.com/vibecodia/vibecodia-finances/commit/77465e52b2bf1dae76937604cff95fbe974be2dc))
+* hide/show filters in playgroud ([6f79da7](https://github.com/vibecodia/vibecodia-finances/commit/6f79da7929fcb8d2e95318ddc8ccf74a94fe2dc0))
+* new versions for build and app ([9f8155e](https://github.com/vibecodia/vibecodia-finances/commit/9f8155e019ae07295333de472c8316208343cd0d))
+* primeiro teste com issue novamente ([9928630](https://github.com/vibecodia/vibecodia-finances/commit/9928630e0c0550790cd4b02f27d0204400562937))
+* wip ([f134629](https://github.com/vibecodia/vibecodia-finances/commit/f134629771ed737429a5e58cc83a1f021d7de5ce))
+* yolo ([e37765a](https://github.com/vibecodia/vibecodia-finances/commit/e37765a22616a8fdd5778eefdcdea47920b02aa8))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+* **ia:** implement solution for [#165](https://github.com/vibecodia/vibecodia-finances/issues/165) ([89f25d7](https://github.com/vibecodia/vibecodia-finances/commit/89f25d77b704babcf9bd591a2cc63c5ffb374041))
+
+# [0.38.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.38.0) (2026-03-22)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+* gem 1.5 ([47cf00f](https://github.com/vibecodia/vibecodia-finances/commit/47cf00ff3e91f4972f72702d5186993aece9d489))
+* hide/show filters in playgroud ([77465e5](https://github.com/vibecodia/vibecodia-finances/commit/77465e52b2bf1dae76937604cff95fbe974be2dc))
+* hide/show filters in playgroud ([6f79da7](https://github.com/vibecodia/vibecodia-finances/commit/6f79da7929fcb8d2e95318ddc8ccf74a94fe2dc0))
+* new versions for build and app ([9f8155e](https://github.com/vibecodia/vibecodia-finances/commit/9f8155e019ae07295333de472c8316208343cd0d))
+* primeiro teste com issue novamente ([9928630](https://github.com/vibecodia/vibecodia-finances/commit/9928630e0c0550790cd4b02f27d0204400562937))
+* wip ([f134629](https://github.com/vibecodia/vibecodia-finances/commit/f134629771ed737429a5e58cc83a1f021d7de5ce))
+* yolo ([e37765a](https://github.com/vibecodia/vibecodia-finances/commit/e37765a22616a8fdd5778eefdcdea47920b02aa8))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+
+# [0.37.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.37.0) (2026-03-21)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+* gem 1.5 ([47cf00f](https://github.com/vibecodia/vibecodia-finances/commit/47cf00ff3e91f4972f72702d5186993aece9d489))
+* hide/show filters in playgroud ([77465e5](https://github.com/vibecodia/vibecodia-finances/commit/77465e52b2bf1dae76937604cff95fbe974be2dc))
+* hide/show filters in playgroud ([6f79da7](https://github.com/vibecodia/vibecodia-finances/commit/6f79da7929fcb8d2e95318ddc8ccf74a94fe2dc0))
+* new versions for build and app ([9f8155e](https://github.com/vibecodia/vibecodia-finances/commit/9f8155e019ae07295333de472c8316208343cd0d))
+* primeiro teste com issue novamente ([9928630](https://github.com/vibecodia/vibecodia-finances/commit/9928630e0c0550790cd4b02f27d0204400562937))
+* wip ([f134629](https://github.com/vibecodia/vibecodia-finances/commit/f134629771ed737429a5e58cc83a1f021d7de5ce))
+* yolo ([e37765a](https://github.com/vibecodia/vibecodia-finances/commit/e37765a22616a8fdd5778eefdcdea47920b02aa8))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+* **ia:** implement solution for [#155](https://github.com/vibecodia/vibecodia-finances/issues/155) ([408acb3](https://github.com/vibecodia/vibecodia-finances/commit/408acb340657bbb88932fc4c613441c7173b359c))
+
+# [0.36.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.36.0) (2026-03-20)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+* hide/show filters in playgroud ([77465e5](https://github.com/vibecodia/vibecodia-finances/commit/77465e52b2bf1dae76937604cff95fbe974be2dc))
+* hide/show filters in playgroud ([6f79da7](https://github.com/vibecodia/vibecodia-finances/commit/6f79da7929fcb8d2e95318ddc8ccf74a94fe2dc0))
+* new versions for build and app ([9f8155e](https://github.com/vibecodia/vibecodia-finances/commit/9f8155e019ae07295333de472c8316208343cd0d))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+
+# [0.35.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.35.0) (2026-03-20)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* chumba o minor ([535d087](https://github.com/vibecodia/vibecodia-finances/commit/535d087bf52ccbf7bf0e6e6f8b160810f4268668))
+* chumba o minor ([f9df3ef](https://github.com/vibecodia/vibecodia-finances/commit/f9df3ef42820abdc0f61b33b573ddbb4588a2b79))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+
+# [0.34.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.34.0) (2026-03-20)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* chumba o patch ([5c950e2](https://github.com/vibecodia/vibecodia-finances/commit/5c950e261791657b7afb0fd92ea24544f275dc5e))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+
+# [0.33.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.33.0) (2026-03-19)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+* ver se vai gerar versao nova ([99a8a42](https://github.com/vibecodia/vibecodia-finances/commit/99a8a424f2ce7e3492da3fe9d7aa359e3d06f8ea))
+* ver se vai gerar versao nova 32.1 ([d31c02e](https://github.com/vibecodia/vibecodia-finances/commit/d31c02e5dc2fd7f1126ad243ec1b00a30cc8504b))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+
+# [0.32.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.32.0) (2026-03-19)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* bora ([324d164](https://github.com/vibecodia/vibecodia-finances/commit/324d1644f0c01c1faff29444e379cd18b5aee986))
+* docker compose ([#124](https://github.com/vibecodia/vibecodia-finances/issues/124)) ([71b02dd](https://github.com/vibecodia/vibecodia-finances/commit/71b02dd46356e93be536e8c89dce96c83b96d229))
+* dump ([#125](https://github.com/vibecodia/vibecodia-finances/issues/125)) ([26e5034](https://github.com/vibecodia/vibecodia-finances/commit/26e503480b8f42a2dac565c688a52da4112edaee))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+
+# [0.31.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.31.0) (2026-03-19)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* docker image ([a7eea45](https://github.com/vibecodia/vibecodia-finances/commit/a7eea459f6b1e043cc20ad5606e93e63597d9cde))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+
+# [0.30.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.30.0) (2026-03-19)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* bora deploy ([5a9d8d8](https://github.com/vibecodia/vibecodia-finances/commit/5a9d8d8164ff645e4677941e18bdf136eb6d4d18))
+* testando health check menos indisponibilidade ([4ede34e](https://github.com/vibecodia/vibecodia-finances/commit/4ede34edd14e04b8963ff393e1d96c56d1abae0e))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+
+# [0.29.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.29.0) (2026-03-19)
+
+
+### Bug Fixes
+
+* ([#118](https://github.com/vibecodia/vibecodia-finances/issues/118)) ([eac7c13](https://github.com/vibecodia/vibecodia-finances/commit/eac7c13653d642d6d6d15d80045503b7ed651a42))
+* removendo info julgada desncessaria ([fdfa11d](https://github.com/vibecodia/vibecodia-finances/commit/fdfa11d43486b0996145741a08a1ec23b8d23e56))
+
+
+### Features
+
+* feature/fix-pipelines-2 ([#117](https://github.com/vibecodia/vibecodia-finances/issues/117)) ([45d0f1b](https://github.com/vibecodia/vibecodia-finances/commit/45d0f1bfb04f4712fc76fbe2f9b66e9f1c36cfeb))
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+* feature/setup-pipeline-eslint-release ([#115](https://github.com/vibecodia/vibecodia-finances/issues/115)) ([c53f677](https://github.com/vibecodia/vibecodia-finances/commit/c53f677c8bcdceb4883f7c77b04e6acd7ecf0730))
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+
+# [0.28.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.27.1...v0.28.0) (2026-03-18)
+
+
+### Bug Fixes
+
+* mudar a palavra ([07e2675](https://github.com/vibecodia/vibecodia-finances/commit/07e2675d19e71cda34ac3e24d97c11aa84377561))
+* run deploy only if ([eac9e5d](https://github.com/vibecodia/vibecodia-finances/commit/eac9e5d570e0a15c4323fbdbca9a31bd5dde09ed))
+* test not run deploy ([4b7b033](https://github.com/vibecodia/vibecodia-finances/commit/4b7b0339017e80f6ac4a9c46811dcc7bb006f4d2))
+
+
+### Features
+
+* feature/setup-pipeline-eslint-release ([#113](https://github.com/vibecodia/vibecodia-finances/issues/113)) ([ff0c77f](https://github.com/vibecodia/vibecodia-finances/commit/ff0c77f9ce188aa3552aefe3f037b0c0b159e2c5))
+
+## [0.27.1](https://github.com/vibecodia/vibecodia-finances/compare/v0.27.0...v0.27.1) (2026-03-18)
+
+# [0.27.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.27.0) (2026-03-18)
+
+
+### Features
+
+* feature/testing-new-pipe ([#112](https://github.com/vibecodia/vibecodia-finances/issues/112)) ([011bc17](https://github.com/vibecodia/vibecodia-finances/commit/011bc1757c1b156459dd2bee4d9dcd0ecde974b9))
+
+## [0.26.369](https://github.com/vibecodia/vibecodia-finances/compare/v0.26.368...v0.26.369) (2026-03-18)
+
+## [0.26.368](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.26.368) (2026-03-18)
+
+
+### Bug Fixes
+
+* test new pipe ([199fcd0](https://github.com/vibecodia/vibecodia-finances/commit/199fcd01f1f82723f93a9ef85382d6dbeb6f569a))
+
+## [0.26.367](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.26.367) (2026-03-18)
+
+
+### Bug Fixes
+
+* corrigir configuração do eslint ([c9ff69c](https://github.com/vibecodia/vibecodia-finances/commit/c9ff69c28e96841e0ff58b76664797ea74e911b7))
+* version on the other pipe ([b5767e9](https://github.com/vibecodia/vibecodia-finances/commit/b5767e9ec5668b7fd8a9e9fd77118f5aa8465ffb))
+
+## [0.26.366](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.26.366) (2026-03-18)
+
+
+### Bug Fixes
+
+* checkout correto ([c156562](https://github.com/vibecodia/vibecodia-finances/commit/c156562b06c7332d0ff274642ecdaabd15791813))
+* incluindo o release it ([398fcb0](https://github.com/vibecodia/vibecodia-finances/commit/398fcb09fd01224eed925e4c53f1f30d0f19e163))
+* remove lint do release it ([1a223c6](https://github.com/vibecodia/vibecodia-finances/commit/1a223c62598511317b417d31ba4f7e25aa546825))
+* upgrade na versao do node no workflow ([867de47](https://github.com/vibecodia/vibecodia-finances/commit/867de4768f8716f62b409549ace02a7b1573486c))
+* upgrade na versao do node no workflow ([721a69a](https://github.com/vibecodia/vibecodia-finances/commit/721a69a95e1f1c6d6935e2c80a9964c83db5a223))
+
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+### [0.26.364](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.26.364) (2026-03-17)
+
+### [0.26.362](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.26.362) (2026-03-17)
+
+### [0.26.361](https://github.com/vibecodia/vibecodia-finances/compare/v0.26.0...v0.26.361) (2026-03-04)
+
+## [0.26.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.16.0...v0.26.0) (2026-03-04)
+
+## [0.16.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.14.0...v0.16.0) (2026-03-04)
+
+## [0.14.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.2...v0.14.0) (2026-03-04)
+
+### [0.13.2](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.1...v0.13.2) (2026-03-03)
+
+### [0.13.1](https://github.com/vibecodia/vibecodia-finances/compare/v0.13.0...v0.13.1) (2026-03-03)
+
+## [0.13.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.11.0...v0.13.0) (2026-03-03)
+
+## [0.12.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.11.0...v0.12.0) (2026-03-02)
+
+## [0.11.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.10.49...v0.11.0) (2026-03-01)
+
+### [0.10.49](https://github.com/vibecodia/vibecodia-finances/compare/v0.10.48...v0.10.49) (2026-03-01)
+
+
+### Features
+
+* beta version ([f77403f](https://github.com/vibecodia/vibecodia-finances/commit/f77403f9cdb05761bbdcd47ab443121db1210233))
+
+### [0.10.48](https://github.com/vibecodia/vibecodia-finances/compare/v0.10.47...v0.10.48) (2026-03-01)
+
+### [0.10.47](https://github.com/vibecodia/vibecodia-finances/compare/v0.9.46...v0.10.47) (2026-03-01)
+
+### [0.9.46](https://github.com/vibecodia/vibecodia-finances/compare/v0.9.0...v0.9.46) (2026-03-01)
+
+### [0.9.45](https://github.com/vibecodia/vibecodia-finances/compare/v0.9.0...v0.9.45) (2025-10-02)
+
+### [0.9.44](https://github.com/vibecodia/vibecodia-finances/compare/v0.9.0...v0.9.44) (2025-10-02)
+
+### [0.9.43](https://github.com/vibecodia/vibecodia-finances/compare/v0.9.2...v0.9.43) (2025-10-02)
+
+### [0.9.2](https://github.com/vibecodia/vibecodia-finances/compare/v0.9.0...v0.9.2) (2025-10-02)
+
+### [0.9.1](https://github.com/vibecodia/vibecodia-finances/compare/v0.9.0...v0.9.1) (2025-10-02)
+
+### [0.9.1](https://github.com/vibecodia/vibecodia-finances/compare/v0.9.0...v0.9.1) (2025-10-02)
+
+## [0.9.0](https://github.com/vibecodia/vibecodia-finances/compare/v0.8.13...v0.9.0) (2025-09-22)
+
+### [0.8.13](https://github.com/vibecodia/vibecodia-finances/compare/v0.8.12...v0.8.13) (2025-09-22)
+
+### [0.8.12](https://github.com/vibecodia/vibecodia-finances/compare/v0.8.11...v0.8.12) (2025-09-21)
+
+### [0.8.11](https://github.com/vibecodia/vibecodia-finances/compare/v0.8.9...v0.8.11) (2025-09-21)
+
+### [0.8.9](https://github.com/vibecodia/vibecodia-finances/compare/v0.8.8...v0.8.9) (2025-08-20)
+
+### [0.8.8](https://github.com/vibecodia/vibecodia-finances/compare/v0.7.2...v0.8.8) (2025-08-20)
+
+
+### Bug Fixes
+
+* gemini prompt ([508b41a](https://github.com/vibecodia/vibecodia-finances/commit/508b41a3ae7f1efcf4551f259ea363cd3b0f6f0c))
+* github path for gemini cli ([05527c7](https://github.com/vibecodia/vibecodia-finances/commit/05527c7c941057bc110e7738f3f86a070a45867b))
+* melhorias ([ad22d45](https://github.com/vibecodia/vibecodia-finances/commit/ad22d45d1a587631270a909f3d1dc6cc618b104c))
+* melhorias ([a26f35e](https://github.com/vibecodia/vibecodia-finances/commit/a26f35e2c9a54efc7b9793eaec3a925bf6e58389))
+* plano argument fix ([f90ed97](https://github.com/vibecodia/vibecodia-finances/commit/f90ed97ac16f5dae452c2574e00a5d96734e5d9b))
+* plano gemin-cli ([4e7431a](https://github.com/vibecodia/vibecodia-finances/commit/4e7431a82875ae052d577e4fe2b3c4c1dbe146e6))
+* prompt mais detalhado ([de2a396](https://github.com/vibecodia/vibecodia-finances/commit/de2a396501c3d06002ed470ed159aec116068664))
+* step ([0618e5f](https://github.com/vibecodia/vibecodia-finances/commit/0618e5f71c0930ee754999aa6bff4992b7316cc7))
+* workflow step ([cefc054](https://github.com/vibecodia/vibecodia-finances/commit/cefc054e29382c894c462b5b81c9786463e843a1))
 
 ### [0.7.2](https://github.com/ErgonBerry/contas/compare/v0.7.1...v0.7.2) (2025-07-15)
 

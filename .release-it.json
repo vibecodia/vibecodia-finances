@@ -1,0 +1,24 @@
+{
+  "git": {
+    "commitMessage": "chore: release v${version} [skip ci]",
+    "tagName": "v${version}",
+    "addUntrackedFiles": false
+  },
+  "npm": {
+    "publish": false
+  },
+  "hooks": {
+    "before:init": ["npm run lint", "npm run build"],
+    "after:bump": "git checkout package-lock.json"
+  },
+  "github": {
+    "release": true,
+    "tokenRef": "MY_PAT"
+  },
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "preset": "angular",
+      "infile": "CHANGELOG.md"
+    }
+  }
+}

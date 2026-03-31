@@ -1,16 +1,16 @@
 name: "🤖 Tarefa Guiada por IA"
 description: "Inicia um fluxo de trabalho de desenvolvimento orientado por IA."
-title: "[IA-DRIVEN] - "
-labels: ["ia-driven", "automação"]
+title: "[IA-Driven] - "
+labels: ["ia-driven", "automation"]
 body:
   - type: markdown
     attributes:
       value: |
         **Atenção:** Ao criar esta issue, você acionará uma automação que irá:
-        1. Criar uma nova branch `ia/driven-<timestamp>`.
-        2. Gerar um arquivo de plano de ação em `ia/templates/` usando a descrição abaixo.
+        1. Criar uma nova branch `ia/task-<issue-number>-<timestamp>`.
+        2. Gerar um arquivo de plano de ação em `ia/plans/` usando a descrição abaixo.
         3. Executar o `gemini-cli` com base nesse plano para modificar o código.
-        4. Fazer o commit de tudo na nova branch.
+        4. Fazer o commit das alterações na nova branch e abrir um Pull Request em modo draft.
 
   - type: textarea
     id: task_description

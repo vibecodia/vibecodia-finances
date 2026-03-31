@@ -1,0 +1,894 @@
+import { Settings as SettingsIcon, Download, Upload, Trash2, AlertTriangle, CheckCircle, PlusCircle, Tag, Info, Layers, X, Wallet } from 'lucide-react';
+import React, { useState } from 'react';
+
+import { useTheme } from '../contexts/ThemeContext';
+import { useCategories } from '../hooks/useCategories';
+import { usePaymentMethods } from '../hooks/usePaymentMethods';
+import { Transaction, SavingsGoal } from '../types';
+import { exportFinancialData, validateImportData, getCurrentBrazilDate, formatBrazilDate } from '../utils/helpers';
+
+interface SettingsProps {
+  transactions: Transaction[];
+  savingsGoals: SavingsGoal[];
+  onImportData: (transactions: Transaction[], savingsGoals: SavingsGoal[]) => void;
+  onClearAllData: () => void;
+}
+
+const Settings: React.FC<SettingsProps> = ({ 
+  transactions, 
+  savingsGoals, 
+  onImportData, 
+  onClearAllData 
+}) => {
+  const { theme } = useTheme();
+  const { expenseCategories, incomeCategories, addCategory, removeCategory, resetToDefaults: resetCategoriesToDefaults } = useCategories();
+  const { paymentMethods, addPaymentMethod, removePaymentMethod, resetToDefaults: resetPaymentMethodsToDefaults } = usePaymentMethods();
+  
+  const [importText, setImportText] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [importMessage, setImportMessage] = useState('');
+
+  // Category State
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [categoryType, setCategoryType] = useState<'expense' | 'income'>('expense');
+  const [categoryMessage, setCategoryMessage] = useState({ text: '', type: 'idle' as 'idle' | 'success' | 'error' });
+
+  // Payment Method State
+  const [newPaymentMethodName, setNewPaymentMethodName] = useState('');
+  const [paymentMethodMessage, setPaymentMethodMessage] = useState({ text: '', type: 'idle' as 'idle' | 'success' | 'error' });
+
+  // New Confirmation States
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [showDeleteCategoryModal, setShowDeleteCategoryModal] = useState(false);
+  const [showAddPaymentMethodModal, setShowAddPaymentMethodModal] = useState(false);
+  const [showDeletePaymentMethodModal, setShowDeletePaymentMethodModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorModalMessage, setErrorModalMessage] = useState('');
+  const [errorTimer, setErrorTimer] = useState(0);
+  const [pendingCategory, setPendingCategory] = useState<{ type: 'expense' | 'income', name: string } | null>(null);
+  const [pendingPaymentMethod, setPendingPaymentMethod] = useState<string | null>(null);
+
+  // Timer Effect for Error Modal
+  React.useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (showErrorModal && errorTimer > 0) {
+      interval = setInterval(() => {
+        setErrorTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [showErrorModal, errorTimer]);
+
+  const handleExport = () => {
+    const exportData = exportFinancialData(transactions, savingsGoals);
+    const blob = new Blob([exportData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `financeiro-backup-${formatBrazilDate(getCurrentBrazilDate(), 'yyyy-MM-dd')}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = () => {
+    if (!importText.trim()) {
+      setImportStatus('error');
+      setImportMessage('Por favor, cole os dados JSON para importar.');
+      return;
+    }
+
+    const validatedData = validateImportData(importText);
+    
+    if (!validatedData) {
+      setImportStatus('error');
+      setImportMessage('Dados inválidos. Verifique se o arquivo JSON está correto.');
+      return;
+    }
+
+    onImportData(validatedData.transactions, validatedData.savingsGoals);
+    setImportStatus('success');
+    setImportMessage(`Importação realizada com sucesso! ${validatedData.transactions.length} transações e ${validatedData.savingsGoals.length} metas importadas.`);
+    
+    setTimeout(() => {
+      setShowImportModal(false);
+      setImportText('');
+      setImportStatus('idle');
+      setImportMessage('');
+    }, 2000);
+  };
+
+  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      setImportText(content);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleClearAllData = () => {
+    onClearAllData();
+    setShowClearModal(false);
+  };
+
+  const handleAddCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newCategoryName.trim()) {
+      setPendingCategory({ type: categoryType, name: newCategoryName.trim() });
+      setShowAddCategoryModal(true);
+    }
+  };
+
+  const confirmAddCategory = () => {
+    if (pendingCategory) {
+      if (addCategory(pendingCategory.type, pendingCategory.name)) {
+        setNewCategoryName('');
+      }
+      setShowAddCategoryModal(false);
+      setPendingCategory(null);
+    }
+  };
+
+  const handleRemoveCategory = (type: 'expense' | 'income', cat: string) => {
+    setPendingCategory({ type, name: cat });
+    setShowDeleteCategoryModal(true);
+  };
+
+  const confirmRemoveCategory = () => {
+    if (pendingCategory) {
+      const result = removeCategory(pendingCategory.type, pendingCategory.name, transactions);
+      if (!result.success) {
+        setErrorModalMessage(result.message || 'Erro ao excluir categoria.');
+        setErrorTimer(5); // 5 seconds
+        setShowErrorModal(true);
+      } else {
+        setCategoryMessage({ text: `Categoria "${pendingCategory.name}" removida com sucesso.`, type: 'success' });
+        setTimeout(() => setCategoryMessage({ text: '', type: 'idle' }), 2000);
+      }
+      setShowDeleteCategoryModal(false);
+      setPendingCategory(null);
+    }
+  };
+
+  const handleResetCategories = () => {
+    const result = resetCategoriesToDefaults(categoryType, transactions);
+    setCategoryMessage({ 
+      text: `Padrões restaurados! ${result.restored} categorias base carregadas. ${result.preserved > 0 ? `${result.preserved} categorias em uso foram preservadas.` : ''}`, 
+      type: 'success' 
+    });
+    setTimeout(() => setCategoryMessage({ text: '', type: 'idle' }), 4000);
+  };
+
+  // Payment Method Handlers
+  const handleAddPaymentMethod = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPaymentMethodName.trim()) {
+      setPendingPaymentMethod(newPaymentMethodName.trim());
+      setShowAddPaymentMethodModal(true);
+    }
+  };
+
+  const confirmAddPaymentMethod = () => {
+    if (pendingPaymentMethod) {
+      if (addPaymentMethod(pendingPaymentMethod)) {
+        setNewPaymentMethodName('');
+      }
+      setShowAddPaymentMethodModal(false);
+      setPendingPaymentMethod(null);
+    }
+  };
+
+  const handleRemovePaymentMethod = (method: string) => {
+    setPendingPaymentMethod(method);
+    setShowDeletePaymentMethodModal(true);
+  };
+
+  const confirmRemovePaymentMethod = () => {
+    if (pendingPaymentMethod) {
+      const result = removePaymentMethod(pendingPaymentMethod, transactions);
+      if (!result.success) {
+        setErrorModalMessage(result.message || 'Erro ao excluir meio de pagamento.');
+        setErrorTimer(5); // 5 seconds
+        setShowErrorModal(true);
+      } else {
+        setPaymentMethodMessage({ text: `Meio de pagamento "${pendingPaymentMethod}" removido com sucesso.`, type: 'success' });
+        setTimeout(() => setPaymentMethodMessage({ text: '', type: 'idle' }), 2000);
+      }
+      setShowDeletePaymentMethodModal(false);
+      setPendingPaymentMethod(null);
+    }
+  };
+
+  const handleResetPaymentMethods = () => {
+    const result = resetPaymentMethodsToDefaults(transactions);
+    setPaymentMethodMessage({ 
+      text: `Padrões restaurados! ${result.restored} meios de pagamento carregados. ${result.preserved > 0 ? `${result.preserved} meios em uso foram preservados.` : ''}`, 
+      type: 'success' 
+    });
+    setTimeout(() => setPaymentMethodMessage({ text: '', type: 'idle' }), 4000);
+  };
+
+  const totalTransactions = transactions.length;
+  const totalGoals = savingsGoals.length;
+
+  return (
+    <div className="space-y-8 max-w-4xl mx-auto pb-12">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-6 border-b" style={{ borderColor: theme.cardBorder }}>
+        <div>
+          <h1 className="text-3xl lg:text-5xl font-black text-text mb-2 tracking-tight">
+            Configurações
+          </h1>
+          <p className="text-text opacity-70 text-lg font-medium">
+            Personalize sua experiência e gerencie seus dados locais
+          </p>
+        </div>
+        <div className="p-3 rounded-2xl bg-primary/10 border-2 border-primary/20 animate-pulse hidden md:block">
+          <SettingsIcon className="w-8 h-8 text-primary" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="space-y-8">
+          {/* Categories Section */}
+          <div className="rounded-3xl border-2 p-6 shadow-xl transition-all hover:shadow-2xl" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-primary text-white shadow-lg">
+                  <Tag className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-text uppercase tracking-wider">
+                    Categorias
+                  </h2>
+                  <p className="text-xs text-text opacity-60 font-bold uppercase">Gerencie suas classificações</p>
+                </div>
+              </div>
+              <button 
+                onClick={handleResetCategories}
+                className="text-[10px] font-black text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg border-2 border-primary/20 transition-all uppercase"
+                title="Restaurar categorias padrão"
+              >
+                Resetar Padrão
+              </button>
+            </div>
+
+            {categoryMessage.type !== 'idle' && (
+              <div className={`mb-6 p-4 rounded-2xl border-2 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300 ${
+                categoryMessage.type === 'success' ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-accent/10 border-accent/20 text-accent'
+              }`}>
+                {categoryMessage.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                <p className="text-xs font-bold uppercase tracking-tight">{categoryMessage.text}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleAddCategory} className="space-y-4 mb-8">
+              <div className="flex gap-2 p-1 border-2 rounded-2xl" style={{ borderColor: theme.cardBorder }}>
+                <button
+                  type="button"
+                  onClick={() => setCategoryType('expense')}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${
+                    categoryType === 'expense'
+                      ? 'bg-accent text-white shadow-md'
+                      : 'bg-transparent text-text opacity-50 hover:opacity-100'
+                  }`}
+                >
+                  DESPESAS
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCategoryType('income')}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${
+                    categoryType === 'income'
+                      ? 'bg-primary text-white shadow-md'
+                      : 'bg-transparent text-text opacity-50 hover:opacity-100'
+                  }`}
+                >
+                  RECEITAS
+                </button>
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder={`Nova categoria de ${categoryType === 'expense' ? 'despesa' : 'receita'}...`}
+                  className="flex-1 px-4 py-3 rounded-2xl border-2 focus:ring-4 focus:ring-primary/20 outline-none transition-all font-bold text-sm"
+                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
+                />
+                <button
+                  type="submit"
+                  disabled={!newCategoryName.trim()}
+                  className="p-3 bg-primary text-white rounded-2xl shadow-lg hover:opacity-90 transition-all disabled:opacity-50"
+                >
+                  <PlusCircle className="w-6 h-6" />
+                </button>
+              </div>
+            </form>
+
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-xs font-black text-accent uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-accent"></div>
+                  Categorias de Despesas ({expenseCategories.length})
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {expenseCategories.map((cat) => (
+                    <div 
+                      key={cat} 
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 font-bold text-xs group hover:border-accent transition-all shadow-sm"
+                      style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
+                    >
+                      <span style={{ color: theme.text }}>{cat}</span>
+                      <button 
+                        onClick={() => handleRemoveCategory('expense', cat)}
+                        className="opacity-0 group-hover:opacity-100 text-accent hover:scale-125 transition-all"
+                      >
+
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-xs font-black text-primary uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-primary"></div>
+                  Categorias de Receitas ({incomeCategories.length})
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {incomeCategories.map((cat) => (
+                    <div 
+                      key={cat} 
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 font-bold text-xs group hover:border-primary transition-all shadow-sm"
+                      style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
+                    >
+                      <span style={{ color: theme.text }}>{cat}</span>
+                      <button 
+                        onClick={() => handleRemoveCategory('income', cat)}
+                        className="opacity-0 group-hover:opacity-100 text-accent hover:scale-125 transition-all"
+                      >
+
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Methods Section */}
+          <div className="rounded-3xl border-2 p-6 shadow-xl transition-all hover:shadow-2xl" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-primary text-white shadow-lg">
+                  <Wallet className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-text uppercase tracking-wider">
+                    Pagamento
+                  </h2>
+                  <p className="text-xs text-text opacity-60 font-bold uppercase">Meios de Pagamento</p>
+                </div>
+              </div>
+              <button 
+                onClick={handleResetPaymentMethods}
+                className="text-[10px] font-black text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg border-2 border-primary/20 transition-all uppercase"
+                title="Restaurar meios de pagamento padrão"
+              >
+                Resetar Padrão
+              </button>
+            </div>
+
+            {paymentMethodMessage.type !== 'idle' && (
+              <div className={`mb-6 p-4 rounded-2xl border-2 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300 ${
+                paymentMethodMessage.type === 'success' ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-accent/10 border-accent/20 text-accent'
+              }`}>
+                {paymentMethodMessage.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                <p className="text-xs font-bold uppercase tracking-tight">{paymentMethodMessage.text}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleAddPaymentMethod} className="space-y-4 mb-8">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newPaymentMethodName}
+                  onChange={(e) => setNewPaymentMethodName(e.target.value)}
+                  placeholder="Novo meio de pagamento (ex: Inter)..."
+                  className="flex-1 px-4 py-3 rounded-2xl border-2 focus:ring-4 focus:ring-primary/20 outline-none transition-all font-bold text-sm"
+                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
+                />
+                <button
+                  type="submit"
+                  disabled={!newPaymentMethodName.trim()}
+                  className="p-3 bg-primary text-white rounded-2xl shadow-lg hover:opacity-90 transition-all disabled:opacity-50"
+                >
+                  <PlusCircle className="w-6 h-6" />
+                </button>
+              </div>
+            </form>
+
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-xs font-black text-text opacity-60 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-primary"></div>
+                  Meios Disponíveis ({paymentMethods.length})
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {paymentMethods.map((method) => (
+                    <div 
+                      key={method} 
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 font-bold text-xs group hover:border-primary transition-all shadow-sm"
+                      style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
+                    >
+                      <span style={{ color: theme.text }}>{method}</span>
+                      <button 
+                        onClick={() => handleRemovePaymentMethod(method)}
+                        className="opacity-0 group-hover:opacity-100 text-accent hover:scale-125 transition-all"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-8">
+          {/* Data Management Section */}
+          <div className="rounded-3xl border-2 p-6 shadow-xl relative overflow-hidden" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+            {/* Disabled Overlay */}
+            <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center p-6 text-center pointer-events-auto">
+              <div className="p-4 rounded-3xl bg-cardBackground/90 border-2 border-accent/30 shadow-2xl transform -rotate-2">
+                <Layers className="w-10 h-10 text-accent mx-auto mb-3 opacity-80" />
+                <h3 className="text-lg font-black text-text uppercase tracking-tighter">Módulo em Manutenção</h3>
+                <p className="text-[10px] text-text opacity-60 font-bold uppercase mt-1">Funcionalidade desativada temporariamente</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2.5 rounded-xl bg-accent text-white shadow-lg">
+                <Layers className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-text uppercase tracking-wider">
+                  Banco de Dados
+                </h2>
+                <p className="text-xs text-text opacity-60 font-bold uppercase">Backups e Limpeza</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <button
+                onClick={handleExport}
+                className="w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all hover:scale-[1.02] hover:shadow-lg group"
+                style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-2 rounded-xl bg-primary/10 text-primary transition-transform group-hover:rotate-12">
+                    <Download className="w-6 h-6" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-black text-sm text-text">EXPORTAR BACKUP</h3>
+                    <p className="text-[10px] text-text opacity-60 uppercase font-bold">Baixar arquivo .json</p>
+                  </div>
+                </div>
+                <CheckCircle className="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all hover:scale-[1.02] hover:shadow-lg group"
+                style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-2 rounded-xl bg-primary/10 text-primary transition-transform group-hover:rotate-12">
+                    <Upload className="w-6 h-6" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-black text-sm text-text">IMPORTAR BACKUP</h3>
+                    <p className="text-[10px] text-text opacity-60 uppercase font-bold">Restaurar dados antigos</p>
+                  </div>
+                </div>
+                <CheckCircle className="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+
+              <div className="h-px bg-cardBorder my-4"></div>
+
+              <button
+                onClick={() => setShowClearModal(true)}
+                className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-accent/20 transition-all hover:bg-accent/5 hover:border-accent group"
+                style={{ backgroundColor: theme.cardBackground }}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-2 rounded-xl bg-accent/10 text-accent transition-transform group-hover:scale-110">
+                    <Trash2 className="w-6 h-6" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-black text-sm text-accent">LIMPAR TUDO</h3>
+                    <p className="text-[10px] text-accent opacity-60 uppercase font-bold">Ação Irreversível</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* About Section */}
+          <div className="rounded-3xl border-2 p-6 shadow-md opacity-80 hover:opacity-100 transition-opacity" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+            <div className="flex items-center gap-3 mb-4 text-text">
+              <Info className="w-6 h-6" />
+              <h2 className="text-lg font-black uppercase">Informações</h2>
+            </div>
+
+            <div className="space-y-4 text-xs text-text font-medium leading-relaxed">
+              <div className="flex justify-between items-center p-3 rounded-xl bg-cardBorder/20">
+                <span className="opacity-60 uppercase font-black">Versão</span>
+                <span className="font-black text-primary">{import.meta.env.APP_VERSION || '0.26.x'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="rounded-3xl w-full max-w-2xl p-8 shadow-2xl animate-in zoom-in-95 duration-200 border-2" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <Upload className="w-8 h-8 text-primary" />
+                <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+                  Importar Backup
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowImportModal(false);
+                  setImportText('');
+                  setImportStatus('idle');
+                  setImportMessage('');
+                }}
+                className="p-2 rounded-full transition-colors hover:bg-cardBorder"
+              >
+                <X className="w-6 h-6 text-text" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* File Upload */}
+              <div>
+                <label className="block text-xs font-black text-text opacity-60 uppercase mb-3 ml-1">
+                  MÉTODO 1: CARREGAR ARQUIVO .JSON
+                </label>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileImport}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-dashed focus:ring-4 focus:ring-primary/20 transition-all font-bold text-sm"
+                  style={{ borderColor: theme.cardBorder, color: theme.text, backgroundColor: theme.cardBackground }}
+                />
+              </div>
+
+              <div className="relative flex items-center py-2">
+                <div className="flex-grow border-t-2 border-cardBorder"></div>
+                <span className="flex-shrink mx-4 text-xs font-black opacity-30 uppercase tracking-widest">ou</span>
+                <div className="flex-grow border-t-2 border-cardBorder"></div>
+              </div>
+
+              {/* Text Import */}
+              <div>
+                <label className="block text-xs font-black text-text opacity-60 uppercase mb-3 ml-1">
+                  MÉTODO 2: COLAR TEXTO JSON
+                </label>
+                <textarea
+                  value={importText}
+                  onChange={(e) => setImportText(e.target.value)}
+                  placeholder="Cole o conteúdo do arquivo JSON aqui..."
+                  className="w-full h-48 px-4 py-3 rounded-2xl border-2 focus:ring-4 focus:ring-primary/20 transition-all resize-none font-mono text-xs"
+                  style={{ borderColor: theme.cardBorder, color: theme.text, backgroundColor: theme.cardBackground }}
+                />
+              </div>
+
+              {/* Status Message */}
+              {importMessage && (
+                <div className={`flex items-center gap-3 p-4 rounded-2xl animate-in slide-in-from-bottom-2 duration-300 border-2`}
+                  style={{ 
+                    backgroundColor: theme.cardBackground,
+                    borderColor: importStatus === 'success' ? theme.primary : theme.accent,
+                    color: importStatus === 'success' ? theme.primary : theme.accent,
+                  }}>
+                  {importStatus === 'success' ? (
+                    <CheckCircle className="w-6 h-6 flex-shrink-0" />
+                  ) : (
+                    <AlertTriangle className="w-6 h-6 flex-shrink-0" />
+                  )}
+                  <span className="text-sm font-bold">{importMessage}</span>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-4 pt-4">
+                <button
+                  onClick={() => {
+                    setShowImportModal(false);
+                    setImportText('');
+                    setImportStatus('idle');
+                    setImportMessage('');
+                  }}
+                  className="flex-1 px-4 py-4 rounded-2xl font-black text-sm transition-all border-2 hover:bg-cardBorder/30 shadow-md"
+                  style={{ borderColor: theme.cardBorder, color: theme.text }}
+                >
+                  CANCELAR
+                </button>
+                <button
+                  onClick={handleImport}
+                  disabled={!importText.trim() || importStatus === 'success'}
+                  className="flex-1 px-4 py-4 text-white rounded-2xl font-black text-sm transition-all bg-primary hover:opacity-90 shadow-xl disabled:opacity-50"
+                >
+                  IMPORTAR AGORA
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showClearModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-[100] backdrop-blur-md animate-in fade-in duration-300">
+          <div className="rounded-3xl w-full max-w-md p-8 shadow-2xl border-2 border-accent" style={{ backgroundColor: theme.cardBackground }}>
+            <div className="flex flex-col items-center text-center mb-8">
+              <div className="p-4 rounded-full bg-accent text-white shadow-xl animate-bounce mb-6">
+                <AlertTriangle className="w-12 h-12" />
+              </div>
+              <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+                Atenção Máxima!
+              </h3>
+              <p className="text-sm text-text opacity-70 mt-2 font-medium">
+                Esta ação apagará permanentemente todos os seus registros financeiros.
+              </p>
+            </div>
+
+            <div className="mb-8 p-5 rounded-2xl bg-accent/5 border-2 border-accent/20">
+              <p className="text-xs text-accent font-black uppercase mb-3 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-accent"></div>
+                Dados que serão perdidos:
+              </p>
+              <ul className="text-xs text-text font-bold space-y-2 ml-4">
+                <li className="flex items-center gap-2">
+                  <div className="w-1 h-1 rounded-full bg-text opacity-50"></div>
+                  {totalTransactions} Transações
+                </li>
+                <li className="flex items-center gap-2">
+                  <div className="w-1 h-1 rounded-full bg-text opacity-50"></div>
+                  {totalGoals} Metas de Economia
+                </li>
+                <li className="flex items-center gap-2 text-accent">
+                  <div className="w-1 h-1 rounded-full bg-accent"></div>
+                  Todo o seu histórico local
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowClearModal(false)}
+                className="flex-1 px-4 py-4 rounded-2xl font-black text-sm transition-all border-2 shadow-md"
+                style={{ borderColor: theme.cardBorder, color: theme.text }}
+              >
+                CANCELAR
+              </button>
+              <button
+                onClick={handleClearAllData}
+                className="flex-1 px-4 py-4 text-white rounded-2xl font-black text-sm transition-all bg-accent hover:opacity-90 shadow-xl"
+              >
+                LIMPAR TUDO
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Category Add Confirmation Modal */}
+      {showAddCategoryModal && pendingCategory && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="rounded-3xl w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-200 border-2" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+            <div className="flex flex-col items-center text-center mb-8">
+              <div className="p-4 rounded-full bg-primary/10 text-primary shadow-xl mb-6">
+                <PlusCircle className="w-12 h-12" />
+              </div>
+              <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+                Nova Categoria
+              </h3>
+              <p className="text-sm text-text opacity-70 mt-2 font-medium">
+                Deseja adicionar a categoria <span className="font-black text-primary">"{pendingCategory.name}"</span> em <span className="font-black">{pendingCategory.type === 'expense' ? 'DESPESAS' : 'RECEITAS'}</span>?
+              </p>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setShowAddCategoryModal(false);
+                  setPendingCategory(null);
+                }}
+                className="flex-1 px-4 py-4 rounded-2xl font-black text-sm transition-all border-2 shadow-md"
+                style={{ borderColor: theme.cardBorder, color: theme.text }}
+              >
+                CANCELAR
+              </button>
+              <button
+                onClick={confirmAddCategory}
+                className="flex-1 px-4 py-4 text-white rounded-2xl font-black text-sm transition-all bg-primary hover:opacity-90 shadow-xl"
+              >
+                CONFIRMAR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Category Delete Confirmation Modal */}
+      {showDeleteCategoryModal && pendingCategory && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="rounded-3xl w-full max-w-md p-8 shadow-2xl border-2 border-accent" style={{ backgroundColor: theme.cardBackground }}>
+            <div className="flex flex-col items-center text-center mb-8">
+              <div className="p-4 rounded-full bg-accent/10 text-accent shadow-xl mb-6">
+                <Trash2 className="w-12 h-12" />
+              </div>
+              <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+                Excluir Categoria
+              </h3>
+              <p className="text-sm text-text opacity-70 mt-2 font-medium">
+                Tem certeza que deseja remover <span className="font-black text-accent">"{pendingCategory.name}"</span>?
+              </p>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setShowDeleteCategoryModal(false);
+                  setPendingCategory(null);
+                }}
+                className="flex-1 px-4 py-4 rounded-2xl font-black text-sm transition-all border-2 shadow-md"
+                style={{ borderColor: theme.cardBorder, color: theme.text }}
+              >
+                CANCELAR
+              </button>
+              <button
+                onClick={confirmRemoveCategory}
+                className="flex-1 px-4 py-4 text-white rounded-2xl font-black text-sm transition-all bg-accent hover:opacity-90 shadow-xl"
+              >
+                EXCLUIR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Category Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[200] backdrop-blur-md animate-in fade-in duration-300">
+          <div className="rounded-3xl w-full max-w-md p-8 shadow-2xl border-2 border-accent" style={{ backgroundColor: theme.cardBackground }}>
+            <div className="flex flex-col items-center text-center mb-8">
+              <div className="p-4 rounded-full bg-accent/10 text-accent shadow-xl mb-6">
+                <AlertTriangle className="w-12 h-12" />
+              </div>
+              <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+                Atenção!
+              </h3>
+              <p className="text-sm text-text opacity-70 mt-4 font-bold leading-relaxed">
+                {errorModalMessage}
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                if (errorTimer === 0) {
+                  setShowErrorModal(false);
+                }
+              }}
+              disabled={errorTimer > 0}
+              className={`w-full px-4 py-4 rounded-2xl font-black text-sm transition-all shadow-xl ${
+                errorTimer > 0 
+                  ? 'bg-cardBorder text-text opacity-50 cursor-not-allowed' 
+                  : 'bg-accent text-white hover:opacity-90'
+              }`}
+            >
+              OK {errorTimer > 0 ? `(${errorTimer}s)` : ''}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Method Add Confirmation Modal */}
+      {showAddPaymentMethodModal && pendingPaymentMethod && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="rounded-3xl w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-200 border-2" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+            <div className="flex flex-col items-center text-center mb-8">
+              <div className="p-4 rounded-full bg-primary/10 text-primary shadow-xl mb-6">
+                <PlusCircle className="w-12 h-12" />
+              </div>
+              <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+                Novo Meio de Pagamento
+              </h3>
+              <p className="text-sm text-text opacity-70 mt-2 font-medium">
+                Deseja adicionar <span className="font-black text-primary">"{pendingPaymentMethod}"</span> aos seus meios de pagamento?
+              </p>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setShowAddPaymentMethodModal(false);
+                  setPendingPaymentMethod(null);
+                }}
+                className="flex-1 px-4 py-4 rounded-2xl font-black text-sm transition-all border-2 shadow-md"
+                style={{ borderColor: theme.cardBorder, color: theme.text }}
+              >
+                CANCELAR
+              </button>
+              <button
+                onClick={confirmAddPaymentMethod}
+                className="flex-1 px-4 py-4 text-white rounded-2xl font-black text-sm transition-all bg-primary hover:opacity-90 shadow-xl"
+              >
+                CONFIRMAR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Method Delete Confirmation Modal */}
+      {showDeletePaymentMethodModal && pendingPaymentMethod && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="rounded-3xl w-full max-w-md p-8 shadow-2xl border-2 border-accent" style={{ backgroundColor: theme.cardBackground }}>
+            <div className="flex flex-col items-center text-center mb-8">
+              <div className="p-4 rounded-full bg-accent/10 text-accent shadow-xl mb-6">
+                <Trash2 className="w-12 h-12" />
+              </div>
+              <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+                Excluir Meio de Pagamento
+              </h3>
+              <p className="text-sm text-text opacity-70 mt-2 font-medium">
+                Tem certeza que deseja remover <span className="font-black text-accent">"{pendingPaymentMethod}"</span>?
+              </p>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setShowDeletePaymentMethodModal(false);
+                  setPendingPaymentMethod(null);
+                }}
+                className="flex-1 px-4 py-4 rounded-2xl font-black text-sm transition-all border-2 shadow-md"
+                style={{ borderColor: theme.cardBorder, color: theme.text }}
+              >
+                CANCELAR
+              </button>
+              <button
+                onClick={confirmRemovePaymentMethod}
+                className="flex-1 px-4 py-4 text-white rounded-2xl font-black text-sm transition-all bg-accent hover:opacity-90 shadow-xl"
+              >
+                EXCLUIR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Settings;

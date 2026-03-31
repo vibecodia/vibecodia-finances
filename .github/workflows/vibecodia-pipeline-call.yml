@@ -1,0 +1,366 @@
+name: Release & Trigger
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+    types: [opened, reopened, edited]
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+      - 'infra/**'
+      - '.github/**'
+      - '*.json'
+      - '*.ts'
+      - '*.js'
+      - '*.config.*'
+jobs:
+  check-conflicts:
+    runs-on: ubuntu-latest
+    outputs:
+      mergeable: ${{ steps.check.outputs.mergeable }}
+    steps:
+      - id: check
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.MY_PAT }}
+          script: |
+            let mergeable = null;
+            let attempts = 0;
+            const maxAttempts = 5;
+
+            while (mergeable === null && attempts < maxAttempts) {
+              attempts++;
+              const { data: pr } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number
+              });
+
+              mergeable = pr.mergeable;
+
+              if (mergeable === null) {
+                console.log(`Tentativa ${attempts}/${maxAttempts} — aguardando 10s...`);
+                await new Promise(resolve => setTimeout(resolve, 10000));
+              }
+            }
+
+            if (mergeable === null) {
+              core.summary
+                .addHeading('⚠️ Não foi possível verificar conflitos')
+                .addRaw('O deploy foi bloqueado por precaução. Feche e reabra o PR.')
+                .write();
+              core.setOutput('mergeable', 'false');
+            } else if (mergeable === false) {
+              core.summary
+                .addHeading('⚠️ PR com conflitos — deploy bloqueado')
+                .addRaw('Resolva os conflitos antes de prosseguir.')
+                .write();
+              core.setOutput('mergeable', 'false');
+            } else {
+              core.setOutput('mergeable', 'true');
+            }
+
+  detect-change-type:
+    needs: check-conflicts
+    if: needs.check-conflicts.outputs.mergeable == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.detect.outputs.app }}
+      build: ${{ steps.detect.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.MY_PAT }}
+          ref: ${{ github.head_ref }}
+      - name: Detectar tipo de mudança
+        id: detect
+        run: |
+          BASE_REF="${{ github.base_ref }}"
+          if [ -z "$BASE_REF" ]; then
+            BASE_REF="develop"
+          fi
+
+          echo "Base ref: $BASE_REF"
+          git fetch origin "$BASE_REF:refs/remotes/origin/$BASE_REF" --depth=1
+
+          CHANGED=$(git diff --name-only "origin/$BASE_REF"...HEAD)
+          echo "Arquivos alterados:"
+          echo "$CHANGED"
+
+          APP_CHANGED=false
+          BUILD_CHANGED=false
+
+          if echo "$CHANGED" | grep -qE '^(frontend|backend)/|^[^/]+\.(json|ts|js|config\..*)$'; then
+            APP_CHANGED=true
+          fi
+
+          if echo "$CHANGED" | grep -qE '^(infra/|\.github/)'; then
+            BUILD_CHANGED=true
+          fi
+
+          echo "app=$APP_CHANGED" >> $GITHUB_OUTPUT
+          echo "build=$BUILD_CHANGED" >> $GITHUB_OUTPUT
+          echo "App changed: $APP_CHANGED | Build changed: $BUILD_CHANGED"
+
+  release:
+    needs: detect-change-type
+    if: needs.detect-change-type.result == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      build_version: ${{ steps.build_version.outputs.build_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.MY_PAT }}
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Detectar tipo de versão
+        id: semver
+        run: |
+          PR_BODY="${{ github.event.pull_request.body }}"
+          BRANCH="${{ github.head_ref }}"
+
+          if echo "$PR_BODY" | grep -qiE "breaking change|BREAKING CHANGE"; then
+            TYPE="major"
+          else
+            case "$BRANCH" in
+              feature/*)    TYPE="minor" ;;
+              fix/*)     TYPE="patch" ;;
+              hotfix/*)  TYPE="patch" ;;
+              chore/*)   TYPE="patch" ;;
+              *)         TYPE="patch" ;;
+            esac
+          fi
+
+          echo "type=$TYPE" >> $GITHUB_OUTPUT
+          echo "Tipo semver: $TYPE"
+
+      - name: Verificar se próxima tag app já existe
+        id: tag-check
+        run: |
+          git fetch --tags
+          npm version "${{ steps.semver.outputs.type }}" --no-git-tag-version
+          NEXT_TAG="v$(node -p "require('./package.json').version")"
+          git checkout -- package.json package-lock.json
+          echo "next_tag=$NEXT_TAG" >> $GITHUB_OUTPUT
+          if git tag | grep -q "^${NEXT_TAG}$"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Bump version
+        if: needs.detect-change-type.outputs.app == 'true' && steps.tag-check.outputs.exists == 'false'
+        run: |
+          npm version "${{ steps.semver.outputs.type }}" -m "release: %s [skip ci]"
+      
+      - name: Enviar tag e commit
+        if: needs.detect-change-type.outputs.app == 'true' && steps.tag-check.outputs.exists == 'false'
+        run: git push origin HEAD --tags
+
+      - name: Release build version
+        if: needs.detect-change-type.outputs.build == 'true' && needs.detect-change-type.outputs.app == 'false'
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          BUILD_NUM=$(git tag | grep '^build-' | wc -l)
+          BUILD_TAG="build-$((BUILD_NUM + 1))"
+          git tag -a "$BUILD_TAG" -m "Build $BUILD_TAG"
+          git push origin "$BUILD_TAG"
+          echo "🏗️ Build tag criada: $BUILD_TAG"
+
+      - id: version
+        run: |
+          if [ "${{ needs.detect-change-type.outputs.app }}" = "true" ] && [ "${{ steps.tag-check.outputs.exists }}" = "false" ]; then
+            echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+          else
+            echo "version=" >> $GITHUB_OUTPUT
+          fi
+
+      - id: build_version
+        run: |
+          if [ "${{ needs.detect-change-type.outputs.build }}" = "true" ] && [ "${{ needs.detect-change-type.outputs.app }}" = "false" ]; then
+            BUILD_NUM=$(git tag | grep '^build-' | wc -l)
+            echo "build_version=build-$BUILD_NUM" >> $GITHUB_OUTPUT
+          else
+            echo "build_version=" >> $GITHUB_OUTPUT
+          fi
+
+  build-images:
+    needs: release
+    if: needs.release.outputs.version != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.MY_PAT }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: 'vibecodia',
+              repo: 'vibecodia-finances',
+              workflow_id: 'build-push.yml',
+              ref: 'develop',
+              inputs: {
+                version: '${{ needs.release.outputs.version }}',
+                pr_branch: '${{ github.head_ref }}'
+              }
+            })
+
+      - name: Aguardar build completar
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.MY_PAT }}
+          script: |
+            await new Promise(resolve => setTimeout(resolve, 10000));
+
+            let completed = false;
+            let attempts = 0;
+
+            while (!completed && attempts < 30) {
+              attempts++;
+              const { data: runs } = await github.rest.actions.listWorkflowRuns({
+                owner: 'vibecodia',
+                repo: 'vibecodia-finances',
+                workflow_id: 'build-push.yml',
+                per_page: 1
+              });
+
+              const run = runs.workflow_runs[0];
+              console.log(`Status: ${run.status} | Conclusão: ${run.conclusion}`);
+
+              if (run.status === 'completed') {
+                if (run.conclusion !== 'success') {
+                  core.setFailed('Build das imagens falhou');
+                }
+                completed = true;
+              } else {
+                await new Promise(resolve => setTimeout(resolve, 15000));
+              }
+            }
+
+            if (!completed) {
+              core.setFailed('Timeout aguardando build das imagens');
+            }
+
+  trigger-and-wait:
+    needs: [release, build-images]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Update Pods
+        id: trigger-pods
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.MY_PAT }}
+          script: |
+            // 1. Disparar o workflow
+            await github.rest.actions.createWorkflowDispatch({
+              owner: 'vibecodia',
+              repo: 'vibecodia-pipelines',
+              workflow_id: '01_finances-update-pods.yml',
+              ref: 'main',
+              inputs: {
+                pr_number: context.payload.pull_request.number.toString(),
+                pr_branch: context.payload.pull_request.head.ref,
+                version: '${{ needs.release.outputs.version }}'
+              }
+            });
+
+            console.log('🚀 Workflow disparado em vibecodia/vibecodia-pipelines');
+
+            // 2. Aguardar alguns segundos para o GitHub registrar a nova execução
+            await new Promise(resolve => setTimeout(resolve, 15000));
+
+            // 3. Loop de verificação
+            let completed = false;
+            let attempts = 0;
+            const maxAttempts = 40; // ~10 minutos (40 * 15s)
+
+            while (!completed && attempts < maxAttempts) {
+              attempts++;
+              
+              // Buscar a execução mais recente do workflow no repositório alvo
+              const { data: runs } = await github.rest.actions.listWorkflowRuns({
+                owner: 'vibecodia',
+                repo: 'vibecodia-pipelines',
+                workflow_id: '01_finances-update-pods.yml',
+                per_page: 1
+              });
+
+              if (runs.workflow_runs.length === 0) {
+                console.log('Nenhuma execução encontrada ainda...');
+                await new Promise(resolve => setTimeout(resolve, 15000));
+                continue;
+              }
+
+              const run = runs.workflow_runs[0];
+              console.log(`Tentativa ${attempts}: Status=${run.status} | Conclusão=${run.conclusion} | URL=${run.html_url}`);
+
+              if (run.status === 'completed') {
+                completed = true;
+                if (run.conclusion === 'success') {
+                  console.log('✅ Update Pods concluído com sucesso!');
+                } else {
+                  core.setFailed(`❌ O workflow externo falhou com status: ${run.conclusion}`);
+                }
+              } else {
+                // Aguarda 15 segundos antes de checar novamente
+                await new Promise(resolve => setTimeout(resolve, 15000));
+              }
+            }
+
+            if (!completed) {
+              core.setFailed('⚠️ Timeout aguardando o workflow em vibecodia-pipelines');
+            }
+  
+  create-release-branch:
+    needs: [release, trigger-and-wait]
+    if: needs.trigger-and-wait.result == 'success' && needs.release.outputs.version != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.MY_PAT }}
+          ref: ${{ github.head_ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Bump Major
+        id: bump-major
+        run: |
+          VERSION="${{ needs.release.outputs.version }}"
+          MAJOR=$(( $(echo "$VERSION" | cut -d. -f1) + 1 ))
+          echo "release_branch=release/$MAJOR.0.0" >> $GITHUB_OUTPUT
+
+      - name: Criar branch release
+        env:
+          GH_TOKEN: ${{ secrets.MY_PAT }}
+        run: |
+          RELEASE_BRANCH="${{ steps.bump-major.outputs.release_branch }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if ! git ls-remote --heads origin "$RELEASE_BRANCH" | grep -q "$RELEASE_BRANCH"; then
+            git checkout -b "$RELEASE_BRANCH"
+            git push origin "$RELEASE_BRANCH"
+            echo "✅ Branch $RELEASE_BRANCH criada"
+          else
+            echo "ℹ️ Branch $RELEASE_BRANCH já existe"
+          fi

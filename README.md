@@ -1,6 +1,6 @@
-# 💰 Controle Financeiro v0
+# 💰 Controle Financeiro
 
-Aplicativo web moderno para gerenciamento financeiro doméstico, otimizado para dispositivos móveis Android. ;)
+Aplicativo web para gerenciamento financeiro doméstico. III
 
 ## 🚀 Funcionalidades
 
@@ -32,20 +32,13 @@ cd financial-app
 docker-compose up --build
 
 # Acesse em http://localhost:5173
-```
-
-### Produção
-```bash
-# Build e execute a versão de produção
-docker-compose -f docker-compose.prod.yml up --build
+Produção
+bash# Build e execute a versão de produção
+docker-compose -f infra/docker/docker-compose.prod.yml up --build
 
 # Acesse em http://localhost:8080
-```
-
-## 📋 Comandos Úteis
-
-```bash
-# Parar os containers
+📋 Comandos Úteis
+bash# Parar os containers
 docker-compose down
 
 # Rebuild completo
@@ -56,44 +49,32 @@ docker-compose logs -f
 
 # Executar comandos no container
 docker-compose exec financial-app sh
-```
+🏗️ Estrutura do Projeto
+financial-app/
+├── src/
+│   ├── components/          # Componentes React
+│   │   ├── Dashboard.tsx    # Resumo financeiro
+│   │   ├── TransactionList.tsx # Lista de transações
+│   │   ├── Calendar.tsx     # Calendário de vencimentos
+│   │   ├── Reports.tsx      # Relatórios e gráficos
+│   │   └── SavingsGoals.tsx # Metas de economia
+│   ├── hooks/              # Custom hooks
+│   ├── types/              # Definições TypeScript
+│   └── utils/              # Funções utilitárias
+├── infra/
+│   └── docker/
+│       ├── Dockerfile
+│       ├── Dockerfile.prod
+│       ├── docker-compose.yml
+│       ├── docker-compose.prod.yml
+│       └── .env            # Variáveis de ambiente
+└── package.json
+📁 Configuração de Diretórios
+O projeto utiliza a seguinte estrutura para infraestrutura:
 
-## 🏗️ Estrutura do Projeto
+Docker: infra/docker/
+Variáveis de Ambiente: infra/docker/.env
 
-```
-src/
-├── components/          # Componentes React
-│   ├── Dashboard.tsx    # Resumo financeiro
-│   ├── TransactionList.tsx # Lista de transações
-│   ├── Calendar.tsx     # Calendário de vencimentos
-│   ├── Reports.tsx      # Relatórios e gráficos
-│   └── SavingsGoals.tsx # Metas de economia
-├── hooks/              # Custom hooks
-├── types/              # Definições TypeScript
-└── utils/              # Funções utilitárias
-```
-
-## 🎯 Próximas Funcionalidades
-- [ ] Backup/Restauração de dados
-- [ ] Modo escuro
-- [ ] Notificações push para vencimentos
-- [ ] Categorias personalizáveis
-- [ ] Relatórios avançados
-
-## 🛠️ Tecnologias Utilizadas
-- **React 18** com TypeScript
-- **Tailwind CSS** para estilização
-- **Chart.js** para gráficos interativos
-- **Lucide React** para ícones
-- **Docker** para containerização
-- **Vite** como bundler
-
-## 📱 Otimizações Mobile
-- Layout responsivo mobile-first
-- Navegação otimizada para touch
-- Carregamento rápido em conexões móveis
-- Interface adaptada para telas pequenas
-
----
-
-
+Para executar os comandos Docker, navegue até o diretório correto:
+bashcd infra/docker
+docker-compose up --build
