@@ -157,7 +157,7 @@ jobs:
       - name: Bump version
         if: needs.detect-change-type.outputs.app == 'true' && steps.tag-check.outputs.exists == 'false'
         run: |
-          npm version "${{ steps.semver.outputs.type }}" -m "release: %s"
+          npm version "${{ steps.semver.outputs.type }}" -m "release: %s [skip ci]"
       
       - name: Enviar tag e commit
         if: needs.detect-change-type.outputs.app == 'true' && steps.tag-check.outputs.exists == 'false'
