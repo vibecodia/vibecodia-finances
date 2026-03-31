@@ -1048,7 +1048,14 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                       <span className="font-semibold">{c.goalName}</span>
                                     </td>
                                     <td className={`p-4 border-r font-black text-primary ${isDeleted ? 'line-through opacity-60' : ''}`} style={{ borderColor: theme.cardBorder }}>
-                                      {formatCurrency(c.amount)}
+                                      <div className="flex items-center justify-between gap-3">
+                                        <span>{formatCurrency(c.amount)}</span>
+                                        {c.isPaid === false && !isDeleted && (
+                                          <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#FFE0B2] text-black">
+                                            pending
+                                          </span>
+                                        )}
+                                      </div>
                                     </td>
                                     <td className="p-4 border-r text-center" style={{ borderColor: theme.cardBorder }}>
                                       {isDeleted && (

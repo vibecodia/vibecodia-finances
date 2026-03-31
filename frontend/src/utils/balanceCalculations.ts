@@ -16,6 +16,7 @@ const calculateTotalGoalsImpact = (savingsGoals: SavingsGoal[] = [], effectiveDa
     const goalTotal = (goal.contributions || []).reduce((sum, contribution) => {
       // Ignora contribuições deletadas no cálculo
       if (contribution.status === 'deleted') return sum;
+      if (contribution.isPaid === false) return sum;
       
       const cDate = contribution.date.slice(0, 10);
       return sum + (cDate <= effectiveDate ? contribution.amount : 0);

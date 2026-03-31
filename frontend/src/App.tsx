@@ -145,12 +145,12 @@ function App() {
         <main className={`w-full px-4 sm:px-6 lg:px-12 pb-20 transition-all duration-300 ${hideMenuOnDesktop ? '' : 'lg:pl-72'}`}>
           <Routes>
             <Route path="/" element={<Dashboard transactions={transactions} savingsGoals={savingsGoals} />} />
-            <Route path="/expenses" element={<TransactionList type="expense" transactions={transactions} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} />} />
-            <Route path="/income" element={<TransactionList type="income" transactions={transactions} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} />} />
+            <Route path="/expenses" element={<TransactionList type="expense" transactions={transactions} savingsGoals={savingsGoals} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} />} />
+            <Route path="/income" element={<TransactionList type="income" transactions={transactions} savingsGoals={savingsGoals} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} />} />
             <Route path="/calendar" element={<Calendar transactions={transactions} onUpdatePaymentStatus={updatePaymentStatus} />} />
             <Route path="/reports" element={<Reports transactions={transactions} savingsGoals={savingsGoals} />} />
             <Route path="/playground" element={<Playground transactions={transactions} savingsGoals={savingsGoals} />} />
-            <Route path="/goals" element={<SavingsGoals goals={savingsGoals} onAdd={addSavingsGoal} onUpdate={updateSavingsGoal} onDelete={deleteSavingsGoal} onAddContribution={addSavingsContribution} onUpdateContribution={updateSavingsContribution} onDeleteContribution={deleteSavingsContribution} />} />
+            <Route path="/goals" element={<SavingsGoals goals={savingsGoals} onAdd={addSavingsGoal} onUpdate={updateSavingsGoal} onDelete={deleteSavingsGoal} onAddContribution={addSavingsContribution} onUpdateContribution={updateSavingsContribution} onDeleteContribution={deleteSavingsContribution} onUpdatePaymentStatus={updatePaymentStatus} />} />
             <Route path="/settings" element={<Settings transactions={transactions} savingsGoals={savingsGoals} onImportData={importData} onClearAllData={clearAllData} />} />
             <Route path="/tasks" element={<TrelloBoard />} />
           </Routes>

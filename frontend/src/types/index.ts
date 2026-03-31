@@ -26,6 +26,8 @@ export interface SavingsContribution {
   id: string;
   amount: number;
   date: string; // Data do aporte
+  isPaid?: boolean;
+  transactionId?: string;
   createdAt: string;
   updatedAt: string;
   status?: 'active' | 'deleted'; // Adicionado para Soft Delete

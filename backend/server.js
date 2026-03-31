@@ -74,6 +74,7 @@ const createLocalDateForStorage = (dateString) => {
 const savingsContributionSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   date: { type: Date, required: true },
+  isPaid: { type: Boolean, default: true },
   status: { type: String, enum: ['active', 'deleted'], default: 'active' },
   deletedAt: { type: Date }
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
@@ -286,6 +287,12 @@ app.get('/api/transactions', dbMiddleware, async (req, res) => {
 
 app.post('/api/transactions', dbMiddleware, async (req, res) => {
   const Transaction = req.conn.model('Transaction', transactionSchema);
+  const SavingsGoal = req.conn.model('SavingsGoal', savingsGoalSchema);
+
+  const requestedGoalId = req.body.savingsGoalId || req.body.goalId;
+  const isAporte = typeof req.body.category === 'string' && req.body.category.trim().toLowerCase() === 'aporte';
+  const amount = Number(req.body.amount);
+
   const transactionData = {
     ...req.body,
     paymentMethod: req.body.paymentMethod || 'pix',
@@ -293,7 +300,75 @@ app.post('/api/transactions', dbMiddleware, async (req, res) => {
     dueDate: req.body.dueDate ? createLocalDateForStorage(req.body.dueDate) : undefined,
   };
 
+  if (isAporte) {
+    if (!requestedGoalId) {
+      return res.status(400).json({ message: 'Para categoria "Aporte", o campo goalId/savingsGoalId é obrigatório.' });
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ message: 'Valor do aporte inválido.' });
+    }
+  } else {
+    delete transactionData.savingsGoalId;
+    delete transactionData.goalId;
+    delete transactionData.savingsGoalContributionId;
+  }
+
   try {
+    if (isAporte) {
+      transactionData.category = 'Aporte';
+      const goal = await SavingsGoal.findById(requestedGoalId);
+      if (!goal || goal.status === 'deleted') {
+        return res.status(404).json({ message: 'Meta não encontrada ou inativa.' });
+      }
+
+      const aggregate = await Transaction.aggregate([
+        { $match: { category: 'Aporte', status: 'active', savingsGoalId: goal._id } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]);
+      const plannedAmount = aggregate?.[0]?.total || 0;
+      const remaining = (goal.targetAmount || 0) - plannedAmount;
+
+      const paidAggregate = await Transaction.aggregate([
+        { $match: { category: 'Aporte', status: 'active', savingsGoalId: goal._id, isPaid: true } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]);
+      const paidAmount = paidAggregate?.[0]?.total || 0;
+
+      if (remaining <= 0) {
+        return res.status(400).json({ message: 'Esta meta já atingiu o valor total. Não é possível adicionar novos aportes.' });
+      }
+      if (amount > remaining) {
+        return res.status(400).json({
+          message: `Valor do aporte ultrapassa o restante da meta. Restante disponível: ${remaining}.`,
+          remaining
+        });
+      }
+
+      goal.contributions.push({
+        amount,
+        date: transactionData.date || new Date(),
+        isPaid: transactionData.isPaid === true,
+        status: 'active'
+      });
+
+      await goal.save();
+      const newContribution = goal.contributions[goal.contributions.length - 1];
+
+      transactionData.savingsGoalId = goal._id;
+      transactionData.savingsGoalContributionId = newContribution._id.toString();
+
+      try {
+        const newTransaction = await new Transaction(transactionData).save();
+        goal.currentAmount = paidAmount + (newTransaction.isPaid ? amount : 0);
+        await goal.save();
+        return res.status(201).json(newTransaction);
+      } catch (err) {
+        goal.contributions = goal.contributions.filter(c => c._id.toString() !== newContribution._id.toString());
+        await goal.save();
+        throw err;
+      }
+    }
+
     const newTransaction = await new Transaction(transactionData).save();
     res.status(201).json(newTransaction);
   } catch (err) {
@@ -355,6 +430,11 @@ app.put('/api/transactions/:id', dbMiddleware, async (req, res) => {
             modified = true;
           }
 
+          if (req.body.isPaid !== undefined && contribution.isPaid !== updatedTransaction.isPaid) {
+            contribution.isPaid = updatedTransaction.isPaid;
+            modified = true;
+          }
+
           // Se houve restauração da transação
           if (req.body.status === 'active' && contribution.status === 'deleted') {
             console.log(`[PUT Transaction] RESTORING contribution in goal.`);
@@ -375,7 +455,8 @@ app.put('/api/transactions/:id', dbMiddleware, async (req, res) => {
             // Recalcular currentAmount
             const allActiveTransactions = await Transaction.find({ 
               savingsGoalId: goal._id, 
-              status: 'active' 
+              status: 'active',
+              isPaid: true
             });
             goal.currentAmount = allActiveTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
             
@@ -436,7 +517,8 @@ app.delete('/api/transactions/:id', dbMiddleware, async (req, res) => {
             // Recalcular currentAmount
             const allActiveTransactions = await Transaction.find({ 
               savingsGoalId: goal._id, 
-              status: 'active' 
+              status: 'active',
+              isPaid: true
             });
             goal.currentAmount = allActiveTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
             
@@ -473,15 +555,34 @@ app.get('/api/goals', dbMiddleware, async (req, res) => {
       savingsGoalId: { $exists: true }
     });
 
+    const aporteByContributionId = new Map();
+    allAportes.forEach(t => {
+      if (!t.savingsGoalContributionId) return;
+      aporteByContributionId.set(t.savingsGoalContributionId.toString(), {
+        transactionId: t._id?.toString(),
+        isPaid: t.isPaid === true,
+        savingsGoalId: t.savingsGoalId?.toString(),
+      });
+    });
+
     const filteredGoals = goals.map(goal => {
       const goalObj = goal.toObject();
       
       // Calculate currentAmount based on transactions
-      const goalAportes = allAportes.filter(t => t.savingsGoalId.toString() === goal._id.toString());
-      goalObj.currentAmount = goalAportes.reduce((sum, t) => sum + (t.amount || 0), 0);
+      const goalAportesPaid = allAportes.filter(t => t.savingsGoalId.toString() === goal._id.toString() && t.isPaid);
+      goalObj.currentAmount = goalAportesPaid.reduce((sum, t) => sum + (t.amount || 0), 0);
       
       // Contributions are still kept in the response for frontend compatibility
-      goalObj.contributions = (goalObj.contributions || []).filter(c => c.status === 'active');
+      goalObj.contributions = (goalObj.contributions || [])
+        .filter(c => c.status === 'active')
+        .map(c => {
+          const info = aporteByContributionId.get(c._id?.toString?.() || c.id?.toString?.());
+          return {
+            ...c,
+            isPaid: info ? info.isPaid : (c.isPaid !== undefined ? c.isPaid : true),
+            transactionId: info ? info.transactionId : undefined,
+          };
+        });
       
       return goalObj;
     });
@@ -599,6 +700,7 @@ app.post('/api/goals/:id/contributions', dbMiddleware, async (req, res) => {
     const contribution = {
       amount,
       date: contributionDate,
+      isPaid: true,
       status: 'active'
     };
 
@@ -627,7 +729,8 @@ app.post('/api/goals/:id/contributions', dbMiddleware, async (req, res) => {
     // Calculate current amount for the goal (legacy field update)
     const allTransactions = await Transaction.find({ 
       savingsGoalId: goal._id, 
-      status: 'active' 
+      status: 'active',
+      isPaid: true
     });
     goal.currentAmount = allTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
     await goal.save();
@@ -671,7 +774,8 @@ app.put('/api/goals/:goalId/contributions/:contributionId', dbMiddleware, async 
     // Recalcular currentAmount considerando as transações ativas
     const allTransactions = await Transaction.find({ 
       savingsGoalId: goal._id, 
-      status: 'active' 
+      status: 'active',
+      isPaid: true
     });
     goal.currentAmount = allTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
 
@@ -713,7 +817,8 @@ app.delete('/api/goals/:goalId/contributions/:contributionId', dbMiddleware, asy
     // Recalcular currentAmount
     const allTransactions = await Transaction.find({ 
       savingsGoalId: goal._id, 
-      status: 'active' 
+      status: 'active',
+      isPaid: true
     });
     goal.currentAmount = allTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
 
