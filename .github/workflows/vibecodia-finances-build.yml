@@ -81,22 +81,3 @@ jobs:
           else
             echo "ℹ️ PR já existe (#$PR_EXISTS), nada a fazer."
           fi
-
-      - name: PR para main (release/*)
-        if: steps.branch-type.outputs.type == 'release'
-        env:
-          GH_TOKEN: ${{ secrets.MY_PAT }}
-        run: |
-          BRANCH="${{ github.ref_name }}"
-          PR_EXISTS=$(gh pr list --head "$BRANCH" --base main --json number --jq '.[0].number')
-
-          if [ -z "$PR_EXISTS" ]; then
-            gh pr create \
-              --base main \
-              --head "$BRANCH" \
-              --title "Release: $BRANCH" \
-              --body "PR de release gerado automaticamente. BREAKING CHANGE."
-            echo "✅ PR criado: $BRANCH → main"
-          else
-            echo "ℹ️ PR já existe (#$PR_EXISTS), nada a fazer."
-          fi

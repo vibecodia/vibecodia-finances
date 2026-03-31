@@ -322,3 +322,45 @@ jobs:
             if (!completed) {
               core.setFailed('⚠️ Timeout aguardando o workflow em vibecodia-pipelines');
             }
+  
+  create-release-branch:
+    needs: [release, trigger-and-wait]
+    if: needs.trigger-and-wait.result == 'success' && needs.release.outputs.version != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.MY_PAT }}
+          ref: ${{ github.head_ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Bump Major
+        id: bump-major
+        run: |
+          VERSION="${{ needs.release.outputs.version }}"
+          MAJOR=$(( $(echo "$VERSION" | cut -d. -f1) + 1 ))
+          echo "release_branch=release/$MAJOR.0.0" >> $GITHUB_OUTPUT
+
+      - name: Criar branch release
+        env:
+          GH_TOKEN: ${{ secrets.MY_PAT }}
+        run: |
+          RELEASE_BRANCH="${{ steps.bump-major.outputs.release_branch }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if ! git ls-remote --heads origin "$RELEASE_BRANCH" | grep -q "$RELEASE_BRANCH"; then
+            git checkout -b "$RELEASE_BRANCH"
+            git push origin "$RELEASE_BRANCH"
+            echo "✅ Branch $RELEASE_BRANCH criada"
+          else
+            echo "ℹ️ Branch $RELEASE_BRANCH já existe"
+          fi
