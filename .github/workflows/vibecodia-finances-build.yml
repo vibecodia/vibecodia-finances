@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - 'feature/*'
+      - 'fix/*'
+      - 'breaking/*'
 permissions:
   contents: write
   pull-requests: write
