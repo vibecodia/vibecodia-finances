@@ -146,7 +146,8 @@ jobs:
         if: |
           needs.detect-change-type.outputs.app == 'true' &&
           steps.tag-check.outputs.exists == 'false'
-        run: npm version ${{ steps.semver.outputs.type }} -m "release: %s"
+        run: |
+          npm version "${{ steps.semver.outputs.type }}" -m "release: %s"
       
       - name: Enviar tag e commit
         if: |
@@ -169,7 +170,7 @@ jobs:
       - id: version
         run: |
           if [ "${{ needs.detect-change-type.outputs.app }}" = "true" ] && [ "${{ steps.tag-check.outputs.exists }}" = "false" ]; then
-            echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+            echo "version=$(node -p 'require(\"./package.json\").version')" >> $GITHUB_OUTPUT
           else
             echo "version=" >> $GITHUB_OUTPUT
           fi
