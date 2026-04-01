@@ -1,6 +1,6 @@
 import { format, addMonths, subMonths, getDate, getDaysInMonth, isBefore, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Wallet, Target, AlertTriangle, ChevronLeft, ChevronRight, CreditCard, Eye, EyeOff } from 'lucide-react';
+import { Wallet, Target, AlertTriangle, CreditCard, Eye, EyeOff } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import Confetti from 'react-confetti';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +11,7 @@ import { Transaction, SavingsGoal } from '../types';
 import { calculateBalances } from '../utils/balanceCalculations';
 import { formatCurrency, filterTransactionsByMonth, formatPaymentMethod, getCurrentBrazilDate } from '../utils/helpers';
 import RecentTransactionsFloatingCard from './RecentTransactionsFloatingCard';
+import MonthSegmentedControl from './MonthSegmentedControl';
 
 
 
@@ -245,15 +246,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
 
       {/* Header */}
       <div className="text-center py-3">
-        <h1 className="text-2xl font-bold text-text mb-2">Resumão do Mês!</h1>
-        <div className="flex items-center justify-center gap-2 text-text">
-          <button onClick={() => setCurrentMonth(m => subMonths(m, 1))} className="p-1 rounded-full hover:bg-cardBorder">
-            <ChevronLeft className="w-5 h-5 text-text" />
-          </button>
-          <p className="text-text">{format(currentMonth, 'MMMM yyyy', { locale: ptBR })}</p>
-          <button onClick={() => setCurrentMonth(m => addMonths(m, 1))} className="p-1 rounded-full hover:bg-cardBorder">
-            <ChevronRight className="w-5 h-5 text-text" />
-          </button>
+        <div className="flex items-center justify-center">
+          <MonthSegmentedControl
+            month={currentMonth}
+            onChange={(newMonth) => setCurrentMonth(newMonth)}
+          />
         </div>
       </div>
 
