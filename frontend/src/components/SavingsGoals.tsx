@@ -1,4 +1,4 @@
-import { Target, Plus, Trash2, Edit3, Calendar, TrendingUp, History, X, ChevronDown, RotateCcw, Check } from 'lucide-react';
+import { Target, Plus, Minus, Trash2, Edit3, Calendar, TrendingUp, History, X, ChevronDown, RotateCcw, Check } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
 import { useTheme } from '../contexts/ThemeContext';
@@ -372,6 +372,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
   const [editingContribution, setEditingContribution] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState('');
   const [editDate, setEditDate] = useState('');
+  const [monthlyYield, setMonthlyYield] = useState(1.0);
 
   const handleAddAmount = () => {
     const amount = parseFloat(addAmount);
@@ -495,6 +496,46 @@ const GoalCard: React.FC<GoalCardProps> = ({
             {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}
           </span>
         </div>
+        
+        {goal.currentAmount > 0 && (
+          <div className="mb-4 bg-green-50/20 dark:bg-green-900/10 p-2.5 rounded-xl border border-green-100/50 dark:border-green-900/20 transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5 text-[10px] text-green-600 dark:text-green-400 font-bold uppercase tracking-wider">
+                <TrendingUp className="w-3 h-3" />
+                <span>Lucro Estimado</span>
+              </div>
+              
+              <div className="flex items-center gap-2 bg-cardBackground border border-cardBorder rounded-lg px-1 py-0.5 shadow-sm">
+                <button 
+                  onClick={() => setMonthlyYield(prev => Math.max(0, prev - 0.1))}
+                  className="p-1 hover:bg-cardBorder rounded-md transition-colors"
+                >
+                  <Minus className="w-2.5 h-2.5 text-text opacity-70" />
+                </button>
+                <span className="text-[10px] font-mono font-bold text-text min-w-[2.5rem] text-center">
+                  {monthlyYield.toFixed(1)}%
+                </span>
+                <button 
+                  onClick={() => setMonthlyYield(prev => prev + 0.1)}
+                  className="p-1 hover:bg-cardBorder rounded-md transition-colors"
+                >
+                  <Plus className="w-2.5 h-2.5 text-text opacity-70" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-text opacity-60">Projeção mensal:</span>
+              <span className="text-green-600 dark:text-green-400 font-bold">
+                {formatCurrency(goal.currentAmount * (1 + monthlyYield / 100))}
+              </span>
+            </div>
+            <div className="text-[9px] text-text opacity-40 text-right mt-0.5 font-mono italic">
+              est. {((Math.pow(1 + monthlyYield/100, 12) - 1) * 100).toFixed(1)}% a.a.
+            </div>
+          </div>
+        )}
+
         <div className="w-full rounded-full h-3" style={{ backgroundColor: theme.cardBorder }}>
           <div 
             className={`h-3 rounded-full transition-all duration-500`}
