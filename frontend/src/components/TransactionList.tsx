@@ -1,6 +1,6 @@
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, ChevronLeft, ChevronRight, Wallet, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, Wallet, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
 import { useTheme } from '../contexts/ThemeContext';
@@ -11,6 +11,7 @@ import { formatBrazilDate, formatCurrency, formatPaymentMethod, filterTransactio
 import ConfirmationModal from './ConfirmationModal';
 import DailyDateSlider from './DailyDateSlider';
 import TransactionForm from './TransactionForm';
+import MonthSegmentedControl from './MonthSegmentedControl';
 
 
 
@@ -302,13 +303,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
     }
   };
 
-  const handlePreviousMonth = () => {
-    setCurrentMonth(prevMonth => subMonths(prevMonth, 1));
-  };
-
-  const handleNextMonth = () => {
-    setCurrentMonth(prevMonth => addMonths(prevMonth, 1));
-  };
+  // Deprecated by MonthSegmentedControl
 
   const handleDailyFilterChange = (newStartDate: Date, newEndDate: Date) => {
     setStartDateFilter(newStartDate);
@@ -412,17 +407,15 @@ const TransactionList: React.FC<TransactionListProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <button onClick={handlePreviousMonth} className="p-1 rounded-full hover:bg-cardBorder">
-              <ChevronLeft className="w-5 h-5 text-text" />
-            </button>
-            <h2 className="text-xl font-semibold text-text truncate">
-              {type === 'expense' ? 'Despesas' : 'Receitas'} - {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
-            </h2>
-            <button onClick={handleNextMonth} className="p-1 rounded-full hover:bg-cardBorder">
-              <ChevronRight className="w-5 h-5 text-text" />
-            </button>
+          <div className="mb-2">
+            <MonthSegmentedControl
+              month={currentMonth}
+              onChange={(newMonth) => setCurrentMonth(newMonth)}
+            />
           </div>
+          <h2 className="text-xl font-semibold text-text truncate mb-1">
+            {type === 'expense' ? 'Despesas' : 'Receitas'} - {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
+          </h2>
           <p className="text-sm font-medium opacity-70 ml-9 flex items-center flex-wrap gap-y-1" style={{ color: type === 'income' ? theme.primary : theme.accent }}>
             <span>Total: {formatCurrency(currentTotal)}</span>
             {activeTransactions.length > 0 && (
