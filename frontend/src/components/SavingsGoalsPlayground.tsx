@@ -1009,12 +1009,13 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                     ))}
                   </select>
                   <input
-                    type="number"
+                    type={!isSimInputFocused && !countdownSimExtra ? "text" : "number"}
+                    inputMode="decimal"
                     value={countdownSimExtra || ''}
                     onChange={(e) => handleCountdownSimExtraChange(Number(e.target.value))}
                     onFocus={() => setIsSimInputFocused(true)}
                     onBlur={() => setIsSimInputFocused(false)}
-                    placeholder="0"
+                    placeholder={!isSimInputFocused ? "simule agora aqui!" : "0"}
                     className={`w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none text-right transition-all duration-300 ${
                       !isSimInputFocused && !countdownSimExtra ? 'animate-pulse-border' : ''
                     }`}
