@@ -333,42 +333,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   }, [activeGoals, showDeleted]);
 
   // Calcular disponível mensal (excluindo Vero e Flash)
-  const monthlyAvailableData = useMemo(() => {
-    const currentDate = getCurrentBrazilDate();
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
-
-    // Receitas do mês (excluindo Vero e Flash)
-    const incomes = transactions
-      .filter(t => {
-        const tDate = parseLocalDate(t.date);
-        return t.type === 'income' &&
-              t.status === 'active' &&
-               isWithinInterval(tDate, { start: monthStart, end: monthEnd }) &&
-               !t.description?.toLowerCase().includes('vero') &&
-               !t.category?.toLowerCase().includes('vero') &&
-               !t.description?.toLowerCase().includes('flash') &&
-               !t.category?.toLowerCase().includes('flash');
-      })
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    // Despesas do mês
-    const expenses = transactions
-      .filter(t => {
-        const tDate = parseLocalDate(t.date);
-        return t.type === 'expense' &&
-                t.status === 'active' &&
-                !t.category?.toLowerCase().includes('aporte') &&
-                !t.paymentMethod?.toLowerCase().includes('vero') &&
-                !t.paymentMethod?.toLowerCase().includes('flash') &&
-               isWithinInterval(tDate, { start: monthStart, end: monthEnd });
-      })
-      .reduce((sum, t) => sum + t.amount, 0);
-      
-
-    const total = incomes - expenses;
-    return { incomes, expenses, total };
-  }, [transactions]);
+  
 
   // Cálculo de dados para "Disponível Final do Mês" (incluindo não pagas, exclui Vero/Flash)
   const monthlyTotals = useMemo(() => {
@@ -941,23 +906,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">
-                  💰 Disponível para Aportes (Somente Pagos)
+                  💰 Faça Simulações aqui
                 </p>
-                <div className="flex items-baseline gap-2">
-                  <p className={`text-2xl font-black ${monthlyAvailableData.total >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {formatCurrency(monthlyAvailableData.total)}
-                  </p>
-                  <span className="text-[10px] opacity-40 font-mono">
-                    ({formatCurrency(monthlyAvailableData.incomes)} - {formatCurrency(monthlyAvailableData.expenses)})
-                  </span>
-                </div>
+                
                 <p className="text-[10px] opacity-50 mt-1">
                   Receitas - Despesas (exclui Vero/Flash)
                 </p>
-              </div>
-              <div className="text-right text-[10px] opacity-40">
-                <p>📊 Baseado no que já foi pago</p>
-                <p>🎯 Use o simulador abaixo</p>
               </div>
             </div>
             <div className="mt-4 pt-4 border-t" style={{ borderColor: theme.cardBorder }}>
