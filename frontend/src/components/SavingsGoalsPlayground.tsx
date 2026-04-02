@@ -16,7 +16,7 @@ import {
   ScatterController,
   Filler,
 } from 'chart.js';
-import { startOfMonth, endOfMonth, isWithinInterval, format, differenceInDays, subMonths, subDays } from 'date-fns';
+import { startOfMonth, endOfMonth, isWithinInterval, format, differenceInDays, subDays } from 'date-fns';
 import {
   AlertCircle,
   ArrowDown,
@@ -45,7 +45,6 @@ import { Doughnut, Line, Pie, Scatter } from 'react-chartjs-2';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
 import { SavingsGoal, Transaction } from '../types';
-import { calculateBalances } from '../utils/balanceCalculations';
 import {
   formatCurrency,
   formatBrazilDate,
