@@ -108,6 +108,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const [isSimInputFocused, setIsSimInputFocused] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [projectionDays, setProjectionDays] = useState<number>(5);
+  const [catastrophicAmount, setCatastrophicAmount] = useState<number>(0);
+  const [catastrophicName, setCatastrophicName] = useState<string>('');
   
   const simChartRef = useRef<any>(null);
   const timelineChartRef = useRef<any>(null);
@@ -418,9 +420,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       expenses, 
       realContributions,
       previousMonthAdjustedBalance: previousBalanceAdjusted,
-      net: previousBalanceAdjusted + revenues - expenses - realContributions 
+      net: previousBalanceAdjusted + revenues - expenses - realContributions - catastrophicAmount
     };
-  }, [transactions, savingsGoals, activeGoals, startDate, endDate]);
+  }, [transactions, savingsGoals, activeGoals, startDate, endDate, catastrophicAmount]);
 
   // Cálculo para "Disponível próximos X dias" (após a data final do filtro) com detalhamento diário
   const nextDaysData = useMemo(() => {
@@ -1089,7 +1091,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                 <p className="text-[10px] opacity-50 mt-1">
                   Receitas - Despesas (exclui Vero/Flash)
                 </p>
-                {isFilterActive && (
+                {(
                   <p className="text-[9px] font-bold text-primary mt-1 uppercase tracking-tight">
                     Filtro ativo: {formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} até {formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}
                   </p>
@@ -1171,7 +1173,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                 <div
                   className="rounded-xl border p-4 bg-cardBorder/10 flex flex-col h-full"
                   style={{ borderColor: theme.cardBorder }}
-                  title={`Cálculo:\nSaldo Anterior: ${formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}\nReceitas (+): ${formatCurrency(monthlyTotals.revenues)}\nDespesas (-): ${formatCurrency(monthlyTotals.expenses)}\nAportes Reais (-): ${formatCurrency(monthlyTotals.realContributions)}\nAporte Simulado (-): ${formatCurrency(countdownSimExtra)}\nTotal: ${formatCurrency(countdownSimAvailableEndOfMonth)}`}
+                  title={`Cálculo:\nSaldo Anterior: ${formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}\nReceitas (+): ${formatCurrency(monthlyTotals.revenues)}\nDespesas (-): ${formatCurrency(monthlyTotals.expenses)}\nAportes Reais (-): ${formatCurrency(monthlyTotals.realContributions)}\nAporte Simulado (-): ${formatCurrency(countdownSimExtra)}\nGasto Extra (Catastrófico) (-): ${formatCurrency(catastrophicAmount)}\nTotal: ${formatCurrency(countdownSimAvailableEndOfMonth)}`}
                 >
                   <p className="text-[10px] font-bold uppercase opacity-50 mb-1">
                     {isFilterActive 
@@ -1193,7 +1195,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                     <span>+ Rec: {formatCurrency(monthlyTotals.revenues)}</span>
                     <span>- Desp: {formatCurrency(monthlyTotals.expenses)}</span>
                     <span>- Ap.R: {formatCurrency(monthlyTotals.realContributions)}</span>
-                    <span>- Sim: {formatCurrency(countdownSimExtra)}</span>)
+                    <span>- Sim: {formatCurrency(countdownSimExtra)}</span>
+                    {catastrophicAmount > 0 && <span>- Extra: {formatCurrency(catastrophicAmount)}</span>})
                   </div>
 
                   {countdownSimExtra > 0 && onAddTransaction && (
@@ -1241,9 +1244,50 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                       <span className="text-[10px] font-bold text-primary min-w-[20px] text-center">{projectionDays}d</span>
                     </div>
                   </div>
+
+                  {/* Input de Projeção Catastrófica */}
+                  <div className="mb-4 space-y-2">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold uppercase opacity-40 block flex items-center gap-1">
+                        💣 Quer ver um cenário pessimista?
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={catastrophicAmount || ''}
+                          onChange={(e) => setCatastrophicAmount(Number(e.target.value))}
+                          placeholder="Valor do gasto extra"
+                          className="w-full p-2 rounded-lg border text-[10px] font-bold bg-transparent outline-none transition-all"
+                          style={{ 
+                            borderColor: catastrophicAmount > 0 ? '#ef4444' : theme.cardBorder,
+                            color: theme.text,
+                            boxShadow: catastrophicAmount > 0 ? '0 0 10px rgba(239, 68, 68, 0.1)' : undefined
+                          }}
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] opacity-30 font-bold uppercase pointer-events-none">
+                          R$
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold uppercase opacity-40 block">Dê um nome para esse cenário</label>
+                      <input
+                        type="text"
+                        value={catastrophicName}
+                        onChange={(e) => setCatastrophicName(e.target.value)}
+                        placeholder="Ex: Presentes de aniversário"
+                        className="w-full p-2 rounded-lg border text-[10px] font-medium bg-transparent outline-none transition-all"
+                        style={{ 
+                          borderColor: theme.cardBorder,
+                          color: theme.text
+                        }}
+                      />
+                    </div>
+                  </div>
                   
                   <div className="space-y-2">
-                    {nextDaysData.dailyBalances.map((day: any, idx: number) => (
+                    {nextDaysData.dailyBalances.map((day: any) => (
                       <div key={day.date} className="flex items-center justify-between group border-b border-cardBorder/5 pb-1 last:border-0">
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-bold text-primary w-6">{day.label}</span>
@@ -1276,6 +1320,11 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                   </div>
                   <div className="text-[8.5px] opacity-40 font-mono font-normal mt-1 flex flex-wrap gap-x-1 items-center">
                     (<span>Base: {formatCurrency(nextDaysData.baseBalance)}</span>
+                    {catastrophicAmount > 0 && (
+                      <span className="text-accent">
+                        (já inclui -{formatCurrency(catastrophicAmount)}{catastrophicName ? ` para ${catastrophicName}` : ''})
+                      </span>
+                    )}
                     <span>+ Rec: {formatCurrency(nextDaysData.revenues)}</span>
                     <span>- Desp: {formatCurrency(nextDaysData.expenses)}</span>)
                   </div>
