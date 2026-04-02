@@ -16,7 +16,7 @@ import {
   ScatterController,
   Filler,
 } from 'chart.js';
-import { startOfMonth, endOfMonth, isWithinInterval, format, differenceInDays } from 'date-fns';
+import { startOfMonth, endOfMonth, isWithinInterval, format, differenceInDays, subMonths } from 'date-fns';
 import {
   Target,
   TrendingUp,
@@ -44,12 +44,14 @@ import { Doughnut, Line, Pie, Scatter } from 'react-chartjs-2';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
 import { SavingsGoal, Transaction } from '../types';
+import { calculateBalances } from '../utils/balanceCalculations';
 import {
   formatCurrency,
   formatBrazilDate,
   getCurrentBrazilDate,
   parseLocalDate,
 } from '../utils/helpers';
+import { is } from 'date-fns/locale';
 
 ChartJS.register(
   CategoryScale,
@@ -358,7 +360,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                isWithinInterval(tDate, { start: monthStart, end: monthEnd });
       })
       .reduce((sum, t) => sum + t.amount, 0);
-
+      
 
     const total = incomes - expenses;
     return { incomes, expenses, total };
@@ -369,6 +371,11 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     const currentDate = getCurrentBrazilDate();
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
+
+    // Saldo do mês anterior (adjustedBalance)
+    const previousMonth = subMonths(currentDate, 1);
+    const balances = calculateBalances(transactions, savingsGoals, previousMonth);
+    const previousMonthAdjustedBalance = balances.adjustedBalance;
 
     // Receitas do mês (excluindo Vero e Flash) - Todas (incluindo não pagas)
     const revenues = transactions
@@ -397,8 +404,26 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       })
       .reduce((sum, t) => sum + t.amount, 0);
 
-    return { revenues, expenses, net: revenues - expenses };
-  }, [transactions]);
+    // Aportes reais do mês (apenas isPaid=true)
+    const realContributions = transactions
+      .filter(t => {
+        const tDate = parseLocalDate(t.date);
+        return t.type === 'expense' &&
+                t.isPaid === true &&
+                t.status === 'active' &&
+                isWithinInterval(tDate, { start: monthStart, end: monthEnd }) &&
+                t.category?.toLowerCase().includes('aporte');
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    return { 
+      revenues, 
+      expenses, 
+      realContributions,
+      previousMonthAdjustedBalance,
+      net: previousMonthAdjustedBalance + revenues - expenses - realContributions 
+    };
+  }, [transactions, savingsGoals]);
 
   const handleSimulatedExtraChange = (goalId: string, value: number) => {
     setSimulatedExtraContributions(prev => ({
@@ -1441,7 +1466,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                         </div>
                                       )}
                                     </td>
-                                    <td className="p-4 text-right" title={`Cálculo:\nReceitas: ${formatCurrency(monthlyTotals.revenues)}\nDespesas: -${formatCurrency(monthlyTotals.expenses)}\nAporte Simulado: -${formatCurrency(goal.simulatedExtra)}\nTotal: ${formatCurrency(goal.availableEndOfMonth)}`}>
+                                    <td className="p-4 text-right" title={`Cálculo:\nSaldo Mês Ant: ${formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}\nReceitas (+): ${formatCurrency(monthlyTotals.revenues)}\nDespesas (-): ${formatCurrency(monthlyTotals.expenses)}\nAportes Reais (-): ${formatCurrency(monthlyTotals.realContributions)}\nAporte Simulado (-): ${formatCurrency(goal.simulatedExtra)}\nTotal: ${formatCurrency(goal.availableEndOfMonth)}`}>
                                       <div className={`flex flex-col items-end gap-0.5 font-bold ${
                                         goal.availableEndOfMonth < 0 ? 'text-red-500' :
                                         goal.availableEndOfMonth < 500 ? 'text-yellow-500' :
@@ -1454,7 +1479,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                           <span className="text-xs">{formatCurrency(goal.availableEndOfMonth)}</span>
                                         </div>
                                         <div className="text-[9px] opacity-40 font-mono font-normal">
-                                          ({formatCurrency(monthlyTotals.revenues)} - {formatCurrency(monthlyTotals.expenses)} - {formatCurrency(goal.simulatedExtra)})
+                                          ({formatCurrency(monthlyTotals.previousMonthAdjustedBalance)} + {formatCurrency(monthlyTotals.revenues)} - {formatCurrency(monthlyTotals.expenses)} - {formatCurrency(monthlyTotals.realContributions)} - {formatCurrency(goal.simulatedExtra)})
                                         </div>
                                       </div>
                                     </td>
