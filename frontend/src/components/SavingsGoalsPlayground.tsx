@@ -828,12 +828,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       <style>
         {`
           @keyframes pulse-border {
-            0% { border-color: ${theme.cardBorder}; box-shadow: 0 0 0 0 ${theme.primary}10; }
-            50% { border-color: ${theme.primary}80; box-shadow: 0 0 0 4px ${theme.primary}20; }
-            100% { border-color: ${theme.cardBorder}; box-shadow: 0 0 0 0 ${theme.primary}10; }
+            0% { border-color: ${theme.cardBorder}; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.1); }
+            50% { border-color: rgba(239, 68, 68, 0.8); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0.3); }
+            100% { border-color: ${theme.cardBorder}; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.1); }
           }
           .animate-pulse-border {
-            animation: pulse-border 2s infinite ease-in-out;
+            animation: pulse-border 1.5s infinite ease-in-out;
           }
         `}
       </style>
@@ -973,7 +973,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                 <p className="text-[10px] opacity-50 mt-1">
                   Receitas - Despesas (exclui Vero/Flash)
                 </p>
-                {isFilterActive && (
+                {(
                   <p className="text-[9px] font-bold text-primary mt-1 uppercase tracking-tight">
                     Filtro ativo: {formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} até {formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}
                   </p>
