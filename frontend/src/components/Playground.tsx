@@ -183,6 +183,7 @@ ChartJS.register(stackedBarTotalPlugin);
 interface PlaygroundProps {
   transactions: Transaction[];
   savingsGoals: SavingsGoal[];
+  onAddTransaction?: (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Transaction>;
 }
 
 interface LayoutItem {
@@ -246,7 +247,7 @@ const serializePlaygroundFiltersToSearch = (filters: PlaygroundFilterState): str
   return sp.toString();
 };
 
-const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals }) => {
+const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals, onAddTransaction }) => {
   const { theme } = useTheme();
   const { expenseCategories, incomeCategories } = useCategories();
   const { paymentMethods } = usePaymentMethods();
@@ -2019,21 +2020,21 @@ INSTRUÇÕES PARA SUA RESPOSTA:
       {renderAIAnalysisModal()}
       {renderAIObsModal()}
       {/* Tab Navigation */}
-      <div className="flex items-center justify-between py-8 gap-4 border-b" style={{ borderColor: theme.cardBorder }}>
+      <div className="flex flex-col md:flex-row md:items-center justify-between py-8 gap-6 border-b" style={{ borderColor: theme.cardBorder }}>
         <div className="flex-1">
           <h1 className="text-3xl lg:text-5xl font-bold text-text mb-2">
             {activeTab === 'transactions' ? '📊 Playground Financeiro' : '🎯 Análise de Metas'}
           </h1>
-          <p className="text-text opacity-70 text-base">
+          <p className="text-text opacity-70 text-sm md:text-base">
             {activeTab === 'transactions'
               ? 'Organize e analise seus dados com total liberdade'
               : 'Visualize o progresso de suas metas e aportes'}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <button
             onClick={() => setActiveTab('transactions')}
-            className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all border ${
+            className={`flex-1 md:flex-none px-6 py-3 md:py-2.5 rounded-xl font-bold text-sm transition-all border ${
               activeTab === 'transactions'
                 ? 'bg-primary text-white border-primary shadow-md'
                 : 'bg-transparent text-text border-cardBorder hover:bg-cardBorder/30'
@@ -2043,7 +2044,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
           </button>
           <button
             onClick={() => setActiveTab('savings')}
-            className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all border ${
+            className={`flex-1 md:flex-none px-6 py-3 md:py-2.5 rounded-xl font-bold text-sm transition-all border ${
               activeTab === 'savings'
                 ? 'bg-primary text-white border-primary shadow-md'
                 : 'bg-transparent text-text border-cardBorder hover:bg-cardBorder/30'
@@ -3220,7 +3221,11 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
       {/* Savings Goals Tab */}
       {activeTab === 'savings' && (
-        <SavingsGoalsPlayground savingsGoals={savingsGoals} transactions={transactions} />
+        <SavingsGoalsPlayground 
+          savingsGoals={savingsGoals} 
+          transactions={transactions} 
+          onAddTransaction={onAddTransaction}
+        />
       )}
     </div>
   );
