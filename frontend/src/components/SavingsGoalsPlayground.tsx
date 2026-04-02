@@ -16,25 +16,28 @@ import {
   ScatterController,
   Filler,
 } from 'chart.js';
-import { startOfMonth, endOfMonth, isWithinInterval, format, differenceInDays } from 'date-fns';
+import { startOfMonth, endOfMonth, isWithinInterval, format, differenceInDays, subDays } from 'date-fns';
 import {
-  Target,
-  TrendingUp,
+  AlertCircle,
+  ArrowDown,
+  ArrowUp,
   BarChart3,
   PieChart as PieChartIcon,
-  ArrowUp,
-  ArrowDown,
-  Minus,
-  Maximize2,
-  Filter,
-  AlertCircle,
-  Printer,
   Calculator,
+  CheckCircle2,
+  Eye,
+  Filter,
   Info,
+  Maximize2,
+  Minus,
   PanelLeftClose,
   PanelLeftOpen,
-  Eye,
-  Trash2
+  Pin,
+  Printer,
+  Target,
+  Trash2,
+  TrendingUp,
+  PlusCircle
 } from 'lucide-react';
 import React, { useState, useMemo, useRef } from 'react';
 import { Doughnut, Line, Pie, Scatter } from 'react-chartjs-2';
@@ -47,9 +50,9 @@ import {
   formatBrazilDate,
   getCurrentBrazilDate,
   parseLocalDate,
+  getBrazilDateString,
 } from '../utils/helpers';
-
-
+import TransactionForm from './TransactionForm';
 
 ChartJS.register(
   CategoryScale,
@@ -72,6 +75,7 @@ ChartJS.register(
 interface SavingsGoalsPlaygroundProps {
   savingsGoals: SavingsGoal[];
   transactions: Transaction[];
+  onAddTransaction?: (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Transaction>;
 }
 
 interface LayoutItem {
@@ -92,12 +96,16 @@ const DEFAULT_LAYOUT: LayoutItem[] = [
   { id: 'goals_vs_expenses', label: 'Metas vs Despesas', collapsed: true, number: 8 },
 ];
 
-const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savingsGoals, transactions }) => {
+const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savingsGoals, transactions, onAddTransaction }) => {
   const { theme } = useTheme();
   const [layout, setLayout] = useLocalStorage<LayoutItem[]>('savings_playground_layout_v2', DEFAULT_LAYOUT);
   const [showFilters, setShowFilters] = useLocalStorage<boolean>('savings_playground_show_filters', true);
 
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
+  const [countdownSimGoalId, setCountdownSimGoalId] = useState<string | null>(null);
+  const [countdownSimExtra, setCountdownSimExtra] = useState<number>(0);
+  const [showAporteForm, setShowAporteForm] = useState(false);
+  const [isSimInputFocused, setIsSimInputFocused] = useState(false);
   
   const simChartRef = useRef<any>(null);
   const timelineChartRef = useRef<any>(null);
@@ -141,8 +149,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   // Simulator State
   const [simInitialAmount, setSimInitialAmount] = useState<number>(0);
   const [simMonthlyAmount, setSimMonthlyAmount] = useState<number>(500);
-  const [simInterestRate, setSimInterestRate] = useState<number>(1); // 1% per month
-  const [simPeriod, setSimPeriod] = useState<number>(12); // 12 months
+  const [simInterestRate, setSimInterestRate] = useState<number>(1);
+  const [simPeriod, setSimPeriod] = useState<number>(12);
   const [simMode, setSimMode] = useState<'investment' | 'goal_reach'>('investment');
   const [simTargetGoalId, setSimTargetGoalId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState<string>(format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
@@ -230,7 +238,10 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               text-transform: uppercase;
               letter-spacing: 0.5px;
             }
-            th:last-child {
+            th:last-child,
+            th:nth-last-child(2),
+            th:nth-last-child(3),
+            th:nth-last-child(4) {
               text-align: right;
             }
             td {
@@ -243,7 +254,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             }
             td:last-child,
             td:nth-last-child(2),
-            td:nth-last-child(3) {
+            td:nth-last-child(3),
+            td:nth-last-child(4) {
               text-align: right;
               font-weight: 600;
             }
@@ -324,6 +336,116 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         }))
     ).sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
   }, [activeGoals, showDeleted]);
+
+  // Calcular disponível mensal (excluindo Vero e Flash)
+  
+
+  // Cálculo de dados para "Disponível Final do Mês" respeitando filtros de data
+  const monthlyTotals = useMemo(() => {
+    // Data limite para o saldo anterior (um dia antes do início do filtro)
+    const dayBeforeStart = format(subDays(parseLocalDate(startDate), 1), 'yyyy-MM-dd');
+
+    // 1. Saldo Anterior (Total Balance - Total Goals Impact até dayBeforeStart)
+    const paidTransactionsBefore = transactions.filter(t => {
+      if (t.status === 'deleted' || t.category?.toLowerCase().includes('aporte') || !t.isPaid) return false;
+      return t.date.slice(0, 10) <= dayBeforeStart;
+    });
+
+    const totalIncomeBefore = paidTransactionsBefore
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const totalExpensesBefore = paidTransactionsBefore
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const totalBalanceBefore = totalIncomeBefore - totalExpensesBefore;
+
+    const totalGoalsImpactBefore = activeGoals.reduce((total, goal) => {
+      const goalTotal = (goal.contributions || []).reduce((sum, contribution) => {
+        if (contribution.status === 'deleted' || !contribution.isPaid) return sum;
+        const cDate = contribution.date.slice(0, 10);
+        return sum + (cDate <= dayBeforeStart ? contribution.amount : 0);
+      }, 0);
+      return total + goalTotal;
+    }, 0);
+
+    const previousBalanceAdjusted = totalBalanceBefore - totalGoalsImpactBefore;
+
+    // 2. Receitas do período (excluindo Vero e Flash) - Todas (incluindo não pagas)
+    const revenues = transactions
+      .filter(t => {
+        const tDateStr = t.date.slice(0, 10);
+        return t.type === 'income' &&
+                t.status === 'active' &&
+               tDateStr >= startDate && tDateStr <= endDate &&
+               !t.description?.toLowerCase().includes('vero') &&
+               !t.category?.toLowerCase().includes('vero') &&
+               !t.description?.toLowerCase().includes('flash') &&
+               !t.category?.toLowerCase().includes('flash');
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    // 3. Despesas do período - Todas (incluindo não pagas)
+    const expenses = transactions
+      .filter(t => {
+        const tDateStr = t.date.slice(0, 10);
+        return t.type === 'expense' &&
+                t.status === 'active' &&
+                !t.category?.toLowerCase().includes('aporte') &&
+                !t.paymentMethod?.toLowerCase().includes('vero') &&
+                !t.paymentMethod?.toLowerCase().includes('flash') &&
+               tDateStr >= startDate && tDateStr <= endDate;
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    // 4. Aportes reais do período (apenas isPaid=true)
+    const realContributions = transactions
+      .filter(t => {
+        const tDateStr = t.date.slice(0, 10);
+        return t.type === 'expense' &&
+                t.isPaid === true &&
+                t.status === 'active' &&
+                tDateStr >= startDate && tDateStr <= endDate &&
+                t.category?.toLowerCase().includes('aporte');
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    return { 
+      revenues, 
+      expenses, 
+      realContributions,
+      previousMonthAdjustedBalance: previousBalanceAdjusted,
+      net: previousBalanceAdjusted + revenues - expenses - realContributions 
+    };
+  }, [transactions, savingsGoals, activeGoals, startDate, endDate]);
+
+  // Verificar se o filtro de data está ativo (diferente do mês atual)
+  const isFilterActive = useMemo(() => {
+    const defaultStart = format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd');
+    const defaultEnd = format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd');
+    return startDate !== defaultStart || endDate !== defaultEnd;
+  }, [startDate, endDate]);
+
+  const handleCountdownSimGoalChange = (goalId: string) => {
+    setCountdownSimGoalId(goalId || null);
+  };
+
+  const handleCountdownSimExtraChange = (value: number) => {
+    setCountdownSimExtra(value || 0);
+  };
+
+  const handleRegisterAporte = async (transactionData: any) => {
+    if (onAddTransaction) {
+      try {
+        await onAddTransaction(transactionData);
+        setShowAporteForm(false);
+        setCountdownSimExtra(0);
+      } catch (error) {
+        console.error('Erro ao registrar aporte:', error);
+      }
+    }
+  };
 
   // Simulator Calculations
   const simulationResults = useMemo(() => {
@@ -471,7 +593,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const savingsVsIncomeChartData = useMemo(() => {
     const months: Record<string, { income: number; savings: number }> = {};
 
-    // Aggregate income by month
     transactions
       .filter(t => t.type === 'income' && t.isPaid)
       .forEach(t => {
@@ -480,7 +601,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         months[monthKey].income += t.amount;
       });
 
-    // Aggregate savings contributions by month
     allContributions.forEach(c => {
       const monthKey = format(parseLocalDate(c.date), 'yyyy-MM');
       if (!months[monthKey]) months[monthKey] = { income: 0, savings: 0 };
@@ -525,9 +645,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       }
 
       return {
-        x: daysUntilDeadline !== null ? daysUntilDeadline : 9999, // X = urgency
-        y: remaining, // Y = amount remaining
-        r: goal.targetAmount / 100, // Size = target amount
+        x: daysUntilDeadline !== null ? daysUntilDeadline : 9999,
+        y: remaining,
+        r: goal.targetAmount / 100,
         label: goal.name,
         id: goal.id,
       };
@@ -552,6 +672,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   }, [matrixData, theme.cardBackground]);
 
   // Goals Countdown Table Data
+  const countdownSimGoalIdEffective = countdownSimGoalId ?? (savingsGoals[0]?.id ?? null);
+
   const countdownTableData = useMemo(() => {
     return savingsGoals.map(goal => {
       const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
@@ -565,15 +687,42 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         monthlyNeeded = remaining / monthsLeft;
       }
 
+      const simulatedExtra = countdownSimGoalIdEffective && goal.id === countdownSimGoalIdEffective ? countdownSimExtra : 0;
+      const remainingAfterSimulated = Math.max(0, remaining - simulatedExtra);
+      const monthsWithSimulated = monthlyNeeded > 0 ? Math.ceil(remainingAfterSimulated / monthlyNeeded) : null;
+      const monthsSaved = monthlyNeeded > 0 && simulatedExtra > 0 
+        ? Math.floor(simulatedExtra / monthlyNeeded) 
+        : 0;
+
       return {
         ...goal,
         remaining,
         percentage,
         daysLeft,
         monthlyNeeded,
+        remainingAfterSimulated,
+        monthsWithSimulated,
+        monthsSaved,
+        simulatedExtra,
+        availableEndOfMonth: monthlyTotals.net - simulatedExtra,
       };
     });
-  }, [savingsGoals]);
+  }, [savingsGoals, countdownSimExtra, countdownSimGoalIdEffective, monthlyTotals]);
+
+  const countdownSimGoal = useMemo(() => {
+    if (!countdownSimGoalIdEffective) return null;
+    return countdownTableData.find(g => g.id === countdownSimGoalIdEffective) || null;
+  }, [countdownTableData, countdownSimGoalIdEffective]);
+
+  // Se o aporte form for fechado ou o valor mudar, resetar o estado de aporte se necessário
+  // (Opcional, mas ajuda a manter a consistência)
+
+  const countdownSimAvailableEndOfMonth = monthlyTotals.net - countdownSimExtra;
+  const countdownSimAvailableColorClass =
+    countdownSimAvailableEndOfMonth < 0 ? 'text-red-500' :
+    countdownSimAvailableEndOfMonth < 500 ? 'text-yellow-500' :
+    'text-green-500';
+  const countdownSimIsGoalAchieved = countdownSimGoal ? countdownSimGoal.remainingAfterSimulated <= 0 : false;
 
   // Contribution Table Data
   const contributionTableData = useMemo(() => {
@@ -604,7 +753,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
 
     const goalTotals = savingsGoals.reduce((sum, g) => sum + g.currentAmount, 0);
 
-    const categories = Object.keys(expenseCategories).slice(0, 8); // Top 8
+    const categories = Object.keys(expenseCategories).slice(0, 8);
     const expenseAmounts = categories.map(cat => expenseCategories[cat]);
     const colors = [
       '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
@@ -675,6 +824,18 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
 
   return (
     <div className="space-y-6 pb-10 max-w-full overflow-x-hidden relative">
+      <style>
+        {`
+          @keyframes pulse-border {
+            0% { border-color: ${theme.cardBorder}; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.1); }
+            50% { border-color: rgba(239, 68, 68, 0.8); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0.3); }
+            100% { border-color: ${theme.cardBorder}; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.1); }
+          }
+          .animate-pulse-border {
+            animation: pulse-border 1.5s infinite ease-in-out;
+          }
+        `}
+      </style>
       <div className="flex flex-col lg:flex-row gap-6 items-start mt-4">
         {/* Sidebar Filters */}
         {showFilters && (
@@ -800,6 +961,156 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             </div>
           </div>
 
+          {/* Card de Disponibilidade Mensal */}
+          <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">
+                  💰 Faça Simulações aqui
+                </p>
+                
+                <p className="text-[10px] opacity-50 mt-1">
+                  Receitas - Despesas (exclui Vero/Flash)
+                </p>
+                {(
+                  <p className="text-[9px] font-bold text-primary mt-1 uppercase tracking-tight">
+                    Filtro ativo: {formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} até {formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t" style={{ borderColor: theme.cardBorder }}>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-text opacity-60 uppercase tracking-widest">
+                    Simular Aporte
+                  </p>
+                  <p className="text-[10px] opacity-50 mt-1">
+                    {countdownSimGoal ? (
+                      <>
+                        Atual: <span className="font-mono font-bold">{formatCurrency(countdownSimGoal.currentAmount + countdownSimExtra)}</span>{' '}
+                        · Alvo: <span className="font-mono font-bold">{formatCurrency(countdownSimGoal.targetAmount)}</span>
+                      </>
+                    ) : (
+                      <>Selecione uma meta para ver os valores.</>
+                    )}
+                  </p>
+                  <select
+                    value={countdownSimGoalIdEffective || ''}
+                    onChange={(e) => handleCountdownSimGoalChange(e.target.value)}
+                    className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
+                    style={{ borderColor: theme.cardBorder }}
+                    disabled={savingsGoals.length === 0}
+                  >
+                    <option value="" disabled>Selecione uma meta</option>
+                    {savingsGoals.map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                  <input
+                    type={!isSimInputFocused && !countdownSimExtra ? "text" : "number"}
+                    inputMode="decimal"
+                    value={countdownSimExtra || ''}
+                    onChange={(e) => handleCountdownSimExtraChange(Number(e.target.value))}
+                    onFocus={() => setIsSimInputFocused(true)}
+                    onBlur={() => setIsSimInputFocused(false)}
+                    placeholder={!isSimInputFocused ? "simule agora aqui!" : "0"}
+                    className={`w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none text-right transition-all duration-300 ${
+                      !isSimInputFocused && !countdownSimExtra ? 'animate-pulse-border' : ''
+                    }`}
+                    style={{ 
+                      borderColor: countdownSimExtra > 0 ? '#10b981' : theme.cardBorder, 
+                      color: theme.text,
+                      boxShadow: countdownSimExtra > 0 ? '0 0 15px rgba(16, 185, 129, 0.2)' : undefined
+                    }}
+                    disabled={!countdownSimGoalIdEffective}
+                  />
+                </div>
+
+                <div className="rounded-xl border p-4 bg-cardBorder/10" style={{ borderColor: theme.cardBorder }}>
+                  <p className="text-[10px] font-bold uppercase opacity-50 mb-1">Impacto</p>
+                  {countdownSimGoal && countdownSimExtra > 0 ? (
+                    countdownSimIsGoalAchieved ? (
+                      <p className="text-sm font-black text-green-500">✅ Meta atingida!</p>
+                    ) : (
+                      <div className="text-xs">
+                        <span className="text-green-500 font-bold">
+                          Antecipa {countdownSimGoal.monthsSaved} {countdownSimGoal.monthsSaved === 1 ? 'mês' : 'meses'}
+                        </span>
+                        <div className="text-[10px] opacity-60 mt-1">
+                          Restam {countdownSimGoal.monthsWithSimulated} {countdownSimGoal.monthsWithSimulated === 1 ? 'mês' : 'meses'}
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    <p className="text-xs opacity-50">Informe um valor para ver o impacto na meta.</p>
+                  )}
+                </div>
+
+                <div
+                  className="rounded-xl border p-4 bg-cardBorder/10"
+                  style={{ borderColor: theme.cardBorder }}
+                  title={`Cálculo:\nSaldo Anterior: ${formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}\nReceitas (+): ${formatCurrency(monthlyTotals.revenues)}\nDespesas (-): ${formatCurrency(monthlyTotals.expenses)}\nAportes Reais (-): ${formatCurrency(monthlyTotals.realContributions)}\nAporte Simulado (-): ${formatCurrency(countdownSimExtra)}\nTotal: ${formatCurrency(countdownSimAvailableEndOfMonth)}`}
+                >
+                  <p className="text-[10px] font-bold uppercase opacity-50 mb-1">
+                    {isFilterActive 
+                      ? `Disponível no filtro de ${formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yy')} a ${formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yy')}`
+                      : 'Disponível Final do Mês'
+                    }
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <div className={`flex items-center gap-1.5 font-black ${countdownSimAvailableColorClass}`}>
+                      {countdownSimAvailableEndOfMonth < 0 ? <AlertCircle className="w-4 h-4" /> :
+                        countdownSimAvailableEndOfMonth < 500 ? <Pin className="w-4 h-4" /> :
+                        <CheckCircle2 className="w-4 h-4" />
+                      }
+                      <span className="text-lg">{formatCurrency(countdownSimAvailableEndOfMonth)}</span>
+                    </div>
+
+                    {countdownSimExtra > 0 && onAddTransaction && (
+                      <button
+                        onClick={() => setShowAporteForm(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-lg text-[10px] font-bold hover:scale-105 transition-all shadow-sm whitespace-nowrap"
+                      >
+                        <PlusCircle className="w-3.5 h-3.5" />
+                        REGISTRAR APORTE
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-[8.5px] opacity-40 font-mono font-normal mt-1 flex flex-wrap gap-x-1 items-center">
+                    (<span>Saldo Anterior : {formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}</span>
+                    <span>+ Receitas (+): {formatCurrency(monthlyTotals.revenues)}</span>
+                    <span>- Despesas (-): {formatCurrency(monthlyTotals.expenses)}</span>
+                    <span>- Aportes Já realizados (-): {formatCurrency(monthlyTotals.realContributions)}</span>
+                    <span>- Sua Simulação (-): {formatCurrency(countdownSimExtra)}</span>)
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {showAporteForm && (
+            <TransactionForm
+              type="expense"
+              savingsGoals={savingsGoals}
+              replicateTransaction={{
+                id: 'simulated',
+                amount: countdownSimExtra,
+                description: `Aporte: ${countdownSimGoal?.name || ''}`,
+                category: 'Aporte',
+                date: getBrazilDateString(),
+                dueDate: getBrazilDateString(),
+                isPaid: true,
+                type: 'expense',
+                savingsGoalId: countdownSimGoalIdEffective || undefined,
+                createdAt: getCurrentBrazilDate().toISOString(),
+                updatedAt: getCurrentBrazilDate().toISOString()
+              } as any}
+              onSubmit={handleRegisterAporte}
+              onClose={() => setShowAporteForm(false)}
+            />
+          )}
+
           {/* Renderable Sections */}
           {layout.map((item, index) => {
             switch (item.id) {
@@ -809,7 +1120,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                     {renderCardHeader(item.id, item.label, <Calculator className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(simChartRef))}
                     {!item.collapsed && (
                       <div className="p-6 md:p-8 space-y-8">
-                        {/* Simulation Controls */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                           <div className="space-y-6">
                             <div className="flex gap-2 p-1 bg-cardBorder/30 rounded-xl">
@@ -882,7 +1192,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                     const goal = activeGoals.find(g => g.id === goalId);
                                     if (goal) {
                                       setSimInitialAmount(goal.currentAmount);
-                                      // Calculate months needed based on current sim settings if target is to reach goal
                                       const remaining = goal.targetAmount - goal.currentAmount;
                                       if (simMonthlyAmount > 0) {
                                         setSimPeriod(Math.ceil(remaining / simMonthlyAmount));
@@ -900,7 +1209,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                               </div>
                             )}
 
-                            {/* Summary Box */}
                             <div className="p-5 rounded-2xl bg-primary/5 border border-primary/20 flex items-center justify-between">
                               <div>
                                 <p className="text-[10px] font-bold uppercase opacity-60">Total ao Final</p>
@@ -933,7 +1241,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                           </div>
                         </div>
 
-                        {/* Salary vs Savings Analysis Row */}
                         <div className="pt-8 border-t" style={{ borderColor: theme.cardBorder }}>
                           <h4 className="text-sm font-bold mb-4 flex items-center gap-2">
                             <Info className="w-4 h-4 text-primary" />
@@ -1248,7 +1555,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                   goal.daysLeft !== null && goal.daysLeft > 0 && (goal.targetAmount - goal.currentAmount) / goal.daysLeft * 30 <= goal.monthlyNeeded ? '#10b981' :
                                   goal.daysLeft !== null && goal.daysLeft <= 30 ? '#ef4444' :
                                   '#f59e0b';
-
+                                
                                 return (
                                   <tr key={goal.id} className="text-text hover:bg-primary/5 transition-colors">
                                     <td className="p-4 border-r font-bold" style={{ borderColor: theme.cardBorder }}>
@@ -1275,7 +1582,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                     <td className="p-4 border-r text-right text-xs font-bold" style={{ borderColor: theme.cardBorder, color: statusColor }}>
                                       {goal.percentage.toFixed(1)}%
                                     </td>
-                                    <td className="p-4 text-right text-xs font-bold text-accent">
+                                    <td className="p-4 text-right text-xs font-bold text-accent" style={{ borderColor: theme.cardBorder }}>
                                       {neededUnit === 'daily' && goal.daysLeft !== null && goal.daysLeft > 0
                                         ? formatCurrency((goal.targetAmount - goal.currentAmount) / goal.daysLeft)
                                         : neededUnit === 'weekly' && goal.daysLeft !== null && goal.daysLeft > 0

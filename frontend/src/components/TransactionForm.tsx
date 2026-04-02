@@ -82,21 +82,24 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         notes: transaction.notes || '',
       });
     } else if (replicateTransaction) {
+      const isSimulated = replicateTransaction.id === 'simulated';
       const originalDate = new Date(replicateTransaction.date);
-      const nextMonthDate = addMonths(originalDate, 1);
+      const nextMonthDate = isSimulated ? originalDate : addMonths(originalDate, 1);
       const nextMonthDateString = getBrazilDateString(nextMonthDate);
 
       const originalDueDate = replicateTransaction.dueDate ? new Date(replicateTransaction.dueDate) : null;
-      const nextMonthDueDateString = originalDueDate ? getBrazilDateString(addMonths(originalDueDate, 1)) : '';
+      const nextMonthDueDateString = originalDueDate 
+        ? getBrazilDateString(isSimulated ? originalDueDate : addMonths(originalDueDate, 1)) 
+        : '';
 
       setFormData({
         amount: replicateTransaction.amount.toString(),
         description: replicateTransaction.description,
         category: replicateTransaction.category,
         savingsGoalId: replicateTransaction.savingsGoalId || '',
-        date: nextMonthDateString, // Next month's date for replication
-        dueDate: nextMonthDueDateString, // Next month's due date for replication
-        isPaid: false, // Replicated transactions are initially unpaid
+        date: nextMonthDateString, 
+        dueDate: nextMonthDueDateString, 
+        isPaid: isSimulated ? replicateTransaction.isPaid : false, 
         recurrence: replicateTransaction.recurrence || 'none',
         paymentMethod: replicateTransaction.paymentMethod || defaultPaymentMethod,
         notes: replicateTransaction.notes || '',
