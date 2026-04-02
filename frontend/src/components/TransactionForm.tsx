@@ -1,5 +1,5 @@
 import { addMonths } from 'date-fns';
-import { Plus, X, Calendar, CreditCard, Calculator, Wallet, Receipt } from 'lucide-react';
+import { Plus, X, Calendar, CreditCard, Calculator, Wallet, Receipt, AlertCircle } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 
 import { useTheme } from '../contexts/ThemeContext';
@@ -57,6 +57,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   const [showCalculator, setShowCalculator] = useState(false);
   const [calculatorInput, setCalculatorInput] = useState('');
   const [currentSum, setCurrentSum] = useState(0);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!submitError) return;
@@ -123,6 +124,23 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     }
   }, [transaction, replicateTransaction, type, defaultPaymentMethod]);
 
+  useEffect(() => {
+    if (formData.category === 'Aporte' && formData.savingsGoalId && formData.amount) {
+      const goal = savingsGoals.find(g => (g.id || g._id) === formData.savingsGoalId);
+      if (goal) {
+        const remaining = goal.targetAmount - goal.currentAmount;
+        const amount = parseFloat(formData.amount);
+        if (amount > remaining + 0.01) { // Small buffer for rounding
+          setLocalError(`Valor do aporte ultrapassa o restante da meta. Restante disponível: ${remaining.toFixed(2)}.`);
+        } else {
+          setLocalError(null);
+        }
+      }
+    } else {
+      setLocalError(null);
+    }
+  }, [formData.amount, formData.category, formData.savingsGoalId, savingsGoals]);
+
   const categories = type === 'expense' ? expenseCategories : incomeCategories;
   const showGoalSelect = type === 'expense' && formData.category === 'Aporte';
   const activeGoals = savingsGoals
@@ -132,7 +150,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.amount || !formData.description || !formData.category) {
+    if (!formData.amount || !formData.description || !formData.category || localError) {
       return;
     }
     if (showGoalSelect && !formData.savingsGoalId) {
@@ -220,16 +238,17 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {submitError && (
+          {(submitError || localError) && (
             <div
               ref={submitErrorRef}
               tabIndex={-1}
               role="alert"
               aria-live="assertive"
-              className="rounded-xl border px-4 py-3 text-sm font-medium outline-none"
-              style={{ borderColor: theme.accent, color: theme.text }}
+              className="rounded-xl border px-4 py-3 text-sm font-medium outline-none flex items-center gap-2"
+              style={{ borderColor: theme.accent, color: theme.text, backgroundColor: theme.accent + '10' }}
             >
-              {submitError}
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {submitError || localError}
             </div>
           )}
           <div>
