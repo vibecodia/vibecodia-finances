@@ -51,7 +51,6 @@ import {
   getCurrentBrazilDate,
   parseLocalDate,
 } from '../utils/helpers';
-import { is } from 'date-fns/locale';
 
 ChartJS.register(
   CategoryScale,
@@ -100,7 +99,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const [showFilters, setShowFilters] = useLocalStorage<boolean>('savings_playground_show_filters', true);
 
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
-  const [simulatedExtraContributions, setSimulatedExtraContributions] = useState<Record<string, number>>({});
+  const [countdownSimGoalId, setCountdownSimGoalId] = useState<string | null>(null);
+  const [countdownSimExtra, setCountdownSimExtra] = useState<number>(0);
   
   const simChartRef = useRef<any>(null);
   const timelineChartRef = useRef<any>(null);
@@ -233,7 +233,10 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               text-transform: uppercase;
               letter-spacing: 0.5px;
             }
-            th:last-child {
+            th:last-child,
+            th:nth-last-child(2),
+            th:nth-last-child(3),
+            th:nth-last-child(4) {
               text-align: right;
             }
             td {
@@ -246,7 +249,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             }
             td:last-child,
             td:nth-last-child(2),
-            td:nth-last-child(3) {
+            td:nth-last-child(3),
+            td:nth-last-child(4) {
               text-align: right;
               font-weight: 600;
             }
@@ -425,11 +429,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     };
   }, [transactions, savingsGoals]);
 
-  const handleSimulatedExtraChange = (goalId: string, value: number) => {
-    setSimulatedExtraContributions(prev => ({
-      ...prev,
-      [goalId]: value || 0
-    }));
+  const handleCountdownSimGoalChange = (goalId: string) => {
+    setCountdownSimGoalId(goalId || null);
+  };
+
+  const handleCountdownSimExtraChange = (value: number) => {
+    setCountdownSimExtra(value || 0);
   };
 
   // Simulator Calculations
@@ -657,6 +662,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   }, [matrixData, theme.cardBackground]);
 
   // Goals Countdown Table Data
+  const countdownSimGoalIdEffective = countdownSimGoalId ?? (savingsGoals[0]?.id ?? null);
+
   const countdownTableData = useMemo(() => {
     return savingsGoals.map(goal => {
       const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
@@ -670,7 +677,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         monthlyNeeded = remaining / monthsLeft;
       }
 
-      const simulatedExtra = simulatedExtraContributions[goal.id] || 0;
+      const simulatedExtra = countdownSimGoalIdEffective && goal.id === countdownSimGoalIdEffective ? countdownSimExtra : 0;
       const remainingAfterSimulated = Math.max(0, remaining - simulatedExtra);
       const monthsWithSimulated = monthlyNeeded > 0 ? Math.ceil(remainingAfterSimulated / monthlyNeeded) : null;
       const monthsSaved = monthlyNeeded > 0 && simulatedExtra > 0 
@@ -690,7 +697,19 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         availableEndOfMonth: monthlyTotals.net - simulatedExtra,
       };
     });
-  }, [savingsGoals, simulatedExtraContributions, monthlyTotals]);
+  }, [savingsGoals, countdownSimExtra, countdownSimGoalIdEffective, monthlyTotals]);
+
+  const countdownSimGoal = useMemo(() => {
+    if (!countdownSimGoalIdEffective) return null;
+    return countdownTableData.find(g => g.id === countdownSimGoalIdEffective) || null;
+  }, [countdownTableData, countdownSimGoalIdEffective]);
+
+  const countdownSimAvailableEndOfMonth = monthlyTotals.net - countdownSimExtra;
+  const countdownSimAvailableColorClass =
+    countdownSimAvailableEndOfMonth < 0 ? 'text-red-500' :
+    countdownSimAvailableEndOfMonth < 500 ? 'text-yellow-500' :
+    'text-green-500';
+  const countdownSimIsGoalAchieved = countdownSimGoal ? countdownSimGoal.remainingAfterSimulated <= 0 : false;
 
   // Contribution Table Data
   const contributionTableData = useMemo(() => {
@@ -939,6 +958,74 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               <div className="text-right text-[10px] opacity-40">
                 <p>📊 Baseado no que já foi pago</p>
                 <p>🎯 Use o simulador abaixo</p>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t" style={{ borderColor: theme.cardBorder }}>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-text opacity-60 uppercase tracking-widest">
+                    Simular Aporte
+                  </p>
+                  <select
+                    value={countdownSimGoalIdEffective || ''}
+                    onChange={(e) => handleCountdownSimGoalChange(e.target.value)}
+                    className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
+                    style={{ borderColor: theme.cardBorder }}
+                    disabled={savingsGoals.length === 0}
+                  >
+                    <option value="" disabled>Selecione uma meta</option>
+                    {savingsGoals.map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    value={countdownSimExtra || ''}
+                    onChange={(e) => handleCountdownSimExtraChange(Number(e.target.value))}
+                    placeholder="0"
+                    className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none text-right"
+                    style={{ borderColor: theme.cardBorder, color: theme.text }}
+                    disabled={!countdownSimGoalIdEffective}
+                  />
+                </div>
+
+                <div className="rounded-xl border p-4 bg-cardBorder/10" style={{ borderColor: theme.cardBorder }}>
+                  <p className="text-[10px] font-bold uppercase opacity-50 mb-1">Impacto</p>
+                  {countdownSimGoal && countdownSimExtra > 0 ? (
+                    countdownSimIsGoalAchieved ? (
+                      <p className="text-sm font-black text-green-500">✅ Meta atingida!</p>
+                    ) : (
+                      <div className="text-xs">
+                        <span className="text-green-500 font-bold">
+                          Antecipa {countdownSimGoal.monthsSaved} {countdownSimGoal.monthsSaved === 1 ? 'mês' : 'meses'}
+                        </span>
+                        <div className="text-[10px] opacity-60 mt-1">
+                          Restam {countdownSimGoal.monthsWithSimulated} {countdownSimGoal.monthsWithSimulated === 1 ? 'mês' : 'meses'}
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    <p className="text-xs opacity-50">Informe um valor para ver o impacto na meta.</p>
+                  )}
+                </div>
+
+                <div
+                  className="rounded-xl border p-4 bg-cardBorder/10"
+                  style={{ borderColor: theme.cardBorder }}
+                  title={`Cálculo:\nSaldo Mês Ant: ${formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}\nReceitas (+): ${formatCurrency(monthlyTotals.revenues)}\nDespesas (-): ${formatCurrency(monthlyTotals.expenses)}\nAportes Reais (-): ${formatCurrency(monthlyTotals.realContributions)}\nAporte Simulado (-): ${formatCurrency(countdownSimExtra)}\nTotal: ${formatCurrency(countdownSimAvailableEndOfMonth)}`}
+                >
+                  <p className="text-[10px] font-bold uppercase opacity-50 mb-1">Disponível Final do Mês</p>
+                  <div className={`flex items-center gap-1.5 font-black ${countdownSimAvailableColorClass}`}>
+                    {countdownSimAvailableEndOfMonth < 0 ? <AlertCircle className="w-4 h-4" /> :
+                      countdownSimAvailableEndOfMonth < 500 ? <Pin className="w-4 h-4" /> :
+                      <CheckCircle2 className="w-4 h-4" />
+                    }
+                    <span className="text-lg">{formatCurrency(countdownSimAvailableEndOfMonth)}</span>
+                  </div>
+                  <div className="text-[9px] opacity-40 font-mono font-normal mt-1">
+                    ({formatCurrency(monthlyTotals.previousMonthAdjustedBalance)} + {formatCurrency(monthlyTotals.revenues)} - {formatCurrency(monthlyTotals.expenses)} - {formatCurrency(monthlyTotals.realContributions)} - {formatCurrency(countdownSimExtra)})
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1371,20 +1458,11 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                               <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>% Completo</th>
                               <th 
                                 onClick={() => handleNeededUnitChange(neededUnit === 'daily' ? 'weekly' : neededUnit === 'weekly' ? 'monthly' : 'daily')}
-                                className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-right cursor-pointer transition-colors hover:bg-primary/10 rounded" 
+                                className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right cursor-pointer transition-colors hover:bg-primary/10 rounded" 
                                 style={{ borderColor: theme.cardBorder }}
                                 title="Clique para alternar entre diário, semanal e mensal"
                               >
                                 {neededUnit === 'daily' ? 'Diário Necessário' : neededUnit === 'weekly' ? 'Semanal Necessário' : 'Mensal Necessário'}
-                              </th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>
-                                Simular Aporte
-                              </th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>
-                                Impacto
-                              </th>
-                              <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>
-                                Disponível Final do Mês
                               </th>
                             </tr>
                           </thead>
@@ -1396,8 +1474,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                   goal.daysLeft !== null && goal.daysLeft > 0 && (goal.targetAmount - goal.currentAmount) / goal.daysLeft * 30 <= goal.monthlyNeeded ? '#10b981' :
                                   goal.daysLeft !== null && goal.daysLeft <= 30 ? '#ef4444' :
                                   '#f59e0b';
-
-                                const isGoalAchieved = goal.remainingAfterSimulated <= 0;
                                 
                                 return (
                                   <tr key={goal.id} className="text-text hover:bg-primary/5 transition-colors">
@@ -1425,7 +1501,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                     <td className="p-4 border-r text-right text-xs font-bold" style={{ borderColor: theme.cardBorder, color: statusColor }}>
                                       {goal.percentage.toFixed(1)}%
                                     </td>
-                                    <td className="p-4 border-r text-right text-xs font-bold text-accent" style={{ borderColor: theme.cardBorder }}>
+                                    <td className="p-4 text-right text-xs font-bold text-accent" style={{ borderColor: theme.cardBorder }}>
                                       {neededUnit === 'daily' && goal.daysLeft !== null && goal.daysLeft > 0
                                         ? formatCurrency((goal.targetAmount - goal.currentAmount) / goal.daysLeft)
                                         : neededUnit === 'weekly' && goal.daysLeft !== null && goal.daysLeft > 0
@@ -1433,62 +1509,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                         : goal.monthlyNeeded > 0 ? formatCurrency(goal.monthlyNeeded) : '-'
                                       }
                                     </td>
-                                    <td className="p-4 border-r text-right" style={{ borderColor: theme.cardBorder }}>
-                                      <input
-                                        type="number"
-                                        value={goal.simulatedExtra || ''}
-                                        onChange={(e) => handleSimulatedExtraChange(goal.id, Number(e.target.value))}
-                                        placeholder="0"
-                                        className="w-28 px-2 py-1 text-right text-xs rounded border"
-                                        style={{
-                                          backgroundColor: theme.cardBackground,
-                                          borderColor: theme.cardBorder,
-                                          color: theme.text
-                                        }}
-                                      />
-                                    </td>
-                                    <td className="p-4 border-r text-right" style={{ borderColor: theme.cardBorder }}>
-                                      {goal.simulatedExtra > 0 && (
-                                        <div className="text-xs">
-                                          {isGoalAchieved ? (
-                                            <span className="text-green-500 font-bold">✅ Meta atingida!</span>
-                                          ) : (
-                                            <>
-                                              <span className="text-green-500 font-medium">
-                                                Antecipa {goal.monthsSaved} {goal.monthsSaved === 1 ? 'mês' : 'meses'}
-                                              </span>
-                                              <br />
-                                              <span className="text-[10px] opacity-60">
-                                                Restam {goal.monthsWithSimulated} {goal.monthsWithSimulated === 1 ? 'mês' : 'meses'}
-                                              </span>
-                                            </>
-                                          )}
-                                        </div>
-                                      )}
-                                    </td>
-                                    <td className="p-4 text-right" title={`Cálculo:\nSaldo Mês Ant: ${formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}\nReceitas (+): ${formatCurrency(monthlyTotals.revenues)}\nDespesas (-): ${formatCurrency(monthlyTotals.expenses)}\nAportes Reais (-): ${formatCurrency(monthlyTotals.realContributions)}\nAporte Simulado (-): ${formatCurrency(goal.simulatedExtra)}\nTotal: ${formatCurrency(goal.availableEndOfMonth)}`}>
-                                      <div className={`flex flex-col items-end gap-0.5 font-bold ${
-                                        goal.availableEndOfMonth < 0 ? 'text-red-500' :
-                                        goal.availableEndOfMonth < 500 ? 'text-yellow-500' :
-                                        'text-green-500'
-                                      }`}>
-                                        <div className="flex items-center gap-1.5">
-                                          {goal.availableEndOfMonth < 0 ? <AlertCircle className="w-3.5 h-3.5" /> :
-                                           goal.availableEndOfMonth < 500 ? <Pin className="w-3.5 h-3.5" /> :
-                                           <CheckCircle2 className="w-3.5 h-3.5" />}
-                                          <span className="text-xs">{formatCurrency(goal.availableEndOfMonth)}</span>
-                                        </div>
-                                        <div className="text-[9px] opacity-40 font-mono font-normal">
-                                          ({formatCurrency(monthlyTotals.previousMonthAdjustedBalance)} + {formatCurrency(monthlyTotals.revenues)} - {formatCurrency(monthlyTotals.expenses)} - {formatCurrency(monthlyTotals.realContributions)} - {formatCurrency(goal.simulatedExtra)})
-                                        </div>
-                                      </div>
-                                    </td>
                                   </tr>
                                 );
                               })
                             ) : (
                               <tr>
-                                <td colSpan={10} className="p-8 text-center text-text opacity-40 text-sm italic">
+                                <td colSpan={7} className="p-8 text-center text-text opacity-40 text-sm italic">
                                   Nenhuma meta cadastrada
                                 </td>
                               </tr>
