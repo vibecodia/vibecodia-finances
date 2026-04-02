@@ -34,7 +34,9 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Eye,
-  Trash2
+  Trash2,
+  Pin,
+  CheckCircle2
 } from 'lucide-react';
 import React, { useState, useMemo, useRef } from 'react';
 import { Doughnut, Line, Pie, Scatter } from 'react-chartjs-2';
@@ -48,8 +50,6 @@ import {
   getCurrentBrazilDate,
   parseLocalDate,
 } from '../utils/helpers';
-
-
 
 ChartJS.register(
   CategoryScale,
@@ -98,6 +98,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const [showFilters, setShowFilters] = useLocalStorage<boolean>('savings_playground_show_filters', true);
 
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
+  const [simulatedExtraContributions, setSimulatedExtraContributions] = useState<Record<string, number>>({});
   
   const simChartRef = useRef<any>(null);
   const timelineChartRef = useRef<any>(null);
@@ -141,8 +142,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   // Simulator State
   const [simInitialAmount, setSimInitialAmount] = useState<number>(0);
   const [simMonthlyAmount, setSimMonthlyAmount] = useState<number>(500);
-  const [simInterestRate, setSimInterestRate] = useState<number>(1); // 1% per month
-  const [simPeriod, setSimPeriod] = useState<number>(12); // 12 months
+  const [simInterestRate, setSimInterestRate] = useState<number>(1);
+  const [simPeriod, setSimPeriod] = useState<number>(12);
   const [simMode, setSimMode] = useState<'investment' | 'goal_reach'>('investment');
   const [simTargetGoalId, setSimTargetGoalId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState<string>(format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
@@ -325,6 +326,87 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     ).sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
   }, [activeGoals, showDeleted]);
 
+  // Calcular disponível mensal (excluindo Vero e Flash)
+  const monthlyAvailableData = useMemo(() => {
+    const currentDate = getCurrentBrazilDate();
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+
+    // Receitas do mês (excluindo Vero e Flash)
+    const incomes = transactions
+      .filter(t => {
+        const tDate = parseLocalDate(t.date);
+        return t.type === 'income' &&
+              t.status === 'active' &&
+               isWithinInterval(tDate, { start: monthStart, end: monthEnd }) &&
+               !t.description?.toLowerCase().includes('vero') &&
+               !t.category?.toLowerCase().includes('vero') &&
+               !t.description?.toLowerCase().includes('flash') &&
+               !t.category?.toLowerCase().includes('flash');
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    // Despesas do mês
+    const expenses = transactions
+      .filter(t => {
+        const tDate = parseLocalDate(t.date);
+        return t.type === 'expense' &&
+                t.status === 'active' &&
+                !t.category?.toLowerCase().includes('aporte') &&
+                !t.paymentMethod?.toLowerCase().includes('vero') &&
+                !t.paymentMethod?.toLowerCase().includes('flash') &&
+               isWithinInterval(tDate, { start: monthStart, end: monthEnd });
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+
+
+    const total = incomes - expenses;
+    return { incomes, expenses, total };
+  }, [transactions]);
+
+  // Cálculo de dados para "Disponível Final do Mês" (incluindo não pagas, exclui Vero/Flash)
+  const monthlyTotals = useMemo(() => {
+    const currentDate = getCurrentBrazilDate();
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+
+    // Receitas do mês (excluindo Vero e Flash) - Todas (incluindo não pagas)
+    const revenues = transactions
+      .filter(t => {
+        const tDate = parseLocalDate(t.date);
+        return t.type === 'income' &&
+                t.status === 'active' &&
+               isWithinInterval(tDate, { start: monthStart, end: monthEnd }) &&
+               !t.description?.toLowerCase().includes('vero') &&
+               !t.category?.toLowerCase().includes('vero') &&
+               !t.description?.toLowerCase().includes('flash') &&
+               !t.category?.toLowerCase().includes('flash');
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    // Despesas do mês - Todas (incluindo não pagas)
+    const expenses = transactions
+      .filter(t => {
+        const tDate = parseLocalDate(t.date);
+        return t.type === 'expense' &&
+                t.status === 'active' &&
+                !t.category?.toLowerCase().includes('aporte') &&
+                !t.paymentMethod?.toLowerCase().includes('vero') &&
+                !t.paymentMethod?.toLowerCase().includes('flash') &&
+               isWithinInterval(tDate, { start: monthStart, end: monthEnd });
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    return { revenues, expenses, net: revenues - expenses };
+  }, [transactions]);
+
+  const handleSimulatedExtraChange = (goalId: string, value: number) => {
+    setSimulatedExtraContributions(prev => ({
+      ...prev,
+      [goalId]: value || 0
+    }));
+  };
+
   // Simulator Calculations
   const simulationResults = useMemo(() => {
     const data: { month: number; total: number; invested: number; interest: number }[] = [];
@@ -471,7 +553,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const savingsVsIncomeChartData = useMemo(() => {
     const months: Record<string, { income: number; savings: number }> = {};
 
-    // Aggregate income by month
     transactions
       .filter(t => t.type === 'income' && t.isPaid)
       .forEach(t => {
@@ -480,7 +561,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         months[monthKey].income += t.amount;
       });
 
-    // Aggregate savings contributions by month
     allContributions.forEach(c => {
       const monthKey = format(parseLocalDate(c.date), 'yyyy-MM');
       if (!months[monthKey]) months[monthKey] = { income: 0, savings: 0 };
@@ -525,9 +605,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       }
 
       return {
-        x: daysUntilDeadline !== null ? daysUntilDeadline : 9999, // X = urgency
-        y: remaining, // Y = amount remaining
-        r: goal.targetAmount / 100, // Size = target amount
+        x: daysUntilDeadline !== null ? daysUntilDeadline : 9999,
+        y: remaining,
+        r: goal.targetAmount / 100,
         label: goal.name,
         id: goal.id,
       };
@@ -565,15 +645,27 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         monthlyNeeded = remaining / monthsLeft;
       }
 
+      const simulatedExtra = simulatedExtraContributions[goal.id] || 0;
+      const remainingAfterSimulated = Math.max(0, remaining - simulatedExtra);
+      const monthsWithSimulated = monthlyNeeded > 0 ? Math.ceil(remainingAfterSimulated / monthlyNeeded) : null;
+      const monthsSaved = monthlyNeeded > 0 && simulatedExtra > 0 
+        ? Math.floor(simulatedExtra / monthlyNeeded) 
+        : 0;
+
       return {
         ...goal,
         remaining,
         percentage,
         daysLeft,
         monthlyNeeded,
+        remainingAfterSimulated,
+        monthsWithSimulated,
+        monthsSaved,
+        simulatedExtra,
+        availableEndOfMonth: monthlyTotals.net - simulatedExtra,
       };
     });
-  }, [savingsGoals]);
+  }, [savingsGoals, simulatedExtraContributions, monthlyTotals]);
 
   // Contribution Table Data
   const contributionTableData = useMemo(() => {
@@ -604,7 +696,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
 
     const goalTotals = savingsGoals.reduce((sum, g) => sum + g.currentAmount, 0);
 
-    const categories = Object.keys(expenseCategories).slice(0, 8); // Top 8
+    const categories = Object.keys(expenseCategories).slice(0, 8);
     const expenseAmounts = categories.map(cat => expenseCategories[cat]);
     const colors = [
       '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
@@ -800,6 +892,32 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             </div>
           </div>
 
+          {/* Card de Disponibilidade Mensal */}
+          <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">
+                  💰 Disponível para Aportes (Somente Pagos)
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <p className={`text-2xl font-black ${monthlyAvailableData.total >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {formatCurrency(monthlyAvailableData.total)}
+                  </p>
+                  <span className="text-[10px] opacity-40 font-mono">
+                    ({formatCurrency(monthlyAvailableData.incomes)} - {formatCurrency(monthlyAvailableData.expenses)})
+                  </span>
+                </div>
+                <p className="text-[10px] opacity-50 mt-1">
+                  Receitas - Despesas (exclui Vero/Flash)
+                </p>
+              </div>
+              <div className="text-right text-[10px] opacity-40">
+                <p>📊 Baseado no que já foi pago</p>
+                <p>🎯 Use o simulador abaixo</p>
+              </div>
+            </div>
+          </div>
+
           {/* Renderable Sections */}
           {layout.map((item, index) => {
             switch (item.id) {
@@ -809,7 +927,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                     {renderCardHeader(item.id, item.label, <Calculator className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(simChartRef))}
                     {!item.collapsed && (
                       <div className="p-6 md:p-8 space-y-8">
-                        {/* Simulation Controls */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                           <div className="space-y-6">
                             <div className="flex gap-2 p-1 bg-cardBorder/30 rounded-xl">
@@ -882,7 +999,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                     const goal = activeGoals.find(g => g.id === goalId);
                                     if (goal) {
                                       setSimInitialAmount(goal.currentAmount);
-                                      // Calculate months needed based on current sim settings if target is to reach goal
                                       const remaining = goal.targetAmount - goal.currentAmount;
                                       if (simMonthlyAmount > 0) {
                                         setSimPeriod(Math.ceil(remaining / simMonthlyAmount));
@@ -900,7 +1016,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                               </div>
                             )}
 
-                            {/* Summary Box */}
                             <div className="p-5 rounded-2xl bg-primary/5 border border-primary/20 flex items-center justify-between">
                               <div>
                                 <p className="text-[10px] font-bold uppercase opacity-60">Total ao Final</p>
@@ -933,7 +1048,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                           </div>
                         </div>
 
-                        {/* Salary vs Savings Analysis Row */}
                         <div className="pt-8 border-t" style={{ borderColor: theme.cardBorder }}>
                           <h4 className="text-sm font-bold mb-4 flex items-center gap-2">
                             <Info className="w-4 h-4 text-primary" />
@@ -1232,11 +1346,20 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                               <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>% Completo</th>
                               <th 
                                 onClick={() => handleNeededUnitChange(neededUnit === 'daily' ? 'weekly' : neededUnit === 'weekly' ? 'monthly' : 'daily')}
-                                className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right cursor-pointer transition-colors hover:bg-primary/10 rounded" 
+                                className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-right cursor-pointer transition-colors hover:bg-primary/10 rounded" 
                                 style={{ borderColor: theme.cardBorder }}
                                 title="Clique para alternar entre diário, semanal e mensal"
                               >
                                 {neededUnit === 'daily' ? 'Diário Necessário' : neededUnit === 'weekly' ? 'Semanal Necessário' : 'Mensal Necessário'}
+                              </th>
+                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>
+                                Simular Aporte
+                              </th>
+                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>
+                                Impacto
+                              </th>
+                              <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>
+                                Disponível Final do Mês
                               </th>
                             </tr>
                           </thead>
@@ -1249,6 +1372,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                   goal.daysLeft !== null && goal.daysLeft <= 30 ? '#ef4444' :
                                   '#f59e0b';
 
+                                const isGoalAchieved = goal.remainingAfterSimulated <= 0;
+                                
                                 return (
                                   <tr key={goal.id} className="text-text hover:bg-primary/5 transition-colors">
                                     <td className="p-4 border-r font-bold" style={{ borderColor: theme.cardBorder }}>
@@ -1275,7 +1400,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                     <td className="p-4 border-r text-right text-xs font-bold" style={{ borderColor: theme.cardBorder, color: statusColor }}>
                                       {goal.percentage.toFixed(1)}%
                                     </td>
-                                    <td className="p-4 text-right text-xs font-bold text-accent">
+                                    <td className="p-4 border-r text-right text-xs font-bold text-accent" style={{ borderColor: theme.cardBorder }}>
                                       {neededUnit === 'daily' && goal.daysLeft !== null && goal.daysLeft > 0
                                         ? formatCurrency((goal.targetAmount - goal.currentAmount) / goal.daysLeft)
                                         : neededUnit === 'weekly' && goal.daysLeft !== null && goal.daysLeft > 0
@@ -1283,12 +1408,62 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                         : goal.monthlyNeeded > 0 ? formatCurrency(goal.monthlyNeeded) : '-'
                                       }
                                     </td>
+                                    <td className="p-4 border-r text-right" style={{ borderColor: theme.cardBorder }}>
+                                      <input
+                                        type="number"
+                                        value={goal.simulatedExtra || ''}
+                                        onChange={(e) => handleSimulatedExtraChange(goal.id, Number(e.target.value))}
+                                        placeholder="0"
+                                        className="w-28 px-2 py-1 text-right text-xs rounded border"
+                                        style={{
+                                          backgroundColor: theme.cardBackground,
+                                          borderColor: theme.cardBorder,
+                                          color: theme.text
+                                        }}
+                                      />
+                                    </td>
+                                    <td className="p-4 border-r text-right" style={{ borderColor: theme.cardBorder }}>
+                                      {goal.simulatedExtra > 0 && (
+                                        <div className="text-xs">
+                                          {isGoalAchieved ? (
+                                            <span className="text-green-500 font-bold">✅ Meta atingida!</span>
+                                          ) : (
+                                            <>
+                                              <span className="text-green-500 font-medium">
+                                                Antecipa {goal.monthsSaved} {goal.monthsSaved === 1 ? 'mês' : 'meses'}
+                                              </span>
+                                              <br />
+                                              <span className="text-[10px] opacity-60">
+                                                Restam {goal.monthsWithSimulated} {goal.monthsWithSimulated === 1 ? 'mês' : 'meses'}
+                                              </span>
+                                            </>
+                                          )}
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td className="p-4 text-right" title={`Cálculo:\nReceitas: ${formatCurrency(monthlyTotals.revenues)}\nDespesas: -${formatCurrency(monthlyTotals.expenses)}\nAporte Simulado: -${formatCurrency(goal.simulatedExtra)}\nTotal: ${formatCurrency(goal.availableEndOfMonth)}`}>
+                                      <div className={`flex flex-col items-end gap-0.5 font-bold ${
+                                        goal.availableEndOfMonth < 0 ? 'text-red-500' :
+                                        goal.availableEndOfMonth < 500 ? 'text-yellow-500' :
+                                        'text-green-500'
+                                      }`}>
+                                        <div className="flex items-center gap-1.5">
+                                          {goal.availableEndOfMonth < 0 ? <AlertCircle className="w-3.5 h-3.5" /> :
+                                           goal.availableEndOfMonth < 500 ? <Pin className="w-3.5 h-3.5" /> :
+                                           <CheckCircle2 className="w-3.5 h-3.5" />}
+                                          <span className="text-xs">{formatCurrency(goal.availableEndOfMonth)}</span>
+                                        </div>
+                                        <div className="text-[9px] opacity-40 font-mono font-normal">
+                                          ({formatCurrency(monthlyTotals.revenues)} - {formatCurrency(monthlyTotals.expenses)} - {formatCurrency(goal.simulatedExtra)})
+                                        </div>
+                                      </div>
+                                    </td>
                                   </tr>
                                 );
                               })
                             ) : (
                               <tr>
-                                <td colSpan={7} className="p-8 text-center text-text opacity-40 text-sm italic">
+                                <td colSpan={10} className="p-8 text-center text-text opacity-40 text-sm italic">
                                   Nenhuma meta cadastrada
                                 </td>
                               </tr>
