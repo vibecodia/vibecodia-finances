@@ -106,6 +106,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const [countdownSimExtra, setCountdownSimExtra] = useState<number>(0);
   const [showAporteForm, setShowAporteForm] = useState(false);
   const [isSimInputFocused, setIsSimInputFocused] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   
   const simChartRef = useRef<any>(null);
   const timelineChartRef = useRef<any>(null);
@@ -438,11 +439,13 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const handleRegisterAporte = async (transactionData: any) => {
     if (onAddTransaction) {
       try {
+        setFormError(null);
         await onAddTransaction(transactionData);
         setShowAporteForm(false);
         setCountdownSimExtra(0);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Erro ao registrar aporte:', error);
+        setFormError(error.message || 'Erro ao registrar aporte');
       }
     }
   };
@@ -722,6 +725,13 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     countdownSimAvailableEndOfMonth < 0 ? 'text-red-500' :
     countdownSimAvailableEndOfMonth < 500 ? 'text-yellow-500' :
     'text-green-500';
+
+  const isSimExceedsTarget = useMemo(() => {
+    if (!countdownSimGoal || !countdownSimExtra) return false;
+    const remaining = countdownSimGoal.targetAmount - countdownSimGoal.currentAmount;
+    return countdownSimExtra > (remaining + 0.01);
+  }, [countdownSimGoal, countdownSimExtra]);
+
   const countdownSimIsGoalAchieved = countdownSimGoal ? countdownSimGoal.remainingAfterSimulated <= 0 : false;
 
   // Contribution Table Data
@@ -972,7 +982,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                 <p className="text-[10px] opacity-50 mt-1">
                   Receitas - Despesas (exclui Vero/Flash)
                 </p>
-                {(
+                {isFilterActive && (
                   <p className="text-[9px] font-bold text-primary mt-1 uppercase tracking-tight">
                     Filtro ativo: {formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} até {formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}
                   </p>
@@ -988,7 +998,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                   <p className="text-[10px] opacity-50 mt-1">
                     {countdownSimGoal ? (
                       <>
-                        Atual: <span className="font-mono font-bold">{formatCurrency(countdownSimGoal.currentAmount + countdownSimExtra)}</span>{' '}
+                        {countdownSimExtra > 0 ? 'Atual com o aporte simulado' : 'Atual'}: <span className="font-mono font-bold">{formatCurrency(countdownSimGoal.currentAmount + countdownSimExtra)}</span>{' '}
                         · Alvo: <span className="font-mono font-bold">{formatCurrency(countdownSimGoal.targetAmount)}</span>
                       </>
                     ) : (
@@ -1068,13 +1078,25 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                     </div>
 
                     {countdownSimExtra > 0 && onAddTransaction && (
-                      <button
-                        onClick={() => setShowAporteForm(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-lg text-[10px] font-bold hover:scale-105 transition-all shadow-sm whitespace-nowrap"
-                      >
-                        <PlusCircle className="w-3.5 h-3.5" />
-                        REGISTRAR APORTE
-                      </button>
+                      <div className="flex flex-col items-end gap-1">
+                        <button
+                          onClick={() => !isSimExceedsTarget && setShowAporteForm(true)}
+                          disabled={isSimExceedsTarget}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all shadow-sm whitespace-nowrap ${
+                            isSimExceedsTarget 
+                              ? 'bg-gray-400 cursor-not-allowed opacity-50' 
+                              : 'bg-primary text-white hover:scale-105'
+                          }`}
+                        >
+                          <PlusCircle className="w-3.5 h-3.5" />
+                          {isSimExceedsTarget ? 'VALOR EXCEDIDO' : 'REGISTRAR APORTE'}
+                        </button>
+                        {isSimExceedsTarget && countdownSimGoal && (
+                          <span className="text-[9px] text-accent font-bold animate-pulse">
+                            Aporte maior que o restante (Faltam {formatCurrency(countdownSimGoal.targetAmount - countdownSimGoal.currentAmount)})
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
                   <div className="text-[8.5px] opacity-40 font-mono font-normal mt-1 flex flex-wrap gap-x-1 items-center">
@@ -1093,6 +1115,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             <TransactionForm
               type="expense"
               savingsGoals={savingsGoals}
+              submitError={formError}
               replicateTransaction={{
                 id: 'simulated',
                 amount: countdownSimExtra,
@@ -1107,7 +1130,10 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                 updatedAt: getCurrentBrazilDate().toISOString()
               } as any}
               onSubmit={handleRegisterAporte}
-              onClose={() => setShowAporteForm(false)}
+              onClose={() => {
+                setShowAporteForm(false);
+                setFormError(null);
+              }}
             />
           )}
 
