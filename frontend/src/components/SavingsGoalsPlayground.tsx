@@ -110,6 +110,104 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const [projectionDays, setProjectionDays] = useState<number>(5);
   const [catastrophicAmount, setCatastrophicAmount] = useState<number>(0);
   const [catastrophicName, setCatastrophicName] = useState<string>('');
+  const simulationRef = useRef<HTMLDivElement>(null);
+
+  const handlePrintSimulation = () => {
+    if (!simulationRef.current) return;
+
+    const printWindow = window.open('', '', 'height=800,width=1000');
+    if (!printWindow) return;
+
+    const goalName = countdownSimGoal?.name || 'Nenhuma meta selecionada';
+    const currentWithSim = countdownSimGoal ? countdownSimGoal.currentAmount + countdownSimExtra : 0;
+    const targetAmt = countdownSimGoal?.targetAmount || 0;
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Simulação de Aporte e Projeção</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; line-height: 1.5; }
+            .header { border-bottom: 2px solid #3b82f6; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .header h1 { margin: 0; color: #3b82f6; font-size: 24px; }
+            .header p { margin: 5px 0 0 0; opacity: 0.7; font-size: 12px; }
+            .grid { display: grid; grid-template-cols: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+            .card { border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; background: #f8fafc; }
+            .card-title { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #64748b; margin-bottom: 10px; letter-spacing: 0.05em; }
+            .value { font-size: 24px; font-weight: 900; color: #3b82f6; }
+            .sub-value { font-size: 12px; color: #64748b; margin-top: 5px; }
+            .details { font-size: 11px; margin-top: 15px; font-family: monospace; color: #64748b; }
+            .projection-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            .projection-table th { text-align: left; font-size: 10px; color: #64748b; padding: 8px; border-bottom: 1px solid #e2e8f0; }
+            .projection-table td { padding: 8px; border-bottom: 1px solid #f1f5f9; font-size: 12px; }
+            .projection-table .date { font-weight: 700; color: #3b82f6; }
+            .projection-table .amount { font-family: monospace; font-weight: 700; text-align: right; }
+            .pessimist-note { margin-top: 20px; padding: 10px; background: #fff1f2; border-left: 4px solid #ef4444; font-size: 11px; color: #991b1b; }
+            @media print { body { padding: 0; } .card { break-inside: avoid; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <h1>Relatório de Simulação Financeira</h1>
+              <p>Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+              <p>Período Base: ${formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} até ${formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}</p>
+            </div>
+            <div style="text-align: right">
+              <div style="font-size: 10px; font-weight: 900; color: #64748b;">META SELECIONADA</div>
+              <div style="font-weight: 700;">${goalName}</div>
+            </div>
+          </div>
+          <div class="grid">
+            <div class="card">
+              <div class="card-title">Disponibilidade Final</div>
+              <div class="value">${formatCurrency(countdownSimAvailableEndOfMonth)}</div>
+              <div class="details">
+                Saldo Anterior: ${formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}<br>
+                + Receitas: ${formatCurrency(monthlyTotals.revenues)}<br>
+                - Despesas: ${formatCurrency(monthlyTotals.expenses)}<br>
+                - Aportes Reais: ${formatCurrency(monthlyTotals.realContributions)}<br>
+                - Aportes Simulados: ${formatCurrency(countdownSimExtra)}
+                ${catastrophicAmount > 0 ? `<br>- Extra: ${formatCurrency(catastrophicAmount)}` : ''}
+              </div>
+            </div>
+          </div>
+          ${catastrophicAmount > 0 ? `<div class="pessimist-note"><strong>Cenário Pessimista Ativo:</strong> Incluído gasto extra de ${formatCurrency(catastrophicAmount)} ${catastrophicName ? ` para "${catastrophicName}"` : ''}.</div>` : ''}
+          <div class="card" style="margin-top: 20px;">
+            <div class="card-title">Projeção Diária (Próximos ${projectionDays} dias)</div>
+            <table class="projection-table">
+              <thead><tr><th>DIA</th><th>DATA</th><th style="text-align: right">MOVIMENTAÇÃO</th><th style="text-align: right">SALDO ACUMULADO</th></tr></thead>
+              <tbody>
+                ${nextDaysData.dailyBalances.map(day => `
+                  <tr>
+                    <td style="font-weight: 700;">${day.label}</td>
+                    <td class="date">${formatBrazilDate(parseLocalDate(day.date), 'dd/MM/yyyy')}</td>
+                    <td style="text-align: right">
+                      ${day.revenues > 0 ? `<span style="color: #10b981">+${formatCurrency(day.revenues)}</span>` : ''}
+                      ${day.expenses > 0 ? `<span style="color: #ef4444">-${formatCurrency(day.expenses)}</span>` : ''}
+                      ${day.revenues === 0 && day.expenses === 0 ? '-' : ''}
+                    </td>
+                    <td class="amount" style="color: ${day.total < 0 ? '#ef4444' : '#10b981'}">${formatCurrency(day.total)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div style="margin-top: 30px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px;">Vibecodia Finances - Planejamento com Liberdade</div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
   
   const simChartRef = useRef<any>(null);
   const timelineChartRef = useRef<any>(null);
@@ -1081,7 +1179,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
           </div>
 
           {/* Card de Disponibilidade Mensal */}
-          <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <div ref={simulationRef} className="rounded-2xl border p-4 shadow-sm relative group/simcard" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">
@@ -1091,12 +1189,21 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                 <p className="text-[10px] opacity-50 mt-1">
                   Receitas - Despesas (exclui Vero/Flash)
                 </p>
-                {(
+                {isFilterActive && (
                   <p className="text-[9px] font-bold text-primary mt-1 uppercase tracking-tight">
                     Filtro ativo: {formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} até {formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}
                   </p>
                 )}
               </div>
+              
+              <button
+                onClick={handlePrintSimulation}
+                className="p-2 hover:bg-cardBorder rounded-xl transition-all text-text opacity-0 group-hover/simcard:opacity-100 focus:opacity-100 flex items-center gap-2 text-[10px] font-bold border border-transparent hover:border-cardBorder"
+                title="Imprimir Simulação"
+              >
+                <Printer className="w-4 h-4 text-primary" />
+                IMPRIMIR
+              </button>
             </div>
             <div className="mt-4 pt-4 border-t" style={{ borderColor: theme.cardBorder }}>
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
