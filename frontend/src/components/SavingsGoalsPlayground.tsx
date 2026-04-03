@@ -1189,7 +1189,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                 <p className="text-[10px] opacity-50 mt-1">
                   Receitas - Despesas (exclui Vero/Flash)
                 </p>
-                {isFilterActive && (
+                {(
                   <p className="text-[9px] font-bold text-primary mt-1 uppercase tracking-tight">
                     Filtro ativo: {formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} até {formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}
                   </p>
