@@ -110,6 +110,102 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const [projectionDays, setProjectionDays] = useState<number>(5);
   const [catastrophicAmount, setCatastrophicAmount] = useState<number>(0);
   const [catastrophicName, setCatastrophicName] = useState<string>('');
+  const simulationRef = useRef<HTMLDivElement>(null);
+
+  const handlePrintSimulation = () => {
+    if (!simulationRef.current) return;
+
+    const printWindow = window.open('', '', 'height=800,width=1000');
+    if (!printWindow) return;
+
+    const goalName = countdownSimGoal?.name || 'Nenhuma meta selecionada';
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Simulação de Aporte e Projeção</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; line-height: 1.5; }
+            .header { border-bottom: 2px solid #3b82f6; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .header h1 { margin: 0; color: #3b82f6; font-size: 24px; }
+            .header p { margin: 5px 0 0 0; opacity: 0.7; font-size: 12px; }
+            .grid { display: grid; grid-template-cols: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+            .card { border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; background: #f8fafc; }
+            .card-title { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #64748b; margin-bottom: 10px; letter-spacing: 0.05em; }
+            .value { font-size: 24px; font-weight: 900; color: #3b82f6; }
+            .sub-value { font-size: 12px; color: #64748b; margin-top: 5px; }
+            .details { font-size: 11px; margin-top: 15px; font-family: monospace; color: #64748b; }
+            .projection-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            .projection-table th { text-align: left; font-size: 10px; color: #64748b; padding: 8px; border-bottom: 1px solid #e2e8f0; }
+            .projection-table td { padding: 8px; border-bottom: 1px solid #f1f5f9; font-size: 12px; }
+            .projection-table .date { font-weight: 700; color: #3b82f6; }
+            .projection-table .amount { font-family: monospace; font-weight: 700; text-align: right; }
+            .pessimist-note { margin-top: 20px; padding: 10px; background: #fff1f2; border-left: 4px solid #ef4444; font-size: 11px; color: #991b1b; }
+            @media print { body { padding: 0; } .card { break-inside: avoid; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <h1>Relatório de Simulação Financeira</h1>
+              <p>Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+              <p>Período Base: ${formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} até ${formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}</p>
+            </div>
+            <div style="text-align: right">
+              <div style="font-size: 10px; font-weight: 900; color: #64748b;">META SELECIONADA</div>
+              <div style="font-weight: 700;">${goalName}</div>
+            </div>
+          </div>
+          <div class="grid">
+            <div class="card">
+              <div class="card-title">Disponibilidade Final</div>
+              <div class="value">${formatCurrency(countdownSimAvailableEndOfMonth)}</div>
+              <div class="details">
+                Saldo Anterior: ${formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}<br>
+                + Receitas: ${formatCurrency(monthlyTotals.revenues)}<br>
+                - Despesas: ${formatCurrency(monthlyTotals.expenses)}<br>
+                - Aportes Reais: ${formatCurrency(monthlyTotals.realContributions)}<br>
+                - Aportes Simulados: ${formatCurrency(countdownSimExtra)}
+                ${catastrophicAmount > 0 ? `<br>- Extra: ${formatCurrency(catastrophicAmount)}` : ''}
+              </div>
+            </div>
+          </div>
+          ${catastrophicAmount > 0 ? `<div class="pessimist-note"><strong>Cenário Pessimista Ativo:</strong> Incluído gasto extra de ${formatCurrency(catastrophicAmount)} ${catastrophicName ? ` para "${catastrophicName}"` : ''}.</div>` : ''}
+          <div class="card" style="margin-top: 20px;">
+            <div class="card-title">Projeção Diária (Próximos ${projectionDays} dias)</div>
+            <table class="projection-table">
+              <thead><tr><th>DIA</th><th>DATA</th><th style="text-align: right">MOVIMENTAÇÃO</th><th style="text-align: right">SALDO ACUMULADO</th></tr></thead>
+              <tbody>
+                ${nextDaysData.dailyBalances.map(day => `
+                  <tr>
+                    <td style="font-weight: 700;">${day.label}</td>
+                    <td class="date">${formatBrazilDate(parseLocalDate(day.date), 'dd/MM/yyyy')}</td>
+                    <td style="text-align: right">
+                      ${day.revenues > 0 ? `<span style="color: #10b981">+${formatCurrency(day.revenues)}</span>` : ''}
+                      ${day.expenses > 0 ? `<span style="color: #ef4444">-${formatCurrency(day.expenses)}</span>` : ''}
+                      ${day.revenues === 0 && day.expenses === 0 ? '-' : ''}
+                    </td>
+                    <td class="amount" style="color: ${day.total < 0 ? '#ef4444' : '#10b981'}">${formatCurrency(day.total)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div style="margin-top: 30px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px;">Vibecodia Finances - Planejamento com Liberdade</div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
   
   const simChartRef = useRef<any>(null);
   const timelineChartRef = useRef<any>(null);
@@ -1081,7 +1177,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
           </div>
 
           {/* Card de Disponibilidade Mensal */}
-          <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <div ref={simulationRef} className="rounded-2xl border p-4 shadow-sm relative group/simcard" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">
@@ -1097,6 +1193,15 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                   </p>
                 )}
               </div>
+              
+              <button
+                onClick={handlePrintSimulation}
+                className="p-2 hover:bg-cardBorder rounded-xl transition-all text-text opacity-0 group-hover/simcard:opacity-100 focus:opacity-100 flex items-center gap-2 text-[10px] font-bold border border-transparent hover:border-cardBorder"
+                title="Imprimir Simulação"
+              >
+                <Printer className="w-4 h-4 text-primary" />
+                IMPRIMIR
+              </button>
             </div>
             <div className="mt-4 pt-4 border-t" style={{ borderColor: theme.cardBorder }}>
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
@@ -1190,13 +1295,13 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                     <span className="text-lg">{formatCurrency(countdownSimAvailableEndOfMonth)}</span>
                   </div>
 
-                  <div className="text-[8.5px] opacity-40 font-mono font-normal mt-1 flex flex-wrap gap-x-1 items-center">
-                    (<span>S.Ant: {formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}</span>
-                    <span>+ Rec: {formatCurrency(monthlyTotals.revenues)}</span>
-                    <span>- Desp: {formatCurrency(monthlyTotals.expenses)}</span>
-                    <span>- Ap.R: {formatCurrency(monthlyTotals.realContributions)}</span>
-                    <span>- Sim: {formatCurrency(countdownSimExtra)}</span>
-                    {catastrophicAmount > 0 && <span>- Extra: {formatCurrency(catastrophicAmount)}</span>})
+                  <div className="text-[12.5px] opacity-40 font-mono font-normal mt-1 flex flex-wrap gap-x-1 items-center">
+                    <span>Saldo Anterior: {formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}</span>
+                    <span>+ Receitas: {formatCurrency(monthlyTotals.revenues)}</span>
+                    <span>- Despesas: {formatCurrency(monthlyTotals.expenses)}</span>
+                    <span>- Aportes Reais: {formatCurrency(monthlyTotals.realContributions)}</span>
+                    <span>- Aporte Simulado: {formatCurrency(countdownSimExtra)}</span>
+                    {catastrophicAmount > 0 && <span>- Gastos Extra: {formatCurrency(catastrophicAmount)}</span>}
                   </div>
 
                   {countdownSimExtra > 0 && onAddTransaction && (
@@ -1214,7 +1319,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         {isSimExceedsTarget ? 'VALOR EXCEDIDO' : 'REGISTRAR APORTE'}
                       </button>
                       {isSimExceedsTarget && countdownSimGoal && (
-                        <span className="text-[9px] text-accent font-bold animate-pulse text-center">
+                        <span className="text-[12.5px] text-accent font-bold animate-pulse text-center">
                           Aporte maior que o restante (Faltam {formatCurrency(countdownSimGoal.targetAmount - countdownSimGoal.currentAmount)})
                         </span>
                       )}
@@ -1239,9 +1344,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         max={Math.min(maxProjectionDays, 60)} 
                         value={projectionDays}
                         onChange={(e) => setProjectionDays(Number(e.target.value))}
-                        className="w-16 cursor-pointer"
+                        className="w-full cursor-pointer"
                       />
-                      <span className="text-[10px] font-bold text-primary min-w-[20px] text-center">{projectionDays}d</span>
+                      <span className="text-[12.5px] font-bold text-primary min-w-[20px] text-center">{projectionDays}d</span>
                     </div>
                   </div>
 
@@ -1290,17 +1395,16 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                     {nextDaysData.dailyBalances.map((day: any) => (
                       <div key={day.date} className="flex items-center justify-between group border-b border-cardBorder/5 pb-1 last:border-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-primary w-6">{day.label}</span>
                           <span className="text-[9px] opacity-40 font-mono">
                             {formatBrazilDate(parseLocalDate(day.date), 'dd/MM')}
                           </span>
                         </div>
                         
                         <div className="flex flex-col items-end">
-                          <span className={`text-[11px] font-black ${day.total < 0 ? 'text-accent' : day.total < 500 ? 'text-orange-500' : 'text-primary'}`}>
+                          <span className={`text-[16px] font-black ${day.total < 0 ? 'text-red-500 animate-pulse text-[22px]' : day.total < 500 ? 'text-orange-500' : 'text-primary'}`}>
                             {formatCurrency(day.total)}
                           </span>
-                          <div className="text-[7.5px] opacity-40 font-mono mt-0.5">
+                          <div className="text-[12.5px] opacity-40 font-mono mt-0.5">
                             ({formatCurrency(day.previousBalance)}
                             {day.revenues > 0 && <span className="text-green-500"> +{formatCurrency(day.revenues)}</span>}
                             {day.expenses > 0 && <span className="text-red-500"> -{formatCurrency(day.expenses)}</span>})
@@ -1311,9 +1415,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                   </div>
 
                   <div className="mt-3 pt-2 border-t border-cardBorder/20">
-                    <p className="text-[9px] opacity-40 font-bold flex justify-between">
+                    <p className="text-[9px] opacity-75 font-bold flex justify-between">
                       <span>Saldo Final D+{projectionDays}:</span>
-                      <span className={nextDaysData.total < 0 ? 'text-accent' : 'text-primary'}>
+                      <span className={`text-[20px] font-black ${nextDaysData.total < 0 ? 'text-red-500' : 'text-primary'}`}>
                         {formatCurrency(nextDaysData.total)}
                       </span>
                     </p>
@@ -1325,8 +1429,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         (já inclui -{formatCurrency(catastrophicAmount)}{catastrophicName ? ` para ${catastrophicName}` : ''})
                       </span>
                     )}
-                    <span>+ Rec: {formatCurrency(nextDaysData.revenues)}</span>
-                    <span>- Desp: {formatCurrency(nextDaysData.expenses)}</span>)
+                    <span>+ Receitas: {formatCurrency(nextDaysData.revenues)}</span>
+                    <span>- Despesas: {formatCurrency(nextDaysData.expenses)}</span>)
                   </div>
                 </div>
               </div>
