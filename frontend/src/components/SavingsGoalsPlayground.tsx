@@ -119,8 +119,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     if (!printWindow) return;
 
     const goalName = countdownSimGoal?.name || 'Nenhuma meta selecionada';
-    const currentWithSim = countdownSimGoal ? countdownSimGoal.currentAmount + countdownSimExtra : 0;
-    const targetAmt = countdownSimGoal?.targetAmount || 0;
 
     const printContent = `
       <!DOCTYPE html>
