@@ -1190,13 +1190,13 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                     <span className="text-lg">{formatCurrency(countdownSimAvailableEndOfMonth)}</span>
                   </div>
 
-                  <div className="text-[8.5px] opacity-40 font-mono font-normal mt-1 flex flex-wrap gap-x-1 items-center">
-                    (<span>S.Ant: {formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}</span>
-                    <span>+ Rec: {formatCurrency(monthlyTotals.revenues)}</span>
-                    <span>- Desp: {formatCurrency(monthlyTotals.expenses)}</span>
-                    <span>- Ap.R: {formatCurrency(monthlyTotals.realContributions)}</span>
-                    <span>- Sim: {formatCurrency(countdownSimExtra)}</span>
-                    {catastrophicAmount > 0 && <span>- Extra: {formatCurrency(catastrophicAmount)}</span>})
+                  <div className="text-[12.5px] opacity-40 font-mono font-normal mt-1 flex flex-wrap gap-x-1 items-center">
+                    <span>Saldo Anterior: {formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}</span>
+                    <span>+ Receitas: {formatCurrency(monthlyTotals.revenues)}</span>
+                    <span>- Despesas: {formatCurrency(monthlyTotals.expenses)}</span>
+                    <span>- Aportes Reais: {formatCurrency(monthlyTotals.realContributions)}</span>
+                    <span>- Aporte Simulado: {formatCurrency(countdownSimExtra)}</span>
+                    {catastrophicAmount > 0 && <span>- Gastos Extra: {formatCurrency(catastrophicAmount)}</span>}
                   </div>
 
                   {countdownSimExtra > 0 && onAddTransaction && (
@@ -1214,7 +1214,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         {isSimExceedsTarget ? 'VALOR EXCEDIDO' : 'REGISTRAR APORTE'}
                       </button>
                       {isSimExceedsTarget && countdownSimGoal && (
-                        <span className="text-[9px] text-accent font-bold animate-pulse text-center">
+                        <span className="text-[12.5px] text-accent font-bold animate-pulse text-center">
                           Aporte maior que o restante (Faltam {formatCurrency(countdownSimGoal.targetAmount - countdownSimGoal.currentAmount)})
                         </span>
                       )}
@@ -1239,9 +1239,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         max={Math.min(maxProjectionDays, 60)} 
                         value={projectionDays}
                         onChange={(e) => setProjectionDays(Number(e.target.value))}
-                        className="w-16 cursor-pointer"
+                        className="w-full cursor-pointer"
                       />
-                      <span className="text-[10px] font-bold text-primary min-w-[20px] text-center">{projectionDays}d</span>
+                      <span className="text-[12.5px] font-bold text-primary min-w-[20px] text-center">{projectionDays}d</span>
                     </div>
                   </div>
 
@@ -1290,17 +1290,16 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                     {nextDaysData.dailyBalances.map((day: any) => (
                       <div key={day.date} className="flex items-center justify-between group border-b border-cardBorder/5 pb-1 last:border-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-primary w-6">{day.label}</span>
                           <span className="text-[9px] opacity-40 font-mono">
                             {formatBrazilDate(parseLocalDate(day.date), 'dd/MM')}
                           </span>
                         </div>
                         
                         <div className="flex flex-col items-end">
-                          <span className={`text-[11px] font-black ${day.total < 0 ? 'text-accent' : day.total < 500 ? 'text-orange-500' : 'text-primary'}`}>
+                          <span className={`text-[16px] font-black ${day.total < 0 ? 'text-red-500 animate-pulse text-[22px]' : day.total < 500 ? 'text-orange-500' : 'text-primary'}`}>
                             {formatCurrency(day.total)}
                           </span>
-                          <div className="text-[7.5px] opacity-40 font-mono mt-0.5">
+                          <div className="text-[12.5px] opacity-40 font-mono mt-0.5">
                             ({formatCurrency(day.previousBalance)}
                             {day.revenues > 0 && <span className="text-green-500"> +{formatCurrency(day.revenues)}</span>}
                             {day.expenses > 0 && <span className="text-red-500"> -{formatCurrency(day.expenses)}</span>})
@@ -1311,9 +1310,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                   </div>
 
                   <div className="mt-3 pt-2 border-t border-cardBorder/20">
-                    <p className="text-[9px] opacity-40 font-bold flex justify-between">
+                    <p className="text-[9px] opacity-75 font-bold flex justify-between">
                       <span>Saldo Final D+{projectionDays}:</span>
-                      <span className={nextDaysData.total < 0 ? 'text-accent' : 'text-primary'}>
+                      <span className={`text-[20px] font-black ${nextDaysData.total < 0 ? 'text-red-500' : 'text-primary'}`}>
                         {formatCurrency(nextDaysData.total)}
                       </span>
                     </p>
@@ -1325,8 +1324,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         (já inclui -{formatCurrency(catastrophicAmount)}{catastrophicName ? ` para ${catastrophicName}` : ''})
                       </span>
                     )}
-                    <span>+ Rec: {formatCurrency(nextDaysData.revenues)}</span>
-                    <span>- Desp: {formatCurrency(nextDaysData.expenses)}</span>)
+                    <span>+ Receitas: {formatCurrency(nextDaysData.revenues)}</span>
+                    <span>- Despesas: {formatCurrency(nextDaysData.expenses)}</span>)
                   </div>
                 </div>
               </div>
