@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import { 
   format, 
   addMonths, 
@@ -17,6 +16,7 @@ import {
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState } from 'react';
 
 interface DateRangePickerProps {
   startDate: string;
@@ -168,11 +168,12 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
         s = startOfMonth(today);
         e = endOfMonth(today);
         break;
-      case 'nextMonth':
+      case 'nextMonth': {
         const next = addMonths(today, 1);
         s = startOfMonth(next);
         e = endOfMonth(next);
         break;
+      }
       case 'last7':
         s = subDays(today, 6);
         e = today;
@@ -194,11 +195,12 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
         s = format(startOfMonth(today), 'yyyy-MM-dd');
         e = format(endOfMonth(today), 'yyyy-MM-dd');
         break;
-      case 'nextMonth':
+      case 'nextMonth': {
         const next = addMonths(today, 1);
         s = format(startOfMonth(next), 'yyyy-MM-dd');
         e = format(endOfMonth(next), 'yyyy-MM-dd');
         break;
+      }
       case 'last7':
         s = format(subDays(today, 6), 'yyyy-MM-dd');
         e = format(today, 'yyyy-MM-dd');
