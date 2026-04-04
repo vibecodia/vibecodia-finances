@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { 
   format, 
   addMonths, 
@@ -13,9 +13,7 @@ import {
   isWithinInterval, 
   isToday,
   startOfDay,
-  parseISO,
-  subDays,
-  addDays
+  subDays
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -41,7 +39,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
   // Inicializa com a data de início (com ajuste de meio-dia para evitar problemas de fuso horário)
   const [currentMonth, setCurrentMonth] = useState(() => {
     if (startDate) {
-      const [year, month, day] = startDate.split('-').map(Number);
+      const [year, month] = startDate.split('-').map(Number);
       return new Date(year, month - 1, 1, 12, 0, 0);
     }
     return startOfMonth(new Date());
@@ -101,7 +99,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
           ))}
         </div>
         <div className="grid grid-cols-7 gap-y-1">
-          {days.map((day, i) => {
+          {days.map((day) => {
             const isSelectedStart = start && isSameDay(day, start);
             const isSelectedEnd = end && isSameDay(day, end);
             const isInRange = start && end && isWithinInterval(day, { start, end });
