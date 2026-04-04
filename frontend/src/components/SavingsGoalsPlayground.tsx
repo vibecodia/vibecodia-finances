@@ -53,6 +53,7 @@ import {
   getBrazilDateString,
 } from '../utils/helpers';
 import TransactionForm from './TransactionForm';
+import DateRangePicker from './DateRangePicker';
 
 ChartJS.register(
   CategoryScale,
@@ -127,7 +128,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
           <title>Simulação de Aporte e Projeção</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; line-height: 1.5; }
+            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; line-height: 1.5; background: white; }
             .header { border-bottom: 2px solid #3b82f6; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
             .header h1 { margin: 0; color: #3b82f6; font-size: 24px; }
             .header p { margin: 5px 0 0 0; opacity: 0.7; font-size: 12px; }
@@ -142,11 +143,23 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             .projection-table td { padding: 8px; border-bottom: 1px solid #f1f5f9; font-size: 12px; }
             .projection-table .date { font-weight: 700; color: #3b82f6; }
             .projection-table .amount { font-family: monospace; font-weight: 700; text-align: right; }
-            .pessimist-note { margin-top: 20px; padding: 10px; background: #fff1f2; border-left: 4px solid #ef4444; font-size: 11px; color: #991b1b; }
-            @media print { body { padding: 0; } .card { break-inside: avoid; } }
+            .pessimist-note { margin-top: 20px; padding: 15px; background: #fff1f2; border: 1px solid #fecaca; border-radius: 8px; color: #991b1b; }
+            .alert-box { margin-top: 20px; padding: 15px; background: #fef2f2; border: 2px solid #ef4444; border-radius: 8px; color: #b91c1c; font-weight: 700; text-align: center; }
+            .no-print-btn { 
+              position: fixed; top: 20px; right: 20px; padding: 10px 20px; 
+              background: #3b82f6; color: white; border: none; border-radius: 8px; 
+              font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            @media print { 
+              body { padding: 0; } 
+              .card { break-inside: avoid; } 
+              .no-print-btn { display: none; }
+            }
           </style>
         </head>
         <body>
+          <button class="no-print-btn" onclick="window.print()">IMPRIMIR PDF</button>
+          
           <div class="header">
             <div>
               <h1>Relatório de Simulação Financeira</h1>
@@ -158,7 +171,16 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               <div style="font-weight: 700;">${goalName}</div>
             </div>
           </div>
+
           <div class="grid">
+            <div class="card">
+              <div class="card-title">Impacto na Meta</div>
+              <div class="value">${formatCurrency(countdownSimGoal ? countdownSimGoal.currentAmount + countdownSimExtra : 0)}</div>
+              <div class="sub-value">Alvo: ${formatCurrency(countdownSimGoal?.targetAmount || 0)}</div>
+              <div class="sub-value" style="color: #10b981; font-weight: 700;">
+                ${countdownSimIsGoalAchieved ? '✅ Meta Atingida!' : `Restam ${formatCurrency((countdownSimGoal?.targetAmount || 0) - (countdownSimGoal ? countdownSimGoal.currentAmount + countdownSimExtra : 0))}`}
+              </div>
+            </div>
             <div class="card">
               <div class="card-title">Disponibilidade Final</div>
               <div class="value">${formatCurrency(countdownSimAvailableEndOfMonth)}</div>
@@ -168,32 +190,51 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                 - Despesas: ${formatCurrency(monthlyTotals.expenses)}<br>
                 - Aportes Reais: ${formatCurrency(monthlyTotals.realContributions)}<br>
                 - Aportes Simulados: ${formatCurrency(countdownSimExtra)}
-                ${catastrophicAmount > 0 ? `<br>- Extra: ${formatCurrency(catastrophicAmount)}` : ''}
+                ${catastrophicAmount > 0 ? `<br>- Extra (${catastrophicName || 'Cenário Pessimista'}): ${formatCurrency(catastrophicAmount)}` : ''}
               </div>
             </div>
           </div>
-          ${catastrophicAmount > 0 ? `<div class="pessimist-note"><strong>Cenário Pessimista Ativo:</strong> Incluído gasto extra de ${formatCurrency(catastrophicAmount)} ${catastrophicName ? ` para "${catastrophicName}"` : ''}.</div>` : ''}
+
+          ${nextDaysData.negativeCount > 0 ? `
+            <div class="alert-box">
+              🚨 ALERTA CRÍTICO: Projeção detectou ${nextDaysData.negativeCount} dias com saldo negativo no período.
+            </div>
+          ` : ''}
+
+          ${catastrophicAmount > 0 ? `
+            <div class="pessimist-note">
+              <strong>Cenário Pessimista Ativo:</strong> Foi simulado um gasto extra de <strong>${formatCurrency(catastrophicAmount)}</strong> 
+              ${catastrophicName ? ` para "<em>${catastrophicName}</em>"` : ''}.
+            </div>
+          ` : ''}
+
           <div class="card" style="margin-top: 20px;">
             <div class="card-title">Projeção Diária (Próximos ${projectionDays} dias)</div>
             <table class="projection-table">
               <thead><tr><th>DIA</th><th>DATA</th><th style="text-align: right">MOVIMENTAÇÃO</th><th style="text-align: right">SALDO ACUMULADO</th></tr></thead>
               <tbody>
-                ${nextDaysData.dailyBalances.map(day => `
+                ${nextDaysData.dailyBalances.map((day: any) => `
                   <tr>
                     <td style="font-weight: 700;">${day.label}</td>
                     <td class="date">${formatBrazilDate(parseLocalDate(day.date), 'dd/MM/yyyy')}</td>
-                    <td style="text-align: right">
+                    <td style="text-align: right; font-size: 10px;">
                       ${day.revenues > 0 ? `<span style="color: #10b981">+${formatCurrency(day.revenues)}</span>` : ''}
                       ${day.expenses > 0 ? `<span style="color: #ef4444">-${formatCurrency(day.expenses)}</span>` : ''}
                       ${day.revenues === 0 && day.expenses === 0 ? '-' : ''}
                     </td>
-                    <td class="amount" style="color: ${day.total < 0 ? '#ef4444' : '#10b981'}">${formatCurrency(day.total)}</td>
+                    <td class="amount" style="color: ${day.total < 0 ? '#ef4444' : '#10b981'}">
+                      ${formatCurrency(day.total)}
+                      ${day.isNegative ? '<br><span style="font-size: 8px; text-transform: uppercase;">⚠️ Negativo</span>' : ''}
+                    </td>
                   </tr>
                 `).join('')}
               </tbody>
             </table>
           </div>
-          <div style="margin-top: 30px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px;">Vibecodia Finances - Planejamento com Liberdade</div>
+
+          <div style="margin-top: 30px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+            Vibecodia Finances - Planejamento com Liberdade
+          </div>
         </body>
       </html>
     `;
@@ -201,10 +242,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     printWindow.document.write(printContent);
     printWindow.document.close();
     printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 250);
   };
   
   const simChartRef = useRef<any>(null);
@@ -525,8 +562,18 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     const filterEndDate = parseLocalDate(endDate);
     const baseBalance = monthlyTotals.net - countdownSimExtra;
     
-    const dailyBalances: { date: string; label: string; total: number; revenues: number; expenses: number; previousBalance: number }[] = [];
+    const dailyBalances: { 
+      date: string; 
+      label: string; 
+      total: number; 
+      revenues: number; 
+      expenses: number; 
+      previousBalance: number;
+      isNegative: boolean;
+      negativeDayIndex: number;
+    }[] = [];
     let runningBalance = baseBalance;
+    let negativeCount = 0;
 
     for (let i = 1; i <= projectionDays; i++) {
       const currentDay = addDays(filterEndDate, i);
@@ -560,13 +607,19 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
 
       runningBalance = runningBalance + dayRevenues - dayExpenses - dayContributions;
       
+      if (runningBalance < 0) {
+        negativeCount++;
+      }
+
       dailyBalances.push({
         date: currentDayStr,
         label: `D+${i}`,
         total: runningBalance,
         revenues: dayRevenues,
         expenses: dayExpenses + dayContributions,
-        previousBalance: runningBalance - dayRevenues + (dayExpenses + dayContributions)
+        previousBalance: runningBalance - dayRevenues + (dayExpenses + dayContributions),
+        isNegative: runningBalance < 0,
+        negativeDayIndex: runningBalance < 0 ? negativeCount : 0
       });
     }
 
@@ -574,6 +627,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       dailyBalances,
       total: runningBalance,
       baseBalance,
+      negativeCount,
       revenues: dailyBalances.reduce((sum, d) => sum + d.revenues, 0),
       expenses: dailyBalances.reduce((sum, d) => sum + d.expenses, 0)
     };
@@ -1073,22 +1127,15 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               <div className="p-4 space-y-4">
               <div>
                 <label className="block text-xs font-medium text-text opacity-70 mb-2">Período</label>
-                <div className="space-y-2">
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full p-2.5 rounded-lg border text-sm"
-                    style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                  />
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full p-2.5 rounded-lg border text-sm"
-                    style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                  />
-                </div>
+                <DateRangePicker 
+                  startDate={startDate}
+                  endDate={endDate}
+                  onChange={(start, end) => {
+                    setStartDate(start);
+                    setEndDate(end);
+                  }}
+                  theme={theme}
+                />
               </div>
 
               <div>
@@ -1401,7 +1448,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         </div>
                         
                         <div className="flex flex-col items-end">
-                          <span className={`text-[16px] font-black ${day.total < 0 ? 'text-red-500 animate-pulse text-[22px]' : day.total < 500 ? 'text-orange-500' : 'text-primary'}`}>
+                          <span className={`text-[16px] font-black ${day.isNegative ? 'text-red-500 animate-pulse text-[22px]' : day.total < 500 ? 'text-orange-500' : 'text-primary'}`}>
                             {formatCurrency(day.total)}
                           </span>
                           <div className="text-[12.5px] opacity-40 font-mono mt-0.5">
@@ -1414,7 +1461,15 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                     ))}
                   </div>
 
-                  <div className="mt-3 pt-2 border-t border-cardBorder/20">
+                  <div className="mt-3 pt-2 border-t border-cardBorder/20 space-y-1">
+                    {nextDaysData.negativeCount > 0 && (
+                      <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2 mb-2">
+                        <p className="text-[10px] text-red-500 font-black flex items-center justify-between">
+                          <span>⚠️ ALERTA DE CAIXA:</span>
+                          <span>{nextDaysData.negativeCount} {nextDaysData.negativeCount === 1 ? 'dia' : 'dias'} no vermelho</span>
+                        </p>
+                      </div>
+                    )}
                     <p className="text-[9px] opacity-75 font-bold flex justify-between">
                       <span>Saldo Final D+{projectionDays}:</span>
                       <span className={`text-[20px] font-black ${nextDaysData.total < 0 ? 'text-red-500' : 'text-primary'}`}>
