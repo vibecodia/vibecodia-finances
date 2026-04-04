@@ -640,12 +640,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     return differenceInDays(endOfNextMonth, filterEndDate);
   }, [endDate]);
 
-  // Verificar se o filtro de data está ativo (diferente do mês atual)
-  const isFilterActive = useMemo(() => {
-    const defaultStart = format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd');
-    const defaultEnd = format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd');
-    return startDate !== defaultStart || endDate !== defaultEnd;
-  }, [startDate, endDate]);
+  // // Verificar se o filtro de data está ativo (diferente do mês atual)
+  // const isFilterActive = useMemo(() => {
+  //   const defaultStart = format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd');
+  //   const defaultEnd = format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd');
+  //   return startDate !== defaultStart || endDate !== defaultEnd;
+  // }, [startDate, endDate]);
 
   const handleCountdownSimGoalChange = (goalId: string) => {
     setCountdownSimGoalId(goalId || null);
