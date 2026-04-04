@@ -1232,13 +1232,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                 </p>
                 
                 <p className="text-[10px] opacity-50 mt-1">
-                  Receitas - Despesas (exclui Vero/Flash)
+                  {/* TODO colocar aqui um check box para incluir vero e flash */}
+                  Receitas - Despesas (exclui Vero/Flash) 
                 </p>
-                {(
-                  <p className="text-[9px] font-bold text-primary mt-1 uppercase tracking-tight">
-                    Filtro ativo: {formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} até {formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}
-                  </p>
-                )}
               </div>
               
               <button
@@ -1328,10 +1324,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                   title={`Cálculo:\nSaldo Anterior: ${formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}\nReceitas (+): ${formatCurrency(monthlyTotals.revenues)}\nDespesas (-): ${formatCurrency(monthlyTotals.expenses)}\nAportes Reais (-): ${formatCurrency(monthlyTotals.realContributions)}\nAporte Simulado (-): ${formatCurrency(countdownSimExtra)}\nGasto Extra (Catastrófico) (-): ${formatCurrency(catastrophicAmount)}\nTotal: ${formatCurrency(countdownSimAvailableEndOfMonth)}`}
                 >
                   <p className="text-[10px] font-bold uppercase opacity-50 mb-1">
-                    {isFilterActive 
-                      ? `Disponível no filtro de ${formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yy')} a ${formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yy')}`
-                      : 'Disponível Final do Mês'
-                    }
+                    Filtro ativo: {formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} até {formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}
                   </p>
                   
                   <div className={`flex items-center gap-1.5 font-black ${countdownSimAvailableColorClass}`}>
@@ -1339,7 +1332,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                       countdownSimAvailableEndOfMonth < 500 ? <Pin className="w-4 h-4" /> :
                       <CheckCircle2 className="w-4 h-4" />
                     }
-                    <span className="text-lg">{formatCurrency(countdownSimAvailableEndOfMonth)}</span>
+                    <span className="text-lg"> Final do Mês: {formatCurrency(countdownSimAvailableEndOfMonth)}</span>
                   </div>
 
                   <div className="text-[12.5px] opacity-40 font-mono font-normal mt-1 flex flex-wrap gap-x-1 items-center">
