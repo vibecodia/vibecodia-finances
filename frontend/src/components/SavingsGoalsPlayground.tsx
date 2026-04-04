@@ -53,6 +53,7 @@ import {
   getBrazilDateString,
 } from '../utils/helpers';
 import TransactionForm from './TransactionForm';
+import DateRangePicker from './DateRangePicker';
 
 ChartJS.register(
   CategoryScale,
@@ -1073,22 +1074,15 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               <div className="p-4 space-y-4">
               <div>
                 <label className="block text-xs font-medium text-text opacity-70 mb-2">Período</label>
-                <div className="space-y-2">
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full p-2.5 rounded-lg border text-sm"
-                    style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                  />
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full p-2.5 rounded-lg border text-sm"
-                    style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                  />
-                </div>
+                <DateRangePicker 
+                  startDate={startDate}
+                  endDate={endDate}
+                  onChange={(start, end) => {
+                    setStartDate(start);
+                    setEndDate(end);
+                  }}
+                  theme={theme}
+                />
               </div>
 
               <div>
