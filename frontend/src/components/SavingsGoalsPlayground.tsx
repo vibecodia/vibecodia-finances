@@ -1541,12 +1541,16 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                           <span className={`text-[15px] font-black ${day.isNegative ? 'text-red-500 animate-pulse text-[18px]' : day.total < 500 ? 'text-orange-500' : 'text-primary'}`}>
                             {formatCurrency(day.total)}
                           </span>
-                          <div className="text-[11px] opacity-40 font-mono mt-0.5">
-                            ({formatCurrency(day.previousBalance)}
-                            {day.revenues > 0 && <span className="text-green-500"> +{formatCurrency(day.revenues)}</span>}
-                            {day.expenses > 0 && <span className="text-red-500"> -{formatCurrency(day.expenses)}</span>})
-                          </div>
+                          {(day.label === 'D+1' || day.revenues > 0 || day.expenses > 0) && (
+                            <div className="text-[11px] opacity-40 font-mono mt-0.5">
+                              ({day.label === 'D+1' && `${formatCurrency(day.previousBalance)} `}
+                              {day.revenues > 0 && <span className="text-green-500">+{formatCurrency(day.revenues)}</span>}
+                              {day.revenues > 0 && day.expenses > 0 && <span> </span>}
+                              {day.expenses > 0 && <span className="text-red-500">-{formatCurrency(day.expenses)}</span>})
+                            </div>
+                          )}
                         </div>
+                        
                       </div>
                     ))}
                   </div>
