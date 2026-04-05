@@ -1448,13 +1448,13 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                       onClick={() => setProjectionView('current')}
                       className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${projectionView === 'current' ? 'bg-primary text-white shadow-md' : 'text-text opacity-70 hover:opacity-100'}`}
                     >
-                      Filtro Atual
+                      Resumo do Período
                     </button>
                     <button 
                       onClick={() => setProjectionView('forward')}
                       className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${projectionView === 'forward' ? 'bg-primary text-white shadow-md' : 'text-text opacity-70 hover:opacity-100'}`}
                     >
-                      Dias seguintes ao filtro
+                      Projeção Futura
                     </button>
                   </div>
 
@@ -1534,13 +1534,11 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                           <span className={`text-[15px] font-black ${day.isNegative ? 'text-red-500 animate-pulse text-[18px]' : day.total < 500 ? 'text-orange-500' : 'text-primary'}`}>
                             {formatCurrency(day.total)}
                           </span>
-                          {(day.revenues > 0 || day.expenses > 0) && (
-                            <div className="text-[11px] opacity-40 font-mono mt-0.5">
-                              ({day.revenues > 0 && <span className="text-green-500">+{formatCurrency(day.revenues)}</span>}
-                              {day.revenues > 0 && day.expenses > 0 && <span> </span>}
-                              {day.expenses > 0 && <span className="text-red-500">-{formatCurrency(day.expenses)}</span>})
-                            </div>
-                          )}
+                          <div className="text-[11px] opacity-40 font-mono mt-0.5">
+                            ({formatCurrency(day.previousBalance)}
+                            {day.revenues > 0 && <span className="text-green-500"> +{formatCurrency(day.revenues)}</span>}
+                            {day.expenses > 0 && <span className="text-red-500"> -{formatCurrency(day.expenses)}</span>})
+                          </div>
                         </div>
                       </div>
                     ))}
