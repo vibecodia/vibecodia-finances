@@ -109,6 +109,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const [isSimInputFocused, setIsSimInputFocused] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [projectionDays, setProjectionDays] = useState<number>(5);
+  const [projectionView, setProjectionView] = useState<'current' | 'forward'>('current');
   const [catastrophicAmount, setCatastrophicAmount] = useState<number>(0);
   const [catastrophicName, setCatastrophicName] = useState<string>('');
   const simulationRef = useRef<HTMLDivElement>(null);
@@ -557,6 +558,71 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     };
   }, [transactions, savingsGoals, activeGoals, startDate, endDate, catastrophicAmount]);
 
+  // Detalhamento diário para o período filtrado (Mês Atual)
+  const currentPeriodDailyData = useMemo(() => {
+    const start = parseLocalDate(startDate);
+    const end = parseLocalDate(endDate);
+    const daysCount = differenceInDays(end, start) + 1;
+    
+    const dailyBalances: any[] = [];
+    let runningBalance = monthlyTotals.previousMonthAdjustedBalance;
+    let negativeCount = 0;
+
+    for (let i = 0; i < daysCount; i++) {
+      const currentDay = addDays(start, i);
+      const currentDayStr = format(currentDay, 'yyyy-MM-dd');
+      
+      const dayRevenues = transactions
+        .filter(t => {
+          const tDateStr = t.date.slice(0, 10);
+          return t.type === 'income' && t.status === 'active' && tDateStr === currentDayStr &&
+                 !t.description?.toLowerCase().includes('vero') && !t.category?.toLowerCase().includes('vero') &&
+                 !t.description?.toLowerCase().includes('flash') && !t.category?.toLowerCase().includes('flash');
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const dayExpenses = transactions
+        .filter(t => {
+          const tDateStr = t.date.slice(0, 10);
+          return t.type === 'expense' && t.status === 'active' && tDateStr === currentDayStr &&
+                 !t.category?.toLowerCase().includes('aporte') &&
+                 !t.paymentMethod?.toLowerCase().includes('vero') && !t.paymentMethod?.toLowerCase().includes('flash');
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const dayContributions = transactions
+        .filter(t => {
+          const tDateStr = t.date.slice(0, 10);
+          return t.type === 'expense' && t.isPaid === true && t.status === 'active' && 
+                 tDateStr === currentDayStr && t.category?.toLowerCase().includes('aporte');
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      runningBalance = runningBalance + dayRevenues - dayExpenses - dayContributions;
+      
+      // Aplicar o aporte simulado e o gasto extra no último dia do período para conciliar com o saldo final
+      const isLastDay = i === daysCount - 1;
+      if (isLastDay) {
+        runningBalance = runningBalance - countdownSimExtra - catastrophicAmount;
+      }
+
+      if (runningBalance < 0) {
+        negativeCount++;
+      }
+
+      dailyBalances.push({
+        date: currentDayStr,
+        total: runningBalance,
+        revenues: dayRevenues,
+        expenses: dayExpenses + dayContributions + (isLastDay ? (countdownSimExtra + catastrophicAmount) : 0),
+        previousBalance: runningBalance - dayRevenues + (dayExpenses + dayContributions + (isLastDay ? (countdownSimExtra + catastrophicAmount) : 0)),
+        isNegative: runningBalance < 0
+      });
+    }
+
+    return { dailyBalances, negativeCount };
+  }, [transactions, startDate, endDate, monthlyTotals.previousMonthAdjustedBalance, countdownSimExtra, catastrophicAmount]);
+
   // Cálculo para "Disponível próximos X dias" (após a data final do filtro) com detalhamento diário
   const nextDaysData = useMemo(() => {
     const filterEndDate = parseLocalDate(endDate);
@@ -641,11 +707,11 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   }, [endDate]);
 
   // Verificar se o filtro de data está ativo (diferente do mês atual)
-  const isFilterActive = useMemo(() => {
-    const defaultStart = format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd');
-    const defaultEnd = format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd');
-    return startDate !== defaultStart || endDate !== defaultEnd;
-  }, [startDate, endDate]);
+  // const isFilterActive = useMemo(() => {
+  //   const defaultStart = format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd');
+  //   const defaultEnd = format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd');
+  //   return startDate !== defaultStart || endDate !== defaultEnd;
+  // }, [startDate, endDate]);
 
   const handleCountdownSimGoalChange = (goalId: string) => {
     setCountdownSimGoalId(goalId || null);
@@ -1332,7 +1398,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                       countdownSimAvailableEndOfMonth < 500 ? <Pin className="w-4 h-4" /> :
                       <CheckCircle2 className="w-4 h-4" />
                     }
-                    <span className="text-lg"> Final do Mês: {formatCurrency(countdownSimAvailableEndOfMonth)}</span>
+                    <span className="text-lg"> Final do Período: {formatCurrency(countdownSimAvailableEndOfMonth)}</span>
                   </div>
 
                   <div className="text-[12.5px] opacity-40 font-mono font-normal mt-1 flex flex-wrap gap-x-1 items-center">
@@ -1371,11 +1437,31 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                 <div
                   className="rounded-xl border p-4 bg-cardBorder/10"
                   style={{ borderColor: theme.cardBorder }}
-                  title={`Detalhamento do saldo projetado para os próximos ${projectionDays} dias`}
+                  title={projectionView === 'forward' 
+                    ? `Detalhamento do saldo projetado para os próximos ${projectionDays} dias`
+                    : `Resumo do saldo para o período filtrado`
+                  }
                 >
+                  {/* Toggle de Visualização */}
+                  <div className="flex gap-2 p-1 bg-cardBorder/30 rounded-xl mb-3">
+                    <button 
+                      onClick={() => setProjectionView('current')}
+                      className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${projectionView === 'current' ? 'bg-primary text-white shadow-md' : 'text-text opacity-70 hover:opacity-100'}`}
+                    >
+                      Filtro Atual
+                    </button>
+                    <button 
+                      onClick={() => setProjectionView('forward')}
+                      className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${projectionView === 'forward' ? 'bg-primary text-white shadow-md' : 'text-text opacity-70 hover:opacity-100'}`}
+                    >
+                      Dias seguintes ao filtro
+                    </button>
+                  </div>
+
+                  {/* Cabeçalho com Slider (Comum) */}
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-[10px] font-bold uppercase opacity-50">
-                      Projeção D+{projectionDays}
+                      {projectionView === 'forward' ? `Projeção D+${projectionDays}` : 'Detalhamento do Filtro'}
                     </p>
                     <div className="flex items-center gap-2">
                       <input 
@@ -1384,13 +1470,16 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         max={Math.min(maxProjectionDays, 60)} 
                         value={projectionDays}
                         onChange={(e) => setProjectionDays(Number(e.target.value))}
-                        className="w-full cursor-pointer"
+                        disabled={projectionView === 'current'}
+                        className={`w-full cursor-pointer ${projectionView === 'current' ? 'opacity-30 cursor-not-allowed' : ''}`}
                       />
-                      <span className="text-[12.5px] font-bold text-primary min-w-[20px] text-center">{projectionDays}d</span>
+                      <span className="text-[12.5px] font-bold text-primary min-w-[20px] text-center">
+                        {projectionView === 'forward' ? `${projectionDays}d` : `${currentPeriodDailyData.dailyBalances.length}d`}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Input de Projeção Catastrófica */}
+                  {/* Input de Projeção Catastrófica (Comum) */}
                   <div className="mb-4 space-y-2">
                     <div className="space-y-1">
                       <label className="text-[9px] font-bold uppercase opacity-40 block flex items-center gap-1">
@@ -1431,8 +1520,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                     </div>
                   </div>
                   
-                  <div className="space-y-2">
-                    {nextDaysData.dailyBalances.map((day: any) => (
+                  {/* Lista de Saldos Diários (Comum, mudando apenas a fonte dos dados) */}
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                    {(projectionView === 'forward' ? nextDaysData.dailyBalances : currentPeriodDailyData.dailyBalances).map((day: any) => (
                       <div key={day.date} className="flex items-center justify-between group border-b border-cardBorder/5 pb-1 last:border-0">
                         <div className="flex items-center gap-2">
                           <span className="text-[9px] opacity-40 font-mono">
@@ -1441,44 +1531,61 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         </div>
                         
                         <div className="flex flex-col items-end">
-                          <span className={`text-[16px] font-black ${day.isNegative ? 'text-red-500 animate-pulse text-[22px]' : day.total < 500 ? 'text-orange-500' : 'text-primary'}`}>
+                          <span className={`text-[15px] font-black ${day.isNegative ? 'text-red-500 animate-pulse text-[18px]' : day.total < 500 ? 'text-orange-500' : 'text-primary'}`}>
                             {formatCurrency(day.total)}
                           </span>
-                          <div className="text-[12.5px] opacity-40 font-mono mt-0.5">
-                            ({formatCurrency(day.previousBalance)}
-                            {day.revenues > 0 && <span className="text-green-500"> +{formatCurrency(day.revenues)}</span>}
-                            {day.expenses > 0 && <span className="text-red-500"> -{formatCurrency(day.expenses)}</span>})
-                          </div>
+                          {(day.revenues > 0 || day.expenses > 0) && (
+                            <div className="text-[11px] opacity-40 font-mono mt-0.5">
+                              ({day.revenues > 0 && <span className="text-green-500">+{formatCurrency(day.revenues)}</span>}
+                              {day.revenues > 0 && day.expenses > 0 && <span> </span>}
+                              {day.expenses > 0 && <span className="text-red-500">-{formatCurrency(day.expenses)}</span>})
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
                   </div>
 
+                  {/* Rodapé de Resumo (Comum) */}
                   <div className="mt-3 pt-2 border-t border-cardBorder/20 space-y-1">
-                    {nextDaysData.negativeCount > 0 && (
+                    {(projectionView === 'forward' ? nextDaysData.negativeCount : currentPeriodDailyData.negativeCount) > 0 && (
                       <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2 mb-2">
                         <p className="text-[10px] text-red-500 font-black flex items-center justify-between">
                           <span>⚠️ ALERTA DE CAIXA:</span>
-                          <span>{nextDaysData.negativeCount} {nextDaysData.negativeCount === 1 ? 'dia' : 'dias'} no vermelho</span>
+                          <span>
+                            {projectionView === 'forward' ? nextDaysData.negativeCount : currentPeriodDailyData.negativeCount} 
+                            {(projectionView === 'forward' ? nextDaysData.negativeCount : currentPeriodDailyData.negativeCount) === 1 ? ' dia' : ' dias'} no vermelho
+                          </span>
                         </p>
                       </div>
                     )}
-                    <p className="text-[9px] opacity-75 font-bold flex justify-between">
-                      <span>Saldo Final D+{projectionDays}:</span>
-                      <span className={`text-[20px] font-black ${nextDaysData.total < 0 ? 'text-red-500' : 'text-primary'}`}>
-                        {formatCurrency(nextDaysData.total)}
+                    
+                    <div className="flex justify-between items-center">
+                      <p className="text-[9px] opacity-75 font-bold">
+                        {projectionView === 'forward' ? `Saldo Final D+${projectionDays}:` : 'Saldo Final do Filtro:'}
+                      </p>
+                      <span className={`text-[20px] font-black ${
+                        (projectionView === 'forward' ? nextDaysData.total : countdownSimAvailableEndOfMonth) < 0 ? 'text-red-500' : 'text-primary'
+                      }`}>
+                        {formatCurrency(projectionView === 'forward' ? nextDaysData.total : countdownSimAvailableEndOfMonth)}
                       </span>
-                    </p>
-                  </div>
-                  <div className="text-[8.5px] opacity-40 font-mono font-normal mt-1 flex flex-wrap gap-x-1 items-center">
-                    (<span>Base: {formatCurrency(nextDaysData.baseBalance)}</span>
-                    {catastrophicAmount > 0 && (
-                      <span className="text-accent">
-                        (já inclui -{formatCurrency(catastrophicAmount)}{catastrophicName ? ` para ${catastrophicName}` : ''})
-                      </span>
-                    )}
-                    <span>+ Receitas: {formatCurrency(nextDaysData.revenues)}</span>
-                    <span>- Despesas: {formatCurrency(nextDaysData.expenses)}</span>)
+                    </div>
+
+                    <div className="text-[8.5px] opacity-40 font-mono font-normal mt-1 flex flex-wrap gap-x-1 items-center">
+                      (<span>Base: {formatCurrency(projectionView === 'forward' ? nextDaysData.baseBalance : monthlyTotals.previousMonthAdjustedBalance)}</span>
+                      {catastrophicAmount > 0 && (
+                        <span className="text-accent">
+                          (inclui -{formatCurrency(catastrophicAmount)}{catastrophicName ? ` para ${catastrophicName}` : ''})
+                        </span>
+                      )}
+                      {projectionView === 'current' && countdownSimExtra > 0 && (
+                        <span className="text-primary">
+                          (inclui -{formatCurrency(countdownSimExtra)} de aporte sim.)
+                        </span>
+                      )}
+                      <span>+ Receitas: {formatCurrency(projectionView === 'forward' ? nextDaysData.revenues : monthlyTotals.revenues)}</span>
+                      <span>- Despesas: {formatCurrency(projectionView === 'forward' ? nextDaysData.expenses : (monthlyTotals.expenses + monthlyTotals.realContributions))}</span>)
+                    </div>
                   </div>
                 </div>
               </div>
