@@ -1529,30 +1529,29 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                   
                   {/* Lista de Saldos Diários (Comum, mudando apenas a fonte dos dados) */}
                   <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                    {(projectionView === 'forward' ? nextDaysData.dailyBalances : currentPeriodDailyData.dailyBalances).map((day: any) => (
-                      <div key={day.date} className="flex items-center justify-between group border-b border-cardBorder/5 pb-1 last:border-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] opacity-40 font-mono">
-                            {formatBrazilDate(parseLocalDate(day.date), 'dd/MM')}
-                          </span>
-                        </div>
-                        
-                        <div className="flex flex-col items-end">
-                          <span className={`text-[15px] font-black ${day.isNegative ? 'text-red-500 animate-pulse text-[18px]' : day.total < 500 ? 'text-orange-500' : 'text-primary'}`}>
-                            {formatCurrency(day.total)}
-                          </span>
-                          {(day.label === 'D+1' || day.revenues > 0 || day.expenses > 0) && (
-                            <div className="text-[11px] opacity-40 font-mono mt-0.5">
-                              ({day.label === 'D+1' && `${formatCurrency(day.previousBalance)} `}
-                              {day.revenues > 0 && <span className="text-green-500">+{formatCurrency(day.revenues)}</span>}
-                              {day.revenues > 0 && day.expenses > 0 && <span> </span>}
-                              {day.expenses > 0 && <span className="text-red-500">-{formatCurrency(day.expenses)}</span>})
-                            </div>
-                          )}
-                        </div>
-                        
-                      </div>
-                    ))}
+                    {(projectionView === 'forward' ? nextDaysData.dailyBalances : currentPeriodDailyData.dailyBalances).map((day: any, index: number) => (
+  <div key={day.date} className="flex items-center justify-between group border-b border-cardBorder/5 pb-1 last:border-0">
+    <div className="flex items-center gap-2">
+      <span className="text-[9px] opacity-40 font-mono">
+        {formatBrazilDate(parseLocalDate(day.date), 'dd/MM')}
+      </span>
+    </div>
+    
+    <div className="flex flex-col items-end">
+      <span className={`text-[15px] font-black ${day.isNegative ? 'text-red-500 animate-pulse text-[18px]' : day.total < 500 ? 'text-orange-500' : 'text-primary'}`}>
+        {formatCurrency(day.total)}
+      </span>
+      {(index === 0 || day.revenues > 0 || day.expenses > 0) && (
+        <div className="text-[11px] opacity-40 font-mono mt-0.5">
+          ({index === 0 && `${formatCurrency(day.previousBalance)} `}
+          {day.revenues > 0 && <span className="text-green-500">+{formatCurrency(day.revenues)}</span>}
+          {day.revenues > 0 && day.expenses > 0 && <span> </span>}
+          {day.expenses > 0 && <span className="text-red-500">-{formatCurrency(day.expenses)}</span>})
+        </div>
+      )}
+    </div>
+  </div>
+))}
                   </div>
 
                   {/* Rodapé de Resumo (Comum) */}
