@@ -120,19 +120,26 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     const printWindow = window.open('', '', 'height=800,width=1000');
     if (!printWindow) return;
 
+    const isForward = projectionView === 'forward';
+    const reportTitle = isForward ? 'Relatório de Projeção Financeira' : 'Relatório de Fluxo do Período Filtrado';
+    const viewLabel = isForward ? 'Dias seguintes ao filtro' : 'Filtro Atual';
     const goalName = countdownSimGoal?.name || 'Nenhuma meta selecionada';
+    
+    const dailyData = isForward ? nextDaysData : currentPeriodDailyData;
+    const finalBalance = isForward ? nextDaysData.total : countdownSimAvailableEndOfMonth;
 
     const printContent = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Simulação de Aporte e Projeção</title>
+          <title>${reportTitle}</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
             body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; line-height: 1.5; background: white; }
             .header { border-bottom: 2px solid #3b82f6; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
             .header h1 { margin: 0; color: #3b82f6; font-size: 24px; }
             .header p { margin: 5px 0 0 0; opacity: 0.7; font-size: 12px; }
+            .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 900; text-transform: uppercase; background: #3b82f6; color: white; margin-top: 10px; }
             .grid { display: grid; grid-template-cols: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
             .card { border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; background: #f8fafc; }
             .card-title { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #64748b; margin-bottom: 10px; letter-spacing: 0.05em; }
@@ -163,7 +170,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
           
           <div class="header">
             <div>
-              <h1>Relatório de Simulação Financeira</h1>
+              <h1>${reportTitle}</h1>
+              <div class="badge">${viewLabel}</div>
               <p>Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
               <p>Período Base: ${formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} até ${formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}</p>
             </div>
@@ -183,22 +191,21 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               </div>
             </div>
             <div class="card">
-              <div class="card-title">Disponibilidade Final</div>
-              <div class="value">${formatCurrency(countdownSimAvailableEndOfMonth)}</div>
+              <div class="card-title">Disponibilidade Final ${isForward ? `D+${projectionDays}` : 'do Período'}</div>
+              <div class="value">${formatCurrency(finalBalance)}</div>
               <div class="details">
-                Saldo Anterior: ${formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}<br>
-                + Receitas: ${formatCurrency(monthlyTotals.revenues)}<br>
-                - Despesas: ${formatCurrency(monthlyTotals.expenses)}<br>
-                - Aportes Reais: ${formatCurrency(monthlyTotals.realContributions)}<br>
+                Saldo Base: ${formatCurrency(isForward ? nextDaysData.baseBalance : monthlyTotals.previousMonthAdjustedBalance)}<br>
+                + Receitas: ${formatCurrency(isForward ? nextDaysData.revenues : monthlyTotals.revenues)}<br>
+                - Despesas: ${formatCurrency(isForward ? nextDaysData.expenses : (monthlyTotals.expenses + monthlyTotals.realContributions))}<br>
                 - Aportes Simulados: ${formatCurrency(countdownSimExtra)}
                 ${catastrophicAmount > 0 ? `<br>- Extra (${catastrophicName || 'Cenário Pessimista'}): ${formatCurrency(catastrophicAmount)}` : ''}
               </div>
             </div>
           </div>
 
-          ${nextDaysData.negativeCount > 0 ? `
+          ${dailyData.negativeCount > 0 ? `
             <div class="alert-box">
-              🚨 ALERTA CRÍTICO: Projeção detectou ${nextDaysData.negativeCount} dias com saldo negativo no período.
+              🚨 ALERTA CRÍTICO: Detectado ${dailyData.negativeCount} ${dailyData.negativeCount === 1 ? 'dia' : 'dias'} com saldo negativo no período.
             </div>
           ` : ''}
 
@@ -210,13 +217,13 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
           ` : ''}
 
           <div class="card" style="margin-top: 20px;">
-            <div class="card-title">Projeção Diária (Próximos ${projectionDays} dias)</div>
+            <div class="card-title">${isForward ? `Projeção Diária (Próximos ${projectionDays} dias)` : 'Fluxo Diário do Período'}</div>
             <table class="projection-table">
               <thead><tr><th>DIA</th><th>DATA</th><th style="text-align: right">MOVIMENTAÇÃO</th><th style="text-align: right">SALDO ACUMULADO</th></tr></thead>
               <tbody>
-                ${nextDaysData.dailyBalances.map((day: any) => `
+                ${dailyData.dailyBalances.map((day: any) => `
                   <tr>
-                    <td style="font-weight: 700;">${day.label}</td>
+                    <td style="font-weight: 700;">${day.label || '-'}</td>
                     <td class="date">${formatBrazilDate(parseLocalDate(day.date), 'dd/MM/yyyy')}</td>
                     <td style="text-align: right; font-size: 10px;">
                       ${day.revenues > 0 ? `<span style="color: #10b981">+${formatCurrency(day.revenues)}</span>` : ''}
