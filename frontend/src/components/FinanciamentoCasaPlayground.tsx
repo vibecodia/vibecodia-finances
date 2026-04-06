@@ -90,13 +90,12 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
    const [taxaJurosMensal] = useState<number>(0.010303871);
    const [taxaEfetivaAnual] = useState<number>(13.090000000);
    const [numeroContrato] = useState<string>('10197455901');
-   const [valorOriginal] = useState<number>(582500);
 
   // Derived stats base
   const totalParcelas = overrideTotalParcelas || 419;
 
   // SAC Calculation for Juros vs Principal
-  const calculateAdjustedSAC = (valorOriginal: number, totalParcelas: number, taxaJuros: number) => {
+  const calculateAdjustedSAC = (totalParcelasContrato: number, taxaMensal: number) => {
     const results: any[] = [];
     
     // 1. Iniciar com o histórico real do Itaú
@@ -121,21 +120,19 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
     const lastReal = results[results.length - 1];
     const initialLength = results.length;
     let currentSaldo = lastReal.saldoDevedor;
-    const taxa = taxaJuros; // A taxa já é decimal (ex: 0.0103)
+    const taxa = taxaMensal;
     const startDate = parseISO(lastReal.vencimento);
 
-    for (let i = initialLength + 1; i <= totalParcelas; i++) {
+    for (let i = initialLength + 1; i <= totalParcelasContrato; i++) {
       const currentMonth = addMonths(startDate, i - initialLength);
       const juros = currentSaldo * taxa;
       
       // No SAC real, a amortização é calculada sobre o saldo devedor atual dividido pelo prazo restante
-      // Amortização = Saldo / (Prazo Total - Parcela Atual + 1)
-      const parcelasRestantes = totalParcelas - i + 1;
+      const parcelasRestantes = totalParcelasContrato - i + 1;
       const amortizacaoBase = parcelasRestantes > 0 ? currentSaldo / parcelasRestantes : currentSaldo;
       
-      // Manter seguros e subsídio FGTS constantes para projeção simplificada
-      const seguros = 177.06 + 47.91; // Baseado na parcela 11
-      const fgtsSubsidy = i <= 19 ? lastReal.fgtsMensal : 0; // Exemplo de subsídio temporário
+      const seguros = 177.06 + 47.91; 
+      const fgtsSubsidy = i <= 19 ? lastReal.fgtsMensal : 0; 
       
       currentSaldo = Math.max(currentSaldo - amortizacaoBase, 0);
 
@@ -159,8 +156,8 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
   };
 
   const adjustedSacData = useMemo(() => {
-    return calculateAdjustedSAC(valorOriginal, totalParcelas, taxaJurosMensal);
-  }, [valorOriginal, totalParcelas, taxaJurosMensal]);
+    return calculateAdjustedSAC(totalParcelas, taxaJurosMensal);
+  }, [totalParcelas, taxaJurosMensal]);
 
   // Derived stats dependent on adjustedSacData
   const paidInstallments = useMemo(() => {
