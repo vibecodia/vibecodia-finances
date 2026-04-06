@@ -44,11 +44,12 @@ import {
   Clock
 } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
-import { Bar, Line } from 'react-chartjs-2';
+import { Bar, Line, Chart } from 'react-chartjs-2';
 
+import { ColorPalette } from '../contexts/ThemeContext';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
 import { Transaction } from '../types';
-import { formatCurrency, parseLocalDate, formatBrazilDate } from '../utils/helpers';
+import { formatCurrency, formatBrazilDate } from '../utils/helpers';
 
 ChartJS.register(
   CategoryScale,
@@ -67,9 +68,27 @@ ChartJS.register(
   Filler
 );
 
+interface ParsedFinancingTransaction {
+  parcelaPaga: number;
+  totalParcelas: number;
+  amount: number;
+  date: string;
+  id: string;
+  isPaid: boolean;
+  description: string | undefined;
+}
+
+interface AmortizationResult {
+  economy: number;
+  newTotalParcelas?: number;
+  parcelasEliminadas?: number;
+  newNextParcela?: number;
+  reduction?: number;
+}
+
 interface FinanciamentoCasaPlaygroundProps {
   transactions: Transaction[];
-  theme: any;
+  theme: ColorPalette;
 }
 
 interface LayoutItem {
@@ -121,7 +140,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
         t.category?.toLowerCase() === 'moradia' &&
         /Financiamento casa \d+\/\d+/i.test(t.description || '')
       )
-      .map((t: Transaction) => {
+      .map((t: Transaction): ParsedFinancingTransaction => {
         const match = (t.description || '').match(/Financiamento casa (\d+)\/(\d+)/i);
         return {
           parcelaPaga: parseInt(match![1]),
@@ -133,7 +152,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
           description: t.description
         };
       })
-      .sort((a: any, b: any) => a.parcelaPaga - b.parcelaPaga);
+      .sort((a, b) => a.parcelaPaga - b.parcelaPaga);
   }, [transactions]);
 
   // Consórcio Porto data parsing
@@ -146,7 +165,6 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
     
     const totalPagoConsorcio = matched.reduce((sum, t) => sum + t.amount, 0);
     const parcelasConsorcio = matched.length;
-    const mediaParcelaConsorcio = parcelasConsorcio > 0 ? totalPagoConsorcio / parcelasConsorcio : 0;
     
     const dates = matched.map(t => new Date(t.date).getTime()).sort((a, b) => a - b);
     const primeiraParcelaConsorcio = dates.length > 0 ? new Date(dates[0]).toISOString() : null;
@@ -183,12 +201,12 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
   }
 
   // Derived stats
-  const detectedTotalParcelas = Math.max(...parsedData.map((d: any) => d.totalParcelas), 0);
+  const detectedTotalParcelas = Math.max(...parsedData.map((d) => d.totalParcelas), 0);
   const totalParcelas = overrideTotalParcelas || detectedTotalParcelas;
-  const parcelasPagasCount = new Set(parsedData.map((d: any) => d.parcelaPaga)).size;
-  const lastParcelaPaga = Math.max(...parsedData.map((d: any) => d.parcelaPaga), 0);
+  const parcelasPagasCount = new Set(parsedData.map((d) => d.parcelaPaga)).size;
+  const lastParcelaPaga = Math.max(...parsedData.map((d) => d.parcelaPaga), 0);
   const parcelasFaltantes = Math.max(totalParcelas - lastParcelaPaga, 0);
-  const totalPago = parsedData.reduce((sum: number, d: any) => sum + d.amount, 0);
+  const totalPago = parsedData.reduce((sum: number, d) => sum + d.amount, 0);
   const mediaMensal = parcelasPagasCount > 0 ? totalPago / parcelasPagasCount : 0;
   const valorEstimadoRestante = mediaMensal * parcelasFaltantes;
   const progressPercent = totalParcelas > 0 ? (lastParcelaPaga / totalParcelas) * 100 : 0;
@@ -208,12 +226,12 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
 
     // Economia de juros: juros evitados do ponto de quitação em diante
     // Estimamos somando os juros das parcelas que seriam pagas do totalMeses até o fim
-    let economiaJurosEstimada = 0;
+    let economyJurosEstimada = 0;
     const taxa = taxaJurosMensal / 100;
     let currentSaldo = saldoNoMomentoUso;
     
     for (let i = totalMeses + 1; i <= totalParcelas; i++) {
-      economiaJurosEstimada += currentSaldo * taxa;
+      economyJurosEstimada += currentSaldo * taxa;
       currentSaldo -= amortizacaoMensal;
       if (currentSaldo <= 0) break;
     }
@@ -222,7 +240,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
       saldoNoMomentoUso,
       cobertura,
       diferencaRestante,
-      economiaJurosEstimada
+      economyJurosEstimada
     };
   }, [valorOriginal, totalParcelas, lastParcelaPaga, mesesAteContemplacao, mesesCarencia, creditoConsorcio, taxaJurosMensal]);
 
@@ -282,11 +300,11 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
 
   // Chart data for Line Chart (Evolução das Parcelas)
   const lineChartData = {
-    labels: parsedData.map((d: any) => format(parseISO(d.date), 'MMM/yy', { locale: ptBR })),
+    labels: parsedData.map((d) => format(parseISO(d.date), 'MMM/yy', { locale: ptBR })),
     datasets: [
       {
         label: 'Parcela Mensal',
-        data: parsedData.map((d: any) => d.amount),
+        data: parsedData.map((d) => d.amount),
         borderColor: theme.primary,
         backgroundColor: theme.primary + '33',
         fill: true,
@@ -338,7 +356,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
   };
 
   // Amortization Simulation
-  const amortizationResult = useMemo(() => {
+  const amortizationResult = useMemo((): AmortizationResult | null => {
     if (amortizacaoExtra <= 0) return null;
     
     const amortizacaoMensalOriginal = valorOriginal / totalParcelas;
@@ -387,7 +405,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
 
   const amortizedProjectionEndDate = useMemo(() => {
     if (!amortizationResult || amortizationMode !== 'prazo') return null;
-    const newParcelasFaltantes = (amortizationResult as any).newTotalParcelas - lastParcelaPaga;
+    const newParcelasFaltantes = (amortizationResult.newTotalParcelas || 0) - lastParcelaPaga;
     if (newParcelasFaltantes <= 0) return 'Imediata';
     return format(addMonths(parseISO(lastDate || new Date().toISOString()), newParcelasFaltantes), 'MMMM/yyyy', { locale: ptBR });
   }, [amortizationResult, amortizationMode, lastParcelaPaga, lastDate]);
@@ -491,7 +509,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                      y: { ticks: { color: theme.text, callback: (v) => formatCurrency(v as number) }, grid: { color: theme.cardBorder } },
+                      y: { ticks: { color: theme.text, callback: (v: number | string) => formatCurrency(v as number) }, grid: { color: theme.cardBorder } },
                       x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
                     }
                   }}
@@ -620,7 +638,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                         maintainAspectRatio: false,
                         plugins: { legend: { position: 'bottom', labels: { color: theme.text, boxWidth: 10, font: { size: 10 } } } },
                         scales: {
-                          y: { stacked: true, ticks: { color: theme.text, font: { size: 9 }, callback: (v) => formatCurrency(v as number) }, grid: { color: theme.cardBorder } },
+                          y: { stacked: true, ticks: { color: theme.text, font: { size: 9 }, callback: (v: number | string) => formatCurrency(v as number) }, grid: { color: theme.cardBorder } },
                           x: { stacked: true, ticks: { color: theme.text, font: { size: 9 } }, grid: { color: theme.cardBorder } }
                         }
                       }}
@@ -680,8 +698,8 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                           <div className="text-3xl font-black">{formatCurrency(amortizationResult.economy)}</div>
                           <div className="text-xs opacity-80 pt-2 border-t border-white/20">
                             {amortizationMode === 'prazo' 
-                              ? `Elimina aproximadamente ${(amortizationResult as any).parcelasEliminadas} parcelas do final.`
-                              : `Redução de ${formatCurrency((amortizationResult as any).reduction)} na próxima parcela.`
+                              ? `Elimina aproximadamente ${amortizationResult.parcelasEliminadas} parcelas do final.`
+                              : `Redução de ${formatCurrency(amortizationResult.reduction || 0)} na próxima parcela.`
                             }
                           </div>
                         </div>
@@ -692,7 +710,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                             </div>
                             <div>
                               <div className="text-[10px] font-black uppercase opacity-50">Novo Total de Parcelas</div>
-                              <div className="font-bold">{(amortizationResult as any).newTotalParcelas} meses</div>
+                              <div className="font-bold">{amortizationResult.newTotalParcelas} meses</div>
                             </div>
                           </div>
                         )}
@@ -741,13 +759,14 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
             {renderCardHeader(item.id, item.label, <BarChart3 className="w-5 h-5 text-primary" />, index, isCollapsed)}
             {!isCollapsed && (
               <div className="p-6 h-80">
-                <Bar 
+                <Chart 
+                  type="bar"
                   data={{
-                    labels: parsedData.map((d: any) => `P${d.parcelaPaga}`),
+                    labels: parsedData.map((d) => `P${d.parcelaPaga}`),
                     datasets: [
                       {
                         label: 'Valor da Parcela',
-                        data: parsedData.map((d: any) => d.amount),
+                        data: parsedData.map((d) => d.amount),
                         backgroundColor: theme.primary + '88',
                         borderColor: theme.primary,
                         borderWidth: 1,
@@ -756,7 +775,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                       },
                       {
                         label: 'Tendência',
-                        data: parsedData.map((d: any) => d.amount),
+                        data: parsedData.map((d) => d.amount),
                         borderColor: theme.accent,
                         borderWidth: 2,
                         fill: false,
@@ -771,7 +790,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                     maintainAspectRatio: false,
                     plugins: { legend: { position: 'bottom', labels: { color: theme.text } } },
                     scales: {
-                      y: { ticks: { color: theme.text, callback: (v) => formatCurrency(v as number) }, grid: { color: theme.cardBorder } },
+                      y: { ticks: { color: theme.text, callback: (v: number | string) => formatCurrency(v as number) }, grid: { color: theme.cardBorder } },
                       x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
                     }
                   }}
@@ -781,7 +800,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
           </div>
         );
 
-      case 'consorcio_porto_cross':
+      case 'consorcio_porto_cross': {
         const isFinancingDataMissing = valorOriginal <= 0 || taxaJurosMensal <= 0;
         
         return (
@@ -931,7 +950,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                         </div>
                         <div>
                           <p className="text-xs font-black uppercase text-primary">Economia estimada de juros evitados</p>
-                          <p className="text-2xl font-black text-primary">{formatCurrency(consorcioCrossResults.economiaJurosEstimada)}</p>
+                          <p className="text-2xl font-black text-primary">{formatCurrency(consorcioCrossResults.economyJurosEstimada)}</p>
                         </div>
                       </div>
                       <div className="text-[11px] opacity-60 max-w-xs text-center md:text-right italic">
@@ -1004,6 +1023,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
             )}
           </div>
         );
+      }
 
       default:
         return null;

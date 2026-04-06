@@ -40,8 +40,7 @@ import {
   Bot,
   Loader2,
   Clipboard,
-  Check,
-  Home
+  Check
 } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Doughnut, Pie, Line, Bar } from 'react-chartjs-2';
@@ -2064,7 +2063,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                 : 'bg-transparent text-text border-cardBorder hover:bg-cardBorder/30'
             }`}
           >
-            🏠 Financiamento
+            🏠 Financiamento (experimental)
           </button>
         </div>
       </div>
