@@ -291,6 +291,16 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
     const jurosMensal = taxaJurosMensal;
     const economiaJuros = liquidoUso * jurosMensal * parcelasRestantesOriginal * 0.5; // Estimativa conservadora (0.5 pelo decréscimo do SAC)
 
+    // Parcelas do consórcio restantes na data em que o Itaú for quitado
+    // Cálculo preciso usando date-fns para evitar erros de sinal ou arredondamento
+    const consorcioStart = parseISO('2023-11-16');
+    // monthsElapsedAtQuitacao = diferença entre o início (2023) e a quitação (2028+)
+    const monthsElapsedAtQuitacao = Math.max(0, (novaDataQuitacao.getFullYear() - consorcioStart.getFullYear()) * 12 + (novaDataQuitacao.getMonth() - consorcioStart.getMonth()));
+    
+    // O consórcio tem 200 meses no total. 
+    // Restam = Total - (Meses de uso até a quitação do Itaú)
+    const consorcioRestanteNaQuitacao = Math.max(200 - monthsElapsedAtQuitacao, 0);
+
     return {
       currentSaldoItau,
       projectedContemplacaoDate,
@@ -305,8 +315,8 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
       economiaJuros,
       percentAtualConsorcio: consorcioData.percentPaidEstimated,
       mesesAteContemplacao: monthsToContemplacao,
-      consorcioRestante: 200 - consorcioData.count,
-      consorcioRestanteValor: (200 - consorcioData.count) * consorcioData.avgInstallment
+      consorcioRestante: consorcioRestanteNaQuitacao,
+      consorcioRestanteValor: consorcioRestanteNaQuitacao * consorcioData.avgInstallment
     };
   }, [consorcioData, adjustedSacData, lastParcelaPaga, consorcioMinContemplacao, consorcioTaxaAdm, manualContemplacaoDate, taxaJurosMensal, totalParcelas, consorcioModoUso, consorcioIntervaloMeses]);
 
