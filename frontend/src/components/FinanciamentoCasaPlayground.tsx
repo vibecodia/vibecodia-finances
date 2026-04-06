@@ -1,72 +1,27 @@
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-  PointElement,
-  LineElement,
-  LineController,
-  BarController,
-  DoughnutController,
-  PieController,
-  Filler,
-} from 'chart.js';
-import {
   format,
   parseISO,
-  isSameMonth,
   addMonths,
-  startOfMonth,
 } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import {
   ArrowDown,
   ArrowUp,
-  BarChart3,
   Calendar,
   ChevronDown,
   ChevronUp,
   Maximize2,
-  TrendingDown,
   TrendingUp,
-  Calculator,
-  RefreshCw,
-  PieChart as PieChartIcon,
-  Table as TableIcon,
   Home,
   Info,
-  LineChart,
+  AlertCircle,
   CheckCircle2,
-  Clock
 } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
-import { Bar, Line, Chart } from 'react-chartjs-2';
 
 import { ColorPalette } from '../contexts/ThemeContext';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
 import { Transaction } from '../types';
 import { formatCurrency, formatBrazilDate } from '../utils/helpers';
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-  PointElement,
-  LineElement,
-  LineController,
-  BarController,
-  DoughnutController,
-  PieController,
-  Filler
-);
 
 interface ParsedFinancingTransaction {
   parcelaPaga: number;
@@ -78,13 +33,42 @@ interface ParsedFinancingTransaction {
   description: string | undefined;
 }
 
-interface AmortizationResult {
-  economy: number;
-  newTotalParcelas?: number;
-  parcelasEliminadas?: number;
-  newNextParcela?: number;
-  reduction?: number;
+interface HistoryItem {
+  parcela: number;
+  vencimento: string;
+  amortizacao: number;
+  juros: number;
+  seguroMIP: number;
+  seguroDFI: number;
+  fgtsMensal: number;
+  situacao: 'Paga' | 'Aberta' | 'Projetada';
+  total: number;
+  saldoDevedor: number;
+  operacao?: string;
 }
+
+const ITAU_HISTORY: HistoryItem[] = [
+  { parcela: 1, vencimento: '2025-07-26', amortizacao: 1392.63, juros: 6012.44, seguroMIP: 326.30, seguroDFI: 94.34, fgtsMensal: 0, situacao: 'Paga', total: 7825.71, saldoDevedor: 582120.34 },
+  { parcela: 2, vencimento: '2025-08-26', amortizacao: 1395.03, juros: 6008.42, seguroMIP: 172.26, seguroDFI: 47.25, fgtsMensal: 0, situacao: 'Paga', total: 7622.96, saldoDevedor: 581727.72 },
+  { parcela: 3, vencimento: '2025-09-26', amortizacao: 1397.49, juros: 6004.60, seguroMIP: 172.15, seguroDFI: 47.34, fgtsMensal: 0, situacao: 'Paga', total: 7621.58, saldoDevedor: 581354.07 },
+  { parcela: 4, vencimento: '2025-10-26', amortizacao: 1399.89, juros: 6000.49, seguroMIP: 172.03, seguroDFI: 47.42, fgtsMensal: 0, situacao: 'Paga', total: 7619.83, saldoDevedor: 580953.53 },
+  { parcela: 5, vencimento: '2025-11-26', amortizacao: 1420.69, juros: 6075.02, seguroMIP: 174.17, seguroDFI: 47.50, fgtsMensal: 0, situacao: 'Paga', total: 7717.38, saldoDevedor: 588165.60, operacao: 'Pula parcela (+7.619,83)' },
+  { parcela: 6, vencimento: '2025-12-26', amortizacao: 1441.81, juros: 6150.48, seguroMIP: 178.01, seguroDFI: 47.58, fgtsMensal: 0, situacao: 'Paga', total: 7817.88, saldoDevedor: 595467.88, operacao: 'Pula parcela (+7.717,38)' },
+  { parcela: 7, vencimento: '2026-01-26', amortizacao: 1444.26, juros: 6146.05, seguroMIP: 177.88, seguroDFI: 47.66, fgtsMensal: 6018.20, situacao: 'Paga', total: 1797.65, saldoDevedor: 595035.32, operacao: 'Utilização FGTS DAMP III (-72.244,05)' },
+  { parcela: 8, vencimento: '2026-02-26', amortizacao: 1446.74, juros: 6141.69, seguroMIP: 177.75, seguroDFI: 47.74, fgtsMensal: 6016.72, situacao: 'Paga', total: 1797.20, saldoDevedor: 594610.26 },
+  { parcela: 9, vencimento: '2026-03-26', amortizacao: 1449.19, juros: 6137.17, seguroMIP: 177.62, seguroDFI: 47.82, fgtsMensal: 6015.09, situacao: 'Paga', total: 1796.71, saldoDevedor: 594168.34 },
+  { parcela: 10, vencimento: '2026-04-26', amortizacao: 1451.64, juros: 6132.56, seguroMIP: 177.49, seguroDFI: 47.91, fgtsMensal: 6013.39, situacao: 'Aberta', total: 1796.21, saldoDevedor: 593719.06 },
+  { parcela: 11, vencimento: '2026-05-26', amortizacao: 1451.64, juros: 6117.60, seguroMIP: 177.06, seguroDFI: 47.91, fgtsMensal: 6001.54, situacao: 'Projetada', total: 1792.67, saldoDevedor: 592267.42 },
+  { parcela: 12, vencimento: '2026-06-26', amortizacao: 1451.64, juros: 6102.65, seguroMIP: 176.62, seguroDFI: 47.91, fgtsMensal: 5989.69, situacao: 'Projetada', total: 1789.13, saldoDevedor: 590815.78 },
+  { parcela: 13, vencimento: '2026-07-26', amortizacao: 1451.64, juros: 6087.69, seguroMIP: 176.19, seguroDFI: 47.91, fgtsMensal: 5977.84, situacao: 'Projetada', total: 1785.59, saldoDevedor: 589364.14 },
+  { parcela: 14, vencimento: '2026-08-26', amortizacao: 1451.64, juros: 6072.73, seguroMIP: 179.47, seguroDFI: 47.91, fgtsMensal: 5968.85, situacao: 'Projetada', total: 1782.90, saldoDevedor: 587912.50 },
+  { parcela: 15, vencimento: '2026-09-26', amortizacao: 1451.64, juros: 6057.77, seguroMIP: 179.02, seguroDFI: 47.91, fgtsMensal: 5956.98, situacao: 'Projetada', total: 1779.36, saldoDevedor: 586460.86 },
+  { parcela: 16, vencimento: '2026-10-26', amortizacao: 1451.64, juros: 6042.82, seguroMIP: 178.58, seguroDFI: 47.91, fgtsMensal: 5945.13, situacao: 'Projetada', total: 1775.82, saldoDevedor: 585009.22 },
+  { parcela: 17, vencimento: '2026-11-26', amortizacao: 1451.64, juros: 6027.86, seguroMIP: 178.14, seguroDFI: 47.91, fgtsMensal: 5933.27, situacao: 'Projetada', total: 1772.28, saldoDevedor: 583557.58 },
+  { parcela: 18, vencimento: '2026-12-26', amortizacao: 1451.64, juros: 6012.90, seguroMIP: 179.76, seguroDFI: 47.91, fgtsMensal: 5923.00, situacao: 'Projetada', total: 1769.21, saldoDevedor: 582105.94 },
+  { parcela: 19, vencimento: '2027-01-26', amortizacao: 1451.64, juros: 5997.94, seguroMIP: 179.32, seguroDFI: 47.91, fgtsMensal: 3201.20, situacao: 'Projetada', total: 4475.61, saldoDevedor: 580654.30 },
+  { parcela: 20, vencimento: '2027-02-26', amortizacao: 1451.64, juros: 5982.99, seguroMIP: 178.87, seguroDFI: 47.91, fgtsMensal: 0, situacao: 'Projetada', total: 7661.41, saldoDevedor: 579202.66 },
+];
 
 interface FinanciamentoCasaPlaygroundProps {
   transactions: Transaction[];
@@ -100,14 +84,7 @@ interface LayoutItem {
 
 const DEFAULT_LAYOUT: LayoutItem[] = [
   { id: 'header_summary', label: 'Resumo do Financiamento', collapsed: false, number: 1 },
-  { id: 'payment_history_line', label: 'Evolução das Parcelas', collapsed: false, number: 2 },
-  { id: 'installments_table', label: 'Tabela de Parcelas', collapsed: false, number: 3 },
-  { id: 'consorcio_porto_cross', label: 'Cruzamento com Consórcio Porto', collapsed: false, number: 4 },
-  { id: 'payment_calendar', label: 'Calendário de Quitação', collapsed: true, number: 5 },
-  { id: 'interest_vs_principal', label: 'Juros vs Principal (Simulação SAC)', collapsed: true, number: 6 },
-  { id: 'amortization_simulator', label: 'Simulador de Amortização', collapsed: true, number: 7 },
-  { id: 'payoff_projection', label: 'Projeção de Quitação', collapsed: true, number: 8 },
-  { id: 'monthly_comparison', label: 'Comparativo Mês a Mês', collapsed: true, number: 9 },
+  { id: 'installments_table', label: 'Tabela de Parcelas', collapsed: false, number: 2 },
 ];
 
 const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = ({ transactions, theme }) => {
@@ -115,32 +92,95 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
   const [maximizedId, setMaximizedId] = useState<string | null>(null);
   
   // Manual inputs for simulation
-  const [overrideTotalParcelas, setOverrideTotalParcelas] = useState<number | null>(null);
-  const [taxaJurosMensal, setTaxaJurosMensal] = useState<number>(0.8); // 0.8% a.m. (approx 10% a.a.)
-  const [valorOriginal, setValorOriginal] = useState<number>(300000);
-  const [amortizacaoExtra, setAmortizacaoExtra] = useState<number>(0);
-  const [amortizationMode, setAmortizationMode] = useState<'prazo' | 'parcela'>('prazo');
+   const [overrideTotalParcelas, setOverrideTotalParcelas] = useState<number | null>(419);
+   const [taxaJurosMensal, setTaxaJurosMensal] = useState<number>(0.010303871);
+   const [taxaEfetivaAnual, setTaxaEfetivaAnual] = useState<number>(13.090000000);
+   const [numeroContrato, setNumeroContrato] = useState<string>('10197455901');
+   const [valorOriginal, setValorOriginal] = useState<number>(582500);
 
-  // Consórcio Porto state with persistence
-  const [totalParcelasConsorcioManual, setTotalParcelasConsorcioManual] = useLocalStorage<number | null>('financiamento_consorcio_total_parcelas_v1', null);
-  const [creditoConsorcio, setCreditoConsorcio] = useLocalStorage<number>('financiamento_consorcio_credito_v1', 200000);
-  const [mesesAteContemplacao, setMesesAteContemplacao] = useLocalStorage<number>('financiamento_consorcio_meses_contemplacao_v1', 24);
-  const [mesesCarencia, setMesesCarencia] = useLocalStorage<number>('financiamento_consorcio_meses_carencia_v1', 6);
-  
-  // Manual history inputs (before app)
-  const [totalPagoConsorcioAnterior, setTotalPagoConsorcioAnterior] = useLocalStorage<number>('financiamento_consorcio_anterior_v1', 0);
-  const [parcelasAnterioresConsorcio, setParcelasAnterioresConsorcio] = useLocalStorage<number>('financiamento_consorcio_parcelas_anteriores_v1', 0);
+  // Derived stats base
+  const totalParcelas = overrideTotalParcelas || 419;
+
+  // SAC Calculation for Juros vs Principal
+  const calculateAdjustedSAC = (valor: number, totalParcelas: number, taxaJuros: number) => {
+    const results: any[] = [];
+    
+    // 1. Iniciar com o histórico real do Itaú
+    ITAU_HISTORY.forEach((item: HistoryItem) => {
+      results.push({
+        parcela: item.parcela,
+        vencimento: item.vencimento,
+        amortizacao: item.amortizacao,
+        extraAmount: 0,
+        juros: item.juros,
+        seguros: item.seguroMIP + item.seguroDFI,
+        fgtsMensal: item.fgtsMensal,
+        total: item.total,
+        saldoDevedor: item.saldoDevedor,
+        date: parseISO(item.vencimento),
+        situacao: item.situacao,
+        operacao: item.operacao
+      });
+    });
+
+    // 2. Continuar projeção a partir da última parcela do histórico
+    const lastReal = results[results.length - 1];
+    let currentSaldo = lastReal.saldoDevedor;
+    const amortizacaoBase = 1451.64; // Valor observado nas projeções reais
+    const taxa = taxaJuros / 100;
+    const startDate = parseISO(lastReal.vencimento);
+
+    for (let i = results.length + 1; i <= totalParcelas; i++) {
+      const currentMonth = addMonths(startDate, i - results.length);
+      const juros = currentSaldo * taxa;
+      
+      // Manter seguros e subsídio FGTS constantes para projeção simplificada
+      const seguros = 177.06 + 47.91; // Baseado na parcela 11
+      const fgtsSubsidy = i <= 19 ? lastReal.fgtsMensal : 0; // FGTS DAMP III costuma ter prazo (ex: 12 meses)
+      
+      currentSaldo = Math.max(currentSaldo - amortizacaoBase, 0);
+
+      results.push({
+        parcela: i,
+        vencimento: format(currentMonth, 'yyyy-MM-dd'),
+        amortizacao: amortizacaoBase,
+        extraAmount: 0,
+        juros: juros,
+        seguros: seguros,
+        fgtsMensal: fgtsSubsidy,
+        total: Math.max(amortizacaoBase + juros + seguros - fgtsSubsidy, 0),
+        saldoDevedor: currentSaldo,
+        date: currentMonth,
+        situacao: 'Projetada'
+      });
+
+      if (currentSaldo <= 0) break;
+    }
+    return results;
+  };
+
+  const adjustedSacData = useMemo(() => {
+    return calculateAdjustedSAC(valorOriginal, totalParcelas, taxaJurosMensal);
+  }, [valorOriginal, totalParcelas, taxaJurosMensal]);
+
+  // Derived stats dependent on adjustedSacData
+  const paidInstallments = useMemo(() => {
+    return adjustedSacData.filter((d: any) => d.date < new Date());
+  }, [adjustedSacData]);
+
+  const lastParcelaPaga = paidInstallments.length > 0 ? Math.max(...paidInstallments.map((d: any) => d.parcela)) : 0;
+  const progressPercent = totalParcelas > 0 ? (lastParcelaPaga / totalParcelas) * 100 : 0;
 
   // Parse transactions
   const parsedData = useMemo(() => {
     return transactions
-      .filter((t: Transaction) => 
+      .filter((t: any) => 
         t.type === 'expense' && 
         t.status !== 'deleted' && 
         t.category?.toLowerCase() === 'moradia' &&
         /Financiamento casa \d+\/\d+/i.test(t.description || '')
       )
-      .map((t: Transaction): ParsedFinancingTransaction => {
+      .map((t: any): any => {
         const match = (t.description || '').match(/Financiamento casa (\d+)\/(\d+)/i);
         return {
           parcelaPaga: parseInt(match![1]),
@@ -152,39 +192,8 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
           description: t.description
         };
       })
-      .sort((a, b) => a.parcelaPaga - b.parcelaPaga);
+      .sort((a: any, b: any) => a.parcelaPaga - b.parcelaPaga);
   }, [transactions]);
-
-  // Consórcio Porto data parsing
-  const consorcioData = useMemo(() => {
-    const matched = transactions.filter(t => 
-      t.status !== 'deleted' && 
-      t.description?.toLowerCase().includes('consórcio porto') &&
-      t.category?.toLowerCase() === 'outro'
-    );
-    
-    const totalPagoConsorcio = matched.reduce((sum, t) => sum + t.amount, 0);
-    const parcelasConsorcio = matched.length;
-    
-    const dates = matched.map(t => new Date(t.date).getTime()).sort((a, b) => a - b);
-    const primeiraParcelaConsorcio = dates.length > 0 ? new Date(dates[0]).toISOString() : null;
-    const ultimaParcelaConsorcio = dates.length > 0 ? new Date(dates[dates.length - 1]).toISOString() : null;
-
-    // Real combined metrics
-    const totalPagoConsorcioReal = totalPagoConsorcioAnterior + totalPagoConsorcio;
-    const parcelasConsorcioReal = parcelasAnterioresConsorcio + parcelasConsorcio;
-    const mediaParcelaConsorcioReal = parcelasConsorcioReal > 0 ? totalPagoConsorcioReal / parcelasConsorcioReal : 0;
-
-    return {
-      totalPagoConsorcio,
-      parcelasConsorcio,
-      totalPagoConsorcioReal,
-      parcelasConsorcioReal,
-      mediaParcelaConsorcio: mediaParcelaConsorcioReal,
-      primeiraParcelaConsorcio,
-      ultimaParcelaConsorcio
-    };
-  }, [transactions, totalPagoConsorcioAnterior, parcelasAnterioresConsorcio]);
 
   if (parsedData.length === 0) {
     return (
@@ -200,52 +209,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
     );
   }
 
-  // Derived stats
-  const detectedTotalParcelas = Math.max(...parsedData.map((d) => d.totalParcelas), 0);
-  const totalParcelas = overrideTotalParcelas || detectedTotalParcelas;
-  const parcelasPagasCount = new Set(parsedData.map((d) => d.parcelaPaga)).size;
-  const lastParcelaPaga = Math.max(...parsedData.map((d) => d.parcelaPaga), 0);
-  const parcelasFaltantes = Math.max(totalParcelas - lastParcelaPaga, 0);
-  const totalPago = parsedData.reduce((sum: number, d) => sum + d.amount, 0);
-  const mediaMensal = parcelasPagasCount > 0 ? totalPago / parcelasPagasCount : 0;
-  const valorEstimadoRestante = mediaMensal * parcelasFaltantes;
-  const progressPercent = totalParcelas > 0 ? (lastParcelaPaga / totalParcelas) * 100 : 0;
-
-  // Consórcio cross-calculations
-  const totalParcelasConsorcio = totalParcelasConsorcioManual || Math.max(consorcioData.parcelasConsorcioReal, 1);
-  const consorcioFundingProgress = creditoConsorcio > 0 ? (consorcioData.totalPagoConsorcioReal / creditoConsorcio) * 100 : 0;
-
-  const consorcioCrossResults = useMemo(() => {
-    const totalMeses = lastParcelaPaga + mesesAteContemplacao + mesesCarencia;
-    const amortizacaoMensal = valorOriginal / totalParcelas;
-    
-    // Saldo devedor SAC no momento do uso (após contemplação + carência)
-    const saldoNoMomentoUso = Math.max(valorOriginal - (amortizacaoMensal * totalMeses), 0);
-    const cobertura = saldoNoMomentoUso > 0 ? (creditoConsorcio / saldoNoMomentoUso) * 100 : 0;
-    const diferencaRestante = saldoNoMomentoUso - creditoConsorcio;
-
-    // Economia de juros: juros evitados do ponto de quitação em diante
-    // Estimamos somando os juros das parcelas que seriam pagas do totalMeses até o fim
-    let economyJurosEstimada = 0;
-    const taxa = taxaJurosMensal / 100;
-    let currentSaldo = saldoNoMomentoUso;
-    
-    for (let i = totalMeses + 1; i <= totalParcelas; i++) {
-      economyJurosEstimada += currentSaldo * taxa;
-      currentSaldo -= amortizacaoMensal;
-      if (currentSaldo <= 0) break;
-    }
-
-    return {
-      saldoNoMomentoUso,
-      cobertura,
-      diferencaRestante,
-      economyJurosEstimada
-    };
-  }, [valorOriginal, totalParcelas, lastParcelaPaga, mesesAteContemplacao, mesesCarencia, creditoConsorcio, taxaJurosMensal]);
-
-  const firstDate = parsedData.length > 0 ? parsedData[0].date : '';
-  const lastDate = parsedData.length > 0 ? parsedData[parsedData.length - 1].date : '';
+  const lastDate = adjustedSacData.length > 0 ? adjustedSacData[adjustedSacData.length - 1].vencimento : '';
 
   // Layout helpers
   const toggleCollapse = (id: string) => {
@@ -298,142 +262,6 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
     </div>
   );
 
-  // Chart data for Line Chart (Evolução das Parcelas)
-  const lineChartData = {
-    labels: parsedData.map((d) => format(parseISO(d.date), 'MMM/yy', { locale: ptBR })),
-    datasets: [
-      {
-        label: 'Parcela Mensal',
-        data: parsedData.map((d) => d.amount),
-        borderColor: theme.primary,
-        backgroundColor: theme.primary + '33',
-        fill: true,
-        tension: 0.4,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-      }
-    ]
-  };
-
-  // SAC Calculation for Juros vs Principal
-  const sacData = useMemo(() => {
-    const amortizacaoMensal = valorOriginal / totalParcelas;
-    const results = [];
-    let saldoDevedor = valorOriginal;
-    const taxa = taxaJurosMensal / 100;
-
-    for (let i = 1; i <= totalParcelas; i++) {
-      const juros = saldoDevedor * taxa;
-      const totalParcela = amortizacaoMensal + juros;
-      results.push({
-        parcela: i,
-        amortizacao: amortizacaoMensal,
-        juros: juros,
-        total: totalParcela,
-        saldoDevedor: Math.max(saldoDevedor - amortizacaoMensal, 0)
-      });
-      saldoDevedor -= amortizacaoMensal;
-    }
-    return results;
-  }, [valorOriginal, totalParcelas, taxaJurosMensal]);
-
-  const sacChartData = {
-    labels: sacData.slice(0, Math.max(lastParcelaPaga + 12, 24)).map(d => `P${d.parcela}`),
-    datasets: [
-      {
-        label: 'Principal',
-        data: sacData.slice(0, Math.max(lastParcelaPaga + 12, 24)).map(d => d.amortizacao),
-        backgroundColor: theme.primary,
-        stack: 'stack1',
-      },
-      {
-        label: 'Juros',
-        data: sacData.slice(0, Math.max(lastParcelaPaga + 12, 24)).map(d => d.juros),
-        backgroundColor: theme.accent,
-        stack: 'stack1',
-      }
-    ]
-  };
-
-  // Amortization Simulation
-  const amortizationResult = useMemo((): AmortizationResult | null => {
-    if (amortizacaoExtra <= 0) return null;
-    
-    const amortizacaoMensalOriginal = valorOriginal / totalParcelas;
-    const taxa = taxaJurosMensal / 100;
-    const saldoDevedorAtual = sacData[lastParcelaPaga - 1]?.saldoDevedor || valorOriginal;
-    
-    if (amortizationMode === 'prazo') {
-      // Reducing term: Keep parcela amount (approx), but pay off faster
-      // This is complex for SAC, but let's simplify: 
-      // How many monthly amortizations does the extra payment cover?
-      const parcelasEliminadas = Math.floor(amortizacaoExtra / amortizacaoMensalOriginal);
-      const newTotalParcelas = totalParcelas - parcelasEliminadas;
-      
-      // Interest savings: sum of juros of the eliminated installments (last ones in SAC)
-      const economy = sacData.slice(newTotalParcelas).reduce((sum, d) => sum + d.juros, 0);
-      
-      return {
-        newTotalParcelas,
-        parcelasEliminadas,
-        economy
-      };
-    } else {
-      // Reducing installment: Term stays same, but new principal is lower
-      const newSaldoDevedor = saldoDevedorAtual - amortizacaoExtra;
-      const remainingParcelas = totalParcelas - lastParcelaPaga;
-      const newAmortizacaoMensal = newSaldoDevedor / remainingParcelas;
-      const newNextParcela = newAmortizacaoMensal + (newSaldoDevedor * taxa);
-      const oldNextParcela = sacData[lastParcelaPaga]?.total || 0;
-      
-      // Total savings is more complex, let's estimate
-      const economy = (oldNextParcela - newNextParcela) * remainingParcelas;
-      
-      return {
-        newNextParcela,
-        reduction: oldNextParcela - newNextParcela,
-        economy
-      };
-    }
-  }, [amortizacaoExtra, amortizationMode, sacData, lastParcelaPaga, totalParcelas, valorOriginal, taxaJurosMensal]);
-
-  // Payoff Projection
-  const currentProjectionEndDate = useMemo(() => {
-    if (parcelasFaltantes <= 0) return 'Quitado';
-    return format(addMonths(parseISO(lastDate || new Date().toISOString()), parcelasFaltantes), 'MMMM/yyyy', { locale: ptBR });
-  }, [parcelasFaltantes, lastDate]);
-
-  const amortizedProjectionEndDate = useMemo(() => {
-    if (!amortizationResult || amortizationMode !== 'prazo') return null;
-    const newParcelasFaltantes = (amortizationResult.newTotalParcelas || 0) - lastParcelaPaga;
-    if (newParcelasFaltantes <= 0) return 'Imediata';
-    return format(addMonths(parseISO(lastDate || new Date().toISOString()), newParcelasFaltantes), 'MMMM/yyyy', { locale: ptBR });
-  }, [amortizationResult, amortizationMode, lastParcelaPaga, lastDate]);
-
-  // Calendar Grid Data
-  const calendarMonths = useMemo(() => {
-    if (parsedData.length === 0) return [];
-    const months = [];
-    const startDate = startOfMonth(parseISO(firstDate));
-    const totalMonthsToShow = totalParcelas;
-    
-    for (let i = 0; i < totalMonthsToShow; i++) {
-      const currentMonth = addMonths(startDate, i);
-      const parcelaNum = i + 1;
-      const paidInfo = parsedData.find(d => d.parcelaPaga === parcelaNum);
-      const isCurrent = isSameMonth(currentMonth, new Date());
-      
-      months.push({
-        date: currentMonth,
-        label: format(currentMonth, 'MMM/yy', { locale: ptBR }),
-        parcela: parcelaNum,
-        isPaid: !!paidInfo,
-        isCurrent
-      });
-    }
-    return months;
-  }, [firstDate, totalParcelas, parsedData]);
-
   const renderSection = (item: LayoutItem, index: number) => {
     const isCollapsed = item.collapsed;
     
@@ -444,6 +272,17 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
             {renderCardHeader(item.id, item.label, <Home className="w-5 h-5 text-primary" />, index, isCollapsed)}
             {!isCollapsed && (
               <div className="p-6 space-y-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <h3 className="text-xl font-black text-primary">Contrato {numeroContrato}</h3>
+                    <p className="text-xs opacity-60 font-bold uppercase tracking-wider">CARTEIRA HIPOTECARIA | SISTEMA SAC</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black rounded-full uppercase">Débito Automático</span>
+                    <span className="px-3 py-1 bg-accent/10 text-accent text-[10px] font-black rounded-full uppercase">Itaú Real Data</span>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs font-bold uppercase opacity-60">
                     <span>Progresso de Quitação</span>
@@ -460,9 +299,9 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
                     { label: 'Parcelas Pagas', value: lastParcelaPaga, icon: <CheckCircle2 className="w-4 h-4" /> },
-                    { label: 'Parcelas Faltantes', value: parcelasFaltantes, icon: <Clock className="w-4 h-4" /> },
-                    { label: 'Total Pago', value: formatCurrency(totalPago), icon: <TrendingUp className="w-4 h-4" />, highlight: true },
-                    { label: 'Est. Restante', value: formatCurrency(valorEstimadoRestante), icon: <TrendingDown className="w-4 h-4" /> }
+                    { label: 'Taxa Juros (M)', value: `${taxaJurosMensal.toFixed(4)}%`, icon: <TrendingUp className="w-4 h-4" /> },
+                    { label: 'Taxa Efetiva (A)', value: `${taxaEfetivaAnual.toFixed(2)}%`, icon: <TrendingUp className="w-4 h-4" />, highlight: true },
+                    { label: 'Vencimento Final', value: formatBrazilDate(lastDate), icon: <Calendar className="w-4 h-4" /> }
                   ].map((stat, i) => (
                     <div key={i} className="p-4 rounded-xl border flex flex-col gap-1" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '11' }}>
                       <div className="flex items-center gap-2 text-[10px] font-black uppercase opacity-50">
@@ -476,13 +315,19 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                   ))}
                 </div>
 
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-4 border-t" style={{ borderColor: theme.cardBorder }}>
-                  <div className="flex items-center gap-2 text-xs font-bold opacity-60">
-                    <Calendar className="w-4 h-4" />
-                    Primeira parcela: {formatBrazilDate(firstDate)} → Última registrada: {formatBrazilDate(lastDate)}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t" style={{ borderColor: theme.cardBorder }}>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-bold opacity-60">
+                      <Info className="w-4 h-4 text-primary" />
+                      Utilização de FGTS DAMP III aplicada em 06/01/2026: R$ 72.244,05
+                    </div>
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-600">
+                      <AlertCircle className="w-4 h-4" />
+                      2 Operações "Pula Parcela" realizadas: +R$ 15.337,21 ao saldo devedor
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <label className="text-[10px] font-black uppercase opacity-50">Ajustar total (Y):</label>
+                  <div className="flex items-center justify-end gap-3">
+                    <label className="text-[10px] font-black uppercase opacity-50">Ajustar total parcelas:</label>
                     <input 
                       type="number"
                       value={totalParcelas}
@@ -497,533 +342,63 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
           </div>
         );
 
-      case 'payment_history_line':
-        return (
-          <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-            {renderCardHeader(item.id, item.label, <LineChart className="w-5 h-5 text-primary" />, index, isCollapsed)}
-            {!isCollapsed && (
-              <div className="p-6 h-80">
-                <Line 
-                  data={lineChartData}
-                  options={{
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                      y: { ticks: { color: theme.text, callback: (v: number | string) => formatCurrency(v as number) }, grid: { color: theme.cardBorder } },
-                      x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
-                    }
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        );
-
       case 'installments_table':
         return (
           <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-            {renderCardHeader(item.id, item.label, <TableIcon className="w-5 h-5 text-primary" />, index, isCollapsed)}
+            {renderCardHeader(item.id, item.label, <Calendar className="w-5 h-5 text-primary" />, index, isCollapsed)}
             {!isCollapsed && (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm border-collapse">
+                <table className="w-full text-left text-[10px] md:text-xs border-collapse">
                   <thead>
                     <tr className="bg-cardBorder/30">
-                      <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider">Parcela</th>
-                      <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider">Data</th>
-                      <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right">Valor</th>
-                      <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right">Variação</th>
-                      <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-center">Status</th>
+                      <th className="p-3 border-b font-bold uppercase tracking-wider">Parcela</th>
+                      <th className="p-3 border-b font-bold uppercase tracking-wider">Vencimento</th>
+                      <th className="p-3 border-b font-bold uppercase tracking-wider text-right">Amort.</th>
+                      <th className="p-3 border-b font-bold uppercase tracking-wider text-right">Juros</th>
+                      <th className="p-3 border-b font-bold uppercase tracking-wider text-right">Seguros</th>
+                      <th className="p-3 border-b font-bold uppercase tracking-wider text-right text-blue-500">FGTS Sub.</th>
+                      <th className="p-3 border-b font-bold uppercase tracking-wider text-right text-primary">Total Pago</th>
+                      <th className="p-3 border-b font-bold uppercase tracking-wider text-right">Saldo Dev.</th>
+                      <th className="p-3 border-b font-bold uppercase tracking-wider text-center">Observação</th>
+                      <th className="p-3 border-b font-bold uppercase tracking-wider text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
-                    {parsedData.map((d, i) => {
-                      const variation = i > 0 ? d.amount - parsedData[i-1].amount : 0;
-                      return (
-                        <tr key={d.id} className={`${!d.isPaid ? 'bg-red-500/10' : ''}`}>
-                          <td className="p-4 font-bold">{d.parcelaPaga}/{d.totalParcelas}</td>
-                          <td className="p-4 opacity-70">{formatBrazilDate(d.date)}</td>
-                          <td className="p-4 text-right font-black text-primary">{formatCurrency(d.amount)}</td>
-                          <td className={`p-4 text-right font-bold text-xs ${variation > 0 ? 'text-red-500' : variation < 0 ? 'text-green-500' : 'opacity-30'}`}>
-                            {variation !== 0 ? (variation > 0 ? `+${formatCurrency(variation)}` : formatCurrency(variation)) : '-'}
-                          </td>
-                          <td className="p-4 text-center">
-                            <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase ${d.isPaid ? 'bg-green-500/20 text-green-600' : 'bg-red-500/20 text-red-600'}`}>
-                              {d.isPaid ? 'Paga' : 'Pendente'}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {adjustedSacData.map((d: any) => (
+                      <tr key={d.parcela} className={`${d.situacao === 'Aberta' ? 'bg-amber-500/5' : d.situacao === 'Projetada' ? 'opacity-70' : ''} ${d.operacao ? 'bg-primary/5' : ''}`}>
+                        <td className="p-3 font-bold">{d.parcela}</td>
+                        <td className="p-3 opacity-70">{formatBrazilDate(d.vencimento)}</td>
+                        <td className="p-3 text-right">{formatCurrency(d.amortizacao)}</td>
+                        <td className="p-3 text-right">{formatCurrency(d.juros)}</td>
+                        <td className="p-3 text-right">{formatCurrency(d.seguros)}</td>
+                        <td className="p-3 text-right text-blue-500">{d.fgtsMensal > 0 ? `-${formatCurrency(d.fgtsMensal)}` : '-'}</td>
+                        <td className="p-3 text-right font-black text-primary">{formatCurrency(d.total)}</td>
+                        <td className="p-3 text-right font-medium opacity-60">{formatCurrency(d.saldoDevedor)}</td>
+                        <td className="p-3 text-center">
+                          {d.operacao && (
+                            <div className="flex items-center justify-center gap-1 text-[9px] font-black uppercase text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                              <AlertCircle className="w-3 h-3" />
+                              {d.operacao}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                            d.situacao === 'Paga' ? 'bg-green-500/20 text-green-600' : 
+                            d.situacao === 'Aberta' ? 'bg-amber-500/20 text-amber-600' : 
+                            'bg-gray-500/10 text-gray-500'
+                          }`}>
+                            {d.situacao}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
             )}
           </div>
         );
-
-      case 'payment_calendar':
-        return (
-          <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-            {renderCardHeader(item.id, item.label, <Calendar className="w-5 h-5 text-primary" />, index, isCollapsed)}
-            {!isCollapsed && (
-              <div className="p-6">
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-10 gap-2">
-                  {calendarMonths.map((m, i) => (
-                    <div 
-                      key={i} 
-                      className={`p-2 rounded-lg border text-center flex flex-col gap-1 transition-all hover:scale-105 cursor-default ${
-                        m.isPaid ? 'bg-green-500/10 border-green-500/30' : 
-                        m.isCurrent ? 'border-primary shadow-sm' : 
-                        'bg-gray-100/50 border-gray-200'
-                      }`}
-                      style={{ 
-                        borderColor: m.isCurrent ? theme.primary : (m.isPaid ? undefined : theme.cardBorder),
-                        opacity: m.isPaid || m.isCurrent ? 1 : 0.4
-                      }}
-                    >
-                      <span className="text-[8px] font-black uppercase opacity-60">{m.label}</span>
-                      <span className={`text-[10px] font-bold ${m.isPaid ? 'text-green-600' : ''}`}>{m.parcela}/{totalParcelas}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-
-      case 'interest_vs_principal':
-        return (
-          <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-            {renderCardHeader(item.id, item.label, <PieChartIcon className="w-5 h-5 text-primary" />, index, isCollapsed)}
-            {!isCollapsed && (
-              <div className="p-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="flex flex-col gap-2">
-                      <label className="text-xs font-black uppercase opacity-50">Valor Original do Financiamento (R$)</label>
-                      <input 
-                        type="number"
-                        value={valorOriginal}
-                        onChange={(e) => setValorOriginal(parseFloat(e.target.value))}
-                        className="p-3 rounded-xl border font-bold outline-none focus:ring-2 focus:ring-primary/20"
-                        style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <label className="text-xs font-black uppercase opacity-50">Taxa de Juros Mensal (%)</label>
-                      <input 
-                        type="number"
-                        step="0.01"
-                        value={taxaJurosMensal}
-                        onChange={(e) => setTaxaJurosMensal(parseFloat(e.target.value))}
-                        className="p-3 rounded-xl border font-bold outline-none focus:ring-2 focus:ring-primary/20"
-                        style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                      />
-                    </div>
-                    <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
-                      <div className="flex items-center gap-2 text-primary mb-2">
-                        <Info className="w-4 h-4" />
-                        <span className="text-xs font-bold uppercase">Nota sobre SAC</span>
-                      </div>
-                      <p className="text-[11px] opacity-70 leading-relaxed">
-                        No Sistema de Amortização Constante (SAC), o valor da amortização do principal é fixo todo mês, 
-                        enquanto os juros diminuem progressivamente conforme o saldo devedor cai.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="h-64">
-                    <Bar 
-                      data={sacChartData}
-                      options={{
-                        maintainAspectRatio: false,
-                        plugins: { legend: { position: 'bottom', labels: { color: theme.text, boxWidth: 10, font: { size: 10 } } } },
-                        scales: {
-                          y: { stacked: true, ticks: { color: theme.text, font: { size: 9 }, callback: (v: number | string) => formatCurrency(v as number) }, grid: { color: theme.cardBorder } },
-                          x: { stacked: true, ticks: { color: theme.text, font: { size: 9 } }, grid: { color: theme.cardBorder } }
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-
-      case 'amortization_simulator':
-        return (
-          <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-            {renderCardHeader(item.id, item.label, <Calculator className="w-5 h-5 text-primary" />, index, isCollapsed)}
-            {!isCollapsed && (
-              <div className="p-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-6">
-                    <div className="flex flex-col gap-2">
-                      <label className="text-xs font-black uppercase opacity-50">Valor de Amortização Extra (R$)</label>
-                      <input 
-                        type="number"
-                        value={amortizacaoExtra}
-                        onChange={(e) => setAmortizacaoExtra(parseFloat(e.target.value))}
-                        className="p-4 rounded-2xl border text-xl font-black outline-none focus:ring-4 focus:ring-primary/10 transition-all"
-                        style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                        placeholder="R$ 0,00"
-                      />
-                    </div>
-
-                    <div className="flex gap-1 p-1 bg-cardBorder/30 rounded-xl">
-                      <button
-                        onClick={() => setAmortizationMode('prazo')}
-                        className={`flex-1 py-3 rounded-lg text-xs font-black transition-all ${
-                          amortizationMode === 'prazo' ? 'bg-primary text-white shadow-lg' : 'opacity-50 hover:opacity-100'
-                        }`}
-                      >
-                        REDUZIR PRAZO
-                      </button>
-                      <button
-                        onClick={() => setAmortizationMode('parcela')}
-                        className={`flex-1 py-3 rounded-lg text-xs font-black transition-all ${
-                          amortizationMode === 'parcela' ? 'bg-primary text-white shadow-lg' : 'opacity-50 hover:opacity-100'
-                        }`}
-                      >
-                        REDUZIR PARCELA
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col justify-center gap-4">
-                    {amortizacaoExtra > 0 && amortizationResult ? (
-                      <>
-                        <div className="p-6 rounded-2xl bg-primary text-white shadow-xl space-y-2">
-                          <div className="text-[10px] font-black uppercase opacity-70">Economia estimada de juros</div>
-                          <div className="text-3xl font-black">{formatCurrency(amortizationResult.economy)}</div>
-                          <div className="text-xs opacity-80 pt-2 border-t border-white/20">
-                            {amortizationMode === 'prazo' 
-                              ? `Elimina aproximadamente ${amortizationResult.parcelasEliminadas} parcelas do final.`
-                              : `Redução de ${formatCurrency(amortizationResult.reduction || 0)} na próxima parcela.`
-                            }
-                          </div>
-                        </div>
-                        {amortizationMode === 'prazo' && (
-                          <div className="flex items-center gap-3 p-4 rounded-xl border border-dashed" style={{ borderColor: theme.cardBorder }}>
-                            <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center text-accent">
-                              <RefreshCw className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <div className="text-[10px] font-black uppercase opacity-50">Novo Total de Parcelas</div>
-                              <div className="font-bold">{amortizationResult.newTotalParcelas} meses</div>
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-30 gap-3 border-2 border-dashed rounded-3xl" style={{ borderColor: theme.cardBorder }}>
-                        <Calculator className="w-12 h-12" />
-                        <p className="text-sm font-bold">Insira um valor para simular a economia</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-
-      case 'payoff_projection':
-        return (
-          <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-            {renderCardHeader(item.id, item.label, <TrendingUp className="w-5 h-5 text-primary" />, index, isCollapsed)}
-            {!isCollapsed && (
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="p-6 rounded-2xl border flex flex-col items-center text-center gap-2" style={{ borderColor: theme.cardBorder }}>
-                    <div className="text-[10px] font-black uppercase opacity-50">Projeção Atual</div>
-                    <div className="text-2xl font-black text-text">{currentProjectionEndDate}</div>
-                    <div className="text-xs opacity-60">Mantendo o pagamento mensal atual</div>
-                  </div>
-                  <div className={`p-6 rounded-2xl border flex flex-col items-center text-center gap-2 transition-all ${amortizacaoExtra > 0 && amortizationMode === 'prazo' ? 'bg-accent/10 border-accent/30' : ''}`} style={{ borderColor: amortizacaoExtra > 0 && amortizationMode === 'prazo' ? undefined : theme.cardBorder }}>
-                    <div className="text-[10px] font-black uppercase opacity-50">Com Amortização</div>
-                    <div className={`text-2xl font-black ${amortizacaoExtra > 0 && amortizationMode === 'prazo' ? 'text-accent' : 'text-text opacity-30'}`}>
-                      {amortizacaoExtra > 0 && amortizationMode === 'prazo' ? amortizedProjectionEndDate : currentProjectionEndDate}
-                    </div>
-                    <div className="text-xs opacity-60">Considerando o aporte extra simulado</div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-
-      case 'monthly_comparison':
-        return (
-          <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-            {renderCardHeader(item.id, item.label, <BarChart3 className="w-5 h-5 text-primary" />, index, isCollapsed)}
-            {!isCollapsed && (
-              <div className="p-6 h-80">
-                <Chart 
-                  type="bar"
-                  data={{
-                    labels: parsedData.map((d) => `P${d.parcelaPaga}`),
-                    datasets: [
-                      {
-                        label: 'Valor da Parcela',
-                        data: parsedData.map((d) => d.amount),
-                        backgroundColor: theme.primary + '88',
-                        borderColor: theme.primary,
-                        borderWidth: 1,
-                        type: 'bar' as const,
-                        order: 2
-                      },
-                      {
-                        label: 'Tendência',
-                        data: parsedData.map((d) => d.amount),
-                        borderColor: theme.accent,
-                        borderWidth: 2,
-                        fill: false,
-                        type: 'line' as const,
-                        pointRadius: 0,
-                        tension: 0.1,
-                        order: 1
-                      }
-                    ]
-                  }}
-                  options={{
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom', labels: { color: theme.text } } },
-                    scales: {
-                      y: { ticks: { color: theme.text, callback: (v: number | string) => formatCurrency(v as number) }, grid: { color: theme.cardBorder } },
-                      x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
-                    }
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        );
-
-      case 'consorcio_porto_cross': {
-        const isFinancingDataMissing = valorOriginal <= 0 || taxaJurosMensal <= 0;
-        
-        return (
-          <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-            {renderCardHeader(item.id, item.label, <RefreshCw className="w-5 h-5 text-primary" />, index, isCollapsed)}
-            {!isCollapsed && (
-              <div className="p-6 space-y-8">
-                {isFinancingDataMissing ? (
-                  <div className="p-8 text-center bg-accent/5 border border-dashed border-accent/30 rounded-2xl flex flex-col items-center gap-3">
-                    <Info className="w-8 h-8 text-accent opacity-50" />
-                    <p className="text-sm font-bold text-accent">Preencha os dados do financiamento na seção 5 para ativar os cálculos de cruzamento.</p>
-                  </div>
-                ) : (
-                  <>
-                    {/* Previous Data Warning Box */}
-                    <div className="p-5 rounded-2xl border-2 bg-amber-500/5 space-y-4" style={{ borderColor: '#f59e0b55' }}>
-                      <div className="flex items-center gap-2 text-amber-600">
-                        <Info className="w-4 h-4" />
-                        <span className="text-[10px] font-black uppercase tracking-wider">⚠️ Dados anteriores ao app</span>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-[10px] font-bold opacity-60 uppercase">Valor pago antes do app (R$)</label>
-                          <input 
-                            type="number"
-                            value={totalPagoConsorcioAnterior}
-                            onChange={(e) => setTotalPagoConsorcioAnterior(parseFloat(e.target.value) || 0)}
-                            className="p-2.5 rounded-xl border text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500/20"
-                            style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-[10px] font-bold opacity-60 uppercase">Parcelas pagas antes do app</label>
-                          <input 
-                            type="number"
-                            value={parcelasAnterioresConsorcio}
-                            onChange={(e) => setParcelasAnterioresConsorcio(parseInt(e.target.value) || 0)}
-                            className="p-2.5 rounded-xl border text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500/20"
-                            style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                          />
-                        </div>
-                      </div>
-                      <div className="pt-2 border-t border-amber-500/10 text-[10px] font-black text-amber-700 uppercase tracking-tight">
-                        Total combinado: {formatCurrency(consorcioData.totalPagoConsorcioReal)} em {consorcioData.parcelasConsorcioReal} parcelas
-                      </div>
-                    </div>
-
-                    {/* Inputs Section */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                      <div className="space-y-4">
-                        <div className="flex flex-col gap-2">
-                          <label className="text-xs font-black uppercase opacity-50">Crédito estimado na contemplação (R$)</label>
-                          <input 
-                            type="number"
-                            value={creditoConsorcio}
-                            onChange={(e) => setCreditoConsorcio(parseFloat(e.target.value))}
-                            className="p-3 rounded-xl border font-bold outline-none focus:ring-2 focus:ring-primary/20"
-                            style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                          />
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          <label className="text-xs font-black uppercase opacity-50">Total de parcelas do consórcio</label>
-                          <input 
-                            type="number"
-                            value={totalParcelasConsorcio}
-                            onChange={(e) => setTotalParcelasConsorcioManual(parseInt(e.target.value))}
-                            className="p-3 rounded-xl border font-bold outline-none focus:ring-2 focus:ring-primary/20"
-                            style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-6">
-                        <div className="flex flex-col gap-3">
-                          <div className="flex justify-between items-center">
-                            <label className="text-xs font-black uppercase opacity-50">Estimativa de contemplação: em {mesesAteContemplacao} meses</label>
-                          </div>
-                          <input 
-                            type="range"
-                            min="1"
-                            max="120"
-                            value={mesesAteContemplacao}
-                            onChange={(e) => setMesesAteContemplacao(parseInt(e.target.value))}
-                            className="w-full h-2 bg-cardBorder/30 rounded-lg appearance-none cursor-pointer accent-primary"
-                          />
-                          <div className="flex justify-between text-[10px] font-bold opacity-40">
-                            <span>1 mês</span>
-                            <span>120 meses</span>
-                          </div>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          <label className="text-xs font-black uppercase opacity-50">Meses de carência após contemplação</label>
-                          <input 
-                            type="number"
-                            value={mesesCarencia}
-                            onChange={(e) => setMesesCarencia(parseInt(e.target.value))}
-                            className="p-3 rounded-xl border font-bold outline-none focus:ring-2 focus:ring-primary/20 w-32"
-                            style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Funding Progress */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-[10px] font-black uppercase opacity-50">
-                        <span>Aporte no Consórcio vs Crédito</span>
-                        <span>{formatCurrency(consorcioData.totalPagoConsorcioReal)} / {formatCurrency(creditoConsorcio)} ({consorcioFundingProgress.toFixed(1)}%)</span>
-                      </div>
-                      <div className="h-2 w-full bg-cardBorder/30 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-primary transition-all duration-500"
-                          style={{ width: `${Math.min(consorcioFundingProgress, 100)}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Result Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="p-5 rounded-2xl border bg-cardBorder/10 flex flex-col gap-2 text-center" style={{ borderColor: theme.cardBorder }}>
-                        <span className="text-[10px] font-black uppercase opacity-50">Saldo Devedor na Contemplação</span>
-                        <span className="text-xl font-black text-red-500">{formatCurrency(consorcioCrossResults.saldoNoMomentoUso)}</span>
-                      </div>
-                      
-                      <div className="p-5 rounded-2xl border bg-cardBorder/10 flex flex-col gap-2 text-center" style={{ borderColor: theme.cardBorder }}>
-                        <span className="text-[10px] font-black uppercase opacity-50">Cobertura do Consórcio</span>
-                        <span className={`text-xl font-black ${
-                          consorcioCrossResults.cobertura > 90 ? 'text-green-500' : 
-                          consorcioCrossResults.cobertura > 70 ? 'text-yellow-500' : 'text-red-500'
-                        }`}>
-                          {consorcioCrossResults.cobertura.toFixed(1)}%
-                        </span>
-                      </div>
-
-                      <div className="p-5 rounded-2xl border bg-cardBorder/10 flex flex-col gap-2 text-center" style={{ borderColor: theme.cardBorder }}>
-                        <span className="text-[10px] font-black uppercase opacity-50">Diferença a Pagar</span>
-                        <span className={`text-xl font-black ${consorcioCrossResults.diferencaRestante <= 0 ? 'text-green-500' : 'text-text'}`}>
-                          {formatCurrency(consorcioCrossResults.diferencaRestante)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Economy Highlight */}
-                    <div className="p-6 rounded-2xl bg-primary/10 border border-primary/20 flex flex-col md:flex-row items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/20 rounded-lg">
-                          <Calculator className="w-6 h-6 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-black uppercase text-primary">Economia estimada de juros evitados</p>
-                          <p className="text-2xl font-black text-primary">{formatCurrency(consorcioCrossResults.economyJurosEstimada)}</p>
-                        </div>
-                      </div>
-                      <div className="text-[11px] opacity-60 max-w-xs text-center md:text-right italic">
-                        Ao quitar o saldo devedor com o consórcio, você deixa de pagar os juros projetados para as parcelas futuras do financiamento.
-                      </div>
-                    </div>
-
-                    {/* Small Stat Row */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t" style={{ borderColor: theme.cardBorder }}>
-                      <div>
-                        <p className="text-[9px] font-black uppercase opacity-40">Total Pago no Consórcio</p>
-                        <p className="text-xs font-bold">{formatCurrency(consorcioData.totalPagoConsorcioReal)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] font-black uppercase opacity-40">Parcelas Pagas</p>
-                        <p className="text-xs font-bold">{consorcioData.parcelasConsorcioReal} de {totalParcelasConsorcio}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] font-black uppercase opacity-40">Média Mensal</p>
-                        <p className="text-xs font-bold">{formatCurrency(consorcioData.mediaParcelaConsorcio)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] font-black uppercase opacity-40">Primeira Parcela</p>
-                        <p className="text-xs font-bold">{consorcioData.primeiraParcelaConsorcio ? formatBrazilDate(consorcioData.primeiraParcelaConsorcio) : '-'}</p>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Detailed Consórcio Table - Always Visible if Section Expanded */}
-                <div className="space-y-4 pt-6 border-t" style={{ borderColor: theme.cardBorder }}>
-                  <div className="flex items-center gap-2">
-                    <TableIcon className="w-4 h-4 text-primary" />
-                    <span className="text-xs font-black uppercase opacity-50">Histórico de Pagamentos Consórcio</span>
-                  </div>
-                  <div className="overflow-x-auto rounded-xl border" style={{ borderColor: theme.cardBorder }}>
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="bg-cardBorder/20">
-                          <th className="p-3 border-b font-bold uppercase text-[9px] tracking-wider">Data</th>
-                          <th className="p-3 border-b font-bold uppercase text-[9px] tracking-wider">Descrição</th>
-                          <th className="p-3 border-b font-bold uppercase text-[9px] tracking-wider text-right">Valor</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
-                        {transactions
-                          .filter(t => 
-                            t.status !== 'deleted' && 
-                            t.description?.toLowerCase().includes('consórcio porto') &&
-                            t.category?.toLowerCase() === 'outro'
-                          )
-                          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                          .map((t) => (
-                            <tr key={t.id} className="hover:bg-primary/5 transition-colors">
-                              <td className="p-3 opacity-70">{formatBrazilDate(t.date)}</td>
-                              <td className="p-3 font-medium">{t.description}</td>
-                              <td className="p-3 text-right font-black text-primary">{formatCurrency(t.amount)}</td>
-                            </tr>
-                          ))}
-                        {consorcioData.parcelasConsorcio === 0 && (
-                          <tr>
-                            <td colSpan={3} className="p-8 text-center opacity-40 italic">Nenhuma transação de consórcio encontrada.</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      }
 
       default:
         return null;
