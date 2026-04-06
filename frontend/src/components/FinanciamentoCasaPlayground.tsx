@@ -90,13 +90,12 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
    const [taxaJurosMensal] = useState<number>(0.010303871);
    const [taxaEfetivaAnual] = useState<number>(13.090000000);
    const [numeroContrato] = useState<string>('10197455901');
-   const [valorOriginal] = useState<number>(582500);
 
   // Derived stats base
   const totalParcelas = overrideTotalParcelas || 419;
 
   // SAC Calculation for Juros vs Principal
-  const calculateAdjustedSAC = (totalParcelas: number, taxaJuros: number) => {
+  const calculateAdjustedSAC = (totalParcelasContrato: number, taxaMensal: number) => {
     const results: any[] = [];
     
     // 1. Iniciar com o histórico real do Itaú
@@ -119,18 +118,21 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
 
     // 2. Continuar projeção a partir da última parcela do histórico
     const lastReal = results[results.length - 1];
+    const initialLength = results.length;
     let currentSaldo = lastReal.saldoDevedor;
-    const amortizacaoBase = 1451.64; // Valor observado nas projeções reais
-    const taxa = taxaJuros / 100;
+    const taxa = taxaMensal;
     const startDate = parseISO(lastReal.vencimento);
 
-    for (let i = results.length + 1; i <= totalParcelas; i++) {
-      const currentMonth = addMonths(startDate, i - results.length);
+    for (let i = initialLength + 1; i <= totalParcelasContrato; i++) {
+      const currentMonth = addMonths(startDate, i - initialLength);
       const juros = currentSaldo * taxa;
       
-      // Manter seguros e subsídio FGTS constantes para projeção simplificada
-      const seguros = 177.06 + 47.91; // Baseado na parcela 11
-      const fgtsSubsidy = i <= 19 ? lastReal.fgtsMensal : 0; // FGTS DAMP III costuma ter prazo (ex: 12 meses)
+      // No SAC real, a amortização é calculada sobre o saldo devedor atual dividido pelo prazo restante
+      const parcelasRestantes = totalParcelasContrato - i + 1;
+      const amortizacaoBase = parcelasRestantes > 0 ? currentSaldo / parcelasRestantes : currentSaldo;
+      
+      const seguros = 177.06 + 47.91; 
+      const fgtsSubsidy = i <= 19 ? lastReal.fgtsMensal : 0; 
       
       currentSaldo = Math.max(currentSaldo - amortizacaoBase, 0);
 
@@ -154,8 +156,8 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
   };
 
   const adjustedSacData = useMemo(() => {
-    return calculateAdjustedSAC(valorOriginal, totalParcelas);
-  }, [valorOriginal, totalParcelas, taxaJurosMensal]);
+    return calculateAdjustedSAC(totalParcelas, taxaJurosMensal);
+  }, [totalParcelas, taxaJurosMensal]);
 
   // Derived stats dependent on adjustedSacData
   const paidInstallments = useMemo(() => {
@@ -237,42 +239,58 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
 
     const currentSaldoItau = adjustedSacData.find(d => d.parcela === lastParcelaPaga + 1)?.saldoDevedor || 0;
     
-    // Previsão baseada no percentual de contemplação desejado
+    // 1. Projeção de Contemplação
     const targetPaidPercent = consorcioMinContemplacao / 100;
     const remainingPercentToTarget = Math.max(targetPaidPercent - (consorcioData.percentPaidEstimated / 100), 0);
-    
-    // Quanto falta pagar em R$ para atingir o percentual de contemplação
     const amountToTarget = remainingPercentToTarget * consorcioData.valorTotalContrato;
     const monthsToContemplacao = Math.ceil(amountToTarget / consorcioData.avgInstallment);
     
     const projectedContemplacaoDate = manualContemplacaoDate ? parseISO(manualContemplacaoDate) : addMonths(new Date(), monthsToContemplacao);
     
-    const saldoItauAtContemplacao = adjustedSacData.find(d => {
+    // Parcela do Itaú na data da contemplação
+    const itauParcelaAtContemplacao = adjustedSacData.find(d => {
       const dDate = new Date(d.date);
       return dDate.getMonth() === projectedContemplacaoDate.getMonth() && 
              dDate.getFullYear() === projectedContemplacaoDate.getFullYear();
-    })?.saldoDevedor || 0;
+    });
 
-    // Crédito líquido real (o usuário já forneceu o crédito bruto de 187k)
-    // Geralmente o crédito já é o valor que o usuário recebe, mas vamos aplicar a taxa de adm se for sobre o total
-    const liquidoTotal = consorcioData.totalCreditEstimated; // Assumindo que 187k já é o crédito disponível
-    const liquidoUmaCarta = liquidoTotal / 3;
+    const saldoItauAtContemplacao = itauParcelaAtContemplacao?.saldoDevedor || 0;
+    const parcelaIndexAtContemplacao = itauParcelaAtContemplacao?.parcela || totalParcelas;
 
-    // Simular economia (simplificada)
-    const valorAmortizacaoImediata = consorcioModoUso === 'total' ? liquidoTotal : liquidoUmaCarta;
+    // 2. Cenário de Amortização
+    const liquidoTotal = consorcioData.totalCreditEstimated;
+    const liquidoUso = consorcioModoUso === 'total' ? liquidoTotal : liquidoTotal / 3;
     
-    const jurosMensal = taxaJurosMensal / 100;
-    const economiaJurosEstimada = valorAmortizacaoImediata * jurosMensal * (totalParcelas - lastParcelaPaga);
+    const novoSaldoItau = Math.max(saldoItauAtContemplacao - liquidoUso, 0);
+    
+    // 3. Projeção de Economia (Nova data de quitação)
+    // No SAC, se amortizamos o saldo, o número de parcelas diminui drasticamente se mantivermos o valor da amortização
+    const amortizacaoBaseAtual = itauParcelaAtContemplacao?.amortizacao || 1451.64;
+    const parcelasRestantesOriginal = totalParcelas - parcelaIndexAtContemplacao;
+    const novasParcelasRestantes = amortizacaoBaseAtual > 0 ? Math.ceil(novoSaldoItau / amortizacaoBaseAtual) : 0;
+    
+    const economiaParcelas = Math.max(parcelasRestantesOriginal - novasParcelasRestantes, 0);
+    const novaDataQuitacao = addMonths(projectedContemplacaoDate, novasParcelasRestantes);
+    
+    // Economia de Juros Estimada (Saldo Amortizado * Taxa * Tempo Médio)
+    const jurosMensal = taxaJurosMensal;
+    const economiaJuros = liquidoUso * jurosMensal * parcelasRestantesOriginal * 0.5; // Estimativa conservadora (0.5 pelo decréscimo do SAC)
 
     return {
       currentSaldoItau,
       projectedContemplacaoDate,
       saldoItauAtContemplacao,
-      liquidoTotal,
-      liquidoUmaCarta,
-      economiaJurosEstimada,
+      parcelaIndexAtContemplacao,
+      liquidoUso,
+      novoSaldoItau,
+      novasParcelasRestantes,
+      parcelasRestantesOriginal,
+      economiaParcelas,
+      novaDataQuitacao,
+      economiaJuros,
       percentAtualConsorcio: consorcioData.percentPaidEstimated,
-      intervalo: consorcioIntervaloMeses
+      mesesAteContemplacao: monthsToContemplacao,
+      consorcioRestante: 200 - consorcioData.count
     };
   }, [consorcioData, adjustedSacData, lastParcelaPaga, consorcioMinContemplacao, consorcioTaxaAdm, manualContemplacaoDate, taxaJurosMensal, totalParcelas, consorcioModoUso, consorcioIntervaloMeses]);
 
@@ -440,7 +458,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
                     { label: 'Parcelas Pagas', value: lastParcelaPaga, icon: <CheckCircle2 className="w-4 h-4" /> },
-                    { label: 'Taxa Juros (M)', value: `${taxaJurosMensal.toFixed(4)}%`, icon: <TrendingUp className="w-4 h-4" /> },
+                    { label: 'Taxa Juros (M)', value: `${(taxaJurosMensal * 100).toFixed(4)}%`, icon: <TrendingUp className="w-4 h-4" /> },
                     { label: 'Taxa Efetiva (A)', value: `${taxaEfetivaAnual.toFixed(2)}%`, icon: <TrendingUp className="w-4 h-4" />, highlight: true },
                     { label: 'Vencimento Final', value: formatBrazilDate(lastDate), icon: <Calendar className="w-4 h-4" /> }
                   ].map((stat, i) => (
@@ -583,7 +601,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
           <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
             {renderCardHeader(item.id, item.label, <TrendingUp className="w-5 h-5 text-primary" />, index, isCollapsed)}
             {!isCollapsed && (
-              <div className="p-6 space-y-6">
+              <div className="p-6 space-y-8">
                 {!relationData ? (
                   <div className="flex flex-col items-center justify-center p-10 text-center gap-3 opacity-60">
                     <AlertCircle className="w-10 h-10" />
@@ -592,116 +610,184 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                   </div>
                 ) : (
                   <>
-                    {/* Controles e Parâmetros */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-4 rounded-xl bg-cardBorder/10 border border-dashed border-cardBorder">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black uppercase opacity-50">Taxa Adm (%)</label>
-                        <input 
-                          type="number" 
-                          value={consorcioTaxaAdm} 
-                          onChange={(e) => setConsorcioTaxaAdm(Number(e.target.value))}
-                          className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm"
-                        />
+                    {/* 1. Painel de Controle Estratégico */}
+                    <div className="bg-cardBorder/10 p-5 rounded-2xl border border-dashed border-cardBorder space-y-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="p-1.5 bg-primary/10 rounded-lg">
+                          <Info className="w-4 h-4 text-primary" />
+                        </div>
+                        <h4 className="text-xs font-black uppercase tracking-wider opacity-70">Parâmetros de Simulação Estratégica</h4>
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black uppercase opacity-50">Min. Contemplação (%)</label>
-                        <input 
-                          type="number" 
-                          value={consorcioMinContemplacao} 
-                          onChange={(e) => setConsorcioMinContemplacao(Number(e.target.value))}
-                          className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black uppercase opacity-50">Modo de Uso</label>
-                        <select 
-                          value={consorcioModoUso}
-                          onChange={(e) => setConsorcioModoUso(e.target.value as any)}
-                          className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm"
-                        >
-                          <option value="total">Usar Crédito Total</option>
-                          <option value="uma">Usar 1 Carta por vez</option>
-                        </select>
-                      </div>
-                      {consorcioModoUso === 'uma' && (
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-black uppercase opacity-50">Intervalo (meses)</label>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black uppercase opacity-50 flex items-center gap-1">
+                            Taxa Adm (%) <Info className="w-2.5 h-2.5 opacity-40" />
+                          </label>
                           <input 
                             type="number" 
-                            min="1" 
-                            max="24"
-                            value={consorcioIntervaloMeses} 
-                            onChange={(e) => setConsorcioIntervaloMeses(Number(e.target.value))}
-                            className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm"
+                            value={consorcioTaxaAdm} 
+                            onChange={(e) => setConsorcioTaxaAdm(Number(e.target.value))}
+                            className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm pb-1"
                           />
                         </div>
-                      )}
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black uppercase opacity-50">Data Contemplação (Manual)</label>
-                        <input 
-                          type="date" 
-                          value={manualContemplacaoDate || ''} 
-                          onChange={(e) => setManualContemplacaoDate(e.target.value || null)}
-                          className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm"
-                        />
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black uppercase opacity-50 flex items-center gap-1">
+                            Gatilho Contemplação (%)
+                          </label>
+                          <input 
+                            type="number" 
+                            value={consorcioMinContemplacao} 
+                            onChange={(e) => setConsorcioMinContemplacao(Number(e.target.value))}
+                            className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm pb-1"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black uppercase opacity-50">Modo de Utilização</label>
+                          <select 
+                            value={consorcioModoUso}
+                            onChange={(e) => setConsorcioModoUso(e.target.value as any)}
+                            className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm pb-1 appearance-none cursor-pointer"
+                          >
+                            <option value="total">Crédito Total (3 Cartas)</option>
+                            <option value="uma">Faseado (1 Carta p/ vez)</option>
+                          </select>
+                        </div>
+                        {consorcioModoUso === 'uma' && (
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase opacity-50">Intervalo (meses)</label>
+                            <input 
+                              type="number" 
+                              min="1" 
+                              max="24"
+                              value={consorcioIntervaloMeses} 
+                              onChange={(e) => setConsorcioIntervaloMeses(Number(e.target.value))}
+                              className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm pb-1"
+                            />
+                          </div>
+                        )}
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black uppercase opacity-50">Fixar Data (Manual)</label>
+                          <input 
+                            type="date" 
+                            value={manualContemplacaoDate || ''} 
+                            onChange={(e) => setManualContemplacaoDate(e.target.value || null)}
+                            className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm pb-1"
+                          />
+                        </div>
                       </div>
                     </div>
 
-                    {/* Resultados Projeção */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* 2. Timeline de Eventos */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                      {/* Coluna 1: O Evento (Contemplação) */}
                       <div className="space-y-4">
-                        <h4 className="text-xs font-black uppercase opacity-40 flex items-center gap-2">
-                          <Calendar className="w-3 h-3" /> Projeção de Contemplação
-                        </h4>
-                        <div className="p-4 rounded-xl border space-y-3" style={{ borderColor: theme.cardBorder }}>
-                          <div className="flex justify-between items-end">
-                            <span className="text-[10px] font-black uppercase opacity-50">Data Estimada</span>
-                            <span className="text-lg font-black text-accent">{formatBrazilDate(format(relationData.projectedContemplacaoDate, 'yyyy-MM-dd'))}</span>
-                          </div>
-                          <div className="flex justify-between items-end">
-                            <span className="text-[10px] font-black uppercase opacity-50">Saldo Itaú nessa data</span>
-                            <span className="text-sm font-black opacity-70">{formatCurrency(relationData.saldoItauAtContemplacao)}</span>
-                          </div>
-                          <div className="pt-2 border-t flex justify-between items-end" style={{ borderColor: theme.cardBorder }}>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-black uppercase opacity-50 text-primary">Crédito Líquido</span>
-                          <span className="text-[8px] opacity-60 font-bold italic">({consorcioModoUso === 'total' ? '3 cartas' : '1 carta'})</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent font-black text-xs">1</div>
+                          <h4 className="text-xs font-black uppercase opacity-60">O Gatilho: Contemplação</h4>
                         </div>
-                        <span className="text-lg font-black text-primary">
-                          {consorcioModoUso === 'total' ? formatCurrency(relationData.liquidoTotal) : formatCurrency(relationData.liquidoUmaCarta)}
-                        </span>
-                      </div>
+                        <div className="p-5 rounded-2xl border-2 border-accent/20 bg-accent/[0.02] space-y-4">
+                          <div>
+                            <span className="text-[10px] font-black uppercase opacity-50 block mb-1">Data Estimada do Aporte</span>
+                            <span className="text-2xl font-black text-accent">{formatBrazilDate(format(relationData.projectedContemplacaoDate, 'yyyy-MM-dd'))}</span>
+                            <p className="text-[10px] font-bold opacity-60 mt-1">Daqui a ~{relationData.mesesAteContemplacao} meses de contribuição</p>
+                          </div>
+                          <div className="pt-4 border-t border-accent/10 flex justify-between items-center">
+                            <div>
+                              <span className="text-[10px] font-black uppercase opacity-50 block">Crédito Injetado</span>
+                              <span className="text-lg font-black text-primary">{formatCurrency(relationData.liquidoUso)}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[10px] font-black uppercase opacity-50 block">Modo</span>
+                              <span className="px-2 py-0.5 bg-primary/10 text-primary text-[9px] font-black rounded-full uppercase">
+                                {consorcioModoUso === 'total' ? 'Aporte Único' : 'Aporte Parcial'}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
+                      {/* Coluna 2: Impacto no Financiamento */}
                       <div className="space-y-4">
-                        <h4 className="text-xs font-black uppercase opacity-40 flex items-center gap-2">
-                          <TrendingUp className="w-3 h-3" /> Impacto Financeiro
-                        </h4>
-                        <div className="p-4 rounded-xl border space-y-3" style={{ borderColor: theme.cardBorder }}>
-                          <div className="flex justify-between items-end">
-                            <span className="text-[10px] font-black uppercase opacity-50">Saldo Após Quitação</span>
-                            <span className="text-lg font-black text-green-600">
-                              {formatCurrency(Math.max(relationData.saldoItauAtContemplacao - (consorcioModoUso === 'total' ? relationData.liquidoTotal : relationData.liquidoUmaCarta), 0))}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-end">
-                            <span className="text-[10px] font-black uppercase opacity-50">Economia de Juros (Est.)</span>
-                            <span className="text-sm font-black text-primary flex items-center gap-1">
-                              <ArrowDown className="w-3 h-3" /> {formatCurrency(relationData.economiaJurosEstimada)}
-                            </span>
-                          </div>
-                          <div className="pt-2 border-t" style={{ borderColor: theme.cardBorder }}>
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="text-[10px] font-black uppercase opacity-50">Avanço Consórcio</span>
-                              <span className="text-[10px] font-black">{relationData.percentAtualConsorcio.toFixed(1)}%</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-xs">2</div>
+                          <h4 className="text-xs font-black uppercase opacity-60">Impacto no Itaú</h4>
+                        </div>
+                        <div className="p-5 rounded-2xl border border-cardBorder space-y-5">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <span className="text-[10px] font-black uppercase opacity-50 block mb-1">Saldo na Data</span>
+                              <span className="text-sm font-black opacity-60 line-through">{formatCurrency(relationData.saldoItauAtContemplacao)}</span>
                             </div>
-                            <div className="h-1.5 w-full bg-orange-500/10 rounded-full overflow-hidden">
-                              <div className="h-full bg-accent" style={{ width: `${relationData.percentAtualConsorcio}%` }} />
+                            <div>
+                              <span className="text-[10px] font-black uppercase opacity-50 block mb-1">Novo Saldo</span>
+                              <span className="text-lg font-black text-green-600">{formatCurrency(relationData.novoSaldoItau)}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="p-3 bg-green-500/5 rounded-xl border border-green-500/10 space-y-2">
+                            <div className="flex justify-between items-center text-[10px] font-black uppercase">
+                              <span className="text-green-600">Economia de Tempo</span>
+                              <span className="text-green-600">-{relationData.economiaParcelas} meses</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold opacity-60">Parcelas Restantes:</span>
+                              <span className="text-[10px] font-black">{relationData.novasParcelasRestantes} (eram {relationData.parcelasRestantesOriginal})</span>
+                            </div>
+                          </div>
+
+                          <div className="pt-2">
+                            <span className="text-[10px] font-black uppercase opacity-50 block mb-1">Economia Estimada de Juros</span>
+                            <div className="flex items-center gap-2 text-primary">
+                              <ArrowDown className="w-4 h-4" />
+                              <span className="text-xl font-black">{formatCurrency(relationData.economiaJuros)}</span>
                             </div>
                           </div>
                         </div>
                       </div>
+
+                      {/* Coluna 3: Resultado Consolidado */}
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-text/10 flex items-center justify-center text-text font-black text-xs">3</div>
+                          <h4 className="text-xs font-black uppercase opacity-60">Status Pós-Ação</h4>
+                        </div>
+                        <div className="p-5 rounded-2xl bg-cardBorder/20 space-y-5 flex flex-col justify-between h-[220px]">
+                          <div className="space-y-4">
+                            <div>
+                              <span className="text-[10px] font-black uppercase opacity-50 block mb-1 text-primary">Quitação Itaú</span>
+                              <span className="text-lg font-black">{formatBrazilDate(format(relationData.novaDataQuitacao, 'yyyy-MM-dd'))}</span>
+                              <p className="text-[9px] font-bold opacity-60">Antecipação drástica do contrato SAC</p>
+                            </div>
+                            <div>
+                              <span className="text-[10px] font-black uppercase opacity-50 block mb-1 text-accent">Restante Consórcio</span>
+                              <span className="text-lg font-black">{relationData.consorcioRestante} parcelas</span>
+                              <p className="text-[9px] font-bold opacity-60">Fluxo de caixa Porto Seguro mantido</p>
+                            </div>
+                          </div>
+                          
+                          <div className="pt-4 border-t border-cardBorder">
+                            <div className="flex justify-between items-center mb-1.5">
+                              <span className="text-[10px] font-black uppercase opacity-50">Eficiência da Operação</span>
+                              <span className="text-[10px] font-black text-primary">ALTA</span>
+                            </div>
+                            <div className="h-2 w-full bg-orange-500/10 rounded-full overflow-hidden">
+                              <div className="h-full bg-primary" style={{ width: '85%' }} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Nota de Rodapé Profissional */}
+                    <div className="flex items-start gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10">
+                      <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                      <p className="text-[10px] font-medium leading-relaxed opacity-70">
+                        <span className="font-black text-primary uppercase mr-1">Nota Técnica:</span> 
+                        Esta simulação considera a manutenção do valor de amortização base do Itaú após o aporte do consórcio. 
+                        A economia de juros é uma estimativa baseada no saldo devedor amortizado e no custo de oportunidade do capital. 
+                        Valores reais podem variar conforme taxas de seguros e correções monetárias (TR) não previstas nesta projeção.
+                      </p>
                     </div>
                   </>
                 )}
