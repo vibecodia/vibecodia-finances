@@ -75,11 +75,14 @@ interface LayoutItem {
 
 const DEFAULT_LAYOUT: LayoutItem[] = [
   { id: 'header_summary', label: 'Resumo do Financiamento', collapsed: false, number: 1 },
-  { id: 'installments_table', label: 'Tabela de Parcelas', collapsed: false, number: 2 },
+  { id: 'consorcio_summary', label: 'Resumo Consórcio Porto', collapsed: false, number: 2 },
+  { id: 'itau_consorcio_relation', label: 'Relação Financiamento Itaú x Consórcio', collapsed: false, number: 3 },
+  { id: 'installments_table', label: 'Tabela de Parcelas Itaú', collapsed: false, number: 4 },
+  { id: 'consorcio_installments_table', label: 'Tabela de Parcelas Porto', collapsed: true, number: 5 },
 ];
 
 const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = ({ transactions, theme }) => {
-  const [layout, setLayout] = useLocalStorage<LayoutItem[]>('financiamento_playground_layout_v2', DEFAULT_LAYOUT);
+  const [layout, setLayout] = useLocalStorage<LayoutItem[]>('financiamento_playground_layout_v4', DEFAULT_LAYOUT);
   const [maximizedId, setMaximizedId] = useState<string | null>(null);
   
   // Manual inputs for simulation
@@ -161,6 +164,153 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
 
   const lastParcelaPaga = paidInstallments.length > 0 ? Math.max(...paidInstallments.map((d: any) => d.parcela)) : 0;
   const progressPercent = totalParcelas > 0 ? (lastParcelaPaga / totalParcelas) * 100 : 0;
+
+  // Consórcio Porto - Dados Reais do Contrato (3 cartas)
+  const CONSORCIO_CONFIG = {
+    quantidadeCartas: 3,
+    creditoPorCarta: 187371.03,
+    quitacaoPorCarta: 204446.37, // Total para quitar (89.91%)
+    percentualPagoAtual: 10.09 / 100,
+    dataInicio: parseISO('2023-11-16'),
+    valorPrimeiraParcelaTotal: 920.54 * 3, // R$ 2.761,62
+    valorParcelaAtualTotal: 928.28 * 3,   // R$ 2,784,84
+    prazoTotalMeses: 200
+  };
+
+  // Consórcio Porto Data - Reconstrução do Histórico
+  const consorcioData = useMemo(() => {
+    // 1. Dados Reais fornecidos pelo usuário (per carta)
+    const quitacaoPerCarta = CONSORCIO_CONFIG.quitacaoPorCarta; // R$ 204.446,37
+    const percentRemaining = 89.91 / 100;
+    
+    // O Valor Total do Contrato (incluindo taxas) é derivado do saldo de quitação e do percentual restante
+    const valorTotalContratoPerCarta = quitacaoPerCarta / percentRemaining;
+    const valorTotalContratoTotal = valorTotalContratoPerCarta * 3;
+    
+    // 2. Calcular o Total Pago (Fluxo de Caixa)
+    // De 16/11/2023 até 06/04/2026 = 29 meses
+    const today = new Date();
+    const start = CONSORCIO_CONFIG.dataInicio;
+    const monthsDiff = (today.getFullYear() - start.getFullYear()) * 12 + today.getMonth() - start.getMonth();
+    const count = monthsDiff; // Parcelas já pagas até hoje
+    
+    // Média entre a primeira parcela (920.54) e a atual (928.28)
+    const avgParcelaPerCarta = (920.54 + 928.28) / 2;
+    const totalPaidReal = count * avgParcelaPerCarta * 3;
+    
+    const totalCredit = CONSORCIO_CONFIG.creditoPorCarta * 3;
+    const totalQuitacao = quitacaoPerCarta * 3;
+
+    const nextVencimento = addMonths(start, count);
+    const isNextPendente = today.getMonth() === nextVencimento.getMonth() && today.getFullYear() === nextVencimento.getFullYear();
+
+    return {
+      count,
+      totalPaid: totalPaidReal,
+      firstDate: start,
+      lastDate: today,
+      nextVencimento,
+      isNextPendente,
+      avgInstallment: CONSORCIO_CONFIG.valorParcelaAtualTotal,
+      totalCreditEstimated: totalCredit,
+      totalQuitacao,
+      valorTotalContrato: valorTotalContratoTotal,
+      percentPaidEstimated: CONSORCIO_CONFIG.percentualPagoAtual * 100,
+      detalhePorCarta: {
+        credito: CONSORCIO_CONFIG.creditoPorCarta,
+        pagoPercent: CONSORCIO_CONFIG.percentualPagoAtual * 100,
+        quitacao: quitacaoPerCarta,
+        parcela: 928.28
+      }
+    };
+  }, [transactions]);
+
+  // Itau x Consorcio Relation State
+  const [consorcioTaxaAdm, setConsorcioTaxaAdm] = useState(12);
+  const [consorcioMinContemplacao, setConsorcioMinContemplacao] = useState(40);
+  const [consorcioModoUso, setConsorcioModoUso] = useState<'total' | 'uma'>('total');
+  const [consorcioIntervaloMeses, setConsorcioIntervaloMeses] = useState(12);
+  const [manualContemplacaoDate, setManualContemplacaoDate] = useState<string | null>(null);
+
+  const relationData = useMemo(() => {
+    if (!consorcioData) return null;
+
+    const currentSaldoItau = adjustedSacData.find(d => d.parcela === lastParcelaPaga + 1)?.saldoDevedor || 0;
+    
+    // Previsão baseada no percentual de contemplação desejado
+    const targetPaidPercent = consorcioMinContemplacao / 100;
+    const remainingPercentToTarget = Math.max(targetPaidPercent - (consorcioData.percentPaidEstimated / 100), 0);
+    
+    // Quanto falta pagar em R$ para atingir o percentual de contemplação
+    const amountToTarget = remainingPercentToTarget * consorcioData.valorTotalContrato;
+    const monthsToContemplacao = Math.ceil(amountToTarget / consorcioData.avgInstallment);
+    
+    const projectedContemplacaoDate = manualContemplacaoDate ? parseISO(manualContemplacaoDate) : addMonths(new Date(), monthsToContemplacao);
+    
+    const saldoItauAtContemplacao = adjustedSacData.find(d => {
+      const dDate = new Date(d.date);
+      return dDate.getMonth() === projectedContemplacaoDate.getMonth() && 
+             dDate.getFullYear() === projectedContemplacaoDate.getFullYear();
+    })?.saldoDevedor || 0;
+
+    // Crédito líquido real (o usuário já forneceu o crédito bruto de 187k)
+    // Geralmente o crédito já é o valor que o usuário recebe, mas vamos aplicar a taxa de adm se for sobre o total
+    const liquidoTotal = consorcioData.totalCreditEstimated; // Assumindo que 187k já é o crédito disponível
+    const liquidoUmaCarta = liquidoTotal / 3;
+
+    // Simular economia (simplificada)
+    const valorAmortizacaoImediata = consorcioModoUso === 'total' ? liquidoTotal : liquidoUmaCarta;
+    
+    const jurosMensal = taxaJurosMensal / 100;
+    const economiaJurosEstimada = valorAmortizacaoImediata * jurosMensal * (totalParcelas - lastParcelaPaga);
+
+    return {
+      currentSaldoItau,
+      projectedContemplacaoDate,
+      saldoItauAtContemplacao,
+      liquidoTotal,
+      liquidoUmaCarta,
+      economiaJurosEstimada,
+      percentAtualConsorcio: consorcioData.percentPaidEstimated,
+      intervalo: consorcioIntervaloMeses
+    };
+  }, [consorcioData, adjustedSacData, lastParcelaPaga, consorcioMinContemplacao, consorcioTaxaAdm, manualContemplacaoDate, taxaJurosMensal, totalParcelas, consorcioModoUso, consorcioIntervaloMeses]);
+
+  // Consortium Installments Table Data
+  const consorcioInstallmentsData = useMemo(() => {
+    if (!consorcioData) return [];
+    
+    const installments = [];
+    const today = new Date();
+    const startDate = CONSORCIO_CONFIG.dataInicio;
+    
+    // Total de 200 meses
+    for (let i = 1; i <= 200; i++) {
+      const vencimento = addMonths(startDate, i - 1);
+      const isPaid = vencimento < today && (vencimento.getMonth() !== today.getMonth() || vencimento.getFullYear() !== today.getFullYear());
+      const isCurrentMonth = vencimento.getMonth() === today.getMonth() && vencimento.getFullYear() === today.getFullYear();
+      
+      // Lógica de valores (primeira parcela 920.54, atual 928.28)
+      // Vamos assumir uma progressão linear simples para o histórico e manter fixa a atual para o futuro
+      let valorMensal = CONSORCIO_CONFIG.valorParcelaAtualTotal;
+      if (i === 1) valorMensal = CONSORCIO_CONFIG.valorPrimeiraParcelaTotal;
+      else if (i < consorcioData.count) {
+        // Interpolar entre inicial e atual
+        const progress = (i - 1) / (consorcioData.count - 1);
+        valorMensal = CONSORCIO_CONFIG.valorPrimeiraParcelaTotal + (CONSORCIO_CONFIG.valorParcelaAtualTotal - CONSORCIO_CONFIG.valorPrimeiraParcelaTotal) * progress;
+      }
+
+      installments.push({
+        parcela: i,
+        vencimento: format(vencimento, 'yyyy-MM-dd'),
+        valor: valorMensal,
+        situacao: isPaid ? 'Paga' : (isCurrentMonth ? 'Aberta' : 'Projetada'),
+        date: vencimento
+      });
+    }
+    
+    return installments;
+  }, [consorcioData]);
 
   // Parse transactions
   const parsedData = useMemo(() => {
@@ -333,6 +483,233 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
           </div>
         );
 
+      case 'consorcio_summary':
+        return (
+          <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+            {renderCardHeader(item.id, item.label, <TrendingUp className="w-5 h-5 text-accent" />, index, isCollapsed)}
+            {!isCollapsed && (
+              <div className="p-6 space-y-6">
+                {!consorcioData ? (
+                  <div className="flex flex-col items-center justify-center p-10 text-center gap-3 opacity-60">
+                    <AlertCircle className="w-10 h-10" />
+                    <p className="text-sm font-bold">Nenhum dado de Consórcio encontrado</p>
+                    <p className="text-[10px]">Verifique transações com "Consórcio Porto" na categoria "Outro".</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
+                      <div>
+                        <h3 className="text-lg font-black text-accent">Grupo Porto Seguro (3 Cartas)</h3>
+                        <p className="text-[10px] opacity-60 font-bold uppercase tracking-wider">Início em {formatBrazilDate(format(consorcioData.firstDate, 'yyyy-MM-dd'))}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className="px-3 py-1 bg-accent/10 text-accent text-[10px] font-black rounded-full uppercase">Histórico Reconstruído</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {[
+                        { label: 'Parcelas Pagas', value: `${consorcioData.count} / 200`, icon: <CheckCircle2 className="w-4 h-4" /> },
+                        { label: 'Total Investido', value: formatCurrency(consorcioData.totalPaid), icon: <ArrowUp className="w-4 h-4 text-red-500" />, highlight: true },
+                        { label: 'Parcela Atual (3x)', value: formatCurrency(consorcioData.avgInstallment), icon: <TrendingUp className="w-4 h-4" /> },
+                        { label: 'Próximo Vencimento', value: formatBrazilDate(format(consorcioData.nextVencimento, 'yyyy-MM-dd')), icon: <Calendar className="w-4 h-4" />, highlight: consorcioData.isNextPendente, status: consorcioData.isNextPendente ? 'Pendente' : 'Projetado' }
+                      ].map((stat, i) => (
+                        <div key={i} className="p-4 rounded-xl border flex flex-col gap-1" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '11' }}>
+                          <div className="flex items-center gap-2 text-[10px] font-black uppercase opacity-50">
+                            {stat.icon}
+                            {stat.label}
+                          </div>
+                          <div className={`text-sm md:text-base font-black ${stat.highlight ? 'text-accent' : ''}`}>
+                            {stat.value}
+                          </div>
+                          {stat.status && (
+                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full w-fit ${stat.status === 'Pendente' ? 'bg-amber-500/20 text-amber-600' : 'bg-gray-500/10 text-gray-500'}`}>
+                              {stat.status}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="p-4 rounded-xl border space-y-2" style={{ borderColor: theme.cardBorder }}>
+                        <div className="text-[10px] font-black uppercase opacity-50">Crédito Total (Líquido)</div>
+                        <div className="text-lg font-black text-primary">{formatCurrency(consorcioData.totalCreditEstimated)}</div>
+                        <div className="text-[9px] opacity-60 font-bold italic">R$ {formatCurrency(consorcioData.detalhePorCarta.credito)} por carta</div>
+                      </div>
+                      <div className="p-4 rounded-xl border space-y-2" style={{ borderColor: theme.cardBorder }}>
+                        <div className="text-[10px] font-black uppercase opacity-50">Avanço do Plano</div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-2 bg-orange-500/10 rounded-full relative">
+                            <div 
+                              className="h-full bg-accent rounded-full transition-all duration-1000" 
+                              style={{ width: `${consorcioData.percentPaidEstimated}%` }} 
+                            />
+                            {/* Meta Marker */}
+                            <div 
+                              className="absolute top-[-3px] bottom-[-3px] w-0.5 bg-primary shadow-[0_0_5px_rgba(0,0,0,0.2)] z-10" 
+                              style={{ left: `${consorcioMinContemplacao}%` }}
+                            >
+                              <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[7px] font-black text-primary whitespace-nowrap">
+                                POSSÍVEL CONTEMPLAÇÃO {consorcioMinContemplacao}%
+                              </div>
+                            </div>
+                          </div>
+                          <span className="text-sm font-black">{consorcioData.percentPaidEstimated.toFixed(2)}%</span>
+                        </div>
+                        <div className="text-[9px] opacity-60 font-bold">Meta Contemplação: {consorcioMinContemplacao}%</div>
+                      </div>
+                      <div className="p-4 rounded-xl border space-y-2 relative group" style={{ borderColor: theme.cardBorder }}>
+                        <div className="flex items-center justify-between">
+                          <div className="text-[10px] font-black uppercase opacity-50">Saldo p/ Quitação (3 Cartas)</div>
+                          <Info className="w-3 h-3 opacity-30 group-hover:opacity-100 transition-opacity text-accent" />
+                        </div>
+                        <div className="text-lg font-black text-red-600">{formatCurrency(consorcioData.totalQuitacao)}</div>
+                        <div className="text-[9px] opacity-60 font-bold italic">R$ {formatCurrency(consorcioData.detalhePorCarta.quitacao)} cada (89,91%)</div>
+                        <div className="text-[8px] font-bold text-accent bg-accent/5 p-1 rounded border border-accent/10 mt-1">
+                          * Inclui taxa de administração de {consorcioTaxaAdm}% e encargos contratuais.
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        );
+
+      case 'itau_consorcio_relation':
+        return (
+          <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+            {renderCardHeader(item.id, item.label, <TrendingUp className="w-5 h-5 text-primary" />, index, isCollapsed)}
+            {!isCollapsed && (
+              <div className="p-6 space-y-6">
+                {!relationData ? (
+                  <div className="flex flex-col items-center justify-center p-10 text-center gap-3 opacity-60">
+                    <AlertCircle className="w-10 h-10" />
+                    <p className="text-sm font-bold">Aguardando dados do Consórcio</p>
+                    <p className="text-[10px]">A relação depende de dados reais do Consórcio Porto.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Controles e Parâmetros */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-4 rounded-xl bg-cardBorder/10 border border-dashed border-cardBorder">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase opacity-50">Taxa Adm (%)</label>
+                        <input 
+                          type="number" 
+                          value={consorcioTaxaAdm} 
+                          onChange={(e) => setConsorcioTaxaAdm(Number(e.target.value))}
+                          className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase opacity-50">Min. Contemplação (%)</label>
+                        <input 
+                          type="number" 
+                          value={consorcioMinContemplacao} 
+                          onChange={(e) => setConsorcioMinContemplacao(Number(e.target.value))}
+                          className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase opacity-50">Modo de Uso</label>
+                        <select 
+                          value={consorcioModoUso}
+                          onChange={(e) => setConsorcioModoUso(e.target.value as any)}
+                          className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm"
+                        >
+                          <option value="total">Usar Crédito Total</option>
+                          <option value="uma">Usar 1 Carta por vez</option>
+                        </select>
+                      </div>
+                      {consorcioModoUso === 'uma' && (
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase opacity-50">Intervalo (meses)</label>
+                          <input 
+                            type="number" 
+                            min="1" 
+                            max="24"
+                            value={consorcioIntervaloMeses} 
+                            onChange={(e) => setConsorcioIntervaloMeses(Number(e.target.value))}
+                            className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm"
+                          />
+                        </div>
+                      )}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase opacity-50">Data Contemplação (Manual)</label>
+                        <input 
+                          type="date" 
+                          value={manualContemplacaoDate || ''} 
+                          onChange={(e) => setManualContemplacaoDate(e.target.value || null)}
+                          className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Resultados Projeção */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <h4 className="text-xs font-black uppercase opacity-40 flex items-center gap-2">
+                          <Calendar className="w-3 h-3" /> Projeção de Contemplação
+                        </h4>
+                        <div className="p-4 rounded-xl border space-y-3" style={{ borderColor: theme.cardBorder }}>
+                          <div className="flex justify-between items-end">
+                            <span className="text-[10px] font-black uppercase opacity-50">Data Estimada</span>
+                            <span className="text-lg font-black text-accent">{formatBrazilDate(format(relationData.projectedContemplacaoDate, 'yyyy-MM-dd'))}</span>
+                          </div>
+                          <div className="flex justify-between items-end">
+                            <span className="text-[10px] font-black uppercase opacity-50">Saldo Itaú nessa data</span>
+                            <span className="text-sm font-black opacity-70">{formatCurrency(relationData.saldoItauAtContemplacao)}</span>
+                          </div>
+                          <div className="pt-2 border-t flex justify-between items-end" style={{ borderColor: theme.cardBorder }}>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black uppercase opacity-50 text-primary">Crédito Líquido</span>
+                          <span className="text-[8px] opacity-60 font-bold italic">({consorcioModoUso === 'total' ? '3 cartas' : '1 carta'})</span>
+                        </div>
+                        <span className="text-lg font-black text-primary">
+                          {consorcioModoUso === 'total' ? formatCurrency(relationData.liquidoTotal) : formatCurrency(relationData.liquidoUmaCarta)}
+                        </span>
+                      </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="text-xs font-black uppercase opacity-40 flex items-center gap-2">
+                          <TrendingUp className="w-3 h-3" /> Impacto Financeiro
+                        </h4>
+                        <div className="p-4 rounded-xl border space-y-3" style={{ borderColor: theme.cardBorder }}>
+                          <div className="flex justify-between items-end">
+                            <span className="text-[10px] font-black uppercase opacity-50">Saldo Após Quitação</span>
+                            <span className="text-lg font-black text-green-600">
+                              {formatCurrency(Math.max(relationData.saldoItauAtContemplacao - (consorcioModoUso === 'total' ? relationData.liquidoTotal : relationData.liquidoUmaCarta), 0))}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-end">
+                            <span className="text-[10px] font-black uppercase opacity-50">Economia de Juros (Est.)</span>
+                            <span className="text-sm font-black text-primary flex items-center gap-1">
+                              <ArrowDown className="w-3 h-3" /> {formatCurrency(relationData.economiaJurosEstimada)}
+                            </span>
+                          </div>
+                          <div className="pt-2 border-t" style={{ borderColor: theme.cardBorder }}>
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-[10px] font-black uppercase opacity-50">Avanço Consórcio</span>
+                              <span className="text-[10px] font-black">{relationData.percentAtualConsorcio.toFixed(1)}%</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-orange-500/10 rounded-full overflow-hidden">
+                              <div className="h-full bg-accent" style={{ width: `${relationData.percentAtualConsorcio}%` }} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        );
+
       case 'installments_table':
         return (
           <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
@@ -373,6 +750,47 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                             </div>
                           )}
                         </td>
+                        <td className="p-3 text-center">
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                            d.situacao === 'Paga' ? 'bg-green-500/20 text-green-600' : 
+                            d.situacao === 'Aberta' ? 'bg-amber-500/20 text-amber-600' : 
+                            'bg-gray-500/10 text-gray-500'
+                          }`}>
+                            {d.situacao}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'consorcio_installments_table':
+        return (
+          <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+            {renderCardHeader(item.id, item.label, <Calendar className="w-5 h-5 text-accent" />, index, isCollapsed)}
+            {!isCollapsed && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-[10px] md:text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-cardBorder/30">
+                      <th className="p-3 border-b font-bold uppercase tracking-wider">Parcela</th>
+                      <th className="p-3 border-b font-bold uppercase tracking-wider">Vencimento</th>
+                      <th className="p-3 border-b font-bold uppercase tracking-wider text-right text-accent">Valor (3 Cartas)</th>
+                      <th className="p-3 border-b font-bold uppercase tracking-wider text-right">Valor Individual</th>
+                      <th className="p-3 border-b font-bold uppercase tracking-wider text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
+                    {consorcioInstallmentsData.map((d: any) => (
+                      <tr key={d.parcela} className={`${d.situacao === 'Aberta' ? 'bg-amber-500/5' : d.situacao === 'Projetada' ? 'opacity-70' : ''}`}>
+                        <td className="p-3 font-bold">{d.parcela} / 200</td>
+                        <td className="p-3 opacity-70">{formatBrazilDate(d.vencimento)}</td>
+                        <td className="p-3 text-right font-black text-accent">{formatCurrency(d.valor)}</td>
+                        <td className="p-3 text-right opacity-60">{formatCurrency(d.valor / 3)}</td>
                         <td className="p-3 text-center">
                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
                             d.situacao === 'Paga' ? 'bg-green-500/20 text-green-600' : 
