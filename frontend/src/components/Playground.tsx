@@ -40,7 +40,8 @@ import {
   Bot,
   Loader2,
   Clipboard,
-  Check
+  Check,
+  Home
 } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Doughnut, Pie, Line, Bar } from 'react-chartjs-2';
@@ -61,6 +62,7 @@ import {
 } from '../utils/helpers';
 
 import SavingsGoalsPlayground from './SavingsGoalsPlayground';
+import FinanciamentoCasaPlayground from './FinanciamentoCasaPlayground';
 
 ChartJS.register(
   CategoryScale, 
@@ -253,7 +255,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals, onA
   const { paymentMethods } = usePaymentMethods();
   const location = useLocation();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'transactions' | 'savings'>('transactions');
+  const [activeTab, setActiveTab] = useState<'transactions' | 'savings' | 'financiamento'>('transactions');
   const [maximizedId, setMaximizedId] = useState<string | null>(null);
   // Using a new version key to reset layout to the simplified structure
   const [layout, setLayout] = useLocalStorage<LayoutItem[]>('playground_layout_v7', DEFAULT_LAYOUT);
@@ -2023,12 +2025,14 @@ INSTRUÇÕES PARA SUA RESPOSTA:
       <div className="flex flex-col md:flex-row md:items-center justify-between py-8 gap-6 border-b" style={{ borderColor: theme.cardBorder }}>
         <div className="flex-1">
           <h1 className="text-3xl lg:text-5xl font-bold text-text mb-2">
-            {activeTab === 'transactions' ? '📊 Playground Financeiro' : '🎯 Análise de Metas'}
+            {activeTab === 'transactions' ? '📊 Playground Financeiro' : activeTab === 'savings' ? '🎯 Análise de Metas' : '🏠 Financiamento Imobiliário'}
           </h1>
           <p className="text-text opacity-70 text-sm md:text-base">
             {activeTab === 'transactions'
               ? 'Organize e analise seus dados com total liberdade'
-              : 'Visualize o progresso de suas metas e aportes'}
+              : activeTab === 'savings'
+              ? 'Visualize o progresso de suas metas e aportes'
+              : 'Gestão completa das parcelas e simulação de quitação'}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
@@ -2051,6 +2055,16 @@ INSTRUÇÕES PARA SUA RESPOSTA:
             }`}
           >
             Metas de Poupança
+          </button>
+          <button
+            onClick={() => setActiveTab('financiamento')}
+            className={`flex-1 md:flex-none px-6 py-3 md:py-2.5 rounded-xl font-bold text-sm transition-all border ${
+              activeTab === 'financiamento'
+                ? 'bg-primary text-white border-primary shadow-md'
+                : 'bg-transparent text-text border-cardBorder hover:bg-cardBorder/30'
+            }`}
+          >
+            🏠 Financiamento
           </button>
         </div>
       </div>
@@ -3225,6 +3239,14 @@ INSTRUÇÕES PARA SUA RESPOSTA:
           savingsGoals={savingsGoals} 
           transactions={transactions} 
           onAddTransaction={onAddTransaction}
+        />
+      )}
+
+      {/* Financiamento Tab */}
+      {activeTab === 'financiamento' && (
+        <FinanciamentoCasaPlayground 
+          transactions={transactions} 
+          theme={theme}
         />
       )}
     </div>
