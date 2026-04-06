@@ -23,15 +23,6 @@ import { useLocalStorage } from '../hooks/trello/useLocalStorage';
 import { Transaction } from '../types';
 import { formatCurrency, formatBrazilDate } from '../utils/helpers';
 
-interface ParsedFinancingTransaction {
-  parcelaPaga: number;
-  totalParcelas: number;
-  amount: number;
-  date: string;
-  id: string;
-  isPaid: boolean;
-  description: string | undefined;
-}
 
 interface HistoryItem {
   parcela: number;
@@ -93,16 +84,16 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
   
   // Manual inputs for simulation
    const [overrideTotalParcelas, setOverrideTotalParcelas] = useState<number | null>(419);
-   const [taxaJurosMensal, setTaxaJurosMensal] = useState<number>(0.010303871);
-   const [taxaEfetivaAnual, setTaxaEfetivaAnual] = useState<number>(13.090000000);
-   const [numeroContrato, setNumeroContrato] = useState<string>('10197455901');
-   const [valorOriginal, setValorOriginal] = useState<number>(582500);
+   const [taxaJurosMensal] = useState<number>(0.010303871);
+   const [taxaEfetivaAnual] = useState<number>(13.090000000);
+   const [numeroContrato] = useState<string>('10197455901');
+   const [valorOriginal] = useState<number>(582500);
 
   // Derived stats base
   const totalParcelas = overrideTotalParcelas || 419;
 
   // SAC Calculation for Juros vs Principal
-  const calculateAdjustedSAC = (valor: number, totalParcelas: number, taxaJuros: number) => {
+  const calculateAdjustedSAC = (totalParcelas: number, taxaJuros: number) => {
     const results: any[] = [];
     
     // 1. Iniciar com o histórico real do Itaú
@@ -160,7 +151,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
   };
 
   const adjustedSacData = useMemo(() => {
-    return calculateAdjustedSAC(valorOriginal, totalParcelas, taxaJurosMensal);
+    return calculateAdjustedSAC(valorOriginal, totalParcelas);
   }, [valorOriginal, totalParcelas, taxaJurosMensal]);
 
   // Derived stats dependent on adjustedSacData
