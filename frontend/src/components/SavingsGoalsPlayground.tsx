@@ -110,6 +110,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const [formError, setFormError] = useState<string | null>(null);
   const [projectionDays, setProjectionDays] = useState<number>(5);
   const [projectionView, setProjectionView] = useState<'current' | 'forward'>('current');
+  const [timeTravelDate, setTimeTravelDate] = useState<string | null>(null);
   const [catastrophicAmount, setCatastrophicAmount] = useState<number>(0);
   const [catastrophicName, setCatastrophicName] = useState<string>('');
   const simulationRef = useRef<HTMLDivElement>(null);
@@ -128,6 +129,125 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     const dailyData = isForward ? nextDaysData : currentPeriodDailyData;
     const finalBalance = isForward ? nextDaysData.total : countdownSimAvailableEndOfMonth;
 
+    // --- CÁLCULO DE DADOS ATUAIS (SEM TIME TRAVEL) PARA COMPARAÇÃO ---
+    const actualTotals = timeTravelDate ? (() => {
+      const dayBeforeStart = format(subDays(parseLocalDate(startDate), 1), 'yyyy-MM-dd');
+      
+      const paidTransactionsBefore = transactions.filter(t => {
+        if (t.status === 'deleted' || t.category?.toLowerCase().includes('aporte') || !t.isPaid) return false;
+        return t.date.slice(0, 10) <= dayBeforeStart;
+      });
+
+      const totalIncomeBefore = paidTransactionsBefore
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const totalExpensesBefore = paidTransactionsBefore
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const totalBalanceBefore = totalIncomeBefore - totalExpensesBefore;
+
+      const totalGoalsImpactBefore = activeGoals.reduce((total, goal) => {
+        const goalTotal = (goal.contributions || []).reduce((sum, contribution) => {
+          if (contribution.status === 'deleted' || !contribution.isPaid) return sum;
+          const cDate = contribution.date.slice(0, 10);
+          return sum + (cDate <= dayBeforeStart ? contribution.amount : 0);
+        }, 0);
+        return total + goalTotal;
+      }, 0);
+
+      const previousBalanceAdjusted = totalBalanceBefore - totalGoalsImpactBefore;
+
+      const revenues = transactions
+        .filter(t => {
+          const tDateStr = t.date.slice(0, 10);
+          return t.type === 'income' &&
+                  t.status === 'active' &&
+                 tDateStr >= startDate && tDateStr <= endDate &&
+                 !t.description?.toLowerCase().includes('vero') &&
+                 !t.category?.toLowerCase().includes('vero') &&
+                 !t.description?.toLowerCase().includes('flash') &&
+                 !t.category?.toLowerCase().includes('flash');
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const expenses = transactions
+        .filter(t => {
+          const tDateStr = t.date.slice(0, 10);
+          return t.type === 'expense' &&
+                  t.status === 'active' &&
+                  !t.category?.toLowerCase().includes('aporte') &&
+                  !t.paymentMethod?.toLowerCase().includes('vero') &&
+                  !t.paymentMethod?.toLowerCase().includes('flash') &&
+                 tDateStr >= startDate && tDateStr <= endDate;
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const realContributions = transactions
+        .filter(t => {
+          const tDateStr = t.date.slice(0, 10);
+          return t.type === 'expense' &&
+                  t.isPaid === true &&
+                  t.status === 'active' &&
+                  tDateStr >= startDate && tDateStr <= endDate &&
+                  t.category?.toLowerCase().includes('aporte');
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const actualNet = previousBalanceAdjusted + revenues - expenses - realContributions - catastrophicAmount;
+      const actualGoalAmount = countdownSimGoal ? countdownSimGoal.currentAmount : 0;
+
+      // Cálculo de Saldos Diários Atuais para Comparação
+      const dailyStart = isForward ? addDays(parseLocalDate(endDate), 1) : parseLocalDate(startDate);
+      const dailyDaysCount = isForward ? projectionDays : (differenceInDays(parseLocalDate(endDate), parseLocalDate(startDate)) + 1);
+      const actualDailyBalances: Record<string, number> = {};
+      let runningDailyBalance = isForward ? (actualNet - countdownSimExtra) : previousBalanceAdjusted;
+
+      for (let i = 0; i < dailyDaysCount; i++) {
+        const currentDay = addDays(dailyStart, i);
+        const currentDayStr = format(currentDay, 'yyyy-MM-dd');
+        
+        const dayRevenues = transactions
+          .filter(t => {
+            const tDateStr = t.date.slice(0, 10);
+            return t.type === 'income' && t.status === 'active' && tDateStr === currentDayStr &&
+                   !t.description?.toLowerCase().includes('vero') && !t.category?.toLowerCase().includes('vero') &&
+                   !t.description?.toLowerCase().includes('flash') && !t.category?.toLowerCase().includes('flash');
+          })
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        const dayExpenses = transactions
+          .filter(t => {
+            const tDateStr = t.date.slice(0, 10);
+            return t.type === 'expense' && t.status === 'active' && tDateStr === currentDayStr &&
+                   !t.category?.toLowerCase().includes('aporte') &&
+                   !t.paymentMethod?.toLowerCase().includes('vero') && !t.paymentMethod?.toLowerCase().includes('flash');
+          })
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        const dayContributions = transactions
+          .filter(t => {
+            const tDateStr = t.date.slice(0, 10);
+            return t.type === 'expense' && t.isPaid === true && t.status === 'active' && 
+                   tDateStr === currentDayStr && t.category?.toLowerCase().includes('aporte');
+          })
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        runningDailyBalance = runningDailyBalance + dayRevenues - dayExpenses - dayContributions;
+        actualDailyBalances[currentDayStr] = runningDailyBalance;
+      }
+
+      return { 
+        revenues, 
+        expenses, 
+        realContributions,
+        net: actualNet,
+        goalAmount: actualGoalAmount,
+        dailyBalances: actualDailyBalances
+      };
+    })() : null;
+
     const printContent = `
       <!DOCTYPE html>
       <html>
@@ -140,12 +260,27 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             .header h1 { margin: 0; color: #3b82f6; font-size: 24px; }
             .header p { margin: 5px 0 0 0; opacity: 0.7; font-size: 12px; }
             .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 900; text-transform: uppercase; background: #3b82f6; color: white; margin-top: 10px; }
+            .badge-amber { background: #f59e0b; }
             .grid { display: grid; grid-template-cols: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
-            .card { border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; background: #f8fafc; }
+            .card { border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; background: #f8fafc; position: relative; overflow: hidden; }
             .card-title { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #64748b; margin-bottom: 10px; letter-spacing: 0.05em; }
             .value { font-size: 24px; font-weight: 900; color: #3b82f6; }
             .sub-value { font-size: 12px; color: #64748b; margin-top: 5px; }
             .details { font-size: 11px; margin-top: 15px; font-family: monospace; color: #64748b; }
+            
+            /* Estilos para Comparação */
+            .comparison-grid { display: grid; grid-template-cols: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+            .comp-card { border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px; background: white; }
+            .comp-label { font-size: 9px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; }
+            .comp-values { display: flex; flex-direction: column; gap: 4px; }
+            .comp-item { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+            .comp-item .frozen { color: #f59e0b; font-weight: 700; }
+            .comp-item .actual { color: #3b82f6; font-weight: 700; }
+            .comp-diff { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 900; }
+            .diff-pos { background: #dcfce7; color: #166534; }
+            .diff-neg { background: #fee2e2; color: #991b1b; }
+            .diff-neutral { background: #f1f5f9; color: #475569; }
+
             .projection-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
             .projection-table th { text-align: left; font-size: 10px; color: #64748b; padding: 8px; border-bottom: 1px solid #e2e8f0; }
             .projection-table td { padding: 8px; border-bottom: 1px solid #f1f5f9; font-size: 12px; }
@@ -160,7 +295,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             }
             @media print { 
               body { padding: 0; } 
-              .card { break-inside: avoid; } 
+              .card, .comp-card { break-inside: avoid; } 
               .no-print-btn { display: none; }
             }
           </style>
@@ -172,6 +307,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             <div>
               <h1>${reportTitle}</h1>
               <div class="badge">${viewLabel}</div>
+              ${timeTravelDate ? `<div class="badge badge-amber">⏳ MODO TIME TRAVEL: ATÉ ${formatBrazilDate(parseLocalDate(timeTravelDate), 'dd/MM/yyyy')}</div>` : ''}
               <p>Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
               <p>Período Base: ${formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} até ${formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}</p>
             </div>
@@ -181,18 +317,63 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             </div>
           </div>
 
+          ${actualTotals ? `
+            <div style="margin-bottom: 10px; font-size: 10px; font-weight: 900; color: #f59e0b; text-transform: uppercase; letter-spacing: 0.1em;">
+              📊 Comparativo: Congelado (${formatBrazilDate(parseLocalDate(timeTravelDate!), 'dd/MM/yyyy')}) vs. Hoje (${format(new Date(), 'dd/MM/yyyy')})
+            </div>
+            <div class="comparison-grid">
+              <div class="comp-card">
+                <div class="comp-label">Saldo Final</div>
+                <div class="comp-values">
+                  <div class="comp-item"><span>Congelado:</span> <span class="frozen">${formatCurrency(finalBalance)}</span></div>
+                  <div class="comp-item"><span>Atual:</span> <span class="actual">${formatCurrency(actualTotals.net)}</span></div>
+                  <div style="margin-top: 8px; text-align: right;">
+                    <span class="comp-diff ${(actualTotals.net - finalBalance) >= 0 ? 'diff-pos' : 'diff-neg'}">
+                      ${(actualTotals.net - finalBalance) >= 0 ? '▲' : '▼'} ${formatCurrency(Math.abs(actualTotals.net - finalBalance))}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="comp-card">
+                <div class="comp-label">Receitas / Despesas</div>
+                <div class="comp-values">
+                  <div class="comp-item"><span>Rec. (Cong.):</span> <span class="frozen">${formatCurrency(monthlyTotals.revenues)}</span></div>
+                  <div class="comp-item"><span>Rec. (Atual):</span> <span class="actual">${formatCurrency(actualTotals.revenues)}</span></div>
+                  <div class="comp-item" style="margin-top: 4px;"><span>Desp. (Cong.):</span> <span class="frozen">${formatCurrency(monthlyTotals.expenses + monthlyTotals.realContributions)}</span></div>
+                  <div class="comp-item"><span>Desp. (Atual):</span> <span class="actual">${formatCurrency(actualTotals.expenses + actualTotals.realContributions)}</span></div>
+                </div>
+              </div>
+
+              <div class="comp-card">
+                <div class="comp-label">Progresso da Meta</div>
+                <div class="comp-values">
+                  <div class="comp-item"><span>Valor (Cong.):</span> <span class="frozen">${formatCurrency(countdownSimGoal ? (countdownSimGoal.currentAmount + countdownSimExtra) : 0)}</span></div>
+                  <div class="comp-item"><span>Valor (Atual):</span> <span class="actual">${formatCurrency(actualTotals.goalAmount)}</span></div>
+                  <div style="margin-top: 8px; text-align: right;">
+                    <span class="comp-diff ${(actualTotals.goalAmount - (countdownSimGoal ? (countdownSimGoal.currentAmount + countdownSimExtra) : 0)) >= 0 ? 'diff-pos' : 'diff-neg'}">
+                      ${(actualTotals.goalAmount - (countdownSimGoal ? (countdownSimGoal.currentAmount + countdownSimExtra) : 0)) >= 0 ? '▲' : '▼'} ${formatCurrency(Math.abs(actualTotals.goalAmount - (countdownSimGoal ? (countdownSimGoal.currentAmount + countdownSimExtra) : 0)))}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ` : ''}
+
           <div class="grid">
-            <div class="card">
+            <div class="card" ${timeTravelDate ? 'style="border-color: #f59e0b; background: #fffbeb;"' : ''}>
+              ${timeTravelDate ? '<div style="position: absolute; top: 0; right: 0; background: #f59e0b; color: white; font-size: 7px; font-weight: 900; padding: 2px 8px; border-bottom-left-radius: 8px; text-transform: uppercase;">Congelado</div>' : ''}
               <div class="card-title">Impacto na Meta</div>
-              <div class="value">${formatCurrency(countdownSimGoal ? countdownSimGoal.currentAmount + countdownSimExtra : 0)}</div>
+              <div class="value" ${timeTravelDate ? 'style="color: #d97706"' : ''}>${formatCurrency(countdownSimGoal ? countdownSimGoal.currentAmount + countdownSimExtra : 0)}</div>
               <div class="sub-value">Alvo: ${formatCurrency(countdownSimGoal?.targetAmount || 0)}</div>
               <div class="sub-value" style="color: #10b981; font-weight: 700;">
                 ${countdownSimIsGoalAchieved ? '✅ Meta Atingida!' : `Restam ${formatCurrency((countdownSimGoal?.targetAmount || 0) - (countdownSimGoal ? countdownSimGoal.currentAmount + countdownSimExtra : 0))}`}
               </div>
             </div>
-            <div class="card">
+            <div class="card" ${timeTravelDate ? 'style="border-color: #f59e0b; background: #fffbeb;"' : ''}>
+              ${timeTravelDate ? '<div style="position: absolute; top: 0; right: 0; background: #f59e0b; color: white; font-size: 7px; font-weight: 900; padding: 2px 8px; border-bottom-left-radius: 8px; text-transform: uppercase;">Congelado</div>' : ''}
               <div class="card-title">Disponibilidade Final ${isForward ? `D+${projectionDays}` : 'do Período'}</div>
-              <div class="value">${formatCurrency(finalBalance)}</div>
+              <div class="value" ${timeTravelDate ? 'style="color: #d97706"' : ''}>${formatCurrency(finalBalance)}</div>
               <div class="details">
                 Saldo Base: ${formatCurrency(isForward ? nextDaysData.baseBalance : monthlyTotals.previousMonthAdjustedBalance)}<br>
                 + Receitas: ${formatCurrency(isForward ? nextDaysData.revenues : monthlyTotals.revenues)}<br>
@@ -219,9 +400,21 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
           <div class="card" style="margin-top: 20px;">
             <div class="card-title">${isForward ? `Projeção Diária (Próximos ${projectionDays} dias)` : 'Fluxo Diário do Período'}</div>
             <table class="projection-table">
-              <thead><tr><th>DIA</th><th>DATA</th><th style="text-align: right">MOVIMENTAÇÃO</th><th style="text-align: right">SALDO ACUMULADO</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>DIA</th>
+                  <th>DATA</th>
+                  <th style="text-align: right">MOVIMENTAÇÃO</th>
+                  <th style="text-align: right">SALDO ${actualTotals ? '(CONGELADO)' : 'ACUMULADO'}</th>
+                  ${actualTotals ? '<th style="text-align: right">SALDO REAL (HOJE)</th><th style="text-align: right">DIFERENÇA</th>' : ''}
+                </tr>
+              </thead>
               <tbody>
-                ${dailyData.dailyBalances.map((day: any) => `
+                ${dailyData.dailyBalances.map((day: any) => {
+                  const actualDayBalance = actualTotals?.dailyBalances[day.date];
+                  const diff = actualDayBalance !== undefined ? actualDayBalance - day.total : null;
+                  
+                  return `
                   <tr>
                     <td style="font-weight: 700;">${day.label || '-'}</td>
                     <td class="date">${formatBrazilDate(parseLocalDate(day.date), 'dd/MM/yyyy')}</td>
@@ -230,12 +423,22 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                       ${day.expenses > 0 ? `<span style="color: #ef4444">-${formatCurrency(day.expenses)}</span>` : ''}
                       ${day.revenues === 0 && day.expenses === 0 ? '-' : ''}
                     </td>
-                    <td class="amount" style="color: ${day.total < 0 ? '#ef4444' : '#10b981'}">
+                    <td class="amount" style="color: ${day.total < 0 ? '#ef4444' : (actualTotals ? '#d97706' : '#10b981')}">
                       ${formatCurrency(day.total)}
                       ${day.isNegative ? '<br><span style="font-size: 8px; text-transform: uppercase;">⚠️ Negativo</span>' : ''}
                     </td>
+                    ${actualTotals && actualDayBalance !== undefined ? `
+                      <td class="amount" style="color: ${actualDayBalance < 0 ? '#ef4444' : '#3b82f6'}">
+                        ${formatCurrency(actualDayBalance)}
+                      </td>
+                      <td class="amount" style="font-size: 10px;">
+                        <span class="comp-diff ${diff! >= 0 ? (diff! === 0 ? 'diff-neutral' : 'diff-pos') : 'diff-neg'}">
+                          ${diff! > 0 ? '▲' : diff! < 0 ? '▼' : '='} ${formatCurrency(Math.abs(diff!))}
+                        </span>
+                      </td>
+                    ` : ''}
                   </tr>
-                `).join('')}
+                `}).join('')}
               </tbody>
             </table>
           </div>
@@ -493,7 +696,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     // 1. Saldo Anterior (Total Balance - Total Goals Impact até dayBeforeStart)
     const paidTransactionsBefore = transactions.filter(t => {
       if (t.status === 'deleted' || t.category?.toLowerCase().includes('aporte') || !t.isPaid) return false;
-      return t.date.slice(0, 10) <= dayBeforeStart;
+      const tDateStr = t.date.slice(0, 10);
+      const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
+      return tDateStr <= dayBeforeStart && isBeforeCutoff;
     });
 
     const totalIncomeBefore = paidTransactionsBefore
@@ -510,7 +715,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       const goalTotal = (goal.contributions || []).reduce((sum, contribution) => {
         if (contribution.status === 'deleted' || !contribution.isPaid) return sum;
         const cDate = contribution.date.slice(0, 10);
-        return sum + (cDate <= dayBeforeStart ? contribution.amount : 0);
+        const isBeforeCutoff = !timeTravelDate || new Date(contribution.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
+        return sum + (cDate <= dayBeforeStart && isBeforeCutoff ? contribution.amount : 0);
       }, 0);
       return total + goalTotal;
     }, 0);
@@ -521,13 +727,15 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     const revenues = transactions
       .filter(t => {
         const tDateStr = t.date.slice(0, 10);
+        const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
         return t.type === 'income' &&
                 t.status === 'active' &&
                tDateStr >= startDate && tDateStr <= endDate &&
                !t.description?.toLowerCase().includes('vero') &&
                !t.category?.toLowerCase().includes('vero') &&
                !t.description?.toLowerCase().includes('flash') &&
-               !t.category?.toLowerCase().includes('flash');
+               !t.category?.toLowerCase().includes('flash') &&
+               isBeforeCutoff;
       })
       .reduce((sum, t) => sum + t.amount, 0);
 
@@ -535,12 +743,14 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     const expenses = transactions
       .filter(t => {
         const tDateStr = t.date.slice(0, 10);
+        const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
         return t.type === 'expense' &&
                 t.status === 'active' &&
                 !t.category?.toLowerCase().includes('aporte') &&
                 !t.paymentMethod?.toLowerCase().includes('vero') &&
                 !t.paymentMethod?.toLowerCase().includes('flash') &&
-               tDateStr >= startDate && tDateStr <= endDate;
+               tDateStr >= startDate && tDateStr <= endDate &&
+               isBeforeCutoff;
       })
       .reduce((sum, t) => sum + t.amount, 0);
 
@@ -548,11 +758,13 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     const realContributions = transactions
       .filter(t => {
         const tDateStr = t.date.slice(0, 10);
+        const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
         return t.type === 'expense' &&
                 t.isPaid === true &&
                 t.status === 'active' &&
                 tDateStr >= startDate && tDateStr <= endDate &&
-                t.category?.toLowerCase().includes('aporte');
+                t.category?.toLowerCase().includes('aporte') &&
+                isBeforeCutoff;
       })
       .reduce((sum, t) => sum + t.amount, 0);
 
@@ -563,7 +775,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       previousMonthAdjustedBalance: previousBalanceAdjusted,
       net: previousBalanceAdjusted + revenues - expenses - realContributions - catastrophicAmount
     };
-  }, [transactions, savingsGoals, activeGoals, startDate, endDate, catastrophicAmount]);
+  }, [transactions, savingsGoals, activeGoals, startDate, endDate, catastrophicAmount, timeTravelDate]);
 
   // Detalhamento diário para o período filtrado (Mês Atual)
   const currentPeriodDailyData = useMemo(() => {
@@ -582,26 +794,32 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       const dayRevenues = transactions
         .filter(t => {
           const tDateStr = t.date.slice(0, 10);
+          const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
           return t.type === 'income' && t.status === 'active' && tDateStr === currentDayStr &&
                  !t.description?.toLowerCase().includes('vero') && !t.category?.toLowerCase().includes('vero') &&
-                 !t.description?.toLowerCase().includes('flash') && !t.category?.toLowerCase().includes('flash');
+                 !t.description?.toLowerCase().includes('flash') && !t.category?.toLowerCase().includes('flash') &&
+                 isBeforeCutoff;
         })
         .reduce((sum, t) => sum + t.amount, 0);
 
       const dayExpenses = transactions
         .filter(t => {
           const tDateStr = t.date.slice(0, 10);
+          const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
           return t.type === 'expense' && t.status === 'active' && tDateStr === currentDayStr &&
                  !t.category?.toLowerCase().includes('aporte') &&
-                 !t.paymentMethod?.toLowerCase().includes('vero') && !t.paymentMethod?.toLowerCase().includes('flash');
+                 !t.paymentMethod?.toLowerCase().includes('vero') && !t.paymentMethod?.toLowerCase().includes('flash') &&
+                 isBeforeCutoff;
         })
         .reduce((sum, t) => sum + t.amount, 0);
 
       const dayContributions = transactions
         .filter(t => {
           const tDateStr = t.date.slice(0, 10);
+          const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
           return t.type === 'expense' && t.isPaid === true && t.status === 'active' && 
-                 tDateStr === currentDayStr && t.category?.toLowerCase().includes('aporte');
+                 tDateStr === currentDayStr && t.category?.toLowerCase().includes('aporte') &&
+                 isBeforeCutoff;
         })
         .reduce((sum, t) => sum + t.amount, 0);
 
@@ -628,7 +846,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     }
 
     return { dailyBalances, negativeCount };
-  }, [transactions, startDate, endDate, monthlyTotals.previousMonthAdjustedBalance, countdownSimExtra, catastrophicAmount]);
+  }, [transactions, startDate, endDate, monthlyTotals.previousMonthAdjustedBalance, countdownSimExtra, catastrophicAmount, timeTravelDate]);
 
   // Cálculo para "Disponível próximos X dias" (após a data final do filtro) com detalhamento diário
   const nextDaysData = useMemo(() => {
@@ -655,26 +873,32 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       const dayRevenues = transactions
         .filter(t => {
           const tDateStr = t.date.slice(0, 10);
+          const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
           return t.type === 'income' && t.status === 'active' && tDateStr === currentDayStr &&
                  !t.description?.toLowerCase().includes('vero') && !t.category?.toLowerCase().includes('vero') &&
-                 !t.description?.toLowerCase().includes('flash') && !t.category?.toLowerCase().includes('flash');
+                 !t.description?.toLowerCase().includes('flash') && !t.category?.toLowerCase().includes('flash') &&
+                 isBeforeCutoff;
         })
         .reduce((sum, t) => sum + t.amount, 0);
 
       const dayExpenses = transactions
         .filter(t => {
           const tDateStr = t.date.slice(0, 10);
+          const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
           return t.type === 'expense' && t.status === 'active' && tDateStr === currentDayStr &&
                  !t.category?.toLowerCase().includes('aporte') &&
-                 !t.paymentMethod?.toLowerCase().includes('vero') && !t.paymentMethod?.toLowerCase().includes('flash');
+                 !t.paymentMethod?.toLowerCase().includes('vero') && !t.paymentMethod?.toLowerCase().includes('flash') &&
+                 isBeforeCutoff;
         })
         .reduce((sum, t) => sum + t.amount, 0);
 
       const dayContributions = transactions
         .filter(t => {
           const tDateStr = t.date.slice(0, 10);
+          const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
           return t.type === 'expense' && t.isPaid === true && t.status === 'active' && 
-                 tDateStr === currentDayStr && t.category?.toLowerCase().includes('aporte');
+                 tDateStr === currentDayStr && t.category?.toLowerCase().includes('aporte') &&
+                 isBeforeCutoff;
         })
         .reduce((sum, t) => sum + t.amount, 0);
 
@@ -704,7 +928,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       revenues: dailyBalances.reduce((sum, d) => sum + d.revenues, 0),
       expenses: dailyBalances.reduce((sum, d) => sum + d.expenses, 0)
     };
-  }, [transactions, endDate, monthlyTotals, countdownSimExtra, projectionDays]);
+  }, [transactions, endDate, monthlyTotals, countdownSimExtra, projectionDays, timeTravelDate]);
 
   // Limite de projeção: fim do mês seguinte ao filtro
   const maxProjectionDays = useMemo(() => {
@@ -1442,8 +1666,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
 
                 {/* Nova Div: Projeção Dinâmica */}
                 <div
-                  className="rounded-xl border p-4 bg-cardBorder/10"
-                  style={{ borderColor: theme.cardBorder }}
+                  className={`rounded-xl border p-4 transition-all duration-300 ${timeTravelDate ? 'border-amber-500 bg-amber-500/5 shadow-[0_0_15px_rgba(245,158,11,0.1)]' : 'bg-cardBorder/10'}`}
+                  style={{ borderColor: timeTravelDate ? undefined : theme.cardBorder }}
                   title={projectionView === 'forward' 
                     ? `Detalhamento do saldo projetado para os próximos ${projectionDays} dias`
                     : `Resumo do saldo para o período filtrado`
@@ -1463,6 +1687,41 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                     >
                       Projeção Futura
                     </button>
+                  </div>
+
+                  {/* Time Travel Simulation */}
+                  <div className="mb-4 p-2 rounded-lg bg-cardBorder/20 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[9px] font-bold uppercase opacity-60 flex items-center gap-1">
+                        ⏳ Simular como se fosse...
+                      </label>
+                      {timeTravelDate && (
+                        <button 
+                          onClick={() => setTimeTravelDate(null)}
+                          className="text-[8px] font-bold text-amber-600 hover:text-amber-700 uppercase"
+                        >
+                          Limpar
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={timeTravelDate || ''}
+                        onChange={(e) => setTimeTravelDate(e.target.value || null)}
+                        className="flex-1 p-1.5 rounded border text-[10px] font-bold bg-transparent outline-none transition-all"
+                        style={{ 
+                          borderColor: timeTravelDate ? '#f59e0b' : theme.cardBorder,
+                          color: theme.text
+                        }}
+                      />
+                    </div>
+                    {timeTravelDate && (
+                      <div className="flex items-center gap-1 text-[8px] font-black text-amber-600 uppercase">
+                        <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
+                        📅 Dados até {formatBrazilDate(parseLocalDate(timeTravelDate), 'dd/MM/yyyy')}
+                      </div>
+                    )}
                   </div>
 
                   {/* Cabeçalho com Slider (Comum) */}
