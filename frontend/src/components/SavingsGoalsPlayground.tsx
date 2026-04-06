@@ -201,28 +201,57 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       // Cálculo de Saldos Diários Atuais para Comparação
       const dailyStart = isForward ? addDays(parseLocalDate(endDate), 1) : parseLocalDate(startDate);
       const dailyDaysCount = isForward ? projectionDays : (differenceInDays(parseLocalDate(endDate), parseLocalDate(startDate)) + 1);
-      const actualDailyBalances: Record<string, number> = {};
+      const actualDailyData: Record<string, { balance: number, revenues: number, expenses: number, divergingItems: string[] }> = {};
       let runningDailyBalance = isForward ? (actualNet - countdownSimExtra) : previousBalanceAdjusted;
 
       for (let i = 0; i < dailyDaysCount; i++) {
         const currentDay = addDays(dailyStart, i);
         const currentDayStr = format(currentDay, 'yyyy-MM-dd');
         
+        // Itens que divergem: Transações criadas APÓS a data de congelamento
+        const cutoff = new Date(timeTravelDate + 'T23:59:59');
+        const divergingTransactions = transactions.filter(t => {
+          const tDateStr = t.date.slice(0, 10);
+          const desc = t.description?.toLowerCase() || '';
+          const cat = t.category?.toLowerCase() || '';
+          const pm = t.paymentMethod?.toLowerCase() || '';
+          
+          return tDateStr === currentDayStr && 
+                 t.status === 'active' &&
+                 new Date(t.createdAt) > cutoff &&
+                 !desc.includes('vero') && !cat.includes('vero') && !pm.includes('vero') &&
+                 !desc.includes('flash') && !cat.includes('flash') && !pm.includes('flash') &&
+                 !(cat.includes('aporte') && !t.isPaid);
+        });
+
+        const divergingDescriptions = divergingTransactions.map(t => 
+          `${t.type === 'income' ? '[+]' : '[-]'} ${t.description || 'Sem descrição'} (${t.category}): ${formatCurrency(t.amount)}`
+        );
+
         const dayRevenues = transactions
           .filter(t => {
             const tDateStr = t.date.slice(0, 10);
+            const desc = t.description?.toLowerCase() || '';
+            const cat = t.category?.toLowerCase() || '';
+            const pm = t.paymentMethod?.toLowerCase() || '';
+            
             return t.type === 'income' && t.status === 'active' && tDateStr === currentDayStr &&
-                   !t.description?.toLowerCase().includes('vero') && !t.category?.toLowerCase().includes('vero') &&
-                   !t.description?.toLowerCase().includes('flash') && !t.category?.toLowerCase().includes('flash');
+                   !desc.includes('vero') && !cat.includes('vero') && !pm.includes('vero') &&
+                   !desc.includes('flash') && !cat.includes('flash') && !pm.includes('flash');
           })
           .reduce((sum, t) => sum + t.amount, 0);
 
         const dayExpenses = transactions
           .filter(t => {
             const tDateStr = t.date.slice(0, 10);
+            const cat = t.category?.toLowerCase() || '';
+            const pm = t.paymentMethod?.toLowerCase() || '';
+            const desc = t.description?.toLowerCase() || '';
+            
             return t.type === 'expense' && t.status === 'active' && tDateStr === currentDayStr &&
-                   !t.category?.toLowerCase().includes('aporte') &&
-                   !t.paymentMethod?.toLowerCase().includes('vero') && !t.paymentMethod?.toLowerCase().includes('flash');
+                   !cat.includes('aporte') &&
+                   !pm.includes('vero') && !desc.includes('vero') && !cat.includes('vero') &&
+                   !pm.includes('flash') && !desc.includes('flash') && !cat.includes('flash');
           })
           .reduce((sum, t) => sum + t.amount, 0);
 
@@ -235,7 +264,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
           .reduce((sum, t) => sum + t.amount, 0);
 
         runningDailyBalance = runningDailyBalance + dayRevenues - dayExpenses - dayContributions;
-        actualDailyBalances[currentDayStr] = runningDailyBalance;
+        actualDailyData[currentDayStr] = {
+          balance: runningDailyBalance,
+          revenues: dayRevenues,
+          expenses: dayExpenses + dayContributions,
+          divergingItems: divergingDescriptions
+        };
       }
 
       return { 
@@ -244,7 +278,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         realContributions,
         net: actualNet,
         goalAmount: actualGoalAmount,
-        dailyBalances: actualDailyBalances
+        dailyData: actualDailyData
       };
     })() : null;
 
@@ -402,27 +436,34 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             <table class="projection-table">
               <thead>
                 <tr>
-                  <th>DIA</th>
                   <th>DATA</th>
                   <th style="text-align: right">MOVIMENTAÇÃO</th>
+                  ${actualTotals ? '<th>ITEM QUE DIVERGE</th>' : ''}
                   <th style="text-align: right">SALDO ${actualTotals ? '(CONGELADO)' : 'ACUMULADO'}</th>
                   ${actualTotals ? '<th style="text-align: right">SALDO REAL (HOJE)</th><th style="text-align: right">DIFERENÇA</th>' : ''}
                 </tr>
               </thead>
               <tbody>
                 ${dailyData.dailyBalances.map((day: any) => {
-                  const actualDayBalance = actualTotals?.dailyBalances[day.date];
+                  const actualDayData = actualTotals?.dailyData[day.date];
+                  const actualDayBalance = actualDayData?.balance;
                   const diff = actualDayBalance !== undefined ? actualDayBalance - day.total : null;
                   
                   return `
                   <tr>
-                    <td style="font-weight: 700;">${day.label || '-'}</td>
                     <td class="date">${formatBrazilDate(parseLocalDate(day.date), 'dd/MM/yyyy')}</td>
                     <td style="text-align: right; font-size: 10px;">
                       ${day.revenues > 0 ? `<span style="color: #10b981">+${formatCurrency(day.revenues)}</span>` : ''}
                       ${day.expenses > 0 ? `<span style="color: #ef4444">-${formatCurrency(day.expenses)}</span>` : ''}
                       ${day.revenues === 0 && day.expenses === 0 ? '-' : ''}
                     </td>
+                    ${actualTotals ? `
+                      <td style="font-size: 9px; max-width: 150px; color: #64748b;">
+                        ${actualDayData && actualDayData.divergingItems.length > 0 
+                          ? actualDayData.divergingItems.join('<br>') 
+                          : '-'}
+                      </td>
+                    ` : ''}
                     <td class="amount" style="color: ${day.total < 0 ? '#ef4444' : (actualTotals ? '#d97706' : '#10b981')}">
                       ${formatCurrency(day.total)}
                       ${day.isNegative ? '<br><span style="font-size: 8px; text-transform: uppercase;">⚠️ Negativo</span>' : ''}
