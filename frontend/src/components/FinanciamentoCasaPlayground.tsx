@@ -181,30 +181,45 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
 
   // Consórcio Porto Data - Reconstrução do Histórico
   const consorcioData = useMemo(() => {
-    // 1. Dados Reais fornecidos pelo usuário (per carta)
-    const quitacaoPerCarta = CONSORCIO_CONFIG.quitacaoPorCarta; // R$ 204.446,37
+    // 1. Buscar transações reais do Consórcio Porto no banco
+    const portoTransactions = transactions.filter(t => 
+      t.description?.toLowerCase().includes('consórcio porto') &&
+      t.status !== 'deleted'
+    ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    // 2. Dados Reais fornecidos pelo usuário (per carta)
+    const quitacaoPerCarta = CONSORCIO_CONFIG.quitacaoPorCarta; // R$ 204.446,37 (89.91%)
     const percentRemaining = 89.91 / 100;
     
-    // O Valor Total do Contrato (incluindo taxas) é derivado do saldo de quitação e do percentual restante
+    // Valor 100% do contrato (incluindo taxas administrativas diluídas)
     const valorTotalContratoPerCarta = quitacaoPerCarta / percentRemaining;
     const valorTotalContratoTotal = valorTotalContratoPerCarta * 3;
     
-    // 2. Calcular o Total Pago (Fluxo de Caixa)
-    // De 16/11/2023 até 06/04/2026 = 29 meses
+    // 3. Calcular o Total Pago (Fluxo de Caixa e progresso)
     const today = new Date();
     const start = CONSORCIO_CONFIG.dataInicio;
-    const monthsDiff = (today.getFullYear() - start.getFullYear()) * 12 + today.getMonth() - start.getMonth();
-    const count = monthsDiff; // Parcelas já pagas até hoje
+    const monthsSinceStart = (today.getFullYear() - start.getFullYear()) * 12 + today.getMonth() - start.getMonth();
     
-    // Média entre a primeira parcela (920.54) e a atual (928.28)
+    // Consideramos os meses decorridos como parcelas pagas/vencidas
+    const count = monthsSinceStart; 
+    
+    // Estimativa de total pago em caixa (fluxo financeiro)
     const avgParcelaPerCarta = (920.54 + 928.28) / 2;
     const totalPaidReal = count * avgParcelaPerCarta * 3;
     
     const totalCredit = CONSORCIO_CONFIG.creditoPorCarta * 3;
     const totalQuitacao = quitacaoPerCarta * 3;
 
+    // Próximo vencimento (dia 16 do mês seguinte ao último pago)
     const nextVencimento = addMonths(start, count);
-    const isNextPendente = today.getMonth() === nextVencimento.getMonth() && today.getFullYear() === nextVencimento.getFullYear();
+    
+    // Verifica se a parcela do mês atual já foi paga nas transações
+    const hasPaidCurrentMonth = portoTransactions.some(t => {
+      const d = parseISO(t.date);
+      return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+    });
+
+    const isNextPendente = today >= nextVencimento && !hasPaidCurrentMonth;
 
     return {
       count,
@@ -290,7 +305,8 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
       economiaJuros,
       percentAtualConsorcio: consorcioData.percentPaidEstimated,
       mesesAteContemplacao: monthsToContemplacao,
-      consorcioRestante: 200 - consorcioData.count
+      consorcioRestante: 200 - consorcioData.count,
+      consorcioRestanteValor: (200 - consorcioData.count) * consorcioData.avgInstallment
     };
   }, [consorcioData, adjustedSacData, lastParcelaPaga, consorcioMinContemplacao, consorcioTaxaAdm, manualContemplacaoDate, taxaJurosMensal, totalParcelas, consorcioModoUso, consorcioIntervaloMeses]);
 
@@ -299,29 +315,40 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
     if (!consorcioData) return [];
     
     const installments = [];
-    const today = new Date();
     const startDate = CONSORCIO_CONFIG.dataInicio;
+    const totalCredit = consorcioData.totalCreditEstimated; // R$ 562.113,09
+    const count = consorcioData.count; // Meses decorridos
+    const currentPercent = CONSORCIO_CONFIG.percentualPagoAtual; // 10.09%
     
-    // Total de 200 meses
+    // Distribuição da redução do percentual para garantir que chegue a 100% (falta 0) em 200 meses
+    const pastReductionPerMonth = count > 0 ? currentPercent / count : 0;
+    const futureReductionPerMonth = (1 - currentPercent) / (200 - count);
+
     for (let i = 1; i <= 200; i++) {
       const vencimento = addMonths(startDate, i - 1);
-      const isPaid = vencimento < today && (vencimento.getMonth() !== today.getMonth() || vencimento.getFullYear() !== today.getFullYear());
-      const isCurrentMonth = vencimento.getMonth() === today.getMonth() && vencimento.getFullYear() === today.getFullYear();
+      const isPaid = i <= count;
+      const isCurrentMonth = i === count + 1;
       
-      // Lógica de valores (primeira parcela 920.54, atual 928.28)
-      // Vamos assumir uma progressão linear simples para o histórico e manter fixa a atual para o futuro
       let valorMensal = CONSORCIO_CONFIG.valorParcelaAtualTotal;
       if (i === 1) valorMensal = CONSORCIO_CONFIG.valorPrimeiraParcelaTotal;
-      else if (i < consorcioData.count) {
-        // Interpolar entre inicial e atual
-        const progress = (i - 1) / (consorcioData.count - 1);
+      else if (i < count) {
+        const progress = (i - 1) / (count - 1);
         valorMensal = CONSORCIO_CONFIG.valorPrimeiraParcelaTotal + (CONSORCIO_CONFIG.valorParcelaAtualTotal - CONSORCIO_CONFIG.valorPrimeiraParcelaTotal) * progress;
       }
+
+      // Percentual pago do PLANO
+      const percentPaidSoFar = i <= count 
+        ? i * pastReductionPerMonth 
+        : currentPercent + (i - count) * futureReductionPerMonth;
+      
+      // Quanto falta para atingir o CRÉDITO LÍQUIDO
+      const faltaParaCredito = totalCredit * (1 - Math.min(percentPaidSoFar, 1));
 
       installments.push({
         parcela: i,
         vencimento: format(vencimento, 'yyyy-MM-dd'),
         valor: valorMensal,
+        faltaParaCredito: faltaParaCredito,
         situacao: isPaid ? 'Paga' : (isCurrentMonth ? 'Aberta' : 'Projetada'),
         date: vencimento
       });
@@ -762,7 +789,8 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                             <div>
                               <span className="text-[10px] font-black uppercase opacity-50 block mb-1 text-accent">Restante Consórcio</span>
                               <span className="text-lg font-black">{relationData.consorcioRestante} parcelas</span>
-                              <p className="text-[9px] font-bold opacity-60">Fluxo de caixa Porto Seguro mantido</p>
+                              <p className="text-[9px] font-bold text-accent italic">Total a pagar: {formatCurrency(relationData.consorcioRestanteValor)}</p>
+                              <p className="text-[9px] font-bold opacity-60 mt-1">Fluxo de caixa Porto Seguro mantido</p>
                             </div>
                           </div>
                           
@@ -867,6 +895,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                       <th className="p-3 border-b font-bold uppercase tracking-wider">Vencimento</th>
                       <th className="p-3 border-b font-bold uppercase tracking-wider text-right text-accent">Valor (3 Cartas)</th>
                       <th className="p-3 border-b font-bold uppercase tracking-wider text-right">Valor Individual</th>
+                      <th className="p-3 border-b font-bold uppercase tracking-wider text-right text-primary">Falta p/ Crédito</th>
                       <th className="p-3 border-b font-bold uppercase tracking-wider text-center">Status</th>
                     </tr>
                   </thead>
@@ -877,6 +906,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                         <td className="p-3 opacity-70">{formatBrazilDate(d.vencimento)}</td>
                         <td className="p-3 text-right font-black text-accent">{formatCurrency(d.valor)}</td>
                         <td className="p-3 text-right opacity-60">{formatCurrency(d.valor / 3)}</td>
+                        <td className="p-3 text-right font-black text-primary">{formatCurrency(d.faltaParaCredito)}</td>
                         <td className="p-3 text-center">
                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
                             d.situacao === 'Paga' ? 'bg-green-500/20 text-green-600' : 
