@@ -36,12 +36,18 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
   const [editingGoal, setEditingGoal] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    targetAmount: 0,
     deadline: '',
   });
 
+  const initialTargetAmount = React.useMemo(() => {
+    if (editingGoal) {
+      return goals.find(g => g.id === editingGoal)?.targetAmount ?? 0;
+    }
+    return 0;
+  }, [editingGoal, goals]);
+
   const { inputProps: targetAmountInputProps, numericValue: targetAmountValue } = useCurrencyInput(
-    formData.targetAmount
+    initialTargetAmount
   );
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -122,18 +128,17 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
       onAdd(goalData);
     }
 
-    setFormData({ name: '', targetAmount: 0, deadline: '' });
+    setFormData({ name: '', deadline: '' });
     setShowForm(false);
   };
 
   const handleEdit = (goal: SavingsGoal) => {
     const deadline = goal.deadline ? new Date(goal.deadline).toISOString().split('T')[0] : '';
+    setEditingGoal(goal.id); // Set ID first to trigger initialTargetAmount update
     setFormData({
       name: goal.name,
-      targetAmount: goal.targetAmount,
       deadline: deadline,
     });
-    setEditingGoal(goal.id);
     setShowForm(true);
   };
 
@@ -243,7 +248,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 onClick={() => {
                   setShowForm(false);
                   setEditingGoal(null);
-                  setFormData({ name: '', targetAmount: 0, deadline: '' });
+                  setFormData({ name: '', deadline: '' });
                 }}
                 className="p-2 rounded-full transition-colors hover:bg-cardBorder"
               >
@@ -299,7 +304,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                   onClick={() => {
                     setShowForm(false);
                     setEditingGoal(null);
-                    setFormData({ name: '', targetAmount: 0, deadline: '' });
+                    setFormData({ name: '', deadline: '' });
                   }}
                   className="flex-1 px-4 py-3 rounded-xl transition-colors hover:bg-cardBorder"
                   style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
@@ -371,16 +376,22 @@ const GoalCard: React.FC<GoalCardProps> = ({
   const [addAmount, setAddAmount] = useState(0);
   const [contributionDate, setContributionDate] = useState(getBrazilDateString());
   const [editingContribution, setEditingContribution] = useState<string | null>(null);
-  const [editAmount, setEditAmount] = useState(0);
-  const [editDate, setEditDate] = useState('');
   const [monthlyYield, setMonthlyYield] = useState(1.0);
 
+  const initialAddAmount = React.useMemo(() => addAmount, [addAmount]);
   const { inputProps: addAmountInputProps, numericValue: addAmountValue } = useCurrencyInput(
-    addAmount
+    initialAddAmount
   );
 
+  const initialEditAmount = React.useMemo(() => {
+    if (editingContribution) {
+      return goal.contributions?.find(c => c.id === editingContribution)?.amount ?? 0;
+    }
+    return 0;
+  }, [editingContribution, goal.contributions]);
+
   const { inputProps: editAmountInputProps, numericValue: editAmountValue } = useCurrencyInput(
-    editAmount
+    initialEditAmount
   );
 
   const handleAddAmount = () => {
@@ -392,9 +403,10 @@ const GoalCard: React.FC<GoalCardProps> = ({
     setShowAddAmount(false);
   };
 
+  const [editDate, setEditDate] = useState('');
+
   const handleEditContribution = (contribution: SavingsContribution) => {
     setEditingContribution(contribution.id);
-    setEditAmount(contribution.amount);
     const formattedDate = contribution.date ? new Date(contribution.date).toISOString().split('T')[0] : '';
     setEditDate(formattedDate);
   };
@@ -410,7 +422,6 @@ const GoalCard: React.FC<GoalCardProps> = ({
     });
     
     setEditingContribution(null);
-    setEditAmount(0);
     setEditDate('');
   };
 
@@ -600,7 +611,6 @@ const GoalCard: React.FC<GoalCardProps> = ({
                       <button
                         onClick={() => {
                           setEditingContribution(null);
-                          setEditAmount(0);
                           setEditDate('');
                         }}
                         className="flex-1 px-3 py-1 rounded text-sm transition-colors hover:bg-cardBorder"

@@ -60,8 +60,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   const [currentSum, setCurrentSum] = useState(0);
   const [localError, setLocalError] = useState<string | null>(null);
 
+  const initialAmount = transaction?.amount ?? replicateTransaction?.amount ?? 0;
   const { inputProps: amountInputProps, numericValue: amountValue } = useCurrencyInput(
-    formData.amount
+    initialAmount
   );
 
   const { inputProps: calculatorInputProps, numericValue: calculatorAmountValue } = useCurrencyInput(
