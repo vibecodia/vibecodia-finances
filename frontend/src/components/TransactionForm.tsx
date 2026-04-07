@@ -5,6 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useCategories } from '../hooks/useCategories';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
+import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import { SavingsGoal, Transaction, PaymentMethod } from '../types';
 import { formatCurrency, getBrazilDateString } from '../utils/helpers';
 
@@ -58,6 +59,28 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   const [calculatorInput, setCalculatorInput] = useState('');
   const [currentSum, setCurrentSum] = useState(0);
   const [localError, setLocalError] = useState<string | null>(null);
+
+  const { inputProps: amountInputProps, numericValue: amountValue } = useCurrencyInput(
+    parseFloat(formData.amount || '0')
+  );
+
+  const { inputProps: calculatorInputProps, numericValue: calculatorAmountValue } = useCurrencyInput(
+    parseFloat(calculatorInput || '0')
+  );
+
+  useEffect(() => {
+    const stringAmount = amountValue === 0 ? '' : amountValue.toString();
+    if (stringAmount !== formData.amount) {
+      setFormData(prev => ({ ...prev, amount: stringAmount }));
+    }
+  }, [amountValue, formData.amount]);
+
+  useEffect(() => {
+    const stringAmount = calculatorAmountValue === 0 ? '' : calculatorAmountValue.toString();
+    if (stringAmount !== calculatorInput) {
+      setCalculatorInput(stringAmount);
+    }
+  }, [calculatorAmountValue, calculatorInput]);
 
   useEffect(() => {
     if (!submitError) return;
@@ -203,10 +226,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     }));
   };
 
-  const handleCalculatorInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCalculatorInput(e.target.value);
-  };
-
   const handleAddNumber = () => {
     const value = parseFloat(calculatorInput.replace(',', '.')); // Handle comma as decimal separator
     if (!isNaN(value)) {
@@ -257,12 +276,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
             </label>
             <div className="flex items-center gap-2">
               <input
-                type="number"
+                {...amountInputProps}
                 name="amount"
-                value={formData.amount}
-                onChange={handleChange}
-                step="0.01"
-                min="0"
                 placeholder="0,00"
                 className="w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
                 style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
@@ -283,11 +298,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
                 <h4 className="text-md font-semibold text-text mb-3">Calculadora de Soma</h4>
                 <div className="flex items-center gap-2 mb-3">
                   <input
-                    type="number"
-                    value={calculatorInput}
-                    onChange={handleCalculatorInputChange}
-                    step="0.01"
-                    min="0"
+                    {...calculatorInputProps}
                     placeholder="Adicionar valor"
                     className="w-full px-3 py-2 rounded-lg focus:ring-1 focus:ring-primary focus:border-transparent"
                     style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}

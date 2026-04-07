@@ -39,11 +39,17 @@ import {
   TrendingUp,
   PlusCircle
 } from 'lucide-react';
-import React, { useState, useMemo, useRef } from 'react';
+import React, { 
+  useState, 
+  useMemo, 
+  useRef, 
+  useEffect 
+} from 'react';
 import { Doughnut, Line, Pie, Scatter } from 'react-chartjs-2';
 
 import { useTheme } from '../contexts/ThemeContext';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
+import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import { SavingsGoal, Transaction } from '../types';
 import {
   formatCurrency,
@@ -113,6 +119,22 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const [timeTravelDate, setTimeTravelDate] = useState<string | null>(null);
   const [catastrophicAmount, setCatastrophicAmount] = useState<number>(0);
   const [catastrophicName, setCatastrophicName] = useState<string>('');
+
+  const { inputProps: countdownSimExtraInputProps, numericValue: countdownSimExtraValue } = useCurrencyInput(countdownSimExtra);
+  const { inputProps: catastrophicAmountInputProps, numericValue: catastrophicAmountValue } = useCurrencyInput(catastrophicAmount);
+
+  useEffect(() => {
+    if (countdownSimExtraValue !== countdownSimExtra) {
+      setCountdownSimExtra(countdownSimExtraValue);
+    }
+  }, [countdownSimExtraValue, countdownSimExtra]);
+
+  useEffect(() => {
+    if (catastrophicAmountValue !== catastrophicAmount) {
+      setCatastrophicAmount(catastrophicAmountValue);
+    }
+  }, [catastrophicAmountValue, catastrophicAmount]);
+
   const simulationRef = useRef<HTMLDivElement>(null);
 
   const handlePrintSimulation = () => {
@@ -542,6 +564,21 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const [simPeriod, setSimPeriod] = useState<number>(12);
   const [simMode, setSimMode] = useState<'investment' | 'goal_reach'>('investment');
   const [simTargetGoalId, setSimTargetGoalId] = useState<string | null>(null);
+
+  const { inputProps: simInitialAmountInputProps, numericValue: simInitialAmountValue } = useCurrencyInput(simInitialAmount);
+  const { inputProps: simMonthlyAmountInputProps, numericValue: simMonthlyAmountValue } = useCurrencyInput(simMonthlyAmount);
+
+  useEffect(() => {
+    if (simInitialAmountValue !== simInitialAmount) {
+      setSimInitialAmount(simInitialAmountValue);
+    }
+  }, [simInitialAmountValue, simInitialAmount]);
+
+  useEffect(() => {
+    if (simMonthlyAmountValue !== simMonthlyAmount) {
+      setSimMonthlyAmount(simMonthlyAmountValue);
+    }
+  }, [simMonthlyAmountValue, simMonthlyAmount]);
   const [startDate, setStartDate] = useState<string>(format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState<string>(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
   const [neededUnit, setNeededUnit] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
@@ -987,10 +1024,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
 
   const handleCountdownSimGoalChange = (goalId: string) => {
     setCountdownSimGoalId(goalId || null);
-  };
-
-  const handleCountdownSimExtraChange = (value: number) => {
-    setCountdownSimExtra(value || 0);
   };
 
   const handleRegisterAporte = async (transactionData: any) => {
@@ -1616,10 +1649,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         ))}
                       </select>
                       <input
-                        type={!isSimInputFocused && !countdownSimExtra ? "text" : "number"}
-                        inputMode="decimal"
-                        value={countdownSimExtra || ''}
-                        onChange={(e) => handleCountdownSimExtraChange(Number(e.target.value))}
+                        {...countdownSimExtraInputProps}
                         onFocus={() => setIsSimInputFocused(true)}
                         onBlur={() => setIsSimInputFocused(false)}
                         placeholder={!isSimInputFocused ? "simule agora aqui!" : "0"}
@@ -1810,9 +1840,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                           </label>
                           <div className="space-y-2">
                             <input
-                              type="number"
-                              value={catastrophicAmount || ''}
-                              onChange={(e) => setCatastrophicAmount(Number(e.target.value))}
+                              {...catastrophicAmountInputProps}
                               placeholder="Valor R$"
                               className="w-full p-2 rounded-lg border text-[10px] font-bold bg-transparent outline-none"
                               style={{ borderColor: catastrophicAmount > 0 ? '#ef4444' : theme.cardBorder, color: theme.text }}
@@ -1941,9 +1969,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                               <div className="space-y-2">
                                 <label className="text-[10px] font-bold uppercase opacity-50">Valor Inicial (R$)</label>
                                 <input 
-                                  type="number" 
-                                  value={simInitialAmount}
-                                  onChange={(e) => setSimInitialAmount(Number(e.target.value))}
+                                  {...simInitialAmountInputProps}
                                   className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
                                   style={{ borderColor: theme.cardBorder }}
                                 />
@@ -1951,9 +1977,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                               <div className="space-y-2">
                                 <label className="text-[10px] font-bold uppercase opacity-50">Aporte Mensal (R$)</label>
                                 <input 
-                                  type="number" 
-                                  value={simMonthlyAmount}
-                                  onChange={(e) => setSimMonthlyAmount(Number(e.target.value))}
+                                  {...simMonthlyAmountInputProps}
                                   className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
                                   style={{ borderColor: theme.cardBorder }}
                                 />

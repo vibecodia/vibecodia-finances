@@ -2,6 +2,7 @@ import { Target, Plus, Minus, Trash2, Edit3, Calendar, TrendingUp, History, X, C
 import React, { useState, useEffect } from 'react';
 
 import { useTheme } from '../contexts/ThemeContext';
+import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import { cn } from '../lib/utils';
 import { SavingsGoal, SavingsContribution } from '../types';
 import { formatCurrency, formatBrazilDate, getBrazilDateString } from '../utils/helpers';
@@ -38,6 +39,17 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
     targetAmount: '',
     deadline: '',
   });
+
+  const { inputProps: targetAmountInputProps, numericValue: targetAmountValue } = useCurrencyInput(
+    parseFloat(formData.targetAmount || '0')
+  );
+
+  useEffect(() => {
+    const stringAmount = targetAmountValue === 0 ? '' : targetAmountValue.toString();
+    if (stringAmount !== formData.targetAmount) {
+      setFormData(prev => ({ ...prev, targetAmount: stringAmount }));
+    }
+  }, [targetAmountValue, formData.targetAmount]);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [goalToDelete, setGoalToDelete] = useState<string | null>(null);
@@ -267,11 +279,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                   Valor da Meta (R$)
                 </label>
                 <input
-                  type="number"
-                  value={formData.targetAmount}
-                  onChange={(e) => setFormData(prev => ({ ...prev, targetAmount: e.target.value }))}
-                  step="0.01"
-                  min="0"
+                  {...targetAmountInputProps}
                   placeholder="0,00"
                   className="w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
                   style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
@@ -373,6 +381,28 @@ const GoalCard: React.FC<GoalCardProps> = ({
   const [editAmount, setEditAmount] = useState('');
   const [editDate, setEditDate] = useState('');
   const [monthlyYield, setMonthlyYield] = useState(1.0);
+
+  const { inputProps: addAmountInputProps, numericValue: addAmountValue } = useCurrencyInput(
+    parseFloat(addAmount || '0')
+  );
+
+  const { inputProps: editAmountInputProps, numericValue: editAmountValue } = useCurrencyInput(
+    parseFloat(editAmount || '0')
+  );
+
+  useEffect(() => {
+    const stringAmount = addAmountValue === 0 ? '' : addAmountValue.toString();
+    if (stringAmount !== addAmount) {
+      setAddAmount(stringAmount);
+    }
+  }, [addAmountValue, addAmount]);
+
+  useEffect(() => {
+    const stringAmount = editAmountValue === 0 ? '' : editAmountValue.toString();
+    if (stringAmount !== editAmount) {
+      setEditAmount(stringAmount);
+    }
+  }, [editAmountValue, editAmount]);
 
   const handleAddAmount = () => {
     const amount = parseFloat(addAmount);
@@ -571,11 +601,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
                   <div className="space-y-2">
                     <div className="flex gap-2">
                       <input
-                        type="number"
-                        value={editAmount}
-                        onChange={(e) => setEditAmount(e.target.value)}
-                        step="0.01"
-                        min="0"
+                        {...editAmountInputProps}
                         className="flex-1 px-2 py-1 rounded text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
                         style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
                       />
@@ -730,12 +756,8 @@ const GoalCard: React.FC<GoalCardProps> = ({
             <div className="space-y-3">
               <div className="flex gap-2">
                 <input
-                  type="number"
-                  value={addAmount}
-                  onChange={(e) => setAddAmount(e.target.value)}
+                  {...addAmountInputProps}
                   placeholder="Valor"
-                  step="0.01"
-                  min="0"
                   className="flex-1 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
                   style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
                 />

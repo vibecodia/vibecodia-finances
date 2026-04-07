@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useCurrencyInput } from '../hooks/useCurrencyInput';
 
 interface InitialBalanceModalProps {
   isOpen: boolean;
@@ -10,10 +11,18 @@ const InitialBalanceModal: React.FC<InitialBalanceModalProps> = ({ isOpen, onCon
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'income' | 'expense'>('income');
 
+  const { inputProps: amountInputProps, numericValue: amountValue } = useCurrencyInput(parseFloat(amount || '0'));
+
+  useEffect(() => {
+    const stringAmount = amountValue === 0 ? '' : amountValue.toString();
+    if (stringAmount !== amount) {
+      setAmount(stringAmount);
+    }
+  }, [amountValue, amount]);
+
   const handleConfirm = () => {
-    const numericAmount = parseFloat(amount);
-    if (!isNaN(numericAmount) && numericAmount > 0) {
-      onConfirm(numericAmount, type);
+    if (amountValue > 0) {
+      onConfirm(amountValue, type);
     }
   };
 
@@ -39,10 +48,8 @@ const InitialBalanceModal: React.FC<InitialBalanceModalProps> = ({ isOpen, onCon
           </label>
           <input
             id="initial-balance"
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="Ex: 1000.00"
+            {...amountInputProps}
+            placeholder="Ex: 1.000,00"
             className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           />
         </div>
