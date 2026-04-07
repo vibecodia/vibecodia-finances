@@ -43,7 +43,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     paymentMethod: PaymentMethod;
     notes: any;
   }>({
-    amount: 0,
+    amount: transaction?.amount ?? replicateTransaction?.amount ?? 0,
     description: '',
     category: '',
     savingsGoalId: '',
@@ -67,6 +67,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   const { inputProps: calculatorInputProps, numericValue: calculatorAmountValue } = useCurrencyInput(
     calculatorInput
   );
+
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, amount: amountValue }));
+  }, [amountValue]);
 
   useEffect(() => {
     if (!submitError) return;
