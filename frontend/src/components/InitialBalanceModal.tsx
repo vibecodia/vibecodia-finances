@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useCurrencyInput } from '../hooks/useCurrencyInput';
 
 interface InitialBalanceModalProps {
@@ -8,10 +8,10 @@ interface InitialBalanceModalProps {
 }
 
 const InitialBalanceModal: React.FC<InitialBalanceModalProps> = ({ isOpen, onConfirm, onClose }) => {
-  const [amount, setAmount] = useState('');
+  const [amount] = useState(0);
   const [type, setType] = useState<'income' | 'expense'>('income');
 
-  const { inputProps: amountInputProps, numericValue: amountValue } = useCurrencyInput(parseFloat(amount || '0'));
+  const { inputProps: amountInputProps, numericValue: amountValue } = useCurrencyInput(amount);
 
   const handleConfirm = () => {
     if (amountValue > 0) {

@@ -42,8 +42,7 @@ import {
 import React, { 
   useState, 
   useMemo, 
-  useRef, 
-  useEffect 
+  useRef 
 } from 'react';
 import { Doughnut, Line, Pie, Scatter } from 'react-chartjs-2';
 
@@ -117,7 +116,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const [projectionDays, setProjectionDays] = useState<number>(5);
   const [projectionView, setProjectionView] = useState<'current' | 'forward'>('current');
   const [timeTravelDate, setTimeTravelDate] = useState<string | null>(null);
-  const [catastrophicAmount, setCatastrophicAmount] = useState<number>(0);
+  const [catastrophicAmount] = useState<number>(0);
   const [catastrophicName, setCatastrophicName] = useState<string>('');
 
   const { inputProps: countdownSimExtraInputProps, numericValue: countdownSimExtraValue } = useCurrencyInput(countdownSimExtra);
@@ -547,7 +546,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
 
   // Simulator State
   const [simInitialAmount, setSimInitialAmount] = useState<number>(0);
-  const [simMonthlyAmount, setSimMonthlyAmount] = useState<number>(500);
+  const [simMonthlyAmount] = useState<number>(500);
   const [simInterestRate, setSimInterestRate] = useState<number>(1);
   const [simPeriod, setSimPeriod] = useState<number>(12);
   const [simMode, setSimMode] = useState<'investment' | 'goal_reach'>('investment');

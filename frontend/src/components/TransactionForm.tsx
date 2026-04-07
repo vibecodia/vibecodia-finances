@@ -32,7 +32,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   const submitErrorRef = useRef<HTMLDivElement | null>(null);
 
   const [formData, setFormData] = useState<{
-    amount: string;
+    amount: number;
     description: string;
     category: string;
     savingsGoalId: string;
@@ -43,7 +43,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     paymentMethod: PaymentMethod;
     notes: any;
   }>({
-    amount: '',
+    amount: 0,
     description: '',
     category: '',
     savingsGoalId: '',
@@ -56,16 +56,16 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   });
 
   const [showCalculator, setShowCalculator] = useState(false);
-  const [calculatorInput, setCalculatorInput] = useState('');
+  const [calculatorInput, setCalculatorInput] = useState(0);
   const [currentSum, setCurrentSum] = useState(0);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const { inputProps: amountInputProps, numericValue: amountValue } = useCurrencyInput(
-    parseFloat(formData.amount || '0')
+    formData.amount
   );
 
   const { inputProps: calculatorInputProps, numericValue: calculatorAmountValue } = useCurrencyInput(
-    parseFloat(calculatorInput || '0')
+    calculatorInput
   );
 
   useEffect(() => {
@@ -80,7 +80,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   useEffect(() => {
     if (transaction) {
       setFormData({
-        amount: transaction.amount.toString(),
+        amount: transaction.amount,
         description: transaction.description,
         category: transaction.category,
         savingsGoalId: transaction.savingsGoalId || '',
@@ -103,7 +103,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         : '';
 
       setFormData({
-        amount: replicateTransaction.amount.toString(),
+        amount: replicateTransaction.amount,
         description: replicateTransaction.description,
         category: replicateTransaction.category,
         savingsGoalId: replicateTransaction.savingsGoalId || '',
@@ -117,7 +117,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     } else {
       // Reset form for new transaction
       setFormData({
-        amount: '',
+        amount: 0,
         description: '',
         category: '',
         savingsGoalId: '',
@@ -129,7 +129,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         notes: '',
       });
       setCurrentSum(0);
-      setCalculatorInput('');
+      setCalculatorInput(0);
     }
   }, [transaction, replicateTransaction, type, defaultPaymentMethod]);
 
@@ -192,7 +192,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     setFormData(prev => ({
       ...prev,
       description: data.description || prev.description,
-      amount: data.amount ? data.amount.toString() : prev.amount,
+      amount: data.amount ? data.amount : prev.amount,
       dueDate: data.date || prev.dueDate,
       date: data.date || prev.date,
       category: data.category || prev.category,
@@ -212,17 +212,16 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   };
 
   const handleAddNumber = () => {
-    const value = parseFloat(calculatorInput.replace(',', '.')); // Handle comma as decimal separator
-    if (!isNaN(value)) {
-      setCurrentSum(prevSum => prevSum + value);
-      setCalculatorInput('');
+    if (calculatorAmountValue > 0) {
+      setCurrentSum(prevSum => prevSum + calculatorAmountValue);
+      setCalculatorInput(0);
     }
   };
 
   const handleApplyCalculation = () => {
-    setFormData(prev => ({ ...prev, amount: currentSum.toFixed(2) }));
+    setFormData(prev => ({ ...prev, amount: currentSum }));
     setCurrentSum(0);
-    setCalculatorInput('');
+    setCalculatorInput(0);
     setShowCalculator(false);
   };
 

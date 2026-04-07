@@ -36,12 +36,12 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
   const [editingGoal, setEditingGoal] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    targetAmount: '',
+    targetAmount: 0,
     deadline: '',
   });
 
   const { inputProps: targetAmountInputProps, numericValue: targetAmountValue } = useCurrencyInput(
-    parseFloat(formData.targetAmount || '0')
+    formData.targetAmount
   );
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -122,7 +122,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
       onAdd(goalData);
     }
 
-    setFormData({ name: '', targetAmount: '', deadline: '' });
+    setFormData({ name: '', targetAmount: 0, deadline: '' });
     setShowForm(false);
   };
 
@@ -130,7 +130,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
     const deadline = goal.deadline ? new Date(goal.deadline).toISOString().split('T')[0] : '';
     setFormData({
       name: goal.name,
-      targetAmount: goal.targetAmount.toString(),
+      targetAmount: goal.targetAmount,
       deadline: deadline,
     });
     setEditingGoal(goal.id);
@@ -243,7 +243,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 onClick={() => {
                   setShowForm(false);
                   setEditingGoal(null);
-                  setFormData({ name: '', targetAmount: '', deadline: '' });
+                  setFormData({ name: '', targetAmount: 0, deadline: '' });
                 }}
                 className="p-2 rounded-full transition-colors hover:bg-cardBorder"
               >
@@ -299,7 +299,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                   onClick={() => {
                     setShowForm(false);
                     setEditingGoal(null);
-                    setFormData({ name: '', targetAmount: '', deadline: '' });
+                    setFormData({ name: '', targetAmount: 0, deadline: '' });
                   }}
                   className="flex-1 px-4 py-3 rounded-xl transition-colors hover:bg-cardBorder"
                   style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
@@ -368,33 +368,33 @@ const GoalCard: React.FC<GoalCardProps> = ({
   const { theme } = useTheme();
   const [showAddAmount, setShowAddAmount] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [addAmount, setAddAmount] = useState('');
+  const [addAmount, setAddAmount] = useState(0);
   const [contributionDate, setContributionDate] = useState(getBrazilDateString());
   const [editingContribution, setEditingContribution] = useState<string | null>(null);
-  const [editAmount, setEditAmount] = useState('');
+  const [editAmount, setEditAmount] = useState(0);
   const [editDate, setEditDate] = useState('');
   const [monthlyYield, setMonthlyYield] = useState(1.0);
 
   const { inputProps: addAmountInputProps, numericValue: addAmountValue } = useCurrencyInput(
-    parseFloat(addAmount || '0')
+    addAmount
   );
 
   const { inputProps: editAmountInputProps, numericValue: editAmountValue } = useCurrencyInput(
-    parseFloat(editAmount || '0')
+    editAmount
   );
 
   const handleAddAmount = () => {
     if (addAmountValue <= 0) return;
     
     onAddContribution(goal.id, addAmountValue, contributionDate);
-    setAddAmount('');
+    setAddAmount(0);
     setContributionDate(getBrazilDateString());
     setShowAddAmount(false);
   };
 
   const handleEditContribution = (contribution: SavingsContribution) => {
     setEditingContribution(contribution.id);
-    setEditAmount(contribution.amount.toString());
+    setEditAmount(contribution.amount);
     const formattedDate = contribution.date ? new Date(contribution.date).toISOString().split('T')[0] : '';
     setEditDate(formattedDate);
   };
@@ -410,7 +410,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
     });
     
     setEditingContribution(null);
-    setEditAmount('');
+    setEditAmount(0);
     setEditDate('');
   };
 
@@ -600,7 +600,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
                       <button
                         onClick={() => {
                           setEditingContribution(null);
-                          setEditAmount('');
+                          setEditAmount(0);
                           setEditDate('');
                         }}
                         className="flex-1 px-3 py-1 rounded text-sm transition-colors hover:bg-cardBorder"
@@ -740,7 +740,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
                 />
                 <button
                   onClick={handleAddAmount}
-                  disabled={!addAmount || parseFloat(addAmount) <= 0}
+                  disabled={addAmount <= 0}
                   className="px-4 py-2 text-white rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm flex-shrink-0 bg-primary hover:bg-secondary"
                 >
                   +
@@ -748,7 +748,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
                 <button
                   onClick={() => {
                     setShowAddAmount(false);
-                    setAddAmount('');
+                    setAddAmount(0);
                     setContributionDate(getBrazilDateString());
                   }}
                   className="px-4 py-2 rounded-lg text-sm flex-shrink-0 transition-colors hover:bg-cardBorder"
