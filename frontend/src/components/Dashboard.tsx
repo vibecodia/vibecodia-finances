@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 
 import familyBg from '../assets/family-bg.jpg';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLocalStorage } from '../hooks/trello/useLocalStorage';
 import useWindowSize from '../hooks/useWindowSize';
 import { Transaction, SavingsGoal } from '../types';
 import { calculateBalances } from '../utils/balanceCalculations';
@@ -154,7 +155,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   const [showConfetti, setShowConfetti] = useState(false);
   const [isPulsing, setIsPulsing] = useState(false);
   const [currentMonth, setCurrentMonth] = useState<Date>(getCurrentBrazilDate());
-  const [showBalance, setShowBalance] = useState(true);
+  const [showBalance, setShowBalance] = useLocalStorage('dashboard_show_balance', true);
   const { theme, setThemeMonth } = useTheme();
 
   useEffect(() => {
