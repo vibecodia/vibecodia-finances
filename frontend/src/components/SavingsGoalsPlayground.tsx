@@ -882,7 +882,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         revenues: dayRevenues,
         expenses: dayExpenses + dayContributions + (isLastDay ? (countdownSimExtra + catastrophicAmount) : 0),
         previousBalance: runningBalance - dayRevenues + (dayExpenses + dayContributions + (isLastDay ? (countdownSimExtra + catastrophicAmount) : 0)),
-        isNegative: runningBalance < 0
+        isNegative: runningBalance < 0,
+        openingBalance: i === 0 ? monthlyTotals.previousMonthAdjustedBalance : undefined
       });
     }
 
@@ -903,6 +904,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       previousBalance: number;
       isNegative: boolean;
       negativeDayIndex: number;
+      openingBalance?: number;
     }[] = [];
     let runningBalance = baseBalance;
     let negativeCount = 0;
@@ -957,7 +959,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         expenses: dayExpenses + dayContributions,
         previousBalance: runningBalance - dayRevenues + (dayExpenses + dayContributions),
         isNegative: runningBalance < 0,
-        negativeDayIndex: runningBalance < 0 ? negativeCount : 0
+        negativeDayIndex: runningBalance < 0 ? negativeCount : 0,
+        openingBalance: i === 1 ? baseBalance : undefined
       });
     }
 
@@ -1849,10 +1852,15 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                 {formatCurrency(day.total)}
                               </span>
                               {(index === 0 || day.revenues > 0 || day.expenses > 0) && (
-                                <div className="text-[10px] opacity-50 font-mono">
-                                  {day.revenues > 0 && <span className="text-green-500">+{formatCurrency(day.revenues)}</span>}
-                                  {day.revenues > 0 && day.expenses > 0 && <span> </span>}
-                                  {day.expenses > 0 && <span className="text-red-500">-{formatCurrency(day.expenses)}</span>}
+                                <div className="text-[10px] opacity-50 font-mono flex flex-col items-end gap-0.5">
+                                  {index === 0 && day.openingBalance !== undefined && (
+                                    <span className="text-blue-400 font-bold">{formatCurrency(day.openingBalance)}</span>
+                                  )}
+                                  <div>
+                                    {day.revenues > 0 && <span className="text-green-500">+{formatCurrency(day.revenues)}</span>}
+                                    {day.revenues > 0 && day.expenses > 0 && <span> </span>}
+                                    {day.expenses > 0 && <span className="text-red-500">-{formatCurrency(day.expenses)}</span>}
+                                  </div>
                                 </div>
                               )}
                             </div>
