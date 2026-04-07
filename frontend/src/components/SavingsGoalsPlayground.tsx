@@ -123,18 +123,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const { inputProps: countdownSimExtraInputProps, numericValue: countdownSimExtraValue } = useCurrencyInput(countdownSimExtra);
   const { inputProps: catastrophicAmountInputProps, numericValue: catastrophicAmountValue } = useCurrencyInput(catastrophicAmount);
 
-  useEffect(() => {
-    if (countdownSimExtraValue !== countdownSimExtra) {
-      setCountdownSimExtra(countdownSimExtraValue);
-    }
-  }, [countdownSimExtraValue, countdownSimExtra]);
-
-  useEffect(() => {
-    if (catastrophicAmountValue !== catastrophicAmount) {
-      setCatastrophicAmount(catastrophicAmountValue);
-    }
-  }, [catastrophicAmountValue, catastrophicAmount]);
-
   const simulationRef = useRef<HTMLDivElement>(null);
 
   const handlePrintSimulation = () => {
@@ -217,14 +205,14 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         })
         .reduce((sum, t) => sum + t.amount, 0);
 
-      const actualNet = previousBalanceAdjusted + revenues - expenses - realContributions - catastrophicAmount;
+      const actualNet = previousBalanceAdjusted + revenues - expenses - realContributions - catastrophicAmountValue;
       const actualGoalAmount = countdownSimGoal ? countdownSimGoal.currentAmount : 0;
 
       // Cálculo de Saldos Diários Atuais para Comparação
       const dailyStart = isForward ? addDays(parseLocalDate(endDate), 1) : parseLocalDate(startDate);
       const dailyDaysCount = isForward ? projectionDays : (differenceInDays(parseLocalDate(endDate), parseLocalDate(startDate)) + 1);
       const actualDailyData: Record<string, { balance: number, revenues: number, expenses: number, divergingItems: string[] }> = {};
-      let runningDailyBalance = isForward ? (actualNet - countdownSimExtra) : previousBalanceAdjusted;
+      let runningDailyBalance = isForward ? (actualNet - countdownSimExtraValue) : previousBalanceAdjusted;
 
       for (let i = 0; i < dailyDaysCount; i++) {
         const currentDay = addDays(dailyStart, i);
@@ -404,11 +392,11 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               <div class="comp-card">
                 <div class="comp-label">Progresso da Meta</div>
                 <div class="comp-values">
-                  <div class="comp-item"><span>Valor (Cong.):</span> <span class="frozen">${formatCurrency(countdownSimGoal ? (countdownSimGoal.currentAmount + countdownSimExtra) : 0)}</span></div>
+                  <div class="comp-item"><span>Valor (Cong.):</span> <span class="frozen">${formatCurrency(countdownSimGoal ? (countdownSimGoal.currentAmount + countdownSimExtraValue) : 0)}</span></div>
                   <div class="comp-item"><span>Valor (Atual):</span> <span class="actual">${formatCurrency(actualTotals.goalAmount)}</span></div>
                   <div style="margin-top: 8px; text-align: right;">
-                    <span class="comp-diff ${(actualTotals.goalAmount - (countdownSimGoal ? (countdownSimGoal.currentAmount + countdownSimExtra) : 0)) >= 0 ? 'diff-pos' : 'diff-neg'}">
-                      ${(actualTotals.goalAmount - (countdownSimGoal ? (countdownSimGoal.currentAmount + countdownSimExtra) : 0)) >= 0 ? '▲' : '▼'} ${formatCurrency(Math.abs(actualTotals.goalAmount - (countdownSimGoal ? (countdownSimGoal.currentAmount + countdownSimExtra) : 0)))}
+                    <span class="comp-diff ${(actualTotals.goalAmount - (countdownSimGoal ? (countdownSimGoal.currentAmount + countdownSimExtraValue) : 0)) >= 0 ? 'diff-pos' : 'diff-neg'}">
+                      ${(actualTotals.goalAmount - (countdownSimGoal ? (countdownSimGoal.currentAmount + countdownSimExtraValue) : 0)) >= 0 ? '▲' : '▼'} ${formatCurrency(Math.abs(actualTotals.goalAmount - (countdownSimGoal ? (countdownSimGoal.currentAmount + countdownSimExtraValue) : 0)))}
                     </span>
                   </div>
                 </div>
@@ -420,10 +408,10 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             <div class="card" ${timeTravelDate ? 'style="border-color: #f59e0b; background: #fffbeb;"' : ''}>
               ${timeTravelDate ? '<div style="position: absolute; top: 0; right: 0; background: #f59e0b; color: white; font-size: 7px; font-weight: 900; padding: 2px 8px; border-bottom-left-radius: 8px; text-transform: uppercase;">Congelado</div>' : ''}
               <div class="card-title">Impacto na Meta</div>
-              <div class="value" ${timeTravelDate ? 'style="color: #d97706"' : ''}>${formatCurrency(countdownSimGoal ? countdownSimGoal.currentAmount + countdownSimExtra : 0)}</div>
+              <div class="value" ${timeTravelDate ? 'style="color: #d97706"' : ''}>${formatCurrency(countdownSimGoal ? countdownSimGoal.currentAmount + countdownSimExtraValue : 0)}</div>
               <div class="sub-value">Alvo: ${formatCurrency(countdownSimGoal?.targetAmount || 0)}</div>
               <div class="sub-value" style="color: #10b981; font-weight: 700;">
-                ${countdownSimIsGoalAchieved ? '✅ Meta Atingida!' : `Restam ${formatCurrency((countdownSimGoal?.targetAmount || 0) - (countdownSimGoal ? countdownSimGoal.currentAmount + countdownSimExtra : 0))}`}
+                ${countdownSimIsGoalAchieved ? '✅ Meta Atingida!' : `Restam ${formatCurrency((countdownSimGoal?.targetAmount || 0) - (countdownSimGoal ? countdownSimGoal.currentAmount + countdownSimExtraValue : 0))}`}
               </div>
             </div>
             <div class="card" ${timeTravelDate ? 'style="border-color: #f59e0b; background: #fffbeb;"' : ''}>
@@ -434,8 +422,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                 Saldo Base: ${formatCurrency(isForward ? nextDaysData.baseBalance : monthlyTotals.previousMonthAdjustedBalance)}<br>
                 + Receitas: ${formatCurrency(isForward ? nextDaysData.revenues : monthlyTotals.revenues)}<br>
                 - Despesas: ${formatCurrency(isForward ? nextDaysData.expenses : (monthlyTotals.expenses + monthlyTotals.realContributions))}<br>
-                - Aportes Simulados: ${formatCurrency(countdownSimExtra)}
-                ${catastrophicAmount > 0 ? `<br>- Extra (${catastrophicName || 'Cenário Pessimista'}): ${formatCurrency(catastrophicAmount)}` : ''}
+                - Aportes Simulados: ${formatCurrency(countdownSimExtraValue)}
+                ${catastrophicAmountValue > 0 ? `<br>- Extra (${catastrophicName || 'Cenário Pessimista'}): ${formatCurrency(catastrophicAmountValue)}` : ''}
               </div>
             </div>
           </div>
@@ -446,9 +434,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             </div>
           ` : ''}
 
-          ${catastrophicAmount > 0 ? `
+          ${catastrophicAmountValue > 0 ? `
             <div class="pessimist-note">
-              <strong>Cenário Pessimista Ativo:</strong> Foi simulado um gasto extra de <strong>${formatCurrency(catastrophicAmount)}</strong> 
+              <strong>Cenário Pessimista Ativo:</strong> Foi simulado um gasto extra de <strong>${formatCurrency(catastrophicAmountValue)}</strong> 
               ${catastrophicName ? ` para "<em>${catastrophicName}</em>"` : ''}.
             </div>
           ` : ''}
@@ -568,18 +556,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const { inputProps: simInitialAmountInputProps, numericValue: simInitialAmountValue } = useCurrencyInput(simInitialAmount);
   const { inputProps: simMonthlyAmountInputProps, numericValue: simMonthlyAmountValue } = useCurrencyInput(simMonthlyAmount);
 
-  useEffect(() => {
-    if (simInitialAmountValue !== simInitialAmount) {
-      setSimInitialAmount(simInitialAmountValue);
-    }
-  }, [simInitialAmountValue, simInitialAmount]);
-
-  useEffect(() => {
-    if (simMonthlyAmountValue !== simMonthlyAmount) {
-      setSimMonthlyAmount(simMonthlyAmountValue);
-    }
-  }, [simMonthlyAmountValue, simMonthlyAmount]);
   const [startDate, setStartDate] = useState<string>(format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
+
   const [endDate, setEndDate] = useState<string>(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
   const [neededUnit, setNeededUnit] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
   const [daysUnit, setDaysUnit] = useState<'days' | 'weeks' | 'months'>('months');
@@ -851,9 +829,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       expenses, 
       realContributions,
       previousMonthAdjustedBalance: previousBalanceAdjusted,
-      net: previousBalanceAdjusted + revenues - expenses - realContributions - catastrophicAmount
+      net: previousBalanceAdjusted + revenues - expenses - realContributions - catastrophicAmountValue
     };
-  }, [transactions, savingsGoals, activeGoals, startDate, endDate, catastrophicAmount, timeTravelDate]);
+  }, [transactions, savingsGoals, activeGoals, startDate, endDate, catastrophicAmountValue, timeTravelDate]);
 
   // Detalhamento diário para o período filtrado (Mês Atual)
   const currentPeriodDailyData = useMemo(() => {
@@ -906,7 +884,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       // Aplicar o aporte simulado e o gasto extra no último dia do período para conciliar com o saldo final
       const isLastDay = i === daysCount - 1;
       if (isLastDay) {
-        runningBalance = runningBalance - countdownSimExtra - catastrophicAmount;
+        runningBalance = runningBalance - countdownSimExtraValue - catastrophicAmountValue;
       }
 
       if (runningBalance < 0) {
@@ -917,19 +895,19 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         date: currentDayStr,
         total: runningBalance,
         revenues: dayRevenues,
-        expenses: dayExpenses + dayContributions + (isLastDay ? (countdownSimExtra + catastrophicAmount) : 0),
-        previousBalance: runningBalance - dayRevenues + (dayExpenses + dayContributions + (isLastDay ? (countdownSimExtra + catastrophicAmount) : 0)),
+        expenses: dayExpenses + dayContributions + (isLastDay ? (countdownSimExtraValue + catastrophicAmountValue) : 0),
+        previousBalance: runningBalance - dayRevenues + (dayExpenses + dayContributions + (isLastDay ? (countdownSimExtraValue + catastrophicAmountValue) : 0)),
         isNegative: runningBalance < 0
       });
     }
 
     return { dailyBalances, negativeCount };
-  }, [transactions, startDate, endDate, monthlyTotals.previousMonthAdjustedBalance, countdownSimExtra, catastrophicAmount, timeTravelDate]);
+  }, [transactions, startDate, endDate, monthlyTotals.previousMonthAdjustedBalance, countdownSimExtraValue, catastrophicAmountValue, timeTravelDate]);
 
   // Cálculo para "Disponível próximos X dias" (após a data final do filtro) com detalhamento diário
   const nextDaysData = useMemo(() => {
     const filterEndDate = parseLocalDate(endDate);
-    const baseBalance = monthlyTotals.net - countdownSimExtra;
+    const baseBalance = monthlyTotals.net - countdownSimExtraValue;
     
     const dailyBalances: { 
       date: string; 
@@ -1006,7 +984,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       revenues: dailyBalances.reduce((sum, d) => sum + d.revenues, 0),
       expenses: dailyBalances.reduce((sum, d) => sum + d.expenses, 0)
     };
-  }, [transactions, endDate, monthlyTotals, countdownSimExtra, projectionDays, timeTravelDate]);
+  }, [transactions, endDate, monthlyTotals, countdownSimExtraValue, projectionDays, timeTravelDate]);
 
   // Limite de projeção: fim do mês seguinte ao filtro
   const maxProjectionDays = useMemo(() => {
@@ -1043,14 +1021,14 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   // Simulator Calculations
   const simulationResults = useMemo(() => {
     const data: { month: number; total: number; invested: number; interest: number }[] = [];
-    let currentTotal = simInitialAmount;
-    let currentInvested = simInitialAmount;
+    let currentTotal = simInitialAmountValue;
+    let currentInvested = simInitialAmountValue;
 
     for (let i = 0; i <= simPeriod; i++) {
       if (i > 0) {
         const interest = currentTotal * (simInterestRate / 100);
-        currentTotal += interest + simMonthlyAmount;
-        currentInvested += simMonthlyAmount;
+        currentTotal += interest + simMonthlyAmountValue;
+        currentInvested += simMonthlyAmountValue;
       }
       data.push({
         month: i,
@@ -1060,7 +1038,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       });
     }
     return data;
-  }, [simInitialAmount, simMonthlyAmount, simInterestRate, simPeriod]);
+  }, [simInitialAmountValue, simMonthlyAmountValue, simInterestRate, simPeriod]);
 
   const simChartData = useMemo(() => ({
     labels: simulationResults.map(r => `Mês ${r.month}`),
@@ -1280,7 +1258,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         monthlyNeeded = remaining / monthsLeft;
       }
 
-      const simulatedExtra = countdownSimGoalIdEffective && goal.id === countdownSimGoalIdEffective ? countdownSimExtra : 0;
+      const simulatedExtra = countdownSimGoalIdEffective && goal.id === countdownSimGoalIdEffective ? countdownSimExtraValue : 0;
       const remainingAfterSimulated = Math.max(0, remaining - simulatedExtra);
       const monthsWithSimulated = monthlyNeeded > 0 ? Math.ceil(remainingAfterSimulated / monthlyNeeded) : null;
       const monthsSaved = monthlyNeeded > 0 && simulatedExtra > 0 
@@ -1300,7 +1278,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         availableEndOfMonth: monthlyTotals.net - simulatedExtra,
       };
     });
-  }, [savingsGoals, countdownSimExtra, countdownSimGoalIdEffective, monthlyTotals]);
+  }, [savingsGoals, countdownSimExtraValue, countdownSimGoalIdEffective, monthlyTotals]);
 
   const countdownSimGoal = useMemo(() => {
     if (!countdownSimGoalIdEffective) return null;
@@ -1310,17 +1288,17 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   // Se o aporte form for fechado ou o valor mudar, resetar o estado de aporte se necessário
   // (Opcional, mas ajuda a manter a consistência)
 
-  const countdownSimAvailableEndOfMonth = monthlyTotals.net - countdownSimExtra;
+  const countdownSimAvailableEndOfMonth = monthlyTotals.net - countdownSimExtraValue;
   const countdownSimAvailableColorClass =
     countdownSimAvailableEndOfMonth < 0 ? 'text-red-500' :
     countdownSimAvailableEndOfMonth < 500 ? 'text-yellow-500' :
     'text-green-500';
 
   const isSimExceedsTarget = useMemo(() => {
-    if (!countdownSimGoal || !countdownSimExtra) return false;
+    if (!countdownSimGoal || !countdownSimExtraValue) return false;
     const remaining = countdownSimGoal.targetAmount - countdownSimGoal.currentAmount;
-    return countdownSimExtra > (remaining + 0.01);
-  }, [countdownSimGoal, countdownSimExtra]);
+    return countdownSimExtraValue > (remaining + 0.01);
+  }, [countdownSimGoal, countdownSimExtraValue]);
 
   const countdownSimIsGoalAchieved = countdownSimGoal ? countdownSimGoal.remainingAfterSimulated <= 0 : false;
 
@@ -1628,7 +1606,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                     <p className="text-[10px] opacity-50 mt-1">
                       {countdownSimGoal ? (
                         <>
-                          {countdownSimExtra > 0 ? 'Atual com o aporte simulado' : 'Atual'}: <span className="font-mono font-bold">{formatCurrency(countdownSimGoal.currentAmount + countdownSimExtra)}</span>{' '}
+                          {countdownSimExtraValue > 0 ? 'Atual com o aporte simulado' : 'Atual'}: <span className="font-mono font-bold">{formatCurrency(countdownSimGoal.currentAmount + countdownSimExtraValue)}</span>{' '}
                           · Alvo: <span className="font-mono font-bold">{formatCurrency(countdownSimGoal.targetAmount)}</span>
                         </>
                       ) : (
@@ -1654,12 +1632,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         onBlur={() => setIsSimInputFocused(false)}
                         placeholder={!isSimInputFocused ? "simule agora aqui!" : "0"}
                         className={`w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none text-right transition-all duration-300 ${
-                          !isSimInputFocused && !countdownSimExtra ? 'animate-pulse-border' : ''
+                          !isSimInputFocused && !countdownSimExtraValue ? 'animate-pulse-border' : ''
                         }`}
                         style={{ 
-                          borderColor: countdownSimExtra > 0 ? '#10b981' : theme.cardBorder, 
+                          borderColor: countdownSimExtraValue > 0 ? '#10b981' : theme.cardBorder, 
                           color: theme.text,
-                          boxShadow: countdownSimExtra > 0 ? '0 0 15px rgba(16, 185, 129, 0.2)' : undefined
+                          boxShadow: countdownSimExtraValue > 0 ? '0 0 15px rgba(16, 185, 129, 0.2)' : undefined
                         }}
                         disabled={!countdownSimGoalIdEffective}
                       />
@@ -1669,7 +1647,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                   <div className="rounded-xl border p-4 bg-cardBorder/10 flex flex-col flex-1" style={{ borderColor: theme.cardBorder }}>
                     <p className="text-[10px] font-bold uppercase opacity-50 mb-1">Impacto</p>
                     <div className="mt-auto">
-                      {countdownSimGoal && countdownSimExtra > 0 ? (
+                      {countdownSimGoal && countdownSimExtraValue > 0 ? (
                         countdownSimIsGoalAchieved ? (
                           <p className="text-sm font-black text-green-500">✅ Meta atingida!</p>
                         ) : (
@@ -1693,7 +1671,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                 <div
                   className="lg:col-span-3 rounded-xl border p-4 bg-cardBorder/10 flex flex-col h-full"
                   style={{ borderColor: theme.cardBorder }}
-                  title={`Cálculo:\nSaldo Anterior: ${formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}\nReceitas (+): ${formatCurrency(monthlyTotals.revenues)}\nDespesas (-): ${formatCurrency(monthlyTotals.expenses)}\nAportes Reais (-): ${formatCurrency(monthlyTotals.realContributions)}\nAporte Simulado (-): ${formatCurrency(countdownSimExtra)}\nGasto Extra (Catastrófico) (-): ${formatCurrency(catastrophicAmount)}\nTotal: ${formatCurrency(countdownSimAvailableEndOfMonth)}`}
+                  title={`Cálculo:\nSaldo Anterior: ${formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}\nReceitas (+): ${formatCurrency(monthlyTotals.revenues)}\nDespesas (-): ${formatCurrency(monthlyTotals.expenses)}\nAportes Reais (-): ${formatCurrency(monthlyTotals.realContributions)}\nAporte Simulado (-): ${formatCurrency(countdownSimExtraValue)}\nGasto Extra (Catastrófico) (-): ${formatCurrency(catastrophicAmountValue)}\nTotal: ${formatCurrency(countdownSimAvailableEndOfMonth)}`}
                 >
                   <p className="text-[10px] font-bold uppercase opacity-50 mb-1">
                     Filtro: {formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} - {formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}
@@ -1727,21 +1705,21 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                       <span className="text-red-500">- Aportes Reais:</span>
                       <span className="font-bold">{formatCurrency(monthlyTotals.realContributions)}</span>
                     </div>
-                    {countdownSimExtra > 0 && (
+                    {countdownSimExtraValue > 0 && (
                       <div className="flex justify-between border-b border-cardBorder/20 pb-1 text-primary">
                         <span>- Aporte Simulado:</span>
-                        <span className="font-bold">{formatCurrency(countdownSimExtra)}</span>
+                        <span className="font-bold">{formatCurrency(countdownSimExtraValue)}</span>
                       </div>
                     )}
-                    {catastrophicAmount > 0 && (
+                    {catastrophicAmountValue > 0 && (
                       <div className="flex justify-between border-b border-cardBorder/20 pb-1 text-accent">
                         <span>- Gastos Extra:</span>
-                        <span className="font-bold">{formatCurrency(catastrophicAmount)}</span>
+                        <span className="font-bold">{formatCurrency(catastrophicAmountValue)}</span>
                       </div>
                     )}
                   </div>
 
-                  {countdownSimExtra > 0 && onAddTransaction && (
+                  {countdownSimExtraValue > 0 && onAddTransaction && (
                     <div className="mt-auto pt-4 flex flex-col items-stretch gap-1">
                       <button
                         onClick={() => !isSimExceedsTarget && setShowAporteForm(true)}
@@ -1843,7 +1821,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                               {...catastrophicAmountInputProps}
                               placeholder="Valor R$"
                               className="w-full p-2 rounded-lg border text-[10px] font-bold bg-transparent outline-none"
-                              style={{ borderColor: catastrophicAmount > 0 ? '#ef4444' : theme.cardBorder, color: theme.text }}
+                              style={{ borderColor: catastrophicAmountValue > 0 ? '#ef4444' : theme.cardBorder, color: theme.text }}
                             />
                             <input
                               type="text"
@@ -1920,7 +1898,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               submitError={formError}
               replicateTransaction={{
                 id: 'simulated',
-                amount: countdownSimExtra,
+                amount: countdownSimExtraValue,
                 description: `Aporte: ${countdownSimGoal?.name || ''}`,
                 category: 'Aporte',
                 date: getBrazilDateString(),
@@ -1937,6 +1915,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                 setFormError(null);
               }}
             />
+
           )}
 
           {/* Renderable Sections */}
@@ -2017,8 +1996,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                     if (goal) {
                                       setSimInitialAmount(goal.currentAmount);
                                       const remaining = goal.targetAmount - goal.currentAmount;
-                                      if (simMonthlyAmount > 0) {
-                                        setSimPeriod(Math.ceil(remaining / simMonthlyAmount));
+                                      if (simMonthlyAmountValue > 0) {
+                                        setSimPeriod(Math.ceil(remaining / simMonthlyAmountValue));
                                       }
                                     }
                                   }}

@@ -44,13 +44,6 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
     parseFloat(formData.targetAmount || '0')
   );
 
-  useEffect(() => {
-    const stringAmount = targetAmountValue === 0 ? '' : targetAmountValue.toString();
-    if (stringAmount !== formData.targetAmount) {
-      setFormData(prev => ({ ...prev, targetAmount: stringAmount }));
-    }
-  }, [targetAmountValue, formData.targetAmount]);
-
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [goalToDelete, setGoalToDelete] = useState<string | null>(null);
   const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
@@ -104,7 +97,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.targetAmount) {
+    if (!formData.name || targetAmountValue === 0) {
       return;
     }
 
@@ -112,7 +105,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
       // When editing, only update name, targetAmount, and deadline - preserve contributions
       const updates: Partial<SavingsGoal> = {
         name: formData.name,
-        targetAmount: parseFloat(formData.targetAmount),
+        targetAmount: targetAmountValue,
         deadline: formData.deadline || undefined,
       };
       onUpdate(editingGoal, updates);
@@ -121,7 +114,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
       // When creating new, initialize with empty contributions
       const goalData = {
         name: formData.name,
-        targetAmount: parseFloat(formData.targetAmount),
+        targetAmount: targetAmountValue,
         currentAmount: 0,
         deadline: formData.deadline || undefined,
         contributions: [],
@@ -390,25 +383,10 @@ const GoalCard: React.FC<GoalCardProps> = ({
     parseFloat(editAmount || '0')
   );
 
-  useEffect(() => {
-    const stringAmount = addAmountValue === 0 ? '' : addAmountValue.toString();
-    if (stringAmount !== addAmount) {
-      setAddAmount(stringAmount);
-    }
-  }, [addAmountValue, addAmount]);
-
-  useEffect(() => {
-    const stringAmount = editAmountValue === 0 ? '' : editAmountValue.toString();
-    if (stringAmount !== editAmount) {
-      setEditAmount(stringAmount);
-    }
-  }, [editAmountValue, editAmount]);
-
   const handleAddAmount = () => {
-    const amount = parseFloat(addAmount);
-    if (isNaN(amount) || amount <= 0) return;
+    if (addAmountValue <= 0) return;
     
-    onAddContribution(goal.id, amount, contributionDate);
+    onAddContribution(goal.id, addAmountValue, contributionDate);
     setAddAmount('');
     setContributionDate(getBrazilDateString());
     setShowAddAmount(false);
@@ -424,11 +402,10 @@ const GoalCard: React.FC<GoalCardProps> = ({
   const handleUpdateContribution = () => {
     if (!editingContribution) return;
     
-    const amount = parseFloat(editAmount);
-    if (isNaN(amount) || amount <= 0) return;
+    if (editAmountValue <= 0) return;
     
     onUpdateContribution(goal.id, editingContribution, {
-      amount,
+      amount: editAmountValue,
       date: editDate,
     });
     

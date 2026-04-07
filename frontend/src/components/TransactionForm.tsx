@@ -69,20 +69,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   );
 
   useEffect(() => {
-    const stringAmount = amountValue === 0 ? '' : amountValue.toString();
-    if (stringAmount !== formData.amount) {
-      setFormData(prev => ({ ...prev, amount: stringAmount }));
-    }
-  }, [amountValue, formData.amount]);
-
-  useEffect(() => {
-    const stringAmount = calculatorAmountValue === 0 ? '' : calculatorAmountValue.toString();
-    if (stringAmount !== calculatorInput) {
-      setCalculatorInput(stringAmount);
-    }
-  }, [calculatorAmountValue, calculatorInput]);
-
-  useEffect(() => {
     if (!submitError) return;
     window.setTimeout(() => {
       submitErrorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -148,12 +134,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   }, [transaction, replicateTransaction, type, defaultPaymentMethod]);
 
   useEffect(() => {
-    if (formData.category === 'Aporte' && formData.savingsGoalId && formData.amount) {
+    if (formData.category === 'Aporte' && formData.savingsGoalId && amountValue > 0) {
       const goal = savingsGoals.find(g => (g.id || g._id) === formData.savingsGoalId);
       if (goal) {
         const remaining = goal.targetAmount - goal.currentAmount;
-        const amount = parseFloat(formData.amount);
-        if (amount > remaining + 0.01) { // Small buffer for rounding
+        if (amountValue > remaining + 0.01) { // Small buffer for rounding
           setLocalError(`Valor do aporte ultrapassa o restante da meta. Restante disponível: ${remaining.toFixed(2)}.`);
         } else {
           setLocalError(null);
@@ -162,7 +147,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     } else {
       setLocalError(null);
     }
-  }, [formData.amount, formData.category, formData.savingsGoalId, savingsGoals]);
+  }, [amountValue, formData.category, formData.savingsGoalId, savingsGoals]);
 
   const categories = type === 'expense' ? expenseCategories : incomeCategories;
   const showGoalSelect = type === 'expense' && formData.category === 'Aporte';
@@ -173,7 +158,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.amount || !formData.description || !formData.category || localError) {
+    if (amountValue === 0 || !formData.description || !formData.category || localError) {
       return;
     }
     if (showGoalSelect && !formData.savingsGoalId) {
@@ -190,7 +175,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
 
     onSubmit({
       type,
-      amount: parseFloat(formData.amount),
+      amount: amountValue,
       description: formData.description,
       category: formData.category,
       date: finalDate,

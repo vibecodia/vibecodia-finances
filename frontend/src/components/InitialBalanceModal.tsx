@@ -13,13 +13,6 @@ const InitialBalanceModal: React.FC<InitialBalanceModalProps> = ({ isOpen, onCon
 
   const { inputProps: amountInputProps, numericValue: amountValue } = useCurrencyInput(parseFloat(amount || '0'));
 
-  useEffect(() => {
-    const stringAmount = amountValue === 0 ? '' : amountValue.toString();
-    if (stringAmount !== amount) {
-      setAmount(stringAmount);
-    }
-  }, [amountValue, amount]);
-
   const handleConfirm = () => {
     if (amountValue > 0) {
       onConfirm(amountValue, type);
@@ -70,7 +63,7 @@ const InitialBalanceModal: React.FC<InitialBalanceModalProps> = ({ isOpen, onCon
         <div className="flex flex-col space-y-2">
           <button
             onClick={handleConfirm}
-            disabled={!amount}
+            disabled={amountValue === 0}
             className="w-full p-2 rounded-md text-white font-bold bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 transition-colors duration-300"
           >
             Adicionar Valor
