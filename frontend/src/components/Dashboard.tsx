@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Confetti from 'react-confetti';
 import { useNavigate } from 'react-router-dom';
 
+import familyBg from '../assets/family-bg.jpg';
 import { useTheme } from '../contexts/ThemeContext';
 import useWindowSize from '../hooks/useWindowSize';
 import { Transaction, SavingsGoal } from '../types';
@@ -234,39 +235,52 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {showConfetti && (
-        <Confetti
-          width={width}
-          height={height}
-          recycle={false}
-          numberOfPieces={adjustedBalance < 0 ? 300 : 200}
-          colors={confettiColors}
-        />
-      )}
-
-      {/* Header */}
-      <div className="text-center py-3">
-        <div className="flex items-center justify-center">
-          <MonthSegmentedControl
-            month={currentMonth}
-            onChange={(newMonth) => setCurrentMonth(newMonth)}
+          <Confetti
+            width={width}
+            height={height}
+            recycle={false}
+            numberOfPieces={adjustedBalance < 0 ? 300 : 200}
+            colors={confettiColors}
           />
-        </div>
-      </div>
+        )}
 
-      {/* Main Balance Card */}
+        {/* Header */}
+        <div className="text-center py-3">
+          <div className="flex items-center justify-center">
+            <MonthSegmentedControl
+              month={currentMonth}
+              onChange={(newMonth) => setCurrentMonth(newMonth)}
+            />
+          </div>
+        </div>
+
+        {/* Main Balance Card */}
       <div
         className={`relative overflow-hidden rounded-[2.5rem] p-8 cursor-pointer border transition-all duration-500 shadow-xl ${
           isPulsing ? 'scale-[1.02]' : 'scale-100'
         } ${adjustedBalance < -0.001 ? 'text-rose-950' : 'text-white'}`}
         style={{
-          backgroundImage: adjustedBalance < -0.001
-            ? 'radial-gradient(circle at top left, #fff1eb, #ffd1ff)'
-            : `radial-gradient(circle at top left, ${theme.primary}, ${theme.primary}dd)`,
           backgroundColor: theme.primary,
           borderColor: adjustedBalance < -0.001 ? '#fecaca' : 'rgba(255, 255, 255, 0.1)',
         }}
         onClick={handleBalanceCardClick}
       >
+        {/* Background Image Layer with slow movement */}
+        <div 
+          className="absolute inset-0 animate-slow-zoom-pan opacity-50 bg-cover bg-center"
+          style={{ backgroundImage: `url(${familyBg})` }}
+        />
+
+        {/* Gradient Overlay for better readability and brand color */}
+        <div 
+          className="absolute inset-0"
+          style={{
+            backgroundImage: adjustedBalance < -0.001
+              ? 'radial-gradient(circle at top left, rgba(255, 241, 235, 0.7), rgba(255, 209, 255, 0.8))'
+              : `radial-gradient(circle at top left, ${theme.primary}55, ${theme.primary}bb)`,
+          }}
+        />
+
         <div className="relative z-10 flex flex-col h-full justify-between">
           <div className="flex items-start justify-between mb-8">
             <div>

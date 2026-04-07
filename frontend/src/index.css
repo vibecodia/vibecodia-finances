@@ -139,3 +139,13 @@
   animation: bounce-slow 2s ease-in-out infinite;
   animation-delay: 1s;
 }
+
+@keyframes slow-zoom-pan {
+  0% { transform: scale(1.1) translateX(0); }
+  50% { transform: scale(1.25) translateX(-2%); }
+  100% { transform: scale(1.1) translateX(0); }
+}
+
+.animate-slow-zoom-pan {
+  animation: slow-zoom-pan 20s ease-in-out infinite;
+}

@@ -1585,101 +1585,130 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               </button>
             </div>
             <div className="mt-4 pt-4 border-t" style={{ borderColor: theme.cardBorder }}>
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                <div className="space-y-2 flex flex-col h-full">
-                  <p className="text-[10px] font-bold text-text opacity-60 uppercase tracking-widest">
-                    Simular Aporte
-                  </p>
-                  <p className="text-[10px] opacity-50 mt-1">
-                    {countdownSimGoal ? (
-                      <>
-                        {countdownSimExtra > 0 ? 'Atual com o aporte simulado' : 'Atual'}: <span className="font-mono font-bold">{formatCurrency(countdownSimGoal.currentAmount + countdownSimExtra)}</span>{' '}
-                        · Alvo: <span className="font-mono font-bold">{formatCurrency(countdownSimGoal.targetAmount)}</span>
-                      </>
-                    ) : (
-                      <>Selecione uma meta para ver os valores.</>
-                    )}
-                  </p>
-                  <div className="mt-auto space-y-2">
-                    <select
-                      value={countdownSimGoalIdEffective || ''}
-                      onChange={(e) => handleCountdownSimGoalChange(e.target.value)}
-                      className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
-                      style={{ borderColor: theme.cardBorder }}
-                      disabled={savingsGoals.length === 0}
-                    >
-                      <option value="" disabled>Selecione uma meta</option>
-                      {savingsGoals.map(g => (
-                        <option key={g.id} value={g.id}>{g.name}</option>
-                      ))}
-                    </select>
-                    <input
-                      type={!isSimInputFocused && !countdownSimExtra ? "text" : "number"}
-                      inputMode="decimal"
-                      value={countdownSimExtra || ''}
-                      onChange={(e) => handleCountdownSimExtraChange(Number(e.target.value))}
-                      onFocus={() => setIsSimInputFocused(true)}
-                      onBlur={() => setIsSimInputFocused(false)}
-                      placeholder={!isSimInputFocused ? "simule agora aqui!" : "0"}
-                      className={`w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none text-right transition-all duration-300 ${
-                        !isSimInputFocused && !countdownSimExtra ? 'animate-pulse-border' : ''
-                      }`}
-                      style={{ 
-                        borderColor: countdownSimExtra > 0 ? '#10b981' : theme.cardBorder, 
-                        color: theme.text,
-                        boxShadow: countdownSimExtra > 0 ? '0 0 15px rgba(16, 185, 129, 0.2)' : undefined
-                      }}
-                      disabled={!countdownSimGoalIdEffective}
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-xl border p-4 bg-cardBorder/10 flex flex-col h-full" style={{ borderColor: theme.cardBorder }}>
-                  <p className="text-[10px] font-bold uppercase opacity-50 mb-1">Impacto</p>
-                  <div className="mt-auto">
-                    {countdownSimGoal && countdownSimExtra > 0 ? (
-                      countdownSimIsGoalAchieved ? (
-                        <p className="text-sm font-black text-green-500">✅ Meta atingida!</p>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Lado Esquerdo: Inputs e Impacto */}
+                <div className="lg:col-span-3 space-y-4 flex flex-col">
+                  <div className="space-y-2 flex flex-col flex-1">
+                    <p className="text-[10px] font-bold text-text opacity-60 uppercase tracking-widest">
+                      Simular Aporte
+                    </p>
+                    <p className="text-[10px] opacity-50 mt-1">
+                      {countdownSimGoal ? (
+                        <>
+                          {countdownSimExtra > 0 ? 'Atual com o aporte simulado' : 'Atual'}: <span className="font-mono font-bold">{formatCurrency(countdownSimGoal.currentAmount + countdownSimExtra)}</span>{' '}
+                          · Alvo: <span className="font-mono font-bold">{formatCurrency(countdownSimGoal.targetAmount)}</span>
+                        </>
                       ) : (
-                        <div className="text-xs">
-                          <span className="text-green-500 font-bold">
-                            Antecipa {countdownSimGoal.monthsSaved} {countdownSimGoal.monthsSaved === 1 ? 'mês' : 'meses'}
-                          </span>
-                          <div className="text-[10px] opacity-60 mt-1">
-                            Restam {countdownSimGoal.monthsWithSimulated} {countdownSimGoal.monthsWithSimulated === 1 ? 'mês' : 'meses'}
+                        <>Selecione uma meta para ver os valores.</>
+                      )}
+                    </p>
+                    <div className="mt-auto space-y-2">
+                      <select
+                        value={countdownSimGoalIdEffective || ''}
+                        onChange={(e) => handleCountdownSimGoalChange(e.target.value)}
+                        className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
+                        style={{ borderColor: theme.cardBorder }}
+                        disabled={savingsGoals.length === 0}
+                      >
+                        <option value="" disabled>Selecione uma meta</option>
+                        {savingsGoals.map(g => (
+                          <option key={g.id} value={g.id}>{g.name}</option>
+                        ))}
+                      </select>
+                      <input
+                        type={!isSimInputFocused && !countdownSimExtra ? "text" : "number"}
+                        inputMode="decimal"
+                        value={countdownSimExtra || ''}
+                        onChange={(e) => handleCountdownSimExtraChange(Number(e.target.value))}
+                        onFocus={() => setIsSimInputFocused(true)}
+                        onBlur={() => setIsSimInputFocused(false)}
+                        placeholder={!isSimInputFocused ? "simule agora aqui!" : "0"}
+                        className={`w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none text-right transition-all duration-300 ${
+                          !isSimInputFocused && !countdownSimExtra ? 'animate-pulse-border' : ''
+                        }`}
+                        style={{ 
+                          borderColor: countdownSimExtra > 0 ? '#10b981' : theme.cardBorder, 
+                          color: theme.text,
+                          boxShadow: countdownSimExtra > 0 ? '0 0 15px rgba(16, 185, 129, 0.2)' : undefined
+                        }}
+                        disabled={!countdownSimGoalIdEffective}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border p-4 bg-cardBorder/10 flex flex-col flex-1" style={{ borderColor: theme.cardBorder }}>
+                    <p className="text-[10px] font-bold uppercase opacity-50 mb-1">Impacto</p>
+                    <div className="mt-auto">
+                      {countdownSimGoal && countdownSimExtra > 0 ? (
+                        countdownSimIsGoalAchieved ? (
+                          <p className="text-sm font-black text-green-500">✅ Meta atingida!</p>
+                        ) : (
+                          <div className="text-xs">
+                            <span className="text-green-500 font-bold">
+                              Antecipa {countdownSimGoal.monthsSaved} {countdownSimGoal.monthsSaved === 1 ? 'mês' : 'meses'}
+                            </span>
+                            <div className="text-[10px] opacity-60 mt-1">
+                              Restam {countdownSimGoal.monthsWithSimulated} {countdownSimGoal.monthsWithSimulated === 1 ? 'mês' : 'meses'}
+                            </div>
                           </div>
-                        </div>
-                      )
-                    ) : (
-                      <p className="text-xs opacity-50">Informe um valor para ver o impacto na meta.</p>
-                    )}
+                        )
+                      ) : (
+                        <p className="text-xs opacity-50">Informe um valor para ver o impacto na meta.</p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
+                {/* Centro: Resumo do Período */}
                 <div
-                  className="rounded-xl border p-4 bg-cardBorder/10 flex flex-col h-full"
+                  className="lg:col-span-3 rounded-xl border p-4 bg-cardBorder/10 flex flex-col h-full"
                   style={{ borderColor: theme.cardBorder }}
                   title={`Cálculo:\nSaldo Anterior: ${formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}\nReceitas (+): ${formatCurrency(monthlyTotals.revenues)}\nDespesas (-): ${formatCurrency(monthlyTotals.expenses)}\nAportes Reais (-): ${formatCurrency(monthlyTotals.realContributions)}\nAporte Simulado (-): ${formatCurrency(countdownSimExtra)}\nGasto Extra (Catastrófico) (-): ${formatCurrency(catastrophicAmount)}\nTotal: ${formatCurrency(countdownSimAvailableEndOfMonth)}`}
                 >
                   <p className="text-[10px] font-bold uppercase opacity-50 mb-1">
-                    Filtro ativo: {formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} até {formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}
+                    Filtro: {formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} - {formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}
                   </p>
                   
-                  <div className={`flex items-center gap-1.5 font-black ${countdownSimAvailableColorClass}`}>
-                    {countdownSimAvailableEndOfMonth < 0 ? <AlertCircle className="w-4 h-4" /> :
-                      countdownSimAvailableEndOfMonth < 500 ? <Pin className="w-4 h-4" /> :
-                      <CheckCircle2 className="w-4 h-4" />
-                    }
-                    <span className="text-lg"> Final do Período: {formatCurrency(countdownSimAvailableEndOfMonth)}</span>
+                  <div className={`flex flex-col gap-1 font-black ${countdownSimAvailableColorClass}`}>
+                    <div className="flex items-center gap-1.5">
+                      {countdownSimAvailableEndOfMonth < 0 ? <AlertCircle className="w-4 h-4" /> :
+                        countdownSimAvailableEndOfMonth < 500 ? <Pin className="w-4 h-4" /> :
+                        <CheckCircle2 className="w-4 h-4" />
+                      }
+                      <span className="text-sm uppercase opacity-60 tracking-tighter">Final do Período</span>
+                    </div>
+                    <span className="text-2xl lg:text-3xl"> {formatCurrency(countdownSimAvailableEndOfMonth)}</span>
                   </div>
 
-                  <div className="text-[12.5px] opacity-40 font-mono font-normal mt-1 flex flex-wrap gap-x-1 items-center">
-                    <span>Saldo Anterior: {formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}</span>
-                    <span>+ Receitas: {formatCurrency(monthlyTotals.revenues)}</span>
-                    <span>- Despesas: {formatCurrency(monthlyTotals.expenses)}</span>
-                    <span>- Aportes Reais: {formatCurrency(monthlyTotals.realContributions)}</span>
-                    <span>- Aporte Simulado: {formatCurrency(countdownSimExtra)}</span>
-                    {catastrophicAmount > 0 && <span>- Gastos Extra: {formatCurrency(catastrophicAmount)}</span>}
+                  <div className="text-[11px] lg:text-[12px] opacity-40 font-mono font-normal mt-4 grid grid-cols-1 gap-y-1">
+                    <div className="flex justify-between border-b border-cardBorder/20 pb-1">
+                      <span>Saldo Anterior:</span>
+                      <span className="font-bold">{formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-cardBorder/20 pb-1">
+                      <span className="text-green-500">+ Receitas:</span>
+                      <span className="font-bold">{formatCurrency(monthlyTotals.revenues)}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-cardBorder/20 pb-1">
+                      <span className="text-red-500">- Despesas:</span>
+                      <span className="font-bold">{formatCurrency(monthlyTotals.expenses)}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-cardBorder/20 pb-1">
+                      <span className="text-red-500">- Aportes Reais:</span>
+                      <span className="font-bold">{formatCurrency(monthlyTotals.realContributions)}</span>
+                    </div>
+                    {countdownSimExtra > 0 && (
+                      <div className="flex justify-between border-b border-cardBorder/20 pb-1 text-primary">
+                        <span>- Aporte Simulado:</span>
+                        <span className="font-bold">{formatCurrency(countdownSimExtra)}</span>
+                      </div>
+                    )}
+                    {catastrophicAmount > 0 && (
+                      <div className="flex justify-between border-b border-cardBorder/20 pb-1 text-accent">
+                        <span>- Gastos Extra:</span>
+                        <span className="font-bold">{formatCurrency(catastrophicAmount)}</span>
+                      </div>
+                    )}
                   </div>
 
                   {countdownSimExtra > 0 && onAddTransaction && (
@@ -1705,194 +1734,150 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                   )}
                 </div>
 
-                {/* Nova Div: Projeção Dinâmica */}
+                {/* Lado Direito: Projeção Dinâmica */}
                 <div
-                  className={`rounded-xl border p-4 transition-all duration-300 ${timeTravelDate ? 'border-amber-500 bg-amber-500/5 shadow-[0_0_15px_rgba(245,158,11,0.1)]' : 'bg-cardBorder/10'}`}
+                  className={`lg:col-span-6 rounded-xl border p-5 transition-all duration-300 ${timeTravelDate ? 'border-amber-500 bg-amber-500/5 shadow-[0_0_15px_rgba(245,158,11,0.1)]' : 'bg-cardBorder/10'}`}
                   style={{ borderColor: timeTravelDate ? undefined : theme.cardBorder }}
-                  title={projectionView === 'forward' 
-                    ? `Detalhamento do saldo projetado para os próximos ${projectionDays} dias`
-                    : `Resumo do saldo para o período filtrado`
-                  }
                 >
-                  {/* Toggle de Visualização */}
-                  <div className="flex gap-2 p-1 bg-cardBorder/30 rounded-xl mb-3">
-                    <button 
-                      onClick={() => setProjectionView('current')}
-                      className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${projectionView === 'current' ? 'bg-primary text-white shadow-md' : 'text-text opacity-70 hover:opacity-100'}`}
-                    >
-                      Resumo do Período
-                    </button>
-                    <button 
-                      onClick={() => setProjectionView('forward')}
-                      className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${projectionView === 'forward' ? 'bg-primary text-white shadow-md' : 'text-text opacity-70 hover:opacity-100'}`}
-                    >
-                      Projeção Futura
-                    </button>
-                  </div>
-
-                  {/* Time Travel Simulation */}
-                  <div className="mb-4 p-2 rounded-lg bg-cardBorder/20 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[9px] font-bold uppercase opacity-60 flex items-center gap-1">
-                        ⏳ Simular como se fosse...
-                      </label>
-                      {timeTravelDate && (
+                  <div className="lg:flex lg:gap-8 h-full">
+                    {/* Controles da Projeção */}
+                    <div className="lg:w-2/5 space-y-5">
+                      {/* Toggle de Visualização */}
+                      <div className="flex gap-2 p-1 bg-cardBorder/30 rounded-xl">
                         <button 
-                          onClick={() => setTimeTravelDate(null)}
-                          className="text-[8px] font-bold text-amber-600 hover:text-amber-700 uppercase"
+                          onClick={() => setProjectionView('current')}
+                          className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${projectionView === 'current' ? 'bg-primary text-white shadow-md' : 'text-text opacity-70 hover:opacity-100'}`}
                         >
-                          Limpar
+                          Resumo
                         </button>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="date"
-                        value={timeTravelDate || ''}
-                        onChange={(e) => setTimeTravelDate(e.target.value || null)}
-                        className="flex-1 p-1.5 rounded border text-[10px] font-bold bg-transparent outline-none transition-all"
-                        style={{ 
-                          borderColor: timeTravelDate ? '#f59e0b' : theme.cardBorder,
-                          color: theme.text
-                        }}
-                      />
-                    </div>
-                    {timeTravelDate && (
-                      <div className="flex items-center gap-1 text-[8px] font-black text-amber-600 uppercase">
-                        <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
-                        📅 Dados até {formatBrazilDate(parseLocalDate(timeTravelDate), 'dd/MM/yyyy')}
+                        <button 
+                          onClick={() => setProjectionView('forward')}
+                          className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${projectionView === 'forward' ? 'bg-primary text-white shadow-md' : 'text-text opacity-70 hover:opacity-100'}`}
+                        >
+                          Projeção
+                        </button>
                       </div>
-                    )}
-                  </div>
 
-                  {/* Cabeçalho com Slider (Comum) */}
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-[10px] font-bold uppercase opacity-50">
-                      {projectionView === 'forward' ? `Projeção D+${projectionDays}` : 'Detalhamento do Filtro'}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <input 
-                        type="range" 
-                        min="1" 
-                        max={Math.min(maxProjectionDays, 60)} 
-                        value={projectionDays}
-                        onChange={(e) => setProjectionDays(Number(e.target.value))}
-                        disabled={projectionView === 'current'}
-                        className={`w-full cursor-pointer ${projectionView === 'current' ? 'opacity-30 cursor-not-allowed' : ''}`}
-                      />
-                      <span className="text-[12.5px] font-bold text-primary min-w-[20px] text-center">
-                        {projectionView === 'forward' ? `${projectionDays}d` : `${currentPeriodDailyData.dailyBalances.length}d`}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Input de Projeção Catastrófica (Comum) */}
-                  <div className="mb-4 space-y-2">
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-bold uppercase opacity-40 block flex items-center gap-1">
-                        💣 Quer ver um cenário pessimista?
-                      </label>
-                      <div className="relative">
+                      {/* Time Travel Simulation */}
+                      <div className="p-3 rounded-xl bg-cardBorder/20 space-y-2 border border-cardBorder/10">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[9px] font-bold uppercase opacity-60 flex items-center gap-1">
+                            ⏳ Simular como se fosse dia...
+                          </label>
+                          {timeTravelDate && (
+                            <button 
+                              onClick={() => setTimeTravelDate(null)}
+                              className="text-[8px] font-bold text-amber-600 hover:text-amber-700 uppercase"
+                            >
+                              Reset
+                            </button>
+                          )}
+                        </div>
                         <input
-                          type="number"
-                          value={catastrophicAmount || ''}
-                          onChange={(e) => setCatastrophicAmount(Number(e.target.value))}
-                          placeholder="Valor do gasto extra"
-                          className="w-full p-2 rounded-lg border text-[10px] font-bold bg-transparent outline-none transition-all"
-                          style={{ 
-                            borderColor: catastrophicAmount > 0 ? '#ef4444' : theme.cardBorder,
-                            color: theme.text,
-                            boxShadow: catastrophicAmount > 0 ? '0 0 10px rgba(239, 68, 68, 0.1)' : undefined
-                          }}
+                          type="date"
+                          value={timeTravelDate || ''}
+                          onChange={(e) => setTimeTravelDate(e.target.value || null)}
+                          className="w-full p-2 rounded-lg border text-[10px] font-bold bg-transparent outline-none"
+                          style={{ borderColor: timeTravelDate ? '#f59e0b' : theme.cardBorder, color: theme.text }}
                         />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] opacity-30 font-bold uppercase pointer-events-none">
-                          R$
-                        </span>
+                      </div>
+
+                      {/* Configurações da Projeção */}
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[9px] font-bold uppercase opacity-50">
+                              {projectionView === 'forward' ? 'Dias à frente' : 'Dias no período'}
+                            </label>
+                            <span className="text-[12px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+                              {projectionView === 'forward' ? `${projectionDays}d` : `${currentPeriodDailyData.dailyBalances.length}d`}
+                            </span>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="1" 
+                            max={Math.min(maxProjectionDays, 60)} 
+                            value={projectionDays}
+                            onChange={(e) => setProjectionDays(Number(e.target.value))}
+                            disabled={projectionView === 'current'}
+                            className={`w-full cursor-pointer ${projectionView === 'current' ? 'opacity-30' : ''}`}
+                          />
+                        </div>
+
+                        <div className="space-y-3 p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+                          <label className="text-[9px] font-bold uppercase text-red-500 opacity-60 flex items-center gap-1">
+                            💣 Gasto Catastrófico
+                          </label>
+                          <div className="space-y-2">
+                            <input
+                              type="number"
+                              value={catastrophicAmount || ''}
+                              onChange={(e) => setCatastrophicAmount(Number(e.target.value))}
+                              placeholder="Valor R$"
+                              className="w-full p-2 rounded-lg border text-[10px] font-bold bg-transparent outline-none"
+                              style={{ borderColor: catastrophicAmount > 0 ? '#ef4444' : theme.cardBorder, color: theme.text }}
+                            />
+                            <input
+                              type="text"
+                              value={catastrophicName}
+                              onChange={(e) => setCatastrophicName(e.target.value)}
+                              placeholder="Motivo do gasto"
+                              className="w-full p-2 rounded-lg border text-[10px] font-medium bg-transparent outline-none"
+                              style={{ borderColor: theme.cardBorder, color: theme.text }}
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-bold uppercase opacity-40 block">Dê um nome para esse cenário</label>
-                      <input
-                        type="text"
-                        value={catastrophicName}
-                        onChange={(e) => setCatastrophicName(e.target.value)}
-                        placeholder="Ex: Presentes de aniversário"
-                        className="w-full p-2 rounded-lg border text-[10px] font-medium bg-transparent outline-none transition-all"
-                        style={{ 
-                          borderColor: theme.cardBorder,
-                          color: theme.text
-                        }}
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Lista de Saldos Diários (Comum, mudando apenas a fonte dos dados) */}
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                    {(projectionView === 'forward' ? nextDaysData.dailyBalances : currentPeriodDailyData.dailyBalances).map((day: any, index: number) => (
-  <div key={day.date} className="flex items-center justify-between group border-b border-cardBorder/5 pb-1 last:border-0">
-    <div className="flex items-center gap-2">
-      <span className="text-[9px] opacity-40 font-mono">
-        {formatBrazilDate(parseLocalDate(day.date), 'dd/MM')}
-      </span>
-    </div>
-    
-    <div className="flex flex-col items-end">
-      <span className={`text-[15px] font-black ${day.isNegative ? 'text-red-500 animate-pulse text-[18px]' : day.total < 500 ? 'text-orange-500' : 'text-primary'}`}>
-        {formatCurrency(day.total)}
-      </span>
-      {(index === 0 || day.revenues > 0 || day.expenses > 0) && (
-        <div className="text-[11px] opacity-40 font-mono mt-0.5">
-          ({index === 0 && `${formatCurrency(day.previousBalance)} `}
-          {day.revenues > 0 && <span className="text-green-500">+{formatCurrency(day.revenues)}</span>}
-          {day.revenues > 0 && day.expenses > 0 && <span> </span>}
-          {day.expenses > 0 && <span className="text-red-500">-{formatCurrency(day.expenses)}</span>})
-        </div>
-      )}
-    </div>
-  </div>
-))}
-                  </div>
-
-                  {/* Rodapé de Resumo (Comum) */}
-                  <div className="mt-3 pt-2 border-t border-cardBorder/20 space-y-1">
-                    {(projectionView === 'forward' ? nextDaysData.negativeCount : currentPeriodDailyData.negativeCount) > 0 && (
-                      <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2 mb-2">
-                        <p className="text-[10px] text-red-500 font-black flex items-center justify-between">
-                          <span>⚠️ ALERTA DE CAIXA:</span>
-                          <span>
-                            {projectionView === 'forward' ? nextDaysData.negativeCount : currentPeriodDailyData.negativeCount} 
-                            {(projectionView === 'forward' ? nextDaysData.negativeCount : currentPeriodDailyData.negativeCount) === 1 ? ' dia' : ' dias'} no vermelho
-                          </span>
-                        </p>
+                    {/* Detalhamento e Saldo Final */}
+                    <div className="lg:w-3/5 flex flex-col h-full mt-6 lg:mt-0">
+                      <div className="flex-1 space-y-2 overflow-y-auto pr-2 min-h-[200px] max-h-[300px] lg:max-h-full">
+                        {(projectionView === 'forward' ? nextDaysData.dailyBalances : currentPeriodDailyData.dailyBalances).map((day: any, index: number) => (
+                          <div key={day.date} className="flex items-center justify-between group border-b border-cardBorder/10 pb-2 last:border-0">
+                            <div className="flex flex-col">
+                              <span className="text-[10px] font-black opacity-80">
+                                {formatBrazilDate(parseLocalDate(day.date), 'dd/MM')}
+                              </span>
+                              <span className="text-[8px] opacity-40 font-mono uppercase">
+                                {formatBrazilDate(parseLocalDate(day.date), 'EEEE')}
+                              </span>
+                            </div>
+                            
+                            <div className="flex flex-col items-end">
+                              <span className={`text-[16px] font-black ${day.isNegative ? 'text-red-500 animate-pulse' : day.total < 500 ? 'text-orange-500' : 'text-primary'}`}>
+                                {formatCurrency(day.total)}
+                              </span>
+                              {(index === 0 || day.revenues > 0 || day.expenses > 0) && (
+                                <div className="text-[10px] opacity-50 font-mono">
+                                  {day.revenues > 0 && <span className="text-green-500">+{formatCurrency(day.revenues)}</span>}
+                                  {day.revenues > 0 && day.expenses > 0 && <span> </span>}
+                                  {day.expenses > 0 && <span className="text-red-500">-{formatCurrency(day.expenses)}</span>}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    )}
-                    
-                    <div className="flex justify-between items-center">
-                      <p className="text-[9px] opacity-75 font-bold">
-                        {projectionView === 'forward' ? `Saldo Final D+${projectionDays}:` : 'Saldo Final do Filtro:'}
-                      </p>
-                      <span className={`text-[20px] font-black ${
-                        (projectionView === 'forward' ? nextDaysData.total : countdownSimAvailableEndOfMonth) < 0 ? 'text-red-500' : 'text-primary'
-                      }`}>
-                        {formatCurrency(projectionView === 'forward' ? nextDaysData.total : countdownSimAvailableEndOfMonth)}
-                      </span>
-                    </div>
 
-                    <div className="text-[8.5px] opacity-40 font-mono font-normal mt-1 flex flex-wrap gap-x-1 items-center">
-                      (<span>Base: {formatCurrency(projectionView === 'forward' ? nextDaysData.baseBalance : monthlyTotals.previousMonthAdjustedBalance)}</span>
-                      {catastrophicAmount > 0 && (
-                        <span className="text-accent">
-                          (inclui -{formatCurrency(catastrophicAmount)}{catastrophicName ? ` para ${catastrophicName}` : ''})
-                        </span>
-                      )}
-                      {projectionView === 'current' && countdownSimExtra > 0 && (
-                        <span className="text-primary">
-                          (inclui -{formatCurrency(countdownSimExtra)} de aporte sim.)
-                        </span>
-                      )}
-                      <span>+ Receitas: {formatCurrency(projectionView === 'forward' ? nextDaysData.revenues : monthlyTotals.revenues)}</span>
-                      <span>- Despesas: {formatCurrency(projectionView === 'forward' ? nextDaysData.expenses : (monthlyTotals.expenses + monthlyTotals.realContributions))}</span>)
+                      {/* Resumo Final da Projeção */}
+                      <div className="mt-4 pt-4 border-t border-cardBorder/20">
+                        <div className="flex justify-between items-end">
+                          <div>
+                            <p className="text-[9px] opacity-60 font-bold uppercase tracking-wider mb-1">Saldo Projetado Final</p>
+                            <span className={`text-2xl lg:text-3xl font-black ${(projectionView === 'forward' ? nextDaysData.total : countdownSimAvailableEndOfMonth) < 0 ? 'text-red-500' : 'text-primary'}`}>
+                              {formatCurrency(projectionView === 'forward' ? nextDaysData.total : countdownSimAvailableEndOfMonth)}
+                            </span>
+                          </div>
+                          {(projectionView === 'forward' ? nextDaysData.negativeCount : currentPeriodDailyData.negativeCount) > 0 && (
+                            <div className="text-right">
+                              <span className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-md animate-bounce inline-block">
+                                {projectionView === 'forward' ? nextDaysData.negativeCount : currentPeriodDailyData.negativeCount} DIAS NEGATIVOS ⚠️
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
