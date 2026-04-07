@@ -2,6 +2,7 @@ import {
   format,
   parseISO,
   addMonths,
+  differenceInMonths,
 } from 'date-fns';
 import {
   ArrowDown,
@@ -291,6 +292,9 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
     const jurosMensal = taxaJurosMensal;
     const economiaJuros = liquidoUso * jurosMensal * parcelasRestantesOriginal * 0.5; // Estimativa conservadora (0.5 pelo decréscimo do SAC)
 
+    // Cálculo da Sobra de Crédito (Crédito Injetado - Saldo de Quitação)
+    const sobraCredito = liquidoUso - saldoItauAtContemplacao;
+
     // Parcelas do consórcio restantes na data em que o Itaú for quitado
     // Cálculo preciso usando date-fns para evitar erros de sinal ou arredondamento
     const consorcioStart = parseISO('2023-11-16');
@@ -314,9 +318,10 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
       novaDataQuitacao,
       economiaJuros,
       percentAtualConsorcio: consorcioData.percentPaidEstimated,
-      mesesAteContemplacao: monthsToContemplacao,
+      mesesAteContemplacao: Math.max(0, differenceInMonths(projectedContemplacaoDate, new Date())),
       consorcioRestante: consorcioRestanteNaQuitacao,
-      consorcioRestanteValor: consorcioRestanteNaQuitacao * consorcioData.avgInstallment
+      consorcioRestanteValor: consorcioRestanteNaQuitacao * consorcioData.avgInstallment,
+      sobraCredito
     };
   }, [consorcioData, adjustedSacData, lastParcelaPaga, consorcioMinContemplacao, consorcioTaxaAdm, manualContemplacaoDate, taxaJurosMensal, totalParcelas, consorcioModoUso, consorcioIntervaloMeses]);
 
@@ -751,15 +756,14 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                           <h4 className="text-xs font-black uppercase opacity-60">Impacto no Itaú</h4>
                         </div>
                         <div className="p-5 rounded-2xl border border-cardBorder space-y-5">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <span className="text-[10px] font-black uppercase opacity-50 block mb-1">Saldo na Data</span>
-                              <span className="text-sm font-black opacity-60 line-through">{formatCurrency(relationData.saldoItauAtContemplacao)}</span>
-                            </div>
-                            <div>
-                              <span className="text-[10px] font-black uppercase opacity-50 block mb-1">Novo Saldo</span>
-                              <span className="text-lg font-black text-green-600">{formatCurrency(relationData.novoSaldoItau)}</span>
-                            </div>
+                          <div>
+                            <span className="text-[10px] font-black uppercase opacity-50 block mb-1">Saldo na Data</span>
+                            <span className="text-sm font-black opacity-60 line-through">{formatCurrency(relationData.saldoItauAtContemplacao)}</span>
+                          </div>
+                          
+                          <div className="pt-2">
+                            <span className="text-[10px] font-black uppercase opacity-50 block mb-1">Novo Saldo Itaú</span>
+                            <span className="text-xl font-black text-green-600">{formatCurrency(relationData.novoSaldoItau)}</span>
                           </div>
                           
                           <div className="p-3 bg-green-500/5 rounded-xl border border-green-500/10 space-y-2">
@@ -789,7 +793,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                           <div className="w-8 h-8 rounded-full bg-text/10 flex items-center justify-center text-text font-black text-xs">3</div>
                           <h4 className="text-xs font-black uppercase opacity-60">Status Pós-Ação</h4>
                         </div>
-                        <div className="p-5 rounded-2xl bg-cardBorder/20 space-y-5 flex flex-col justify-between h-[220px]">
+                        <div className="p-5 rounded-2xl bg-cardBorder/20 space-y-5 flex flex-col justify-between h-[300px]">
                           <div className="space-y-4">
                             <div>
                               <span className="text-[10px] font-black uppercase opacity-50 block mb-1 text-primary">Quitação Itaú</span>
@@ -800,7 +804,13 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                               <span className="text-[10px] font-black uppercase opacity-50 block mb-1 text-accent">Restante Consórcio</span>
                               <span className="text-lg font-black">{relationData.consorcioRestante} parcelas</span>
                               <p className="text-[9px] font-bold text-accent italic">Total a pagar: {formatCurrency(relationData.consorcioRestanteValor)}</p>
-                              <p className="text-[9px] font-bold opacity-60 mt-1">Fluxo de caixa Porto Seguro mantido</p>
+                            </div>
+                            <div className="pt-2 border-t border-cardBorder/30">
+                              <span className="text-[10px] font-black uppercase opacity-50 block mb-1">Sobra de Crédito (Cashback)</span>
+                              <span className={`text-lg font-black ${relationData.sobraCredito >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                {formatCurrency(relationData.sobraCredito)}
+                              </span>
+                              <p className="text-[9px] font-bold opacity-60">Crédito Injetado - Quitação Itaú</p>
                             </div>
                           </div>
                           
