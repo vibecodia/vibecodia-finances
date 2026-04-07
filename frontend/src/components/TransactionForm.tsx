@@ -5,6 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useCategories } from '../hooks/useCategories';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
+import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import { SavingsGoal, Transaction, PaymentMethod } from '../types';
 import { formatCurrency, getBrazilDateString } from '../utils/helpers';
 
@@ -31,7 +32,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   const submitErrorRef = useRef<HTMLDivElement | null>(null);
 
   const [formData, setFormData] = useState<{
-    amount: string;
+    amount: number;
     description: string;
     category: string;
     savingsGoalId: string;
@@ -42,7 +43,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     paymentMethod: PaymentMethod;
     notes: any;
   }>({
-    amount: '',
+    amount: transaction?.amount ?? replicateTransaction?.amount ?? 0,
     description: '',
     category: '',
     savingsGoalId: '',
@@ -55,9 +56,22 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   });
 
   const [showCalculator, setShowCalculator] = useState(false);
-  const [calculatorInput, setCalculatorInput] = useState('');
+  const [calculatorInput, setCalculatorInput] = useState(0);
   const [currentSum, setCurrentSum] = useState(0);
   const [localError, setLocalError] = useState<string | null>(null);
+
+  const initialAmount = transaction?.amount ?? replicateTransaction?.amount ?? 0;
+  const { inputProps: amountInputProps, numericValue: amountValue } = useCurrencyInput(
+    initialAmount
+  );
+
+  const { inputProps: calculatorInputProps, numericValue: calculatorAmountValue } = useCurrencyInput(
+    calculatorInput
+  );
+
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, amount: amountValue }));
+  }, [amountValue]);
 
   useEffect(() => {
     if (!submitError) return;
@@ -71,7 +85,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   useEffect(() => {
     if (transaction) {
       setFormData({
-        amount: transaction.amount.toString(),
+        amount: transaction.amount,
         description: transaction.description,
         category: transaction.category,
         savingsGoalId: transaction.savingsGoalId || '',
@@ -94,7 +108,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         : '';
 
       setFormData({
-        amount: replicateTransaction.amount.toString(),
+        amount: replicateTransaction.amount,
         description: replicateTransaction.description,
         category: replicateTransaction.category,
         savingsGoalId: replicateTransaction.savingsGoalId || '',
@@ -108,7 +122,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     } else {
       // Reset form for new transaction
       setFormData({
-        amount: '',
+        amount: 0,
         description: '',
         category: '',
         savingsGoalId: '',
@@ -120,17 +134,16 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         notes: '',
       });
       setCurrentSum(0);
-      setCalculatorInput('');
+      setCalculatorInput(0);
     }
   }, [transaction, replicateTransaction, type, defaultPaymentMethod]);
 
   useEffect(() => {
-    if (formData.category === 'Aporte' && formData.savingsGoalId && formData.amount) {
+    if (formData.category === 'Aporte' && formData.savingsGoalId && amountValue > 0) {
       const goal = savingsGoals.find(g => (g.id || g._id) === formData.savingsGoalId);
       if (goal) {
         const remaining = goal.targetAmount - goal.currentAmount;
-        const amount = parseFloat(formData.amount);
-        if (amount > remaining + 0.01) { // Small buffer for rounding
+        if (amountValue > remaining + 0.01) { // Small buffer for rounding
           setLocalError(`Valor do aporte ultrapassa o restante da meta. Restante disponível: ${remaining.toFixed(2)}.`);
         } else {
           setLocalError(null);
@@ -139,7 +152,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     } else {
       setLocalError(null);
     }
-  }, [formData.amount, formData.category, formData.savingsGoalId, savingsGoals]);
+  }, [amountValue, formData.category, formData.savingsGoalId, savingsGoals]);
 
   const categories = type === 'expense' ? expenseCategories : incomeCategories;
   const showGoalSelect = type === 'expense' && formData.category === 'Aporte';
@@ -150,7 +163,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.amount || !formData.description || !formData.category || localError) {
+    if (amountValue === 0 || !formData.description || !formData.category || localError) {
       return;
     }
     if (showGoalSelect && !formData.savingsGoalId) {
@@ -167,7 +180,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
 
     onSubmit({
       type,
-      amount: parseFloat(formData.amount),
+      amount: amountValue,
       description: formData.description,
       category: formData.category,
       date: finalDate,
@@ -184,7 +197,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     setFormData(prev => ({
       ...prev,
       description: data.description || prev.description,
-      amount: data.amount ? data.amount.toString() : prev.amount,
+      amount: data.amount ? data.amount : prev.amount,
       dueDate: data.date || prev.dueDate,
       date: data.date || prev.date,
       category: data.category || prev.category,
@@ -203,22 +216,17 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     }));
   };
 
-  const handleCalculatorInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCalculatorInput(e.target.value);
-  };
-
   const handleAddNumber = () => {
-    const value = parseFloat(calculatorInput.replace(',', '.')); // Handle comma as decimal separator
-    if (!isNaN(value)) {
-      setCurrentSum(prevSum => prevSum + value);
-      setCalculatorInput('');
+    if (calculatorAmountValue > 0) {
+      setCurrentSum(prevSum => prevSum + calculatorAmountValue);
+      setCalculatorInput(0);
     }
   };
 
   const handleApplyCalculation = () => {
-    setFormData(prev => ({ ...prev, amount: currentSum.toFixed(2) }));
+    setFormData(prev => ({ ...prev, amount: currentSum }));
     setCurrentSum(0);
-    setCalculatorInput('');
+    setCalculatorInput(0);
     setShowCalculator(false);
   };
 
@@ -257,12 +265,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
             </label>
             <div className="flex items-center gap-2">
               <input
-                type="number"
+                {...amountInputProps}
                 name="amount"
-                value={formData.amount}
-                onChange={handleChange}
-                step="0.01"
-                min="0"
                 placeholder="0,00"
                 className="w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
                 style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
@@ -283,11 +287,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
                 <h4 className="text-md font-semibold text-text mb-3">Calculadora de Soma</h4>
                 <div className="flex items-center gap-2 mb-3">
                   <input
-                    type="number"
-                    value={calculatorInput}
-                    onChange={handleCalculatorInputChange}
-                    step="0.01"
-                    min="0"
+                    {...calculatorInputProps}
                     placeholder="Adicionar valor"
                     className="w-full px-3 py-2 rounded-lg focus:ring-1 focus:ring-primary focus:border-transparent"
                     style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
