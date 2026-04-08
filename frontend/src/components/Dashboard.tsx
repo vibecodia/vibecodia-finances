@@ -245,7 +245,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   const getBalanceStatusLabel = () => {
     if (finalBalance < -0.001) return <AlertTriangle className="w-5 h-5 opacity-90" />;
     
-    let label = includeBenefits ? 'Desver vales' : 'Ver vales';
+    let label = includeBenefits ? 'Ocultar vales' : 'Ver vales';
     if (!isSelectedMonthCurrent) label = 'Vales inclusos';
 
     return (
