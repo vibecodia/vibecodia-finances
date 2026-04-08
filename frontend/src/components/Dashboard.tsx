@@ -156,6 +156,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   const [isPulsing, setIsPulsing] = useState(false);
   const [currentMonth, setCurrentMonth] = useState<Date>(getCurrentBrazilDate());
   const [showBalance, setShowBalance] = useLocalStorage('dashboard_show_balance', true);
+  const [includeBenefits, setIncludeBenefits] = useLocalStorage('dashboard_include_benefits', true);
   const { theme, setThemeMonth } = useTheme();
 
   useEffect(() => {
@@ -173,6 +174,33 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
 
   const transactionsForSelectedMonth = filterTransactionsByMonth(transactions, currentMonth);
   const balanceData = calculateBalances(transactions, savingsGoals, currentMonth);
+
+  // --- Lógica para incluir ou não benefícios (Flash/Vero Card) no saldo total ---
+  const isBenefitTransaction = (t: Transaction) => {
+    const desc = t.description.toLowerCase();
+    const cat = t.category.toLowerCase();
+    const pm = t.paymentMethod ? formatPaymentMethod(t.paymentMethod) : '';
+    
+    if (t.type === 'income') {
+      return desc.includes('flash') || cat.includes('flash') || pm === 'Flash' ||
+             desc.includes('vero') || cat.includes('vero') || pm === 'Vero Card';
+    } else {
+      return pm === 'Flash' || pm === 'Vero Card';
+    }
+  };
+
+  const benefitTransactions = transactionsForSelectedMonth.filter(t => {
+    if (t.status === 'deleted' || t.category === 'Aporte' || !t.isPaid) return false;
+    return isBenefitTransaction(t);
+  });
+
+  const totalBenefitBalance = benefitTransactions.reduce((acc, t) => 
+    acc + (t.type === 'income' ? t.amount : -t.amount), 0);
+
+  const baseBalance = balanceData.adjustedBalance;
+  // Apenas subtrai os benefícios se for o mês atual E o toggle estiver desligado
+  const finalBalance = (includeBenefits || !isSelectedMonthCurrent) ? baseBalance : baseBalance - totalBenefitBalance;
+  const displayBalance = Math.abs(finalBalance) < 0.001 ? 0 : finalBalance;
 
   const currentIncome = transactionsForSelectedMonth
     .filter(t => t.type === 'income' && t.isPaid)
@@ -210,16 +238,21 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
     .filter(t => t.type === 'expense' && (t.paymentMethod && formatPaymentMethod(t.paymentMethod) === 'Vero Card'))
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const adjustedBalance = balanceData.adjustedBalance;
-  const displayBalance = Math.abs(adjustedBalance) < 0.001 ? 0 : adjustedBalance;
-
   const activeGoals = savingsGoals.filter(goal => goal.status !== 'deleted');
   const totalSavingsGoals = activeGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
   const totalSaved = activeGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
 
-  const getBalanceIcon = () => {
-    if (adjustedBalance < -0.001) return <AlertTriangle className="w-6 h-6 opacity-90" />;
-    return <Wallet className="w-6 h-6 opacity-90" />;
+  const getBalanceStatusLabel = () => {
+    if (finalBalance < -0.001) return <AlertTriangle className="w-5 h-5 opacity-90" />;
+    
+    let label = includeBenefits ? 'Desver vales' : 'Ver vales';
+    if (!isSelectedMonthCurrent) label = 'Vales inclusos';
+
+    return (
+      <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap opacity-80">
+        {label}
+      </span>
+    );
   };
 
   const handleBalanceCardClick = () => {
@@ -229,7 +262,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
     setTimeout(() => setIsPulsing(false), 300);
   };
 
-  const confettiColors = adjustedBalance < 0
+  const confettiColors = finalBalance < 0
     ? ['#FFD700', '#DAA520', '#B8860B', '#8B4513']
     : ['#a8e063', '#56ab2f', '#4CAF50', '#8BC34A'];
 
@@ -240,7 +273,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
             width={width}
             height={height}
             recycle={false}
-            numberOfPieces={adjustedBalance < 0 ? 300 : 200}
+            numberOfPieces={finalBalance < 0 ? 300 : 200}
             colors={confettiColors}
           />
         )}
@@ -259,10 +292,10 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
       <div
         className={`relative overflow-hidden rounded-[2.5rem] p-8 cursor-pointer border transition-all duration-500 shadow-xl ${
           isPulsing ? 'scale-[1.02]' : 'scale-100'
-        } ${adjustedBalance < -0.001 ? 'text-rose-950' : 'text-white'}`}
+        } ${finalBalance < -0.001 ? 'text-rose-950' : 'text-white'}`}
         style={{
           backgroundColor: theme.primary,
-          borderColor: adjustedBalance < -0.001 ? '#fecaca' : 'rgba(255, 255, 255, 0.1)',
+          borderColor: finalBalance < -0.001 ? '#fecaca' : 'rgba(255, 255, 255, 0.1)',
         }}
         onClick={handleBalanceCardClick}
       >
@@ -276,7 +309,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         <div 
           className="absolute inset-0"
           style={{
-            backgroundImage: adjustedBalance < -0.001
+            backgroundImage: finalBalance < -0.001
               ? 'radial-gradient(circle at top left, rgba(255, 241, 235, 0.7), rgba(255, 209, 255, 0.8))'
               : `radial-gradient(circle at top left, ${theme.primary}55, ${theme.primary}bb)`,
           }}
@@ -286,10 +319,10 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
           <div className="flex items-start justify-between mb-8">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50 mb-1">
-                {adjustedBalance < -0.001 ? 'Atenção • Déficit' : 'Total em Carteira'}
+                {finalBalance < -0.001 ? 'Atenção • Déficit' : 'Total em Carteira'}
               </p>
               <h2 className="text-xl font-black tracking-tight uppercase italic">
-                {adjustedBalance < -0.001 ? 'Saldo Devedor' : 'Saldo'}
+                {finalBalance < -0.001 ? 'Saldo Devedor' : 'Saldo'}
               </h2>
             </div>
             <div className="flex items-center gap-2">
@@ -302,8 +335,32 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
               >
                 {showBalance ? <EyeOff className="w-5 h-5 opacity-70" /> : <Eye className="w-5 h-5 opacity-70" />}
               </button>
-              <div className="p-4 bg-black/10 backdrop-blur-xl rounded-2xl border border-white/10 shadow-lg">
-                {getBalanceIcon()}
+              
+              <div 
+                className={`flex items-center gap-4 bg-black/10 backdrop-blur-xl px-5 py-3 rounded-2xl border border-white/10 shadow-lg transition-all ${
+                  isSelectedMonthCurrent 
+                    ? 'hover:bg-black/20 group cursor-pointer' 
+                    : 'opacity-40 grayscale cursor-not-allowed'
+                }`}
+                onClick={(e) => {
+                  if (!isSelectedMonthCurrent) return;
+                  e.stopPropagation();
+                  setIncludeBenefits(!includeBenefits);
+                }}
+                title={!isSelectedMonthCurrent ? "Disponível apenas no mês atual" : ""}
+              >
+                {getBalanceStatusLabel()}
+                <div
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.265,1.55)] ${
+                    includeBenefits && isSelectedMonthCurrent ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-white/10'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-xl transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.265,1.55)] ${
+                      includeBenefits && isSelectedMonthCurrent ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -318,7 +375,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
           </div>
         </div>
 
-        {adjustedBalance < -0.001 && (
+        {finalBalance < -0.001 && (
           <div className="absolute top-0 right-0 p-4">
             <div className="animate-pulse bg-rose-500 w-2 h-2 rounded-full shadow-[0_0_10px_#ef4444]" />
           </div>
