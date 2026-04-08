@@ -23,8 +23,10 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const animationFrameRef = useRef<number>();
+  const isMountedRef = useRef<boolean>(true);
 
   const stopScanner = () => {
+    isMountedRef.current = false;
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
@@ -34,34 +36,103 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
   };
 
   const startScanner = async () => {
+    if (!isMountedRef.current) return;
+    
     setIsInitializing(true);
     setCameraError(null);
+    console.log('Iniciando startScanner...');
+
+    // Segurança: se em 10 segundos não inicializar, cancela
+    const timeoutId = setTimeout(() => {
+      if (isMountedRef.current && isInitializing) {
+        console.warn('Timeout na inicialização da câmera.');
+        setCameraError('A inicialização da câmera demorou demais. Tente recarregar a página.');
+        setIsInitializing(false);
+      }
+    }, 10000);
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      clearTimeout(timeoutId);
+      const msg = 'Seu navegador não suporta acesso à câmera ou você não está em um ambiente seguro (HTTPS).';
+      setCameraError(msg);
+      onError?.(msg);
+      setIsInitializing(false);
+      return;
+    }
     
     try {
-      const constraints = {
-        video: { 
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
+      // Tenta primeiro com a câmera traseira, se falhar, tenta qualquer uma
+      const getStream = async (facingMode: 'environment' | 'user' | null) => {
+        const videoConstraints: any = facingMode ? { 
+          facingMode: { ideal: facingMode },
+        } : true;
+
+        const constraints: MediaStreamConstraints = {
+          video: videoConstraints
+        };
+        
+        console.log('Solicitando getUserMedia com constraints:', constraints);
+        return await navigator.mediaDevices.getUserMedia(constraints);
       };
 
-      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+      let newStream: MediaStream;
+      try {
+        newStream = await getStream('environment');
+      } catch (e) {
+        console.warn('Falha ao abrir câmera traseira, tentando qualquer câmera disponível:', e);
+        try {
+          newStream = await getStream(null);
+        } catch (e2) {
+          console.error('Falha em todas as tentativas de abrir câmera:', e2);
+          throw e2;
+        }
+      }
+
+      clearTimeout(timeoutId);
+
+      if (!isMountedRef.current) {
+        console.log('Componente desmontado durante a obtenção do stream, parando tracks.');
+        newStream.getTracks().forEach(track => track.stop());
+        return;
+      }
+      
       setStream(newStream);
+      console.log('Stream obtido com sucesso.');
       
       if (videoRef.current) {
+        console.log('Configurando video element...');
         videoRef.current.srcObject = newStream;
         videoRef.current.setAttribute('playsinline', 'true'); // Required for iOS
-        await videoRef.current.play();
         
-        requestAnimationFrame(tick);
+        try {
+          await videoRef.current.play();
+          console.log('Video.play() resolvido.');
+          if (isMountedRef.current) {
+            requestAnimationFrame(tick);
+          }
+        } catch (playErr: any) {
+          console.error('Erro no video.play():', playErr);
+          // Ignora erros de interrupção do play() se estivermos desmontando
+          if (playErr.name !== 'AbortError' && isMountedRef.current) {
+            throw playErr;
+          }
+        }
+      } else {
+        console.warn('videoRef.current não está disponível ao configurar o stream.');
       }
-      setIsInitializing(false);
+
+      if (isMountedRef.current) {
+        console.log('Finalizando inicialização com sucesso.');
+        setIsInitializing(false);
+      }
     } catch (err: any) {
-      console.error('Erro ao acessar a câmera:', err);
+      clearTimeout(timeoutId);
+      if (!isMountedRef.current) return;
+      
+      console.error('Erro fatal ao acessar a câmera:', err);
       const msg = err.name === 'NotAllowedError' 
         ? 'Permissão de câmera negada. Por favor, habilite o acesso.' 
-        : 'Não foi possível acessar a câmera.';
+        : 'Não foi possível acessar a câmera ou dispositivo não encontrado.';
       setCameraError(msg);
       onError?.(msg);
       setIsInitializing(false);
@@ -87,6 +158,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
       }) : null;
 
       if (code && code.data) {
+        stopScanner(); // Para tudo antes de notificar o componente pai
         onScan(code.data);
         return; // Stop the loop once a code is found
       }
@@ -95,8 +167,19 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
   };
 
   useEffect(() => {
-    startScanner();
-    return () => stopScanner();
+    isMountedRef.current = true;
+    
+    // Pequeno delay para evitar conflitos de hardware em remounts rápidos (Strict Mode)
+    const timer = setTimeout(() => {
+      if (isMountedRef.current) {
+        startScanner();
+      }
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      stopScanner();
+    };
   }, []);
 
   return (

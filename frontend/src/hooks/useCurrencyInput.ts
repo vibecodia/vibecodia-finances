@@ -1,23 +1,17 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 
 /**
  * Hook to manage Brazilian currency inputs.
  * Handles formatting as R$ 0,00 while storing values as floats.
  */
 export const useCurrencyInput = (initialValue: number = 0) => {
-  const prevInitialRef = useRef<number>(initialValue);
+  const [centavos, setCentavos] = useState<number>(Math.round(Number(initialValue || 0) * 100));
 
-  const [centavos, setCentavos] = useState<number>(Math.round(initialValue * 100));
-
-  // Sync only when initialValue genuinely changes from outside (e.g. opening edit modal)
-  // Using ref avoids the infinite loop caused by useEffect + setState
-  if (prevInitialRef.current !== initialValue) {
-    prevInitialRef.current = initialValue;
-    const newCentavos = Math.round(initialValue * 100);
-    if (newCentavos !== centavos) {
-      setCentavos(newCentavos);
-    }
-  }
+  // Sync when initialValue genuinely changes from outside (e.g. opening edit modal)
+  useEffect(() => {
+    const newCentavos = Math.round(Number(initialValue || 0) * 100);
+    setCentavos(newCentavos);
+  }, [initialValue]);
 
   const numericValue = useMemo(() => centavos / 100, [centavos]);
 
@@ -41,6 +35,10 @@ export const useCurrencyInput = (initialValue: number = 0) => {
     }
   }, [centavos]);
 
+  const setNumericValue = useCallback((value: number) => {
+    setCentavos(Math.round(Number(value || 0) * 100));
+  }, []);
+
   return {
     inputProps: {
       value: displayValue,
@@ -50,5 +48,6 @@ export const useCurrencyInput = (initialValue: number = 0) => {
       type: 'text',
     },
     numericValue,
+    setNumericValue,
   };
 };

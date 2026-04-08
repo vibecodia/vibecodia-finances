@@ -32,7 +32,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   const submitErrorRef = useRef<HTMLDivElement | null>(null);
 
   const [formData, setFormData] = useState<{
-    amount: number;
     description: string;
     category: string;
     savingsGoalId: string;
@@ -43,7 +42,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     paymentMethod: PaymentMethod;
     notes: any;
   }>({
-    amount: transaction?.amount ?? replicateTransaction?.amount ?? 0,
     description: '',
     category: '',
     savingsGoalId: '',
@@ -60,18 +58,14 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   const [currentSum, setCurrentSum] = useState(0);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const initialAmount = transaction?.amount ?? replicateTransaction?.amount ?? 0;
-  const { inputProps: amountInputProps, numericValue: amountValue } = useCurrencyInput(
+  const [initialAmount, setInitialAmount] = useState<number>(transaction?.amount ?? replicateTransaction?.amount ?? 0);
+  const { inputProps: amountInputProps, numericValue: amountValue, setNumericValue: setAmountValue } = useCurrencyInput(
     initialAmount
   );
 
-  const { inputProps: calculatorInputProps, numericValue: calculatorAmountValue } = useCurrencyInput(
+  const { inputProps: calculatorInputProps, numericValue: calculatorAmountValue, setNumericValue: setCalculatorValue } = useCurrencyInput(
     calculatorInput
   );
-
-  useEffect(() => {
-    setFormData(prev => ({ ...prev, amount: amountValue }));
-  }, [amountValue]);
 
   useEffect(() => {
     if (!submitError) return;
@@ -85,7 +79,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   useEffect(() => {
     if (transaction) {
       setFormData({
-        amount: transaction.amount,
         description: transaction.description,
         category: transaction.category,
         savingsGoalId: transaction.savingsGoalId || '',
@@ -96,6 +89,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         paymentMethod: transaction.paymentMethod || defaultPaymentMethod,
         notes: transaction.notes || '',
       });
+      setInitialAmount(transaction.amount);
     } else if (replicateTransaction) {
       const isSimulated = replicateTransaction.id === 'simulated';
       const originalDate = new Date(replicateTransaction.date);
@@ -108,7 +102,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         : '';
 
       setFormData({
-        amount: replicateTransaction.amount,
         description: replicateTransaction.description,
         category: replicateTransaction.category,
         savingsGoalId: replicateTransaction.savingsGoalId || '',
@@ -119,10 +112,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         paymentMethod: replicateTransaction.paymentMethod || defaultPaymentMethod,
         notes: replicateTransaction.notes || '',
       });
+      setInitialAmount(replicateTransaction.amount);
     } else {
       // Reset form for new transaction
       setFormData({
-        amount: 0,
         description: '',
         category: '',
         savingsGoalId: '',
@@ -133,6 +126,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         paymentMethod: defaultPaymentMethod,
         notes: '',
       });
+      setInitialAmount(0);
       setCurrentSum(0);
       setCalculatorInput(0);
     }
@@ -197,7 +191,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     setFormData(prev => ({
       ...prev,
       description: data.description || prev.description,
-      amount: data.amount ? data.amount : prev.amount,
       dueDate: data.date || prev.dueDate,
       date: data.date || prev.date,
       category: data.category || prev.category,
@@ -205,6 +198,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
       // Se detectou recibo, geralmente é porque já foi pago (Mercado, Posto, etc)
       isPaid: true
     }));
+    
+    // Atualiza o valor numérico diretamente no hook para garantir a população
+    const amount = Number(data.amount) || 0;
+    setAmountValue(amount);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -219,14 +216,14 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   const handleAddNumber = () => {
     if (calculatorAmountValue > 0) {
       setCurrentSum(prevSum => prevSum + calculatorAmountValue);
-      setCalculatorInput(0);
+      setCalculatorValue(0);
     }
   };
 
   const handleApplyCalculation = () => {
-    setFormData(prev => ({ ...prev, amount: currentSum }));
+    setAmountValue(currentSum);
     setCurrentSum(0);
-    setCalculatorInput(0);
+    setCalculatorValue(0);
     setShowCalculator(false);
   };
 
