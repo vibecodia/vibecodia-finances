@@ -527,7 +527,8 @@ export const INCOME_CATEGORIES = [
   'Aluguéis',
   'Premiação',
   'Déc.Terceiro',
-  'Férias'
+  'Férias',
+  'Rendimentos'
 ];
 
 export const PAYMENT_METHODS = [

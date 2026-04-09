@@ -313,22 +313,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
 
           <div>
             <label className="block text-sm font-medium text-text mb-2">
-              Descrição
-            </label>
-            <input
-              type="text"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Ex: Compras no supermercado"
-              className="w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-              style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-text mb-2">
               Categoria
             </label>
             <select
@@ -346,6 +330,47 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text mb-2">
+              Descrição
+            </label>
+            <input
+              type="text"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="Ex: Compras no supermercado"
+              className="w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+              style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
+              required
+            />
+            {type === 'income' && formData.category === 'Rendimentos' && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {["Rendimentos simples", "Rendimento semanal cofrinhos", "Rendimento quinzenal cofrinhos", "Rendimento mensal cofrinhos"].map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, description: suggestion }))}
+                    className="px-3 py-1 rounded-full text-xs whitespace-nowrap transition-colors border"
+                    style={{ 
+                      backgroundColor: theme.cardBackground, 
+                      color: theme.text, 
+                      borderColor: theme.cardBorder
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = theme.cardBorder;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = theme.cardBackground;
+                    }}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {showGoalSelect && (
