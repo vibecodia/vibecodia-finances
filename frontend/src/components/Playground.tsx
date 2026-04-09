@@ -2619,7 +2619,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                   </div>
                 );
 
-              case 'passive_income_evolution':
+              case 'passive_income_evolution': {
                 const passiveTransactionsCount = transactions.filter(t => 
                   t.type === 'income' && 
                   t.status !== 'deleted' && 
@@ -2660,6 +2660,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                     )}
                   </div>
                 );
+              }
 
               case 'expense_timeline':
                 return (
