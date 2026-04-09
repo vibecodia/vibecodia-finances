@@ -195,6 +195,7 @@ interface LayoutItem {
 
 const DEFAULT_LAYOUT: LayoutItem[] = [
   { id: 'income_timeline', label: 'Cronograma de Receitas', collapsed: false },
+  { id: 'passive_income_evolution', label: 'Evolução dos Rendimentos Passivos', collapsed: false },
   { id: 'expense_timeline', label: 'Cronograma de Despesas', collapsed: false },
   { id: 'categories', label: 'Distribuição por Categoria', collapsed: false },
   { id: 'payments', label: 'Distribuição por Pagamento', collapsed: false },
@@ -257,10 +258,11 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals, onA
   const [activeTab, setActiveTab] = useState<'transactions' | 'savings' | 'financiamento'>('transactions');
   const [maximizedId, setMaximizedId] = useState<string | null>(null);
   // Using a new version key to reset layout to the simplified structure
-  const [layout, setLayout] = useLocalStorage<LayoutItem[]>('playground_layout_v7', DEFAULT_LAYOUT);
+  const [layout, setLayout] = useLocalStorage<LayoutItem[]>('playground_layout_v8', DEFAULT_LAYOUT);
   const [showFilters, setShowFilters] = useLocalStorage<boolean>('playground_show_filters', true);
   const tableRef = useRef<HTMLDivElement>(null);
   const incomeChartRef = useRef<any>(null);
+  const passiveIncomeChartRef = useRef<any>(null);
   const expenseChartRef = useRef<any>(null);
   const categoryChartRef = useRef<any>(null);
   const paymentChartRef = useRef<any>(null);
@@ -810,6 +812,49 @@ INSTRUÇÕES PARA SUA RESPOSTA:
       datasets,
     };
   }, [transactions, incomeGroupBy, statusFilter, theme.cardBackground, startDate, endDate, incomeMode, incomeComparisonMonth1, incomeComparisonMonth2, showDeleted]);
+
+  // Passive Income Evolution Chart Data
+  const passiveIncomeEvolutionChartData = useMemo(() => {
+    const passiveTransactions = transactions.filter(t => 
+      t.type === 'income' && 
+      t.status !== 'deleted' && 
+      t.category === 'Rendimentos'
+    );
+
+    const groupedData: Record<string, number> = {};
+    const labelsInOrder: string[] = [];
+
+    passiveTransactions
+      .sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime())
+      .forEach(t => {
+        const date = parseLocalDate(t.date);
+        const dateStr = format(date, 'MMM/yy');
+        
+        if (!groupedData[dateStr]) {
+          labelsInOrder.push(dateStr);
+        }
+        groupedData[dateStr] = (groupedData[dateStr] || 0) + t.amount;
+      });
+
+    const uniqueLabels = Array.from(new Set(labelsInOrder));
+
+    return {
+      labels: uniqueLabels,
+      datasets: [{
+        label: 'Rendimentos',
+        data: uniqueLabels.map(label => groupedData[label]),
+        borderColor: '#F97316',
+        backgroundColor: '#F9731633',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 6,
+        pointBackgroundColor: '#F97316',
+        pointBorderColor: theme.cardBackground,
+        pointBorderWidth: 2,
+      }],
+    };
+  }, [transactions, theme.cardBackground]);
 
   // Expense Timeline Chart Data
   const expenseTimelineChartData = useMemo(() => {
@@ -1577,6 +1622,29 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                 )}
               </div>
             )}
+            {maximizedId === 'passive_income_evolution' && (
+              <div className="h-full min-h-[500px]">
+                <Line 
+                  ref={maximizedChartRef}
+                  data={passiveIncomeEvolutionChartData} 
+                  options={{ 
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: theme.text, font: { size: 14 } } } },
+                    scales: {
+                      y: { 
+                        ticks: { 
+                          color: theme.text, 
+                          font: { size: 12 },
+                          callback: (value) => formatCurrency(value as number)
+                        }, 
+                        grid: { color: theme.cardBorder } 
+                      },
+                      x: { ticks: { color: theme.text, font: { size: 12 } }, grid: { color: theme.cardBorder } }
+                    }
+                  }} 
+                />
+              </div>
+            )}
             {maximizedId === 'expense_timeline' && (
               <div className="h-full min-h-[500px]">
                 <Bar 
@@ -2334,29 +2402,47 @@ INSTRUÇÕES PARA SUA RESPOSTA:
             </button>
           )}
           {/* Summary Stats Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-              <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Total Receitas</p>
-              <p className="text-2xl font-black text-orange-500">
-                {formatCurrency(filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0))}
-              </p>
-            </div>
-            <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-              <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Total Despesas</p>
-              <p className="text-2xl font-black text-accent">
-                {formatCurrency(filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0))}
-              </p>
-            </div>
-            <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-              <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Saldo do Período</p>
-              <p className={`text-2xl font-black ${
-                filteredTransactions.reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0) >= 0 
-                ? 'text-primary' : 'text-accent'
-              }`}>
-                {formatCurrency(filteredTransactions.reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0))}
-              </p>
-            </div>
-          </div>
+          {(() => {
+            const passiveIncomeSum = filteredTransactions
+              .filter(t => t.type === 'income' && t.category === 'Rendimentos')
+              .reduce((acc, t) => acc + t.amount, 0);
+            
+            const hasPassiveIncome = passiveIncomeSum > 0;
+
+            return (
+              <div className={`grid grid-cols-1 ${hasPassiveIncome ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-4`}>
+                <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Renda Operacional</p>
+                  <p className="text-2xl font-black text-orange-500">
+                    {formatCurrency(filteredTransactions.filter(t => t.type === 'income' && t.category !== 'Rendimentos').reduce((acc, t) => acc + t.amount, 0))}
+                  </p>
+                </div>
+                {hasPassiveIncome && (
+                  <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                    <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Rendimento Passivo</p>
+                    <p className="text-2xl font-black text-orange-500">
+                      {formatCurrency(passiveIncomeSum)}
+                    </p>
+                  </div>
+                )}
+                <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Total Despesas</p>
+                  <p className="text-2xl font-black text-accent">
+                    {formatCurrency(filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0))}
+                  </p>
+                </div>
+                <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Saldo do Período</p>
+                  <p className={`text-2xl font-black ${
+                    filteredTransactions.reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0) >= 0 
+                    ? 'text-primary' : 'text-accent'
+                  }`}>
+                    {formatCurrency(filteredTransactions.reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0))}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
 
           {layout.map((item, index) => {
             switch (item.id) {
@@ -2532,6 +2618,49 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                     )}
                   </div>
                 );
+
+              case 'passive_income_evolution': {
+                const passiveTransactionsCount = transactions.filter(t => 
+                  t.type === 'income' && 
+                  t.status !== 'deleted' && 
+                  t.category === 'Rendimentos'
+                ).length;
+
+                return (
+                  <div key={item.id} className="rounded-2xl border-2 p-0 overflow-hidden shadow-lg transition-all hover:shadow-2xl" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                    {renderCardHeader(item.id, item.label, <TrendingUp className="w-6 h-6 text-orange-500" />, index, item.collapsed, () => toggleAll(passiveIncomeChartRef))}
+                    {!item.collapsed && (
+                      <div className="p-10 h-[500px]">
+                        {passiveTransactionsCount > 0 ? (
+                          <Line 
+                            ref={passiveIncomeChartRef}
+                            data={passiveIncomeEvolutionChartData} 
+                            options={{ 
+                              maintainAspectRatio: false,
+                              plugins: { legend: { labels: { color: theme.text } } },
+                              scales: {
+                                y: { 
+                                  ticks: { 
+                                    color: theme.text,
+                                    callback: (value) => formatCurrency(value as number)
+                                  }, 
+                                  grid: { color: theme.cardBorder } 
+                                },
+                                x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
+                              }
+                            }} 
+                          />
+                        ) : (
+                          <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
+                            <TrendingUp className="w-12 h-12 opacity-10" />
+                            <span>Nenhum rendimento passivo registrado ainda</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
 
               case 'expense_timeline':
                 return (
