@@ -2402,29 +2402,47 @@ INSTRUÇÕES PARA SUA RESPOSTA:
             </button>
           )}
           {/* Summary Stats Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-              <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Total Receitas</p>
-              <p className="text-2xl font-black text-orange-500">
-                {formatCurrency(filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0))}
-              </p>
-            </div>
-            <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-              <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Total Despesas</p>
-              <p className="text-2xl font-black text-accent">
-                {formatCurrency(filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0))}
-              </p>
-            </div>
-            <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-              <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Saldo do Período</p>
-              <p className={`text-2xl font-black ${
-                filteredTransactions.reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0) >= 0 
-                ? 'text-primary' : 'text-accent'
-              }`}>
-                {formatCurrency(filteredTransactions.reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0))}
-              </p>
-            </div>
-          </div>
+          {(() => {
+            const passiveIncomeSum = filteredTransactions
+              .filter(t => t.type === 'income' && t.category === 'Rendimentos')
+              .reduce((acc, t) => acc + t.amount, 0);
+            
+            const hasPassiveIncome = passiveIncomeSum > 0;
+
+            return (
+              <div className={`grid grid-cols-1 ${hasPassiveIncome ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-4`}>
+                <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Renda Operacional</p>
+                  <p className="text-2xl font-black text-orange-500">
+                    {formatCurrency(filteredTransactions.filter(t => t.type === 'income' && t.category !== 'Rendimentos').reduce((acc, t) => acc + t.amount, 0))}
+                  </p>
+                </div>
+                {hasPassiveIncome && (
+                  <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                    <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Rendimento Passivo</p>
+                    <p className="text-2xl font-black text-orange-500">
+                      {formatCurrency(passiveIncomeSum)}
+                    </p>
+                  </div>
+                )}
+                <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Total Despesas</p>
+                  <p className="text-2xl font-black text-accent">
+                    {formatCurrency(filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0))}
+                  </p>
+                </div>
+                <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Saldo do Período</p>
+                  <p className={`text-2xl font-black ${
+                    filteredTransactions.reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0) >= 0 
+                    ? 'text-primary' : 'text-accent'
+                  }`}>
+                    {formatCurrency(filteredTransactions.reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0))}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
 
           {layout.map((item, index) => {
             switch (item.id) {
