@@ -27,9 +27,9 @@
         <div id="loading-bar" style="position: absolute; height: 100%; width: 40%; background: #059669; border-radius: 10px; animation: slime-bar 2s infinite ease-in-out; box-shadow: 0 0 15px rgba(5, 150, 105, 0.4);"></div>
       </div>
       
-      <!-- Textos Modernos Slime -->
+      <!-- Texto Único Fixo -->
       <div id="loading-text" style="font-family: system-ui, -apple-system, sans-serif; color: #64748b; font-size: 14px; font-weight: 400; height: 24px; transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); opacity: 0; transform: translateY(15px); font-style: italic;">
-        carregando dados
+        carregando suas finanças...
       </div>
       
       <style>
@@ -41,56 +41,26 @@
         .text-slime-in {
           opacity: 1 !important;
           transform: translateY(0) !important;
-          filter: blur(0) !important;
-        }
-        .text-slime-out {
-          opacity: 0 !important;
-          transform: translateY(-15px) !important;
-          filter: blur(4px) !important;
         }
       </style>
       
       <script>
         window.addEventListener('load', () => {
-          const texts = [
-            "carregando dados",
-            "sincronizando transações",
-            "criando reports",
-            "carregando contas pendentes",
-            "finalizando..."
-          ];
           const textElement = document.getElementById('loading-text');
-          let currentTextIndex = 0;
 
-          function updateText() {
-            if (currentTextIndex >= texts.length) return;
-            
-            // Slime out (com blur suave)
-            textElement.classList.remove('text-slime-in');
-            textElement.classList.add('text-slime-out');
-            
-            setTimeout(() => {
-              textElement.innerText = texts[currentTextIndex] + "...";
-              textElement.classList.remove('text-slime-out');
-              // Slime in (com elasticidade)
-              textElement.classList.add('text-slime-in');
-              currentTextIndex++;
-            }, 800);
-          }
-
-          // Inicia o primeiro texto com um delay maior para o usuário absorver o logo
-          setTimeout(updateText, 500);
-          // Troca a cada 2.5 segundos para uma leitura bem tranquila e profissional
-          const textInterval = setInterval(updateText, 2500);
-
+          // Mostra a frase com o efeito de subida após meio segundo
           setTimeout(() => {
-            clearInterval(textInterval);
+            textElement.classList.add('text-slime-in');
+          }, 500);
+
+          // Fecha o splash após 3 segundos totais
+          setTimeout(() => {
             const splash = document.getElementById('splash-screen');
             splash.style.opacity = '0';
             setTimeout(() => {
               splash.style.display = 'none';
-            }, 1000);
-          }, 8000); // Duração total aumentada para 8 segundos para acomodar as frases
+            }, 200); // tempo da transição de sumiço
+          }, 2300); 
         });
       </script>
     </div>
