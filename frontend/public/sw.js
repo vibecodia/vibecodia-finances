@@ -127,8 +127,13 @@ self.addEventListener('push', (event) => {
   const options = {
     body: data.body || 'Você tem novas atualizações pendentes.',
     icon: '/favicon.svg',
-    badge: '/favicon.svg'
+    badge: '/favicon.svg',
+    data: data
   };
+
+  if (data.badgeCount !== undefined && 'setAppBadge' in navigator) {
+    event.waitUntil(navigator.setAppBadge(data.badgeCount));
+  }
 
   event.waitUntil(self.registration.showNotification(title, options));
 });

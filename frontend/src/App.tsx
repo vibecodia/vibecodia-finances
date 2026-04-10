@@ -1,5 +1,5 @@
 import { Moon, Sun } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import Calendar from './components/Calendar';
@@ -20,7 +20,7 @@ import ShoppingCartButton from './components/ShoppingCartButton';
 import ShoppingListModal from './components/ShoppingListModal';
 import { useFinancialData } from './hooks/useFinancialData';
 import { useShoppingList } from './hooks/useShoppingList';
-import { getBrazilDateString } from './utils/helpers';
+import { getBrazilDateString, getCurrentBrazilDate, getTransactionsWithRecurrence } from './utils/helpers';
 import TransactionForm from './components/TransactionForm';
 import { Transaction } from './types';
 
@@ -59,6 +59,25 @@ function App() {
   const [showInitialBalanceModal, setShowInitialBalanceModal] = useState(false);
   const { shoppingList, addItem, togglePurchased, removeItem, clearPurchased, togglePriority } = useShoppingList();
   const [animateCombined, setAnimateCombined] = useState(false);
+
+  // Lógica global do App Badge (PWA)
+  const todayPendingCount = useMemo(() => {
+    const now = getCurrentBrazilDate();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    const allOccurrences = getTransactionsWithRecurrence(transactions, startOfDay, endOfDay);
+    return allOccurrences.filter(t => !t.isPaid && t.status !== 'deleted').length;
+  }, [transactions]);
+
+  useEffect(() => {
+    if ('setAppBadge' in navigator) {
+      if (todayPendingCount > 0) {
+        (navigator as any).setAppBadge(todayPendingCount).catch(() => {});
+      } else {
+        (navigator as any).clearAppBadge().catch(() => {});
+      }
+    }
+  }, [todayPendingCount]);
 
   // Rotas onde o menu lateral não fica expandido no desktop
   const location = useLocation();

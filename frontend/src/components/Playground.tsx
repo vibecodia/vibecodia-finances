@@ -57,8 +57,7 @@ import {
   formatPaymentMethod,
   parseLocalDate,
   formatBrazilDate,
-  getCurrentBrazilDate,
-  getTransactionsWithRecurrence
+  getCurrentBrazilDate
 } from '../utils/helpers';
 
 import SavingsGoalsPlayground from './SavingsGoalsPlayground';
@@ -707,36 +706,6 @@ INSTRUÇÕES PARA SUA RESPOSTA:
       return isInDateRange && isInCategory && isInPaymentMethod && matchesSearch && matchesType && matchesStatus;
     });
   }, [transactions, startDate, endDate, selectedCategories, selectedPaymentMethods, searchTerm, typeFilter, statusFilter, removedTransactionIds, showDeleted, dateField]);
-
-  const todayPendingCount = useMemo(() => {
-    const now = getCurrentBrazilDate();
-    
-    // Início e fim do dia para expansão de recorrência
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-
-    // Expande recorrências para o dia de hoje
-    const allOccurrences = getTransactionsWithRecurrence(transactions, startOfDay, endOfDay);
-    
-    // Filtra apenas as pendências (não pagas e não deletadas)
-    return allOccurrences.filter(t => !t.isPaid && t.status !== 'deleted').length;
-  }, [transactions]);
-
-  useEffect(() => {
-    if ('setAppBadge' in navigator) {
-      const updateBadge = () => {
-        if (todayPendingCount > 0) {
-          (navigator as any).setAppBadge(todayPendingCount).catch(() => {});
-        } else {
-          (navigator as any).clearAppBadge().catch(() => {});
-        }
-      };
-
-      // Pequeno delay para não competir com a renderização dos gráficos
-      const timer = setTimeout(updateBadge, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [todayPendingCount]);
 
   // Chart Data: Category Distribution
   const categoryChartData = useMemo(() => {
