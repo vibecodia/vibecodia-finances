@@ -62,8 +62,9 @@ function App() {
 
   // Rotas onde o menu lateral não fica expandido no desktop
   const location = useLocation();
-  const sp = new URLSearchParams(location.search);
-  const isFocusMode = sp.get('view') === 'focus';
+  const isFocusMode = 
+    new URLSearchParams(location.search).get('view') === 'focus' || 
+    location.pathname === '/hoje';
 
   const routesWithoutDesktopMenu = ['/playground'];
   const hideMenuOnDesktop = routesWithoutDesktopMenu.includes(location.pathname);

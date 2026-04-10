@@ -149,3 +149,43 @@
 .animate-slow-zoom-pan {
   animation: slow-zoom-pan 20s ease-in-out infinite;
 }
+
+/* Shortcut Focus Mode */
+.shortcut-focus-mode {
+  overflow-y: auto !important;
+  background: white !important;
+}
+
+.dark .shortcut-focus-mode {
+  background: #0f172a !important;
+}
+
+/* Hide all top-level UI elements */
+.shortcut-focus-mode header,
+.shortcut-focus-mode nav,
+.shortcut-focus-mode footer,
+.shortcut-focus-mode aside {
+  display: none !important;
+}
+
+/* In focus mode, make main occupy full width/height without padding */
+.shortcut-focus-mode main {
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* The focused table container */
+.shortcut-focus-mode .focus-target {
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  width: 100% !important;
+  min-height: 100vh !important;
+  background: white !important;
+}
+
+.dark .shortcut-focus-mode .focus-target {
+  background: #0f172a !important;
+}

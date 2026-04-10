@@ -12,18 +12,35 @@
     
     <!-- SCRIPT DE BLOQUEIO IMEDIATO -->
     <script>
-      if (window.location.search.includes('nosplash=true')) {
-        document.documentElement.style.display = 'none'; // Esconde tudo instantaneamente
-        
-        // Cria um estilo que mata o splash antes dele nascer
+      const urlParams = new URLSearchParams(window.location.search);
+      const isNoSplash = urlParams.has('nosplash');
+      const isFocus = urlParams.get('view') === 'focus' || window.location.pathname === '/hoje';
+
+      if (isNoSplash || isFocus) {
+        // Cria um estilo de emergência que bloqueia elementos antes do React/CSS carregar
         const style = document.createElement('style');
-        style.innerHTML = `#splash-screen { display: none !important; }`;
+        let css = '';
+        
+        if (isNoSplash) css += `#splash-screen { display: none !important; } `;
+        
+        // No modo foco, escondemos tudo o que não é o main/root imediatamente
+        if (isFocus) {
+          css += `header, nav, footer, aside, #splash-screen { display: none !important; } `;
+          css += `body { background: white !important; } `;
+          // Adiciona a classe no HTML para o CSS global já saber o que fazer
+          document.documentElement.classList.add('shortcut-focus-mode');
+        }
+
+        style.innerHTML = css;
         document.head.appendChild(style);
 
-        // Mostra o app de volta assim que o DOM estiver minimamente pronto
-        document.addEventListener('DOMContentLoaded', () => {
-          document.documentElement.style.display = 'block';
-        });
+        // Se for só nosplash (sem foco), escondemos o documento até o DOM estar pronto
+        if (isNoSplash && !isFocus) {
+          document.documentElement.style.display = 'none';
+          document.addEventListener('DOMContentLoaded', () => {
+            document.documentElement.style.display = 'block';
+          });
+        }
       }
     </script>
 

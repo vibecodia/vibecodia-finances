@@ -230,7 +230,7 @@ const parseCsvParam = (value: string | null): string[] => {
     .filter(Boolean);
 };
 
-const serializePlaygroundFiltersToSearch = (filters: PlaygroundFilterState): string => {
+const serializePlaygroundFiltersToSearch = (filters: PlaygroundFilterState, view: string | null): string => {
   const sp = new URLSearchParams();
 
   if (filters.startDate) sp.set('de', filters.startDate);
@@ -245,6 +245,7 @@ const serializePlaygroundFiltersToSearch = (filters: PlaygroundFilterState): str
   if (filters.showDeleted) sp.set('excluidos', '1');
   if (filters.dateField !== 'date') sp.set('campoDat', filters.dateField);
   if (filters.removedTransactionIds.length > 0) sp.set('removidos', filters.removedTransactionIds.join(','));
+  if (view) sp.set('view', view);
 
   return sp.toString();
 };
@@ -382,13 +383,23 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals, onA
   useEffect(() => {
     if (isFocusMode) {
       document.body.classList.add('shortcut-focus-mode');
+      // Ensure the table is expanded in focus mode, only update if needed
+      setLayout(prev => {
+        const tableItem = prev.find(item => item.id === 'table');
+        if (tableItem && tableItem.collapsed) {
+          return prev.map(item => 
+            item.id === 'table' ? { ...item, collapsed: false } : item
+          );
+        }
+        return prev;
+      });
     } else {
       document.body.classList.remove('shortcut-focus-mode');
     }
     return () => {
       document.body.classList.remove('shortcut-focus-mode');
     };
-  }, [isFocusMode]);
+  }, [isFocusMode, setLayout]);
 
   const copyToClipboard = () => {
     if (!aiAnalysis) return;
@@ -446,7 +457,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals, onA
       showDeleted,
       dateField,
       removedTransactionIds,
-    });
+    }, isFocusMode ? 'focus' : null);
 
     const currentSearchString = location.search.startsWith('?') ? location.search.slice(1) : location.search;
     if (nextSearchString === currentSearchString) return;
@@ -486,7 +497,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals, onA
       showDeleted,
       dateField,
       removedTransactionIds,
-    });
+    }, isFocusMode ? 'focus' : null);
 
     const currentSearchString = location.search.startsWith('?') ? location.search.slice(1) : location.search;
     if (nextSearchString !== currentSearchString) {
@@ -2105,58 +2116,60 @@ INSTRUÇÕES PARA SUA RESPOSTA:
       {renderAIAnalysisModal()}
       {renderAIObsModal()}
       {/* Tab Navigation */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between py-8 gap-6 border-b" style={{ borderColor: theme.cardBorder }}>
-        <div className="flex-1">
-          <h1 className="text-3xl lg:text-5xl font-bold text-text mb-2">
-            {activeTab === 'transactions' ? '📊 Playground Financeiro' : activeTab === 'savings' ? '🎯 Análise de Metas' : '🏠 Financiamento Imobiliário'}
-          </h1>
-          <p className="text-text opacity-70 text-sm md:text-base">
-            {activeTab === 'transactions'
-              ? 'Organize e analise seus dados com total liberdade'
-              : activeTab === 'savings'
-              ? 'Visualize o progresso de suas metas e aportes'
-              : 'Gestão completa das parcelas e simulação de quitação'}
-          </p>
+      {!isFocusMode && (
+        <div className="flex flex-col md:flex-row md:items-center justify-between py-8 gap-6 border-b" style={{ borderColor: theme.cardBorder }}>
+          <div className="flex-1">
+            <h1 className="text-3xl lg:text-5xl font-bold text-text mb-2">
+              {activeTab === 'transactions' ? '📊 Playground Financeiro' : activeTab === 'savings' ? '🎯 Análise de Metas' : '🏠 Financiamento Imobiliário'}
+            </h1>
+            <p className="text-text opacity-70 text-sm md:text-base">
+              {activeTab === 'transactions'
+                ? 'Organize e analise seus dados com total liberdade'
+                : activeTab === 'savings'
+                ? 'Visualize o progresso de suas metas e aportes'
+                : 'Gestão completa das parcelas e simulação de quitação'}
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+            <button
+              onClick={() => setActiveTab('transactions')}
+              className={`flex-1 md:flex-none px-6 py-3 md:py-2.5 rounded-xl font-bold text-sm transition-all border ${
+                activeTab === 'transactions'
+                  ? 'bg-primary text-white border-primary shadow-md'
+                  : 'bg-transparent text-text border-cardBorder hover:bg-cardBorder/30'
+              }`}
+            >
+              Transações
+            </button>
+            <button
+              onClick={() => setActiveTab('savings')}
+              className={`flex-1 md:flex-none px-6 py-3 md:py-2.5 rounded-xl font-bold text-sm transition-all border ${
+                activeTab === 'savings'
+                  ? 'bg-primary text-white border-primary shadow-md'
+                  : 'bg-transparent text-text border-cardBorder hover:bg-cardBorder/30'
+              }`}
+            >
+              Metas de Poupança
+            </button>
+            <button
+              onClick={() => setActiveTab('financiamento')}
+              className={`flex-1 md:flex-none px-6 py-3 md:py-2.5 rounded-xl font-bold text-sm transition-all border ${
+                activeTab === 'financiamento'
+                  ? 'bg-primary text-white border-primary shadow-md'
+                  : 'bg-transparent text-text border-cardBorder hover:bg-cardBorder/30'
+              }`}
+            >
+              🏠 Financiamento (experimental)
+            </button>
+          </div>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-          <button
-            onClick={() => setActiveTab('transactions')}
-            className={`flex-1 md:flex-none px-6 py-3 md:py-2.5 rounded-xl font-bold text-sm transition-all border ${
-              activeTab === 'transactions'
-                ? 'bg-primary text-white border-primary shadow-md'
-                : 'bg-transparent text-text border-cardBorder hover:bg-cardBorder/30'
-            }`}
-          >
-            Transações
-          </button>
-          <button
-            onClick={() => setActiveTab('savings')}
-            className={`flex-1 md:flex-none px-6 py-3 md:py-2.5 rounded-xl font-bold text-sm transition-all border ${
-              activeTab === 'savings'
-                ? 'bg-primary text-white border-primary shadow-md'
-                : 'bg-transparent text-text border-cardBorder hover:bg-cardBorder/30'
-            }`}
-          >
-            Metas de Poupança
-          </button>
-          <button
-            onClick={() => setActiveTab('financiamento')}
-            className={`flex-1 md:flex-none px-6 py-3 md:py-2.5 rounded-xl font-bold text-sm transition-all border ${
-              activeTab === 'financiamento'
-                ? 'bg-primary text-white border-primary shadow-md'
-                : 'bg-transparent text-text border-cardBorder hover:bg-cardBorder/30'
-            }`}
-          >
-            🏠 Financiamento (experimental)
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Tab Content */}
       {activeTab === 'transactions' && (
         <div className="flex flex-col lg:flex-row gap-6 items-start mt-4">
         {/* Sidebar Filters - Sticky on desktop */}
-        {showFilters && (
+        {showFilters && !isFocusMode && (
           <div className="w-full lg:w-80 lg:sticky lg:top-24 space-y-4 flex-shrink-0 animate-in slide-in-from-left duration-300">
             <div className="rounded-2xl border overflow-hidden shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
               <div className="p-4 font-semibold text-text flex items-center justify-between border-b" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
@@ -2418,7 +2431,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
             </button>
           )}
           {/* Summary Stats Row */}
-          {(() => {
+          {!isFocusMode && (() => {
             const passiveIncomeSum = filteredTransactions
               .filter(t => t.type === 'income' && t.category === 'Rendimentos')
               .reduce((acc, t) => acc + t.amount, 0);
@@ -2461,6 +2474,8 @@ INSTRUÇÕES PARA SUA RESPOSTA:
           })()}
 
           {layout.map((item, index) => {
+            if (isFocusMode && item.id !== 'table') return null;
+
             switch (item.id) {
               case 'income_timeline':
                 return (
@@ -3147,7 +3162,8 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                             <span>Sair do Foco</span>
                           </button>
                         )}
-                        <button 
+
+                        <button
                           onClick={(e) => { e.stopPropagation(); handlePrintTable(); }}
                           className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text"
                           title="Imprimir Tabela"
@@ -3155,7 +3171,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                           <Printer className="w-4 h-4" />
                         </button>
                         {removedTransactionIds.length > 0 && (
-                          <button 
+                          <button
                             onClick={(e) => { e.stopPropagation(); resetRemovedTransactions(); }}
                             className="px-3 py-1.5 bg-accent/20 hover:bg-accent/30 rounded-full transition-all text-accent flex items-center gap-2 font-bold animate-pulse border border-accent/50 shadow-md text-xs"
                             title={`Reset - ${removedTransactionIds.length} removidos`}
@@ -3165,30 +3181,34 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                           </button>
                         )}
                         <div className="w-[1px] h-4 mx-1 bg-cardBorder opacity-0 group-hover:opacity-100" />
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); moveItem(index, 'up'); }}
-                          disabled={index === 0}
-                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
-                          title="Mover para Cima"
-                        >
-                          <ArrowUp className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); moveItem(index, 'down'); }}
-                          disabled={index === layout.length - 1}
-                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
-                          title="Mover para Baixo"
-                        >
-                          <ArrowDown className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); setMaximizedId(item.id); }}
-                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text"
-                          title="Maximizar"
-                        >
-                          <Maximize2 className="w-4 h-4" />
-                        </button>
-                        <button 
+                        {!isFocusMode && (
+                          <>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); moveItem(index, 'up'); }}
+                              disabled={index === 0}
+                              className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+                              title="Mover para Cima"
+                            >
+                              <ArrowUp className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); moveItem(index, 'down'); }}
+                              disabled={index === layout.length - 1}
+                              className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+                              title="Mover para Baixo"
+                            >
+                              <ArrowDown className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setMaximizedId(item.id); }}
+                              className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text"
+                              title="Maximizar"
+                            >
+                              <Maximize2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                        <button
                           onClick={() => toggleCollapse(item.id)}
                           className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
                           title={item.collapsed ? "Expandir" : "Minimizar"}
@@ -3196,6 +3216,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                           {item.collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
                         </button>
                       </div>
+
                     </div>
                     {!item.collapsed && (
                       <div className="overflow-x-auto">
