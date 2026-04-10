@@ -13,30 +13,40 @@
   </head>
   <body>
     <div id="splash-screen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f8fafc; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; transition: opacity 0.5s ease-out;">
-      <div style="position: relative; width: 100px; height: 100px; margin-bottom: 24px;">
-        <img src="/favicon.svg" alt="Vibecodia Logo" style="width: 100%; height: 100%; animation: pulse 2s infinite ease-in-out;">
-        <div style="position: absolute; top: -5px; left: -5px; width: 110px; height: 110px; border: 4px solid #059669; border-top-color: transparent; border-radius: 50%; animation: spin 1.5s linear infinite;"></div>
+      <!-- Logo Vibecodia -->
+      <div style="width: 80px; height: 80px; margin-bottom: 20px;">
+        <img src="/favicon.svg" alt="Vibecodia Logo" style="width: 100%; height: 100%; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.05));">
       </div>
-      <h1 style="font-family: system-ui, -apple-system, sans-serif; color: #064e3b; font-size: 24px; font-weight: 600; margin: 0;">Vibecodia</h1>
-      <p style="font-family: system-ui, -apple-system, sans-serif; color: #059669; font-size: 14px; margin-top: 8px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 20px;">Finances</p>
       
-      <div id="loading-text" style="font-family: system-ui, -apple-system, sans-serif; color: #64748b; font-size: 13px; font-weight: 400; height: 20px; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); opacity: 0; transform: translateY(10px);">
-        Carregando dados...
+      <!-- Nome da Empresa e App -->
+      <h1 style="font-family: system-ui, -apple-system, sans-serif; color: #064e3b; font-size: 28px; font-weight: 700; margin: 0; letter-spacing: -0.02em;">Vibecodia</h1>
+      <p style="font-family: system-ui, -apple-system, sans-serif; color: #059669; font-size: 12px; margin: 4px 0 32px 0; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 500;">Finances</p>
+      
+      <!-- Barra de Progresso Slime -->
+      <div style="width: 140px; height: 4px; background: #e2e8f0; border-radius: 10px; overflow: hidden; position: relative; margin-bottom: 24px;">
+        <div id="loading-bar" style="position: absolute; height: 100%; width: 40%; background: #059669; border-radius: 10px; animation: slime-bar 2s infinite ease-in-out; box-shadow: 0 0 15px rgba(5, 150, 105, 0.4);"></div>
+      </div>
+      
+      <!-- Textos Modernos Slime -->
+      <div id="loading-text" style="font-family: system-ui, -apple-system, sans-serif; color: #64748b; font-size: 14px; font-weight: 400; height: 24px; transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); opacity: 0; transform: translateY(15px); font-style: italic;">
+        carregando dados
       </div>
       
       <style>
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(0.9); opacity: 0.8; }
+        @keyframes slime-bar {
+          0% { left: -40%; width: 20%; }
+          50% { left: 40%; width: 50%; }
+          100% { left: 100%; width: 20%; }
         }
         .text-slime-in {
           opacity: 1 !important;
           transform: translateY(0) !important;
+          filter: blur(0) !important;
         }
         .text-slime-out {
           opacity: 0 !important;
-          transform: translateY(-10px) !important;
+          transform: translateY(-15px) !important;
+          filter: blur(4px) !important;
         }
       </style>
       
@@ -46,8 +56,8 @@
             "carregando dados",
             "sincronizando transações",
             "criando reports",
-            "contas pendentes",
-            "preparando tudo"
+            "carregando contas pendentes",
+            "finalizando..."
           ];
           const textElement = document.getElementById('loading-text');
           let currentTextIndex = 0;
@@ -55,23 +65,23 @@
           function updateText() {
             if (currentTextIndex >= texts.length) return;
             
-            // Slime out
+            // Slime out (com blur suave)
             textElement.classList.remove('text-slime-in');
             textElement.classList.add('text-slime-out');
             
             setTimeout(() => {
               textElement.innerText = texts[currentTextIndex] + "...";
               textElement.classList.remove('text-slime-out');
-              // Slime in
+              // Slime in (com elasticidade)
               textElement.classList.add('text-slime-in');
               currentTextIndex++;
-            }, 500);
+            }, 800);
           }
 
-          // Inicia o primeiro texto
-          setTimeout(updateText, 100);
-          // Troca a cada 700ms para caber nos 3 segundos
-          const textInterval = setInterval(updateText, 700);
+          // Inicia o primeiro texto com um delay maior para o usuário absorver o logo
+          setTimeout(updateText, 500);
+          // Troca a cada 2.5 segundos para uma leitura bem tranquila e profissional
+          const textInterval = setInterval(updateText, 2500);
 
           setTimeout(() => {
             clearInterval(textInterval);
@@ -79,8 +89,8 @@
             splash.style.opacity = '0';
             setTimeout(() => {
               splash.style.display = 'none';
-            }, 500);
-          }, 3000);
+            }, 1000);
+          }, 8000); // Duração total aumentada para 8 segundos para acomodar as frases
         });
       </script>
     </div>
