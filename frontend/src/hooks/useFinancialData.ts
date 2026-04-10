@@ -4,8 +4,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { useVerification } from '../contexts/VerificationContext';
 import { Transaction, SavingsGoal, SavingsContribution, MonthlyBalance } from '../types';
 import { getCurrentBrazilDate, getBrazilDateString } from '../utils/helpers';
+import { saveToSyncQueue, registerBackgroundSync } from '../utils/db';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE_URL = (import.meta as any).env.VITE_API_URL || 'https://finances.vibecodia.com.br/api';
 
 export const useFinancialData = () => {
   const { pin, isInitializing } = useVerification();
@@ -129,14 +130,24 @@ export const useFinancialData = () => {
 
   const addTransaction = async (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!pin) throw new Error('PIN not verified');
+    
+    const idempotencyKey = crypto.randomUUID();
+    const url = `${API_BASE_URL}/transactions`;
+    const body = JSON.stringify({
+      ...transaction,
+      idempotencyKey,
+      createdAt: getCurrentBrazilDate().toISOString(),
+    });
+    const requestHeaders = {
+      ...headers,
+      'X-Idempotency-Key': idempotencyKey,
+    };
+
     try {
-      const response = await fetch(`${API_BASE_URL}/transactions`, {
+      const response = await fetch(url, {
         method: 'POST',
-        headers,
-        body: JSON.stringify({
-          ...transaction,
-          createdAt: getCurrentBrazilDate().toISOString(),
-        }),
+        headers: requestHeaders,
+        body,
       });
       if (!response.ok) {
         let message = 'Falha ao adicionar transação';
@@ -156,17 +167,45 @@ export const useFinancialData = () => {
       return newTransaction;
     } catch (error) {
       console.error('Error adding transaction:', error);
-      throw error; // Re-throw to propagate the error
+      
+      // Se falhar por rede (offline), enfileiramos no IndexedDB
+      if (!navigator.onLine || (error instanceof TypeError && error.message === 'Failed to fetch')) {
+        await saveToSyncQueue({
+          url,
+          method: 'POST',
+          headers: requestHeaders,
+          body,
+        });
+        await registerBackgroundSync();
+        
+        // Simular sucesso localmente para UX
+        const tempTransaction: Transaction = {
+          ...transaction,
+          id: `temp-${idempotencyKey}`,
+          createdAt: getCurrentBrazilDate().toISOString(),
+          updatedAt: getCurrentBrazilDate().toISOString(),
+          status: 'active'
+        } as Transaction;
+        
+        setTransactions(prev => [tempTransaction, ...prev]);
+        return tempTransaction;
+      }
+      
+      throw error;
     }
   };
 
   const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
     if (!pin) throw new Error('PIN not verified');
+    const url = `${API_BASE_URL}/transactions/${id}`;
+    const method = 'PUT';
+    const body = JSON.stringify(updates);
+    
     try {
-      const response = await fetch(`${API_BASE_URL}/transactions/${id}`, {
-        method: 'PUT',
+      const response = await fetch(url, {
+        method,
         headers,
-        body: JSON.stringify(updates),
+        body,
       });
       if (!response.ok) throw new Error('Failed to update transaction');
       const updatedTransaction = await response.json();
@@ -177,15 +216,36 @@ export const useFinancialData = () => {
       fetchData();
     } catch (error) {
       console.error('Error updating transaction:', error);
+      
+      // Se falhar por rede (offline), enfileiramos no IndexedDB
+      if (!navigator.onLine || (error instanceof TypeError && error.message === 'Failed to fetch')) {
+        await saveToSyncQueue({
+          url,
+          method,
+          headers,
+          body,
+        });
+        await registerBackgroundSync();
+        
+        // Atualizar localmente para UX
+        setTransactions(prev => prev.map(transaction =>
+          transaction.id === id ? { ...transaction, ...updates } as Transaction : transaction
+        ));
+        return;
+      }
+      
       throw new Error('Failed to update transaction');
     }
   };
 
   const deleteTransaction = async (id: string) => {
     if (!pin) throw new Error('PIN not verified');
+    const url = `${API_BASE_URL}/transactions/${id}`;
+    const method = 'DELETE';
+    
     try {
-      const response = await fetch(`${API_BASE_URL}/transactions/${id}`, {
-        method: 'DELETE',
+      const response = await fetch(url, {
+        method,
         headers,
       });
       if (!response.ok) throw new Error('Failed to delete transaction');
@@ -196,20 +256,43 @@ export const useFinancialData = () => {
         t.id === id ? { ...t, status: 'deleted', deletedAt: new Date().toISOString() } : t
       ));
       // Refresh both transactions and goals because deleting a transaction 
-      // might also delete a savings contribution (sync)
+      // might affect savings contributions and goal progress
       fetchData();
     } catch (error) {
       console.error('Error deleting transaction:', error);
+      
+      // Se falhar por rede (offline), enfileiramos no IndexedDB
+      if (!navigator.onLine || (error instanceof TypeError && error.message === 'Failed to fetch')) {
+        await saveToSyncQueue({
+          url,
+          method,
+          headers,
+          body: '',
+        });
+        await registerBackgroundSync();
+        
+        // Atualizar localmente para UX
+        setTransactions(prev => prev.map(t => 
+          t.id === id ? { ...t, status: 'deleted', deletedAt: new Date().toISOString() } : t
+        ));
+        return;
+      }
+      
+      throw new Error('Failed to delete transaction');
     }
   };
 
   const updatePaymentStatus = async (id: string, isPaid: boolean) => {
     if (!pin) throw new Error('PIN not verified');
+    const url = `${API_BASE_URL}/transactions/${id}`;
+    const method = 'PUT';
+    const body = JSON.stringify({ isPaid });
+
     try {
-      const response = await fetch(`${API_BASE_URL}/transactions/${id}`, {
-        method: 'PUT',
+      const response = await fetch(url, {
+        method,
         headers,
-        body: JSON.stringify({ isPaid }),
+        body,
       });
       if (!response.ok) throw new Error('Failed to update payment status');
       const updatedTransaction = await response.json();
@@ -222,6 +305,23 @@ export const useFinancialData = () => {
       }
     } catch (error) {
       console.error('Error updating payment status:', error);
+      
+      // Se falhar por rede (offline), enfileiramos no IndexedDB
+      if (!navigator.onLine || (error instanceof TypeError && error.message === 'Failed to fetch')) {
+        await saveToSyncQueue({
+          url,
+          method,
+          headers,
+          body,
+        });
+        await registerBackgroundSync();
+        
+        // Atualizar localmente para UX
+        setTransactions(prev => prev.map(transaction =>
+          transaction.id === id ? { ...transaction, isPaid } as Transaction : transaction
+        ));
+        return;
+      }
     }
   };
 
