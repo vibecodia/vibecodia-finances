@@ -74,9 +74,9 @@ async function processSyncQueue() {
         body: requestData.body
       });
 
-      if (response.ok) {
+      if (response.ok || response.status === 409) {
         await deleteFromStore(db, STORE_NAME, requestData.id);
-        console.log('Sincronização concluída com sucesso para:', requestData.url);
+        console.log('Sincronização concluída (ou duplicata ignorada) para:', requestData.url);
       }
     } catch (err) {
       console.error('Falha ao sincronizar item:', err);
