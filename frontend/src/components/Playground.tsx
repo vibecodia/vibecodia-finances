@@ -58,7 +58,6 @@ import {
   parseLocalDate,
   formatBrazilDate,
   getCurrentBrazilDate,
-  getBrazilDateString,
   getTransactionsWithRecurrence
 } from '../utils/helpers';
 
