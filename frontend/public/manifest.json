@@ -24,5 +24,21 @@
       "type": "image/svg+xml",
       "purpose": "any"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Novo Gasto",
+      "short_name": "Gasto",
+      "description": "Adicionar uma nova despesa rapidamente",
+      "url": "/expenses/new?nosplash=true",
+      "icons": [{ "src": "/favicon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Pendências Hoje",
+      "short_name": "Hoje",
+      "description": "Ver pendências financeiras de hoje",
+      "url": "/hoje?nosplash=true",
+      "icons": [{ "src": "/favicon.svg", "sizes": "192x192" }]
+    }
   ]
 }

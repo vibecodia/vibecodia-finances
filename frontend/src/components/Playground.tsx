@@ -374,6 +374,22 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals, onA
   const [showAIObsModal, setShowAIObsModal] = useState(false);
   const [aiObservation, setAiObservation] = useState('');
 
+  const isFocusMode = useMemo(() => {
+    const sp = new URLSearchParams(location.search);
+    return sp.get('view') === 'focus';
+  }, [location.search]);
+
+  useEffect(() => {
+    if (isFocusMode) {
+      document.body.classList.add('shortcut-focus-mode');
+    } else {
+      document.body.classList.remove('shortcut-focus-mode');
+    }
+    return () => {
+      document.body.classList.remove('shortcut-focus-mode');
+    };
+  }, [isFocusMode]);
+
   const copyToClipboard = () => {
     if (!aiAnalysis) return;
     navigator.clipboard.writeText(aiAnalysis);
@@ -3108,7 +3124,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
               case 'table':
                 return (
-                  <div key={item.id} ref={tableRef} className="rounded-2xl border overflow-hidden shadow-md transition-all hover:shadow-lg scroll-mt-24" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <div key={item.id} ref={tableRef} className={`rounded-2xl border overflow-hidden shadow-md transition-all hover:shadow-lg scroll-mt-24 ${isFocusMode ? 'focus-target' : ''}`} style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
                     <div className="p-4 border-b font-semibold text-text flex items-center justify-between group" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
                       <div className="flex items-center gap-3">
                         <TableIcon className="w-5 h-5 text-primary" />
@@ -3122,6 +3138,15 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
+                        {isFocusMode && (
+                          <button
+                            onClick={() => navigate('/playground', { replace: true })}
+                            className="mr-2 flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-xl font-bold text-[10px] shadow-lg hover:scale-105 transition-all"
+                          >
+                            <X className="w-3 h-3" />
+                            <span>Sair do Foco</span>
+                          </button>
+                        )}
                         <button 
                           onClick={(e) => { e.stopPropagation(); handlePrintTable(); }}
                           className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text"

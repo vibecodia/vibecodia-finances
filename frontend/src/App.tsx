@@ -1,6 +1,6 @@
 import { Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import Calendar from './components/Calendar';
 import Dashboard from './components/Dashboard';
@@ -21,9 +21,21 @@ import ShoppingListModal from './components/ShoppingListModal';
 import { useFinancialData } from './hooks/useFinancialData';
 import { useShoppingList } from './hooks/useShoppingList';
 import { getBrazilDateString } from './utils/helpers';
+import TransactionForm from './components/TransactionForm';
+import { Transaction } from './types';
+
+const HojeRedirect = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const hoje = getBrazilDateString();
+    navigate(`/playground?de=${hoje}&ate=${hoje}&status=pending&view=focus`, { replace: true });
+  }, [navigate]);
+  return null;
+};
 
 function App() {
   const { pin, isInitializing } = useVerification();
+  const navigate = useNavigate();
   const {
     transactions,
     savingsGoals,
@@ -50,6 +62,9 @@ function App() {
 
   // Rotas onde o menu lateral não fica expandido no desktop
   const location = useLocation();
+  const sp = new URLSearchParams(location.search);
+  const isFocusMode = sp.get('view') === 'focus';
+
   const routesWithoutDesktopMenu = ['/playground'];
   const hideMenuOnDesktop = routesWithoutDesktopMenu.includes(location.pathname);
 
@@ -105,47 +120,65 @@ function App() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: theme.background }}>
-        <Header />
-        <Navigation />
+        {!isFocusMode && <Header />}
+        {!isFocusMode && <Navigation />}
 
-        <div className="fixed bottom-6 left-4 z-50 flex items-center">
-          <ShoppingCartButton
-            itemCount={Array.isArray(shoppingList) ? shoppingList.filter(item => !item.purchased).length : 0}
-            onClick={() => setIsShoppingListOpen(true)}
+        {!isFocusMode && (
+          <div className="fixed bottom-6 left-4 z-50 flex items-center">
+            <ShoppingCartButton
+              itemCount={Array.isArray(shoppingList) ? shoppingList.filter(item => !item.purchased).length : 0}
+              onClick={() => setIsShoppingListOpen(true)}
+              theme={theme}
+              animateCombined={animateCombined}
+            />
+
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-full bg-card-background text-text shadow-lg ml-1"
+              style={{ 
+                backgroundColor: theme.cardBackground,
+                color: theme.text
+              }}
+            >
+              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+          </div>
+        )}
+
+        {!isFocusMode && (
+          <ShoppingListModal
+            isOpen={isShoppingListOpen}
+            onClose={() => setIsShoppingListOpen(false)}
+            shoppingList={shoppingList}
+            addItem={addItem}
+            togglePurchased={togglePurchased}
+            removeItem={removeItem}
+            clearPurchased={clearPurchased}
+            togglePriority={togglePriority}
             theme={theme}
-            animateCombined={animateCombined}
+            isDarkMode={isDarkMode}
           />
+        )}
 
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-full bg-card-background text-text shadow-lg ml-1"
-            style={{ 
-              backgroundColor: theme.cardBackground,
-              color: theme.text
-            }}
-          >
-            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-        </div>
-
-        <ShoppingListModal
-          isOpen={isShoppingListOpen}
-          onClose={() => setIsShoppingListOpen(false)}
-          shoppingList={shoppingList}
-          addItem={addItem}
-          togglePurchased={togglePurchased}
-          removeItem={removeItem}
-          clearPurchased={clearPurchased}
-          togglePriority={togglePriority}
-          theme={theme}
-          isDarkMode={isDarkMode}
-        />
-
-        {/* No /playground, remove o lg:pl-72 para ocupar toda a largura */}
-        <main className={`w-full px-4 sm:px-6 lg:px-12 pb-20 transition-all duration-300 ${hideMenuOnDesktop ? '' : 'lg:pl-72'}`}>
+        {/* No /playground, remove o lg:pl-72 para ocupar toda a largura. No modo foco também remove. */}
+        <main className={`w-full transition-all duration-300 ${isFocusMode ? 'p-0' : 'px-4 sm:px-6 lg:px-12 pb-20'} ${hideMenuOnDesktop || isFocusMode ? '' : 'lg:pl-72'}`}>
           <Routes>
             <Route path="/" element={<Dashboard transactions={transactions} savingsGoals={savingsGoals} />} />
             <Route path="/expenses" element={<TransactionList type="expense" transactions={transactions} savingsGoals={savingsGoals} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} />} />
+            <Route 
+              path="/expenses/new" 
+              element={
+                <TransactionForm 
+                  type="expense" 
+                  savingsGoals={savingsGoals}
+                  onSubmit={async (data: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
+                    await addTransaction(data);
+                    navigate('/expenses');
+                  }} 
+                  onClose={() => navigate('/expenses')} 
+                />
+              } 
+            />
             <Route path="/income" element={<TransactionList type="income" transactions={transactions} savingsGoals={savingsGoals} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} />} />
             <Route path="/calendar" element={<Calendar transactions={transactions} onUpdatePaymentStatus={updatePaymentStatus} />} />
             <Route path="/reports" element={<Reports transactions={transactions} savingsGoals={savingsGoals} />} />
@@ -153,6 +186,7 @@ function App() {
             <Route path="/goals" element={<SavingsGoals goals={savingsGoals} onAdd={addSavingsGoal} onUpdate={updateSavingsGoal} onDelete={deleteSavingsGoal} onAddContribution={addSavingsContribution} onUpdateContribution={updateSavingsContribution} onDeleteContribution={deleteSavingsContribution} onUpdatePaymentStatus={updatePaymentStatus} />} />
             <Route path="/settings" element={<Settings transactions={transactions} savingsGoals={savingsGoals} onImportData={importData} onClearAllData={clearAllData} />} />
             <Route path="/tasks" element={<TrelloBoard />} />
+            <Route path="/hoje" element={<HojeRedirect />} />
           </Routes>
         </main>
         <VerificationModal />
@@ -166,3 +200,4 @@ function App() {
 }
 
 export default App;
+
