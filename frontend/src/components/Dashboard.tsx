@@ -1,5 +1,5 @@
 import { format, getDate, getDaysInMonth, isBefore, startOfMonth, endOfMonth } from 'date-fns';
-import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Store, Sparkles, Trash2, Pencil } from 'lucide-react';
+import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import Confetti from 'react-confetti';
 import { useNavigate } from 'react-router-dom';
@@ -52,7 +52,7 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
   // Split calculation
   const flexAmount = Math.min(remaining, splitValue);
   const flexPct = hasIncome ? (flexAmount / income) * 100 : 0;
-  const mercadoPct = Math.max(0, remainingPct - flexPct);
+  // const mercadoPct = Math.max(0, remainingPct - flexPct);
 
   // Threshold de alerta: 80% utilizado
   const isWarning = spentPct >= 60 && spentPct < 80;
@@ -203,7 +203,7 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
   onSave,
   onRemove
 }) => {
-  const { theme } = useTheme();
+  // const { theme } = useTheme();
   const { inputProps, numericValue, setNumericValue } = useCurrencyInput(currentFlex);
 
   // Sync with current value whenever modal opens
