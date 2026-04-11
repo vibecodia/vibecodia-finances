@@ -1,5 +1,5 @@
 import { format, getDate, getDaysInMonth, isBefore, startOfMonth, endOfMonth } from 'date-fns';
-import { Target, AlertTriangle, CreditCard, Eye, EyeOff } from 'lucide-react';
+import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import Confetti from 'react-confetti';
 import { useNavigate } from 'react-router-dom';
@@ -13,6 +13,8 @@ import { calculateBalances } from '../utils/balanceCalculations';
 import { formatCurrency, filterTransactionsByMonth, formatPaymentMethod, getCurrentBrazilDate } from '../utils/helpers';
 import RecentTransactionsFloatingCard from './RecentTransactionsFloatingCard';
 import MonthSegmentedControl from './MonthSegmentedControl';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { useCurrencyInput } from '../hooks/useCurrencyInput';
 
 
 
@@ -30,9 +32,11 @@ interface AccountSliderProps {
   formatCurrency: (value: number) => string;
   daysPassed: number;
   totalDays: number;
+  splitValue?: number;
+  splitLabel?: string;
 }
 
-const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, formatCurrency, daysPassed, totalDays }) => {
+const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, formatCurrency, daysPassed, totalDays, splitValue = 0, splitLabel }) => {
   const remaining = Math.max(0, income - spent);
   const hasIncome = income > 0;
   const balance = income - spent;
@@ -44,6 +48,11 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
   const remainingPct = hasIncome
     ? (remaining / income) * 100
     : spent > 0 ? 0 : 100;
+
+  // Split calculation
+  const flexAmount = Math.min(remaining, splitValue);
+  const flexPct = hasIncome ? (flexAmount / income) * 100 : 0;
+  // const mercadoPct = Math.max(0, remainingPct - flexPct);
 
   // Threshold de alerta: 80% utilizado
   const isWarning = spentPct >= 60 && spentPct < 80;
@@ -86,7 +95,7 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
       <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 relative overflow-hidden shadow-inner">
         {/* Vermelho: gasto — da esquerda */}
         <div
-          className="h-3 transition-all duration-700 absolute left-0 rounded-l-full"
+          className="h-3 transition-all duration-700 absolute left-0 rounded-l-full z-20"
           style={{
             width: `${spentPct}%`,
             background: isDanger
@@ -96,15 +105,25 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
                 : 'linear-gradient(90deg, #f87171, #ef4444)',
           }}
         />
-        {/* Verde: disponível — da direita */}
+
+        {/* Verde: mercado (disponível — da direita, mas antes do flex) */}
         <div
           className="bg-green-400 h-3 transition-all duration-700 absolute right-0 rounded-r-full"
           style={{ width: `${remainingPct}%` }}
         />
-        {/* Linha divisória */}
+
+        {/* Amber: flex (disponível — da extrema direita) */}
+        {flexPct > 0 && (
+          <div
+            className="bg-amber-400 h-3 transition-all duration-700 absolute right-0 rounded-r-full z-10"
+            style={{ width: `${flexPct}%` }}
+          />
+        )}
+
+        {/* Linha divisória entre gasto e disponível */}
         {spentPct > 0 && remainingPct > 0 && (
           <div
-            className="absolute top-0 w-0.5 h-full bg-white/40 z-10"
+            className="absolute top-0 w-0.5 h-full bg-white/40 z-30"
             style={{ left: `${spentPct}%`, transform: 'translateX(-50%)' }}
           />
         )}
@@ -112,9 +131,27 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
 
       {/* Percentual usado abaixo da barra */}
       <div className="flex justify-between items-center">
-        <span className="text-[10px] text-text opacity-40 font-mono">
-          {spentPct.toFixed(0)}% utilizado
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] text-text opacity-40 font-mono">
+            {spentPct.toFixed(0)}% utilizado
+          </span>
+          {flexPct > 0 && (
+            <div className="flex items-center gap-3">
+               <div className="flex items-center gap-1 bg-green-500/5 px-2 py-0.5 rounded-full border border-green-500/10 transition-all hover:bg-green-500/10">
+                 <div className="w-1.5 h-1.5 bg-green-400 rounded-full shadow-[0_0_4px_rgba(74,222,128,0.5)]" />
+                 <span className="text-[9px] text-text opacity-70 font-black uppercase tracking-tighter">
+                   Saldo Mercado: {formatCurrency(remaining - flexAmount)}
+                 </span>
+               </div>
+               <div className="flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 transition-all hover:bg-amber-500/10">
+                 <div className="w-1.5 h-1.5 bg-amber-400 rounded-full shadow-[0_0_4px_rgba(251,191,36,0.5)] animate-pulse" />
+                 <span className="text-[9px] text-amber-700 dark:text-amber-400 font-black uppercase tracking-tighter">
+                   Saldo {splitLabel || 'Flex'}: {formatCurrency(flexAmount)}
+                 </span>
+               </div>
+            </div>
+          )}
+        </div>
         {remaining > 0 && daysRemaining > 0 && (
           <span className="text-[10px] text-primary opacity-60 font-mono font-bold">
             Sugerido: {formatCurrency(dailyBudget)}/dia
@@ -147,6 +184,139 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
   );
 };
 
+// ─── FlashSplitModal ──────────────────────────────────────────────────────────
+
+interface FlashSplitModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  totalBalance: number;
+  currentFlex: number;
+  onSave: (amount: number) => void;
+  onRemove: () => void;
+}
+
+const FlashSplitModal: React.FC<FlashSplitModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  totalBalance, 
+  currentFlex, 
+  onSave,
+  onRemove
+}) => {
+  // const { theme } = useTheme();
+  const { inputProps, numericValue, setNumericValue } = useCurrencyInput(currentFlex);
+
+  // Sync with current value whenever modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      setNumericValue(currentFlex);
+    }
+  }, [isOpen, currentFlex, setNumericValue]);
+
+  const remainingMercado = totalBalance - numericValue;
+  const isOverLimit = numericValue > totalBalance;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Scissors className="w-5 h-5 text-primary" />
+            Split Saldo Flash
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-6 py-4">
+          <div className="p-5 rounded-2xl bg-primary/5 dark:bg-primary/10 border-2 border-primary/20 space-y-4 shadow-inner">
+            <div className="flex justify-between items-center text-[10px] text-primary font-black uppercase tracking-[0.2em]">
+              <span className="flex items-center gap-2">
+                <CreditCard className="w-3 h-3" />
+                Saldo Total Flash
+              </span>
+              <span className="font-mono text-sm">{formatCurrency(totalBalance)}</span>
+            </div>
+            
+            <div className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shadow-inner relative">
+              <div 
+                className="h-full bg-primary transition-all duration-700 ease-out" 
+                style={{ width: `${Math.min(100, (remainingMercado / totalBalance) * 100)}%` }}
+              />
+              <div 
+                className="absolute top-0 h-full w-px bg-white/60 z-10"
+                style={{ right: `${Math.min(100, (numericValue / totalBalance) * 100)}%` }}
+              />
+            </div>
+
+            <div className="flex justify-between items-end">
+              <div className="space-y-0.5">
+                <p className="text-[9px] font-bold text-primary/60 uppercase">Mercado</p>
+                <p className="text-sm font-black text-primary">{formatCurrency(Math.max(0, remainingMercado))}</p>
+              </div>
+              <div className="space-y-0.5 text-right">
+                <p className="text-[9px] font-bold text-amber-600 uppercase">Flex (Seu Input)</p>
+                <p className="text-sm font-black text-amber-500">{formatCurrency(numericValue)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <label className="text-xs font-black text-text/80 uppercase tracking-widest flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
+                Informe o Saldo Flex
+              </label>
+              <span className="text-[10px] font-bold text-amber-600/60 uppercase bg-amber-500/10 px-2 py-0.5 rounded-full">
+                Manual
+              </span>
+            </div>
+            
+            <div className="relative group">
+              <input
+                {...inputProps}
+                autoFocus
+                className={`w-full bg-slate-100 dark:bg-slate-800 border-4 rounded-[2rem] p-6 text-4xl font-black text-center transition-all focus:outline-none shadow-xl ${
+                  isOverLimit 
+                    ? 'border-red-500/50 text-red-500 ring-4 ring-red-500/10' 
+                    : 'border-amber-500/30 focus:border-amber-500 focus:ring-8 focus:ring-amber-500/10 text-amber-600 dark:text-amber-400'
+                }`}
+                placeholder="R$ 0,00"
+              />
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[9px] font-black uppercase px-4 py-1 rounded-full shadow-lg tracking-widest whitespace-nowrap">
+                Ajustando Saldo Flex
+              </div>
+            </div>
+
+            {isOverLimit && (
+              <div className="flex items-center justify-center gap-2 text-red-500 animate-bounce mt-4">
+                <AlertTriangle className="w-4 h-4" />
+                <p className="text-[10px] font-black uppercase tracking-tighter">
+                  O valor flex não pode superar o saldo total!
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter className="flex items-center gap-6 sm:gap-8 pt-2">
+          <button
+            onClick={onRemove}
+            className="text-[10px] font-black uppercase tracking-widest text-red-500/60 hover:text-red-600 transition-colors"
+          >
+            Remover Split
+          </button>
+          <button
+            onClick={() => onSave(numericValue)}
+            disabled={isOverLimit || numericValue < 0}
+            className="flex-1 px-6 py-4 rounded-[1.5rem] text-xs font-black uppercase tracking-[0.2em] bg-primary text-white hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-xl shadow-primary/20"
+          >
+            Confirmar Saldo
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => {
@@ -157,6 +327,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   const [currentMonth, setCurrentMonth] = useState<Date>(getCurrentBrazilDate());
   const [showBalance, setShowBalance] = useLocalStorage('dashboard_show_balance', true);
   const [includeBenefits, setIncludeBenefits] = useLocalStorage('dashboard_include_benefits', true);
+  const [isFlashSplit, setIsFlashSplit] = useLocalStorage('dashboard_flash_is_split', false);
+  const [flashFlexAmount, setFlashFlexAmount] = useLocalStorage('dashboard_flash_flex_amount', 0);
+  const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const { theme, setThemeMonth } = useTheme();
 
   useEffect(() => {
@@ -225,6 +398,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   const flashSpent = transactionsForSelectedMonth
     .filter(t => t.type === 'expense' && (t.paymentMethod && formatPaymentMethod(t.paymentMethod) === 'Flash'))
     .reduce((sum, t) => sum + t.amount, 0);
+
+  const currentFlashBalance = flashIncome - flashSpent;
 
   const veroIncome = transactionsForSelectedMonth
     .filter(t => t.type === 'income' && (
@@ -459,14 +634,49 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
           </div>
         </div>
 
-        <AccountSlider
-          label="Flash"
-          income={flashIncome}
-          spent={flashSpent}
-          formatCurrency={formatCurrency}
-          daysPassed={daysPassed}
-          totalDays={totalDays}
-        />
+        <div className="space-y-4">
+          <AccountSlider
+            label="Flash"
+            income={flashIncome}
+            spent={flashSpent}
+            formatCurrency={formatCurrency}
+            daysPassed={daysPassed}
+            totalDays={totalDays}
+            splitValue={isFlashSplit ? flashFlexAmount : 0}
+            splitLabel="Flex"
+          />
+
+          <div className="flex justify-end items-center gap-4 px-1">
+            {isFlashSplit && (
+              <button
+                onClick={() => setIsSplitModalOpen(true)}
+                className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-text/40 hover:text-primary transition-colors"
+                title="Ajustar Split"
+              >
+                <Pencil className="w-3 h-3" />
+                Ajustar
+              </button>
+            )}
+            <button
+              onClick={() => {
+                if (isFlashSplit) {
+                  setFlashFlexAmount(0);
+                  setIsFlashSplit(false);
+                } else {
+                  setIsSplitModalOpen(true);
+                }
+              }}
+              className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest transition-colors ${
+                isFlashSplit
+                  ? 'text-red-500/60 hover:text-red-600'
+                  : 'text-text/40 hover:text-primary'
+              }`}
+            >
+              {isFlashSplit ? <Trash2 className="w-3 h-3" /> : <Scissors className="w-3 h-3" />}
+              {isFlashSplit ? 'Remover Split' : 'Split Flex'}
+            </button>
+          </div>
+        </div>
 
         <div className="border-t border-slate-200 dark:border-slate-700" />
 
@@ -479,6 +689,24 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
           totalDays={totalDays}
         />
       </div>
+
+      {/* Modal de Split do Flash */}
+      <FlashSplitModal
+        isOpen={isSplitModalOpen}
+        onClose={() => setIsSplitModalOpen(false)}
+        totalBalance={currentFlashBalance}
+        currentFlex={flashFlexAmount}
+        onSave={(amount: number) => {
+          setFlashFlexAmount(amount);
+          setIsFlashSplit(true);
+          setIsSplitModalOpen(false);
+        }}
+        onRemove={() => {
+          setFlashFlexAmount(0);
+          setIsFlashSplit(false);
+          setIsSplitModalOpen(false);
+        }}
+      />
 
       {/* Progresso das Metas */}
       {savingsGoals.length > 0 && (
