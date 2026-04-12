@@ -10,6 +10,7 @@ import { MoveTaskModal } from './MoveTaskModal';
 import { SearchBar } from './SearchBar';
 import { TaskModal } from './TaskModal';
 import { TrelloConfirmationModal } from './TrelloConfirmationModal';
+import ConfirmationModal from '../ConfirmationModal';
 
 
 const initialColumns: ColumnType[] = [
@@ -39,6 +40,13 @@ export function Board() {
   });
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   const [taskToMove, setTaskToMove] = useState<Task | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    taskId: string | null;
+  }>({
+    isOpen: false,
+    taskId: null
+  });
 
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => 
@@ -77,6 +85,11 @@ export function Board() {
       setIsMoveModalOpen(false);
       setTaskToMove(null);
     }
+    setDeleteConfirmation({ isOpen: false, taskId: null });
+  };
+
+  const openDeleteModal = (taskId: string) => {
+    setDeleteConfirmation({ isOpen: true, taskId });
   };
 
   const handleDragStart = (task: Task) => {
@@ -269,6 +282,7 @@ export function Board() {
               onCardClick={handleOpenMoveModal}
               onMoveForward={handleMoveForward}
               onMoveBackward={handleMoveBackward}
+              onDeleteTask={openDeleteModal}
             />
           ))}
         </div>
@@ -286,6 +300,7 @@ export function Board() {
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           onSave={handleSaveTask}
+          onDelete={openDeleteModal}
           task={editingTask}
           mode={editingTask ? 'edit' : 'create'}
         />
@@ -307,8 +322,17 @@ export function Board() {
            task={taskToMove}
            onMove={handleMoveForward}
            onEdit={handleEditTask}
-           onDelete={handleDeleteTask}
+           onDelete={openDeleteModal}
          />
+
+        <ConfirmationModal
+          isOpen={deleteConfirmation.isOpen}
+          onClose={() => setDeleteConfirmation({ isOpen: false, taskId: null })}
+          onConfirm={() => deleteConfirmation.taskId && handleDeleteTask(deleteConfirmation.taskId)}
+          title="Excluir Tarefa"
+          message="Tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita."
+          confirmText="Confirmar Exclusão"
+        />
       </div>
     </div>
   );

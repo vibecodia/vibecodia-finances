@@ -13,10 +13,11 @@ interface TaskCardProps {
   onCardClick: (task: Task) => void;
   onMoveForward: (taskId: string) => void;
   onMoveBackward: (taskId: string) => void;
+  onDelete?: (taskId: string) => void;
   onDragEnd?: () => void;
 }
 
-export function TaskCard({ task, onDragStart, onCardClick, onMoveForward = () => {}, onMoveBackward = () => {} }: TaskCardProps) {
+export function TaskCard({ task, onDragStart, onCardClick, onMoveForward = () => {}, onMoveBackward = () => {}, onDelete = () => {} }: TaskCardProps) {
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.dataTransfer.effectAllowed = 'move';
     onDragStart(task);

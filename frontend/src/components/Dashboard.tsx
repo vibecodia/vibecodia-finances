@@ -457,13 +457,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         )}
 
         {/* Header */}
-        <div className="text-center py-3">
-          <div className="flex items-center justify-center">
-            <MonthSegmentedControl
-              month={currentMonth}
-              onChange={(newMonth) => setCurrentMonth(newMonth)}
-            />
-          </div>
+        <div className="py-3 w-full">
+          <MonthSegmentedControl
+            month={currentMonth}
+            onChange={(newMonth) => setCurrentMonth(newMonth)}
+          />
         </div>
 
         {/* Main Balance Card */}

@@ -1,7 +1,7 @@
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, TooltipItem, Filler } from 'chart.js';
 import { format, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { BarChart3, PieChart, TrendingUp, Brain, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BarChart3, PieChart, TrendingUp, Brain } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { Bar, Doughnut } from 'react-chartjs-2';
 
@@ -230,11 +230,11 @@ const Reports: React.FC<ReportsProps> = ({ transactions, savingsGoals = [] }) =>
 
   return (
     <div className="space-y-6 relative">
-      <div className="flex flex-col md:flex-row md:items-center justify-between py-4 gap-4">
-        <h1 className="text-2xl font-bold text-foreground whitespace-nowrap">
+      <div className="text-center py-4 space-y-4">
+        <h1 className="text-2xl font-black text-foreground uppercase tracking-tight">
           Relatórios Financeiros
         </h1>
-        <div className="flex-1 w-full">
+        <div className="w-full">
           <MonthSegmentedControl
             month={currentMonth}
             onChange={(newMonth) => setCurrentMonth(newMonth)}

@@ -1,4 +1,4 @@
-import { X, Target, Flag } from 'lucide-react';
+import { X, Target, Flag, Trash2 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
 import { Task } from '../../types/trello/task';
@@ -18,11 +18,18 @@ interface TaskModalProps {
   mode: 'create' | 'edit';
 }
 
-export function TaskModal({ isOpen, onClose, onSave, task, mode }: TaskModalProps) {
+export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode }: TaskModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [date, setDate] = useState('');
+
+  const handleDelete = () => {
+    if (task && onDelete) {
+      onDelete(task.id);
+      onClose();
+    }
+  };
 
   useEffect(() => {
     if (task && mode === 'edit') {
@@ -141,6 +148,18 @@ export function TaskModal({ isOpen, onClose, onSave, task, mode }: TaskModalProp
           </div>
 
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-border">
+            {mode === 'edit' && onDelete ? (
+              <Button
+                type="button"
+                onClick={handleDelete}
+                variant="ghost"
+                className="text-destructive hover:bg-destructive/10 w-full sm:w-auto font-black uppercase tracking-widest flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Excluir Tarefa
+              </Button>
+            ) : <div className="hidden sm:block" />}
+            
             <div className="flex gap-2 w-full sm:w-auto">
               <Button
                 type="button"
