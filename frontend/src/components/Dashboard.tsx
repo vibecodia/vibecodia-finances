@@ -468,18 +468,17 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
 
         {/* Main Balance Card */}
       <div
-        className={`relative overflow-hidden rounded-[2.5rem] p-8 cursor-pointer border transition-all duration-500 shadow-xl ${
+        className={`relative overflow-hidden rounded-[2.5rem] p-8 cursor-pointer border border-white/10 transition-all duration-500 shadow-xl text-white ${
           isPulsing ? 'scale-[1.02]' : 'scale-100'
-        } ${finalBalance < -0.001 ? 'text-rose-950' : 'text-white'}`}
+        }`}
         style={{
           backgroundColor: theme.primary,
-          borderColor: finalBalance < -0.001 ? '#fecaca' : 'rgba(255, 255, 255, 0.1)',
         }}
         onClick={handleBalanceCardClick}
       >
         {/* Background Image Layer with slow movement */}
         <div 
-          className="absolute inset-0 animate-slow-zoom-pan opacity-50 bg-cover bg-center"
+          className="absolute inset-0 animate-slow-zoom-pan opacity-40 bg-cover bg-center"
           style={{ backgroundImage: `url(${familyBg})` }}
         />
 
@@ -487,17 +486,15 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         <div 
           className="absolute inset-0"
           style={{
-            backgroundImage: finalBalance < -0.001
-              ? 'radial-gradient(circle at top left, rgba(255, 241, 235, 0.7), rgba(255, 209, 255, 0.8))'
-              : `radial-gradient(circle at top left, ${theme.primary}55, ${theme.primary}bb)`,
+            backgroundImage: `linear-gradient(135deg, ${theme.primary}dd 0%, ${theme.primary}88 50%, ${theme.primary}bb 100%)`,
           }}
         />
 
         <div className="relative z-10 flex flex-col h-full justify-between">
           <div className="flex items-start justify-between mb-8">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50 mb-1">
-                {finalBalance < -0.001 ? 'Atenção • Déficit' : 'Total em Carteira'}
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-70 mb-1">
+                Total em Carteira
               </p>
               <h2 className="text-xl font-black tracking-tight uppercase italic">
                 {finalBalance < -0.001 ? 'Saldo Devedor' : 'Saldo'}

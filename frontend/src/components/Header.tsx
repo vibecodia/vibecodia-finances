@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import ThemeSelector from './ThemeSelector';
+import { cn } from '../lib/utils';
 
 const Header: React.FC = () => {
   const [isPulsing, setIsPulsing] = useState(false);
@@ -19,25 +21,31 @@ const Header: React.FC = () => {
 
   return (
     <header
-      className={`bg-primary text-white p-4 shadow-lg sticky top-0 z-50 transition-transform duration-300 ease-in-out ${isPulsing ? 'scale-105' : 'scale-100'}`}
-      onClick={handleHeaderClick}
+      className={cn(
+        "bg-primary text-white p-4 shadow-lg sticky top-0 z-50 transition-all duration-300 ease-in-out border-b border-white/10",
+        isPulsing ? "scale-105" : "scale-100"
+      )}
     >
-      <Link to="/" className="block cursor-pointer">
-        <div className="w-full relative h-16 flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-xl font-bold">💰 Controle Financeiro</h1>
-            <p className="text-blue-100 text-xs opacity-80 mt-1">
-              Beta Version | v{appVersion} 🚀
-            </p>
-          </div>
-          <div
-            className="absolute top-1/2 -translate-y-1/2 right-0 bg-accent text-2xl text-white w-12 h-12 flex items-center justify-center rounded-full shadow-md"
-            aria-label="Ir para a página inicial"
-          >
-            🏠
-          </div>
+      <div className="w-full relative h-16 flex items-center justify-center">
+        <Link to="/" className="block cursor-pointer text-center" onClick={handleHeaderClick}>
+          <h1 className="text-xl font-bold">💰 Controle Financeiro</h1>
+          <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest mt-1">
+            Beta Version | v{appVersion} 🚀
+          </p>
+        </Link>
+        
+        <div className="absolute top-1/2 -translate-y-1/2 right-16 flex items-center gap-4">
+          <ThemeSelector />
         </div>
-      </Link>
+
+        <Link 
+          to="/" 
+          className="absolute top-1/2 -translate-y-1/2 right-0 bg-accent text-2xl text-white w-12 h-12 flex items-center justify-center rounded-full shadow-md hover:scale-110 transition-transform"
+          aria-label="Ir para a página inicial"
+        >
+          🏠
+        </Link>
+      </div>
     </header>
   );
 };
