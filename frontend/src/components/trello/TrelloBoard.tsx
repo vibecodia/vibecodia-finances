@@ -6,6 +6,7 @@ import { Task } from '../../types/trello/task';
 import { Column } from './Column';
 import { TaskModal } from './TaskModal';
 import { Button } from '../ui/Button';
+import ConfirmationModal from '../ConfirmationModal';
 
 const initialTasks: Record<string, Task[]> = {
   todo: [],
@@ -26,6 +27,13 @@ export function TrelloBoard() {
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [currentTask, setCurrentTask] = useState<Task | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    taskId: string | null;
+  }>({
+    isOpen: false,
+    taskId: null
+  });
 
   const handleDragStart = (task: Task) => {
     setDraggedTask(task);
@@ -104,6 +112,11 @@ export function TrelloBoard() {
     }
     setTasks(updatedTasks);
     setShowTaskModal(false);
+    setDeleteConfirmation({ isOpen: false, taskId: null });
+  };
+
+  const openDeleteModal = (taskId: string) => {
+    setDeleteConfirmation({ isOpen: true, taskId });
   };
 
   return (
@@ -124,7 +137,7 @@ export function TrelloBoard() {
           isOpen={showTaskModal}
           onClose={() => setShowTaskModal(false)}
           onSave={handleSaveTask}
-          onDelete={handleDeleteTask}
+          onDelete={openDeleteModal}
           task={currentTask}
           mode={currentTask.id ? 'edit' : 'create'}
         />
@@ -159,6 +172,7 @@ export function TrelloBoard() {
             }
           }}
           onMoveBackward={() => {}}
+          onDeleteTask={openDeleteModal}
         />
         
         <Column 
@@ -189,6 +203,7 @@ export function TrelloBoard() {
               setTasks(updatedTasks);
             }
           }}
+          onDeleteTask={openDeleteModal}
         />
         
         <Column 
@@ -214,8 +229,18 @@ export function TrelloBoard() {
               setTasks(updatedTasks);
             }
           }}
+          onDeleteTask={openDeleteModal}
         />
       </div>
+
+      <ConfirmationModal
+        isOpen={deleteConfirmation.isOpen}
+        onClose={() => setDeleteConfirmation({ isOpen: false, taskId: null })}
+        onConfirm={() => deleteConfirmation.taskId && handleDeleteTask(deleteConfirmation.taskId)}
+        title="Excluir Tarefa"
+        message="Tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita."
+        confirmText="Confirmar Exclusão"
+      />
     </div>
   );
 }
