@@ -2727,73 +2727,81 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
               case 'expense_timeline':
                 return (
-                  <div key={item.id} className="rounded-2xl border-2 p-0 overflow-hidden shadow-lg transition-all hover:shadow-2xl" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    <div className="p-4 md:p-6 border-b font-semibold text-foreground flex flex-col lg:flex-row lg:items-center justify-between gap-4" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                    <div className="p-4 border-b font-semibold text-foreground flex flex-col lg:flex-row lg:items-center justify-between gap-4" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
                       <div className="flex items-center gap-3 flex-shrink-0">
-                        <TrendingUp className="w-6 h-6 md:w-8 md:h-8 text-accent animate-pulse" />
-                        <span className="text-lg md:text-xl lg:text-2xl font-black uppercase tracking-tight">{item.label}</span>
+                        <TrendingUp className="w-5 h-5 text-accent" />
+                        <span className="text-sm lg:text-base font-bold uppercase tracking-wider">{item.label}</span>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 md:gap-3">
                         {!item.collapsed && (
                           <div className="flex flex-wrap items-center gap-2">
                             {/* Mode Toggle */}
-                            <div className="flex gap-1 bg-muted rounded-xl p-1">
-                              <Button
+                            <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
+                              <button
                                 onClick={() => setExpenseMode('range')}
-                                variant={expenseMode === 'range' ? 'accent' : 'ghost'}
-                                size="sm"
-                                className="text-[9px] md:text-[10px] font-black uppercase"
+                                className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                                  expenseMode === 'range'
+                                    ? 'bg-accent text-white'
+                                    : 'bg-transparent text-muted-foreground hover:opacity-100'
+                                }`}
                               >
                                 INTERVALO
-                              </Button>
-                              <Button
+                              </button>
+                              <button
                                 onClick={() => setExpenseMode('comparison')}
-                                variant={expenseMode === 'comparison' ? 'accent' : 'ghost'}
-                                size="sm"
-                                className="text-[9px] md:text-[10px] font-black uppercase"
+                                className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                                  expenseMode === 'comparison'
+                                    ? 'bg-accent text-white'
+                                    : 'bg-transparent text-muted-foreground hover:opacity-100'
+                                }`}
                               >
                                 COMPARAÇÃO
-                              </Button>
+                              </button>
                             </div>
 
                             {/* Date Field Toggle */}
-                            <div className="flex gap-1 bg-muted rounded-xl p-1">
-                              <Button
+                            <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
+                              <button
                                 onClick={() => setExpenseDateField('date')}
-                                variant={expenseDateField === 'date' ? 'accent' : 'ghost'}
-                                size="sm"
-                                className="text-[9px] md:text-[10px] font-black uppercase"
+                                className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                                  expenseDateField === 'date'
+                                    ? 'bg-accent text-white'
+                                    : 'bg-transparent text-muted-foreground hover:opacity-100'
+                                }`}
                               >
                                 Venc.
-                              </Button>
-                              <Button
+                              </button>
+                              <button
                                 onClick={() => setExpenseDateField('createdAt')}
-                                variant={expenseDateField === 'createdAt' ? 'accent' : 'ghost'}
-                                size="sm"
-                                className="text-[9px] md:text-[10px] font-black uppercase"
+                                className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                                  expenseDateField === 'createdAt'
+                                    ? 'bg-accent text-white'
+                                    : 'bg-transparent text-muted-foreground hover:opacity-100'
+                                }`}
                               >
                                 Criação
-                              </Button>
+                              </button>
                             </div>
 
                             {/* Date/Month Inputs */}
-                            <div className="flex items-center gap-1 border-2 rounded-xl p-1 px-2 md:px-3" style={{ borderColor: theme.cardBorder }}>
+                            <div className="flex items-center gap-1 border rounded-lg p-1 px-2" style={{ borderColor: theme.cardBorder }}>
                               {expenseMode === 'range' ? (
                                 <>
                                   <input 
                                     type="date" 
                                     value={expenseTimelineStartDate}
                                     onChange={(e) => setExpenseTimelineStartDate(e.target.value)}
-                                    className="bg-transparent text-[10px] md:text-xs font-bold outline-none w-24 md:w-auto"
+                                    className="bg-transparent text-[10px] font-bold outline-none"
                                     style={{ color: theme.text }}
                                     title="Data Inicial"
                                   />
-                                  <span className="text-xs opacity-30 px-1 font-black">→</span>
+                                  <span className="text-[10px] opacity-30 px-1 font-black">→</span>
                                   <input 
                                     type="date" 
                                     value={expenseTimelineEndDate}
                                     onChange={(e) => setExpenseTimelineEndDate(e.target.value)}
-                                    className="bg-transparent text-[10px] md:text-xs font-bold outline-none w-24 md:w-auto"
+                                    className="bg-transparent text-[10px] font-bold outline-none"
                                     style={{ color: theme.text }}
                                     title="Data Final"
                                   />
@@ -2804,16 +2812,16 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                                     type="month" 
                                     value={expenseComparisonMonth1}
                                     onChange={(e) => setExpenseComparisonMonth1(e.target.value)}
-                                    className="bg-transparent text-[10px] md:text-xs font-bold outline-none"
+                                    className="bg-transparent text-[10px] font-bold outline-none"
                                     style={{ color: theme.text }}
                                     title="Mês 1"
                                   />
-                                  <span className="text-xs opacity-30 px-1 font-black">vs</span>
+                                  <span className="text-[10px] opacity-30 px-1 font-black">vs</span>
                                   <input 
                                     type="month" 
                                     value={expenseComparisonMonth2}
                                     onChange={(e) => setExpenseComparisonMonth2(e.target.value)}
-                                    className="bg-transparent text-[10px] md:text-xs font-bold outline-none"
+                                    className="bg-transparent text-[10px] font-bold outline-none"
                                     style={{ color: theme.text }}
                                     title="Mês 2"
                                   />
@@ -2822,70 +2830,76 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                             </div>
 
                             {/* Group By */}
-                            <div className="flex gap-1 bg-muted rounded-xl p-1">
-                              <Button
+                            <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
+                              <button
                                 onClick={() => setExpenseGroupBy('category')}
-                                variant={expenseGroupBy === 'category' ? 'accent' : 'ghost'}
-                                size="sm"
-                                className="text-[9px] md:text-[10px] font-black uppercase"
+                                className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                                  expenseGroupBy === 'category'
+                                    ? 'bg-accent text-white'
+                                    : 'bg-transparent text-muted-foreground hover:opacity-100'
+                                }`}
                               >
                                 Categ.
-                              </Button>
-                              <Button
+                              </button>
+                              <button
                                 onClick={() => setExpenseGroupBy('paymentMethod')}
-                                variant={expenseGroupBy === 'paymentMethod' ? 'accent' : 'ghost'}
-                                size="sm"
-                                className="text-[9px] md:text-[10px] font-black uppercase"
+                                className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                                  expenseGroupBy === 'paymentMethod'
+                                    ? 'bg-accent text-white'
+                                    : 'bg-transparent text-muted-foreground hover:opacity-100'
+                                }`}
                               >
                                 Método
-                              </Button>
+                              </button>
                             </div>
 
                             {/* Status Filter */}
-                            <div className="flex gap-1 bg-muted rounded-xl p-1">
+                            <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
                               {(['all', 'paid', 'pending'] as const).map((status) => (
-                                <Button
+                                <button
                                   key={status}
                                   onClick={() => setExpenseStatusFilter(status)}
-                                  variant={expenseStatusFilter === status ? 'accent' : 'ghost'}
-                                  size="sm"
-                                  className="text-[9px] md:text-[10px] font-black uppercase"
+                                  className={`px-2 py-1 rounded text-[10px] font-bold transition-all uppercase ${
+                                    expenseStatusFilter === status
+                                      ? 'bg-accent text-white'
+                                      : 'bg-transparent text-muted-foreground hover:opacity-100'
+                                  }`}
                                 >
                                   {status === 'all' ? 'Todos' : status === 'paid' ? 'Pagos' : 'Pend.'}
-                                </Button>
+                                </button>
                               ))}
                             </div>
                           </div>
                         )}
                         
-                        <div className="flex items-center gap-1 border-l-2 pl-2 md:pl-4" style={{ borderColor: theme.cardBorder }}>
+                        <div className="flex items-center gap-1 border-l pl-3" style={{ borderColor: theme.cardBorder }}>
                           {!item.collapsed && (
                             <button 
                               onClick={(e) => { e.stopPropagation(); toggleAll(expenseChartRef); }}
-                              className="p-1.5 md:p-2 hover:bg-muted rounded-xl transition-all"
+                              className="p-1.5 hover:bg-muted rounded-md transition-all"
                               title="Alternar Todos"
                             >
-                              <Eye className="w-4 h-4 md:w-5 md:h-5" />
+                              <Eye className="w-4 h-4" />
                             </button>
                           )}
                           <button 
                             onClick={(e) => { e.stopPropagation(); handlePrintExpenseChart(); }}
-                            className="p-1.5 md:p-2 hover:bg-muted rounded-xl transition-colors text-foreground"
+                            className="p-1.5 hover:bg-muted rounded-md transition-colors text-foreground"
                             title="Imprimir Gráfico"
                           >
-                            <Printer className="w-4 h-4 md:w-5 md:h-5" />
+                            <Printer className="w-4 h-4" />
                           </button>
-                          <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1.5 md:p-2 hover:bg-muted rounded-xl disabled:opacity-0 transition-all"><ArrowUp className="w-4 h-4 md:w-5 md:h-5" /></button>
-                          <button onClick={() => moveItem(index, 'down')} disabled={index === layout.length - 1} className="p-1.5 md:p-2 hover:bg-muted rounded-xl disabled:opacity-0 transition-all"><ArrowDown className="w-4 h-4 md:w-5 md:h-5" /></button>
-                          <button onClick={() => setMaximizedId(item.id)} className="p-1.5 md:p-2 hover:bg-muted rounded-xl transition-all ml-1" title="Maximizar"><Maximize2 className="w-4 h-4 md:w-5 md:h-5" /></button>
-                          <button onClick={() => toggleCollapse(item.id)} className="p-1.5 md:p-2 hover:bg-muted rounded-xl transition-all ml-1" title={item.collapsed ? "Expandir" : "Minimizar"}>
-                            {item.collapsed ? <ChevronDown className="w-4 h-4 md:w-5 md:h-5" /> : <ChevronUp className="w-4 h-4 md:w-5 md:h-5" />}
+                          <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1.5 hover:bg-muted rounded-md disabled:opacity-0 transition-all"><ArrowUp className="w-4 h-4" /></button>
+                          <button onClick={() => moveItem(index, 'down')} disabled={index === layout.length - 1} className="p-1.5 hover:bg-muted rounded-md disabled:opacity-0 transition-all"><ArrowDown className="w-4 h-4" /></button>
+                          <button onClick={() => setMaximizedId(item.id)} className="p-1.5 hover:bg-muted rounded-md transition-all ml-1" title="Maximizar"><Maximize2 className="w-4 h-4" /></button>
+                          <button onClick={() => toggleCollapse(item.id)} className="p-1.5 hover:bg-muted rounded-md transition-all ml-1" title={item.collapsed ? "Expandir" : "Minimizar"}>
+                            {item.collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
                           </button>
                         </div>
                       </div>
                     </div>
                     {!item.collapsed && (
-                      <div className="p-10 h-[750px]">
+                      <div className="p-8 h-[500px]">
                         {transactions.filter((t: any) => t.type === 'expense').length > 0 ? (
                           <Bar 
                             ref={expenseChartRef}
