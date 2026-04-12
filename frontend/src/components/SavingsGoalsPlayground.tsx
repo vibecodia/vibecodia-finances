@@ -900,8 +900,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         date: currentDayStr,
         total: runningBalance,
         revenues: dayRevenues,
-        expenses: dayExpenses + dayContributions + (isLastDay ? (countdownSimExtra + catastrophicAmount) : 0),
-        previousBalance: runningBalance - dayRevenues + (dayExpenses + dayContributions + (isLastDay ? (countdownSimExtra + catastrophicAmount) : 0)),
+        expenses: dayExpenses + dayContributions + (isLastDay ? (countdownSimExtraValue + catastrophicAmountValue) : 0),
+        previousBalance: runningBalance - dayRevenues + (dayExpenses + dayContributions + (isLastDay ? (countdownSimExtraValue + catastrophicAmountValue) : 0)),
         isNegative: runningBalance < 0,
         openingBalance: i === 0 ? monthlyTotals.previousMonthAdjustedBalance : undefined
       });
@@ -913,19 +913,11 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   // Cálculo para "Disponível próximos X dias" (após a data final do filtro) com detalhamento diário
   const nextDaysData = useMemo(() => {
     const filterEndDate = parseLocalDate(endDate);
-    const baseBalance = monthlyTotals.net - countdownSimExtraValue;
+    // Para a projeção futura, o saldo base é o saldo real ao final do filtro (sem as simulações do filtro)
+    // E então aplicamos as simulações no primeiro dia da projeção para que apareçam na tabela
+    const baseBalance = monthlyTotals.previousMonthAdjustedBalance + monthlyTotals.revenues - monthlyTotals.expenses - monthlyTotals.realContributions;
     
-    const dailyBalances: { 
-      date: string; 
-      label: string; 
-      total: number; 
-      revenues: number; 
-      expenses: number; 
-      previousBalance: number;
-      isNegative: boolean;
-      negativeDayIndex: number;
-      openingBalance?: number;
-    }[] = [];
+    const dailyBalances: any[] = [];
     let runningBalance = baseBalance;
     let negativeCount = 0;
 
@@ -965,7 +957,10 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         })
         .reduce((sum, t) => sum + t.amount, 0);
 
-      runningBalance = runningBalance + dayRevenues - dayExpenses - dayContributions;
+      const isFirstDay = i === 1;
+      const simValues = isFirstDay ? (countdownSimExtraValue + catastrophicAmountValue) : 0;
+      
+      runningBalance = runningBalance + dayRevenues - dayExpenses - dayContributions - simValues;
       
       if (runningBalance < 0) {
         negativeCount++;
@@ -976,8 +971,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         label: `D+${i}`,
         total: runningBalance,
         revenues: dayRevenues,
-        expenses: dayExpenses + dayContributions,
-        previousBalance: runningBalance - dayRevenues + (dayExpenses + dayContributions),
+        expenses: dayExpenses + dayContributions + simValues,
+        previousBalance: runningBalance - dayRevenues + (dayExpenses + dayContributions + simValues),
         isNegative: runningBalance < 0,
         negativeDayIndex: runningBalance < 0 ? negativeCount : 0,
         openingBalance: i === 1 ? baseBalance : undefined
@@ -992,7 +987,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       revenues: dailyBalances.reduce((sum, d) => sum + d.revenues, 0),
       expenses: dailyBalances.reduce((sum, d) => sum + d.expenses, 0)
     };
-  }, [transactions, endDate, monthlyTotals, countdownSimExtraValue, projectionDays, timeTravelDate]);
+  }, [transactions, endDate, monthlyTotals, countdownSimExtraValue, catastrophicAmountValue, projectionDays, timeTravelDate]);
 
   // Limite de projeção: fim do mês seguinte ao filtro
   const maxProjectionDays = useMemo(() => {
@@ -1493,7 +1488,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
 
               <div className="p-4 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-foreground opacity-70 mb-2">Período</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-2">Período</label>
                 <DateRangePicker 
                   startDate={startDate}
                   endDate={endDate}
@@ -1521,7 +1516,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               {(savingsGoals.some(g => g.status === 'deleted') || 
                 savingsGoals.some(g => g.contributions.some(c => c.status === 'deleted'))) && (
                 <div className="space-y-2">
-                  <label className="block text-xs font-medium text-foreground opacity-70">Visibilidade</label>
+                  <label className="block text-xs font-medium text-muted-foreground">Visibilidade</label>
                   <Button
                     onClick={() => setShowDeleted(!showDeleted)}
                     variant={showDeleted ? 'accent' : 'outline'}
@@ -1564,19 +1559,19 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
           {/* Summary Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="p-4">
-              <p className="text-xs font-bold text-foreground opacity-60 uppercase tracking-widest mb-1">Total em Metas</p>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Total em Metas</p>
               <p className="text-2xl font-black text-primary">
                 {formatCurrency(activeGoals.reduce((sum, g) => sum + g.currentAmount, 0))}
               </p>
             </Card>
             <Card className="p-4">
-              <p className="text-xs font-bold text-foreground opacity-60 uppercase tracking-widest mb-1">Total Alvo</p>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Total Alvo</p>
               <p className="text-2xl font-black text-accent">
                 {formatCurrency(activeGoals.reduce((sum, g) => sum + g.targetAmount, 0))}
               </p>
             </Card>
             <Card className="p-4">
-              <p className="text-xs font-bold text-foreground opacity-60 uppercase tracking-widest mb-1">Qtd. de Metas</p>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Qtd. de Metas</p>
               <p className="text-2xl font-black text-primary">
                 {activeGoals.length}
               </p>
@@ -1639,7 +1634,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                           {/* Seção de Input de Aporte */}
                           <div className="rounded-2xl border border-border p-5 bg-muted/5 space-y-4">
                             <div className="space-y-1">
-                              <p className="text-[10px] font-bold text-foreground opacity-70 uppercase tracking-widest">
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                                 Meta Alvo
                               </p>
                               <p className="text-[10px] text-muted-foreground leading-relaxed">
@@ -1933,48 +1928,55 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
 
                         {/* Detalhamento e Saldo Final */}
                         <div className="lg:w-3/4 flex flex-col h-full mt-8 lg:mt-0">
-                          <div className="flex-1 space-y-3 overflow-y-auto pr-3 min-h-[300px] max-h-[450px] scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-                            {(projectionView === 'forward' ? nextDaysData.dailyBalances : currentPeriodDailyData.dailyBalances).map((day: any, index: number) => (
-                              <div key={day.date} className="flex items-center justify-between group border-b border-border/10 pb-3 last:border-0 hover:bg-muted/30 p-2 rounded-lg transition-colors">
-                                <div className="flex flex-col">
-                                  <span className="text-[11px] font-black text-foreground">
-                                    {formatBrazilDate(parseLocalDate(day.date), 'dd/MM')}
-                                  </span>
-                                  <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-tighter">
-                                    {formatBrazilDate(parseLocalDate(day.date), 'EEEE')}
-                                  </span>
-                                </div>
-                                
-                                <div className="flex items-center gap-8">
-                                  <div className="hidden md:flex items-center gap-4 text-[10px] text-muted-foreground font-mono">
-                                    {day.openingBalance !== undefined && (
-                                      <div className="flex flex-col items-end">
-                                        <span className="opacity-40 uppercase text-[8px]">Início</span>
-                                        <span className="text-blue-500 font-bold opacity-80">{formatCurrency(day.openingBalance)}</span>
+                          <div className="flex-1 overflow-x-auto min-h-[300px] max-h-[450px] scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+                            <table className="w-full text-left text-xs border-collapse">
+                              <thead>
+                                <tr className="bg-muted bg-opacity-40" style={{ color: theme.text }}>
+                                  <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Data</th>
+                                  <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Saldo Inicial</th>
+                                  <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Receitas</th>
+                                  <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Despesas</th>
+                                  <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Saldo Final</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
+                                {(projectionView === 'forward' ? nextDaysData.dailyBalances : currentPeriodDailyData.dailyBalances).map((day: any) => (
+                                  <tr key={day.date} className={cn(
+                                    "text-foreground hover:bg-primary/5 transition-colors group",
+                                    day.isNegative && "bg-destructive/5"
+                                  )}>
+                                    <td className="p-4 border-r font-mono text-xs" style={{ borderColor: theme.cardBorder }}>
+                                      <div className="flex flex-col">
+                                        <span className="font-bold">{formatBrazilDate(parseLocalDate(day.date), 'dd/MM')}</span>
+                                        <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-tighter">
+                                          {formatBrazilDate(parseLocalDate(day.date), 'EEEE')}
+                                        </span>
                                       </div>
-                                    )}
-                                    <div className="flex flex-col items-end">
-                                      <span className="opacity-40 uppercase text-[8px]">Movimentação</span>
-                                      <div className="flex gap-2">
-                                        {day.revenues > 0 && <span className="text-primary font-bold">+{formatCurrency(day.revenues)}</span>}
-                                        {day.expenses > 0 && <span className="text-destructive font-bold">-{formatCurrency(day.expenses)}</span>}
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div className="flex flex-col items-end min-w-[100px]">
-                                    <span className="opacity-40 uppercase text-[8px] md:hidden">Saldo</span>
-                                    <span className={cn(
-                                      "text-lg font-black tracking-tight",
+                                    </td>
+                                    <td className="p-4 border-r font-mono text-xs opacity-70" style={{ borderColor: theme.cardBorder }}>
+                                      {day.openingBalance !== undefined ? formatCurrency(day.openingBalance) : '-'}
+                                    </td>
+                                    <td className="p-4 border-r font-mono text-xs" style={{ borderColor: theme.cardBorder }}>
+                                      {day.revenues > 0 ? (
+                                        <span className="text-primary font-bold">+{formatCurrency(day.revenues)}</span>
+                                      ) : <span className="opacity-20">-</span>}
+                                    </td>
+                                    <td className="p-4 border-r font-mono text-xs" style={{ borderColor: theme.cardBorder }}>
+                                      {day.expenses > 0 ? (
+                                        <span className="text-destructive font-bold">-{formatCurrency(day.expenses)}</span>
+                                      ) : <span className="opacity-20">-</span>}
+                                    </td>
+                                    <td className={cn(
+                                      "p-4 text-right font-black text-base",
                                       day.isNegative ? 'text-destructive animate-pulse' : 
                                       day.total < 500 ? 'text-amber-500' : 'text-primary'
                                     )}>
                                       {formatCurrency(day.total)}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
 
                           {/* Resumo Final da Projeção */}
@@ -2045,7 +2047,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                       <div className="p-6 md:p-8 space-y-8">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                           <div className="space-y-6">
-                            <div className="flex gap-2 p-1 bg-cardBorder/30 rounded-xl">
+                            <div className="flex gap-2 p-1 bg-muted/30 rounded-xl">
                               <Button 
                                 onClick={() => setSimMode('investment')}
                                 variant={simMode === 'investment' ? 'primary' : 'ghost'}
@@ -2422,7 +2424,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         >
                           <ArrowDown className="w-4 h-4" />
                         </Button>
-                        <div className="w-[1px] h-4 mx-1 bg-cardBorder opacity-0 group-hover:opacity-100" />
+                        <div className="w-[1px] h-4 mx-1 bg-muted opacity-0 group-hover:opacity-100" />
                         <Button
                           onClick={() => toggleCollapse(item.id)}
                           variant="ghost"
@@ -2543,7 +2545,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                             </div>
                           )}
                         </div>
-                        <div className="flex justify-between items-end p-4 rounded-lg bg-cardBorder/30">
+                        <div className="flex justify-between items-end p-4 rounded-lg bg-muted/30">
                           <div>
                             <p className="text-xs opacity-70 mb-1">Total em Aportes</p>
                             <p className="text-2xl font-black text-primary">{formatCurrency(goalsVsExpensesData.goalTotals)}</p>

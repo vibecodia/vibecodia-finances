@@ -28,7 +28,7 @@ const getColumnStyles = (columnId: string) => {
     case 'todo': return 'text-blue-500 bg-blue-500/10 border-blue-500/20';
     case 'inProgress': return 'text-amber-500 bg-amber-500/10 border-amber-500/20';
     case 'done': return 'text-green-500 bg-green-500/10 border-green-500/20';
-    default: return 'text-text/40 bg-text/5 border-cardBorder';
+    default: return 'text-foreground/40 bg-text/5 border-border';
   }
 };
 
@@ -59,11 +59,11 @@ export function TrelloConfirmationModal({
             )}
           </div>
 
-          <h3 className="text-2xl font-black text-text uppercase tracking-tight mb-2">
+          <h3 className="text-2xl font-black text-foreground uppercase tracking-tight mb-2">
             {isMovingToDone ? 'Tarefa Concluída! 🎉' : 'Mover Tarefa'}
           </h3>
           
-          <p className="text-sm text-text opacity-70 font-medium">
+          <p className="text-sm text-muted-foreground font-medium">
             {isMovingToDone 
               ? 'Parabéns! Você quer marcar esta tarefa como concluída?'
               : `Deseja mover esta tarefa para "${getColumnTitle(toColumn)}"?`
@@ -71,12 +71,12 @@ export function TrelloConfirmationModal({
           </p>
         </div>
 
-        <div className="bg-cardBackground/50 border border-cardBorder rounded-2xl p-5 mb-6">
-          <p className="text-sm font-black text-text uppercase tracking-tight mb-1">
+        <div className="bg-card/50 border border-border rounded-2xl p-5 mb-6">
+          <p className="text-sm font-black text-foreground uppercase tracking-tight mb-1">
             "{task.title}"
           </p>
           {task.description && (
-            <p className="text-xs text-text opacity-60 font-medium line-clamp-1">
+            <p className="text-xs text-muted-foreground font-medium line-clamp-1">
               {task.description}
             </p>
           )}
@@ -86,7 +86,7 @@ export function TrelloConfirmationModal({
           <span className={cn("px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border", getColumnStyles(fromColumn))}>
             {getColumnTitle(fromColumn)}
           </span>
-          <ArrowRight className="w-4 h-4 text-text/20" />
+          <ArrowRight className="w-4 h-4 text-foreground/20" />
           <span className={cn("px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border", getColumnStyles(toColumn))}>
             {getColumnTitle(toColumn)}
           </span>

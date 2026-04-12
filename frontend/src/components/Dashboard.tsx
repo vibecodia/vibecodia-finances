@@ -83,7 +83,7 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
       {/* Header com status */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-foreground opacity-90">{label}</span>
+          <span className="text-sm font-semibold text-muted-foreground">{label}</span>
           {spent > 0 && (
             <span className="text-[10px] text-muted-foreground font-mono italic">
               (média diária {formatCurrency(avgDailySpent)})
@@ -143,7 +143,7 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
             <div className="flex items-center gap-3">
                <div className="flex items-center gap-1 bg-primary/5 px-2 py-0.5 rounded-full border border-primary/10 transition-all hover:bg-primary/10">
                  <div className="w-1.5 h-1.5 bg-primary rounded-full shadow-[0_0_4px_rgba(74,222,128,0.5)]" />
-                 <span className="text-[9px] text-foreground opacity-70 font-black uppercase tracking-tighter">
+                 <span className="text-[9px] text-muted-foreground font-black uppercase tracking-tighter">
                    Saldo Mercado: {formatCurrency(remaining - flexAmount)}
                  </span>
                </div>
@@ -265,7 +265,7 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
 
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
-              <label className="text-xs font-black text-text/80 uppercase tracking-widest flex items-center gap-2">
+              <label className="text-xs font-black text-foreground/80 uppercase tracking-widest flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
                 Informe o Saldo Flex
               </label>
@@ -571,21 +571,21 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-green-400 rounded-full" />
-            <span className="text-text font-medium">Receitas</span>
+            <span className="text-foreground font-medium">Receitas</span>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-red-600 rounded-full" />
-              <span className="text-text text-sm">Gastos Pagos</span>
+              <span className="text-foreground text-sm">Gastos Pagos</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-red-400 rounded-full" />
-              <span className="text-text text-sm">Não Pagos</span>
+              <span className="text-foreground text-sm">Não Pagos</span>
             </div>
           </div>
         </div>
 
-        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-5 relative overflow-hidden shadow-inner">
+        <div className="w-full bg-muted rounded-full h-5 relative overflow-hidden shadow-inner">
           <div
             className="bg-green-400 h-5 transition-all duration-700 absolute left-0 shadow-lg"
             style={{ width: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%` }}
@@ -611,22 +611,22 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
             <div className="text-lg font-bold text-green-600 dark:text-green-400">
               {currentIncome > 0 ? ((currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
             </div>
-            <div className="text-xs text-text opacity-80">Receitas</div>
-            <div className="text-xs text-text opacity-60">{formatCurrency(currentIncome)}</div>
+            <div className="text-xs text-muted-foreground">Receitas</div>
+            <div className="text-xs text-muted-foreground font-medium">{formatCurrency(currentIncome)}</div>
           </div>
           <div className="text-center">
             <div className="text-lg font-bold text-red-600 dark:text-red-400">
               {expensesPaid > 0 ? ((expensesPaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
             </div>
-            <div className="text-xs text-text opacity-80">Pagos</div>
-            <div className="text-xs text-text opacity-60">{formatCurrency(expensesPaid)}</div>
+            <div className="text-xs text-muted-foreground">Pagos</div>
+            <div className="text-xs text-muted-foreground font-medium">{formatCurrency(expensesPaid)}</div>
           </div>
           <div className="text-center">
             <div className="text-lg font-bold text-red-400 dark:text-red-300">
               {expensesUnpaid > 0 ? ((expensesUnpaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
             </div>
-            <div className="text-xs text-text opacity-80">Não Pagos</div>
-            <div className="text-xs text-text opacity-60">{formatCurrency(expensesUnpaid)}</div>
+            <div className="text-xs text-muted-foreground">Não Pagos</div>
+            <div className="text-xs text-muted-foreground font-medium">{formatCurrency(expensesUnpaid)}</div>
           </div>
         </div>
       </Card>
@@ -638,7 +638,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CreditCard className="w-5 h-5 text-primary" />
-            <span className="text-text font-bold">Saldo Benefícios</span>
+            <span className="text-foreground font-bold">Saldo Benefícios</span>
           </div>
         </div>
 
@@ -660,7 +660,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
                 onClick={() => setIsSplitModalOpen(true)}
                 variant="ghost"
                 size="sm"
-                className="text-[10px] font-black uppercase tracking-widest text-text/40"
+                className="text-[10px] font-black uppercase tracking-widest text-foreground/40"
                 title="Ajustar Split"
               >
                 <Pencil className="w-3 h-3 mr-1.5" />
@@ -682,7 +682,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
                 "text-[10px] font-black uppercase tracking-widest transition-colors",
                 isFlashSplit
                   ? 'text-red-500/60 hover:text-red-600'
-                  : 'text-text/40 hover:text-primary'
+                  : 'text-foreground/40 hover:text-primary'
               )}
             >
               {isFlashSplit ? <Trash2 className="w-3 h-3 mr-1.5" /> : <Scissors className="w-3 h-3 mr-1.5" />}
@@ -728,13 +728,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
           onClick={() => navigate('/goals')}
         >
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-text truncate pr-2">Progresso das Metas</h3>
+            <h3 className="text-sm font-medium text-foreground truncate pr-2">Progresso das Metas</h3>
             <Target className="w-4 h-4 text-primary flex-shrink-0" />
           </div>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-text truncate pr-2">Progresso Total</span>
-              <span className="font-medium text-text flex-shrink-0">
+              <span className="text-foreground truncate pr-2">Progresso Total</span>
+              <span className="font-medium text-foreground flex-shrink-0">
                 {formatCurrency(totalSaved)} / {formatCurrency(totalSavingsGoals)}
               </span>
             </div>
@@ -747,7 +747,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
                 }}
               />
             </div>
-            <div className="text-xs text-text opacity-80">
+            <div className="text-xs text-muted-foreground">
               {totalSavingsGoals > 0 ? Math.round((totalSaved / totalSavingsGoals) * 100) : 0}% concluído
             </div>
           </div>

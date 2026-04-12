@@ -628,7 +628,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                   <div className="flex-1 min-w-0 space-y-3">
                     <div className="flex items-center gap-3">
                       <h3 className={cn(
-                        "font-black text-base text-text uppercase tracking-tight break-words flex-1",
+                        "font-black text-base text-foreground uppercase tracking-tight break-words flex-1",
                         isDeleted && 'line-through'
                       )}>
                         {transaction.description}
@@ -649,7 +649,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                     {transaction.notes && (
                       <div className="space-y-2">
                         <p className={cn(
-                          "text-xs text-text opacity-70 font-medium leading-relaxed whitespace-pre-wrap bg-cardBorder/20 p-3 rounded-xl border border-cardBorder/10",
+                          "text-xs text-muted-foreground font-medium leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-xl border border-border/10",
                           !expandedNotes[transaction.id] && 'line-clamp-2',
                           isDeleted && 'line-through'
                         )}>
@@ -675,18 +675,18 @@ const TransactionList: React.FC<TransactionListProps> = ({
                     )}
                     
                     <div className="flex flex-wrap gap-2">
-                      <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-cardBorder/30 text-text/60">
+                      <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-muted/30 text-foreground/60">
                         {transaction.category}
                       </span>
                       
                       {type === 'expense' && transaction.paymentMethod && (
-                        <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-cardBorder/30 text-text/60 flex items-center gap-1.5">
+                        <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-muted/30 text-foreground/60 flex items-center gap-1.5">
                           <Wallet className="w-3 h-3" />
                           {formatPaymentMethod(transaction.paymentMethod)}
                         </span>
                       )}
                       
-                      <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-cardBorder/30 text-text/60">
+                      <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-muted/30 text-foreground/60">
                         {formatBrazilDate(transaction.date)}
                       </span>
                       

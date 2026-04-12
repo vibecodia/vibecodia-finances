@@ -254,13 +254,13 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
   return (
     <div className="space-y-6">
       <div className="text-center py-4">
-        <h1 className="text-2xl font-bold text-text mb-2">
+        <h1 className="text-2xl font-bold text-foreground mb-2">
           Calendário Financeiro
         </h1>
-        <p className="text-text opacity-90">
+        <p className="text-muted-foreground">
           Acompanhe receitas e despesas por data
         </p>
-        <p className="text-xs text-text opacity-70 mt-1">
+        <p className="text-xs text-muted-foreground mt-1">
           <Repeat className="w-3 h-3 inline mr-1" />
           Inclui transações recorrentes automaticamente
         </p>
@@ -271,12 +271,12 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
         <div className="rounded-xl p-3" style={{ backgroundColor: theme.cardBackground, border: `1px solid ${theme.cardBorder}` }}>
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="w-4 h-4 text-primary flex-shrink-0" />
-            <h3 className="font-semibold text-text text-sm truncate">Vencidos</h3>
+            <h3 className="font-semibold text-foreground text-sm truncate">Vencidos</h3>
           </div>
-          <p className="text-lg sm:text-xl font-bold text-text">
+          <p className="text-lg sm:text-xl font-bold text-foreground">
             {overduePayments.length}
           </p>
-          <p className="text-xs text-text opacity-90 break-words">
+          <p className="text-xs text-muted-foreground break-words">
             {formatCurrency(overduePayments.reduce((sum, p) => sum + p.amount, 0))}
           </p>
         </div>
@@ -284,12 +284,12 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
         <div className="rounded-xl p-3" style={{ backgroundColor: theme.cardBackground, border: `1px solid ${theme.cardBorder}` }}>
           <div className="flex items-center gap-2 mb-2">
             <Clock className="w-4 h-4 text-accent flex-shrink-0" />
-            <h3 className="font-semibold text-text text-sm truncate">Próximos 7 dias</h3>
+            <h3 className="font-semibold text-foreground text-sm truncate">Próximos 7 dias</h3>
           </div>
-          <p className="text-lg sm:text-xl font-bold text-text">
+          <p className="text-lg sm:text-xl font-bold text-foreground">
             {upcomingPayments.length}
           </p>
-          <p className="text-xs text-text opacity-90 break-words">
+          <p className="text-xs text-muted-foreground break-words">
             {formatCurrency(upcomingPayments.reduce((sum, p) => sum + p.amount, 0))}
           </p>
         </div>
@@ -297,9 +297,9 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
         <div className="rounded-xl p-3" style={{ backgroundColor: theme.cardBackground, border: `1px solid ${theme.cardBorder}` }}>
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-4 h-4 text-primary flex-shrink-0" />
-            <h3 className="font-semibold text-text text-sm truncate">Receitas do Mês</h3>
+            <h3 className="font-semibold text-foreground text-sm truncate">Receitas do Mês</h3>
           </div>
-          <p className="text-sm sm:text-lg font-bold text-text break-words">
+          <p className="text-sm sm:text-lg font-bold text-foreground break-words">
             {formatCurrency(monthlyIncome)}
           </p>
         </div>
@@ -307,9 +307,9 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
         <div className="rounded-xl p-3" style={{ backgroundColor: theme.cardBackground, border: `1px solid ${theme.cardBorder}` }}>
           <div className="flex items-center gap-2 mb-2">
             <CreditCard className="w-4 h-4 text-primary flex-shrink-0" />
-            <h3 className="font-semibold text-text text-sm truncate">Despesas Pendentes</h3>
+            <h3 className="font-semibold text-foreground text-sm truncate">Despesas Pendentes</h3>
           </div>
-          <p className="text-sm sm:text-lg font-bold text-text break-words">
+          <p className="text-sm sm:text-lg font-bold text-foreground break-words">
             {formatCurrency(monthlyExpensesPending)}
           </p>
         </div>
@@ -321,27 +321,27 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={() => navigateMonth('prev')}
-            className="p-2 rounded-lg transition-colors hover:bg-cardBorder"
+            className="p-2 rounded-lg transition-colors hover:bg-muted"
           >
-            <ChevronLeft className="w-5 h-5 text-text" />
+            <ChevronLeft className="w-5 h-5 text-foreground" />
           </button>
           
-          <h2 className="text-lg font-semibold text-text truncate px-4">
+          <h2 className="text-lg font-semibold text-foreground truncate px-4">
             {formatBrazilDate(currentDate, 'MMMM yyyy')}
           </h2>
           
           <button
             onClick={() => navigateMonth('next')}
-            className="p-2 rounded-lg transition-colors hover:bg-cardBorder"
+            className="p-2 rounded-lg transition-colors hover:bg-muted"
           >
-            <ChevronRight className="w-5 h-5 text-text" />
+            <ChevronRight className="w-5 h-5 text-foreground" />
           </button>
         </div>
 
         {/* Days of Week */}
         <div className="grid grid-cols-7 gap-1 mb-2">
           {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-            <div key={day} className="p-2 text-center text-sm font-medium text-text opacity-90">
+            <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground">
               {day}
             </div>
           ))}
@@ -362,12 +362,12 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
               <div
                 key={index}
                 className={`min-h-[80px] p-1 border rounded-lg cursor-pointer ${
-                  !isCurrentMonth ? 'text-text opacity-70' :
+                  !isCurrentMonth ? 'text-muted-foreground' :
                   isToday ? 'text-white' :
                   hasOverdue ? 'text-white' :
                   hasUpcoming ? 'text-white' :
                   hasIncome ? 'text-white' :
-                  'text-text'
+                  'text-foreground'
                 } ${selectedDate && day.toDateString() === selectedDate.toDateString() ? 'ring-2 ring-primary' : ''} transition-colors`}
                 style={{
                   backgroundColor: !isCurrentMonth ? theme.cardBackground : (
@@ -395,7 +395,7 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
                   <span>{day.getDate()}</span>
                   {hasRecurring && (
                     <>
-                      <Repeat className="w-2 h-2 text-text opacity-70" />
+                      <Repeat className="w-2 h-2 text-muted-foreground" />
                       <span className="sr-only">Contém transações recorrentes</span>
                     </>
                   )}
@@ -435,7 +435,7 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
                       </div>
                     ))}
                     {eventsForDay.length > 3 && (
-                      <div className="text-xs text-text opacity-90 text-center">
+                      <div className="text-xs text-muted-foreground text-center">
                         +{eventsForDay.length - 3}
                       </div>
                     )}
@@ -450,7 +450,7 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
       {/* Expanded Day View */}
       {selectedDate && (
         <div className="rounded-2xl p-6" style={{ backgroundColor: theme.cardBackground, border: `1px solid ${theme.cardBorder}` }}>
-          <h3 className="text-lg font-semibold text-text mb-4 truncate">
+          <h3 className="text-lg font-semibold text-foreground mb-4 truncate">
             Transações de {formatBrazilDate(selectedDate)}
           </h3>
           <div className="space-y-3">
@@ -482,17 +482,17 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
                         ) : (
                           <DollarSign className="w-4 h-4 text-accent flex-shrink-0" />
                         )}
-                        <h4 className="font-medium text-text truncate">
+                        <h4 className="font-medium text-foreground truncate">
                           {event.description}
                         </h4>
                         {event.isRecurring && (
                           <>
-                            <Repeat className="w-3 h-3 text-text opacity-70 flex-shrink-0" />
+                            <Repeat className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                             <span className="sr-only">Transação recorrente</span>
                           </>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-text opacity-90 flex-wrap">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                         <span className="px-2 py-1 rounded-full truncate max-w-[120px]" style={{ backgroundColor: theme.cardBorder }}>
                           {event.category}
                         </span>
@@ -554,7 +554,7 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
                 );
               })
             ) : (
-              <p className="text-text opacity-90 text-center">Nenhuma transação para esta data.</p>
+              <p className="text-muted-foreground text-center">Nenhuma transação para esta data.</p>
             )}
           </div>
         </div>
@@ -563,7 +563,7 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
       {/* Events List for Current Month */}
       {currentMonthEvents.length > 0 && (
         <div className="rounded-2xl p-6" style={{ backgroundColor: theme.cardBackground, border: `1px solid ${theme.cardBorder}` }}>
-          <h3 className="text-lg font-semibold text-text mb-4 truncate">
+          <h3 className="text-lg font-semibold text-foreground mb-4 truncate">
             Eventos do Mês - {formatBrazilDate(currentDate, 'MMMM yyyy')}
           </h3>
           
@@ -606,17 +606,17 @@ const Calendar: React.FC<CalendarProps> = ({ transactions, onUpdatePaymentStatus
                         ) : (
                           <DollarSign className="w-4 h-4 text-accent flex-shrink-0" />
                         )}
-                        <h4 className="font-medium text-text truncate">
+                        <h4 className="font-medium text-foreground truncate">
                           {event.description}
                         </h4>
                         {isRecurring && (
                           <>
-                            <Repeat className="w-3 h-3 text-text opacity-70 flex-shrink-0" />
+                            <Repeat className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                             <span className="sr-only">Transação recorrente</span>
                           </>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-text opacity-90 flex-wrap">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                         <span className="px-2 py-1 rounded-full truncate max-w-[120px]" style={{ backgroundColor: theme.cardBorder }}>
                           {event.category}
                         </span>

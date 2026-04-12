@@ -102,7 +102,7 @@ export function TaskModal({ isOpen, onClose, onSave, task, mode }: TaskModalProp
             />
 
             <div className="space-y-3">
-              <label className="text-sm font-black text-text opacity-60 uppercase tracking-widest flex items-center gap-2">
+              <label className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                 <Flag className="w-4 h-4" />
                 Prioridade
               </label>
@@ -120,11 +120,11 @@ export function TaskModal({ isOpen, onClose, onSave, task, mode }: TaskModalProp
                       "p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-2",
                       priority === option.value
                         ? 'border-primary bg-primary/5'
-                        : 'border-cardBorder opacity-40 hover:opacity-100'
+                        : 'border-border opacity-40 hover:opacity-100'
                     )}
                   >
                     <div className={cn("w-3 h-3 rounded-full shadow-sm", option.color)} />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-text">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-foreground">
                       {option.label}
                     </span>
                   </button>
@@ -140,7 +140,7 @@ export function TaskModal({ isOpen, onClose, onSave, task, mode }: TaskModalProp
             />
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-cardBorder">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-border">
             <div className="flex gap-2 w-full sm:w-auto">
               <Button
                 type="button"

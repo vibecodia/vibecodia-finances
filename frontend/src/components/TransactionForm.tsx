@@ -239,7 +239,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
             <div className={cn("p-2.5 rounded-xl text-white shadow-lg", type === 'expense' ? 'bg-accent' : 'bg-primary')}>
               {type === 'expense' ? <Receipt className="w-6 h-6" /> : <Wallet className="w-6 h-6" />}
             </div>
-            <h2 className="text-xl font-black text-text uppercase tracking-tight">
+            <h2 className="text-xl font-black text-foreground uppercase tracking-tight">
               {transaction ? 'Editar' : 'Nova'} {type === 'expense' ? 'Despesa' : 'Receita'}
             </h2>
           </div>
@@ -290,7 +290,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
 
             {showCalculator && (
               <Card className="p-5 border-2 border-dashed space-y-4 animate-in slide-in-from-top-2 duration-200" style={{ borderColor: theme.cardBorder }}>
-                <h4 className="text-xs font-black text-text opacity-60 uppercase tracking-widest">Calculadora</h4>
+                <h4 className="text-xs font-black text-muted-foreground uppercase tracking-widest">Calculadora</h4>
                 <div className="flex items-center gap-3">
                   <Input
                     {...calculatorInputProps}
@@ -306,7 +306,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
                     <Plus className="w-5 h-5" />
                   </Button>
                 </div>
-                <div className="flex items-center justify-between p-3 rounded-xl bg-cardBorder/20">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20">
                   <span className="text-[10px] font-black uppercase opacity-40">Soma Atual</span>
                   <span className="text-lg font-black text-primary">{formatCurrency(currentSum)}</span>
                 </div>
@@ -356,7 +356,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
                     onClick={() => setFormData(prev => ({ ...prev, description: suggestion }))}
                     variant="ghost"
                     size="sm"
-                    className="px-3 py-1.5 rounded-full text-[10px] uppercase font-black border border-cardBorder"
+                    className="px-3 py-1.5 rounded-full text-[10px] uppercase font-black border border-border"
                   >
                     {suggestion}
                   </Button>
@@ -426,7 +426,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
 
           {type === 'expense' && (
             <div className="space-y-3">
-              <label className="text-sm font-black text-text opacity-60 uppercase tracking-widest flex items-center gap-2">
+              <label className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                 <Receipt className="w-4 h-4" />
                 Capturar via QR Code
               </label>
@@ -441,26 +441,26 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
           <div 
             className={cn(
               "flex items-center gap-4 p-5 rounded-2xl border-2 transition-all cursor-pointer group",
-              formData.isPaid ? 'bg-primary/5 border-primary shadow-sm' : 'bg-cardBackground border-cardBorder'
+              formData.isPaid ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
             )}
             onClick={() => handleChange({ target: { name: 'isPaid', value: !formData.isPaid, type: 'checkbox', checked: !formData.isPaid } } as any)}
           >
             <div className={cn(
               "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all",
-              formData.isPaid ? 'bg-primary border-primary' : 'bg-transparent border-cardBorder group-hover:border-primary'
+              formData.isPaid ? 'bg-primary border-primary' : 'bg-transparent border-border group-hover:border-primary'
             )}>
               {formData.isPaid && <Plus className="w-4 h-4 text-white rotate-45" style={{ transform: 'rotate(0deg)' }} />}
             </div>
             <div className="flex-1">
-              <p className="text-sm font-black text-text uppercase tracking-tight">
+              <p className="text-sm font-black text-foreground uppercase tracking-tight">
                 {type === 'expense' ? 'Já foi pago' : 'Já foi recebido'}
               </p>
-              <p className="text-[10px] text-text opacity-40 font-bold uppercase">Marcar como concluído</p>
+              <p className="text-[10px] text-foreground opacity-40 font-bold uppercase">Marcar como concluído</p>
             </div>
-            <CreditCard className={cn("w-6 h-6 transition-colors", formData.isPaid ? 'text-primary' : 'text-text opacity-20')} />
+            <CreditCard className={cn("w-6 h-6 transition-colors", formData.isPaid ? 'text-primary' : 'text-foreground opacity-20')} />
           </div>
 
-          <div className="flex gap-4 pt-6 border-t border-cardBorder">
+          <div className="flex gap-4 pt-6 border-t border-border">
             <Button
               type="button"
               onClick={onClose}

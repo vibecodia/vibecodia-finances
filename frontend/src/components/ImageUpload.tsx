@@ -188,7 +188,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
             className="hidden"
             disabled={isProcessing}
           />
-          <Card className="h-full py-6 flex flex-col items-center justify-center gap-2 border-dashed border-2 cursor-pointer hover:bg-cardBackground/50 transition-all">
+          <Card className="h-full py-6 flex flex-col items-center justify-center gap-2 border-dashed border-2 cursor-pointer hover:bg-card/50 transition-all">
             {isProcessing ? (
               <Loader2 className="w-8 h-8 text-primary animate-spin" />
             ) : (

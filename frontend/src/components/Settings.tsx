@@ -229,10 +229,10 @@ const Settings: React.FC<SettingsProps> = ({
     <div className="space-y-8 max-w-4xl mx-auto pb-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-6 border-b" style={{ borderColor: theme.cardBorder }}>
         <div>
-          <h1 className="text-3xl lg:text-5xl font-black text-text mb-2 tracking-tight">
+          <h1 className="text-3xl lg:text-5xl font-black text-foreground mb-2 tracking-tight">
             Configurações
           </h1>
-          <p className="text-text opacity-70 text-lg font-medium">
+          <p className="text-muted-foreground text-lg font-medium">
             Personalize sua experiência e gerencie seus dados locais
           </p>
         </div>
@@ -251,10 +251,10 @@ const Settings: React.FC<SettingsProps> = ({
                   <Tag className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-text uppercase tracking-wider">
+                  <h2 className="text-xl font-black text-foreground uppercase tracking-wider">
                     Categorias
                   </h2>
-                  <p className="text-xs text-text opacity-60 font-bold uppercase">Gerencie suas classificações</p>
+                  <p className="text-xs text-muted-foreground font-bold uppercase">Gerencie suas classificações</p>
                 </div>
               </div>
               <Button 
@@ -378,10 +378,10 @@ const Settings: React.FC<SettingsProps> = ({
                   <Wallet className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-text uppercase tracking-wider">
+                  <h2 className="text-xl font-black text-foreground uppercase tracking-wider">
                     Pagamento
                   </h2>
-                  <p className="text-xs text-text opacity-60 font-bold uppercase">Meios de Pagamento</p>
+                  <p className="text-xs text-muted-foreground font-bold uppercase">Meios de Pagamento</p>
                 </div>
               </div>
               <Button 
@@ -425,7 +425,7 @@ const Settings: React.FC<SettingsProps> = ({
 
             <div className="space-y-6">
               <div>
-                <h3 className="text-xs font-black text-text opacity-60 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-primary"></div>
                   Meios Disponíveis ({paymentMethods.length})
                 </h3>
@@ -458,8 +458,8 @@ const Settings: React.FC<SettingsProps> = ({
             <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center p-6 text-center pointer-events-auto">
               <Card variant="default" className="p-6 transform -rotate-2 border-accent/30 shadow-2xl">
                 <Layers className="w-10 h-10 text-accent mx-auto mb-3 opacity-80" />
-                <h3 className="text-lg font-black text-text uppercase tracking-tighter">Módulo em Manutenção</h3>
-                <p className="text-[10px] text-text opacity-60 font-bold uppercase mt-1">Funcionalidade desativada temporariamente</p>
+                <h3 className="text-lg font-black text-foreground uppercase tracking-tighter">Módulo em Manutenção</h3>
+                <p className="text-[10px] text-muted-foreground font-bold uppercase mt-1">Funcionalidade desativada temporariamente</p>
               </Card>
             </div>
 
@@ -468,10 +468,10 @@ const Settings: React.FC<SettingsProps> = ({
                 <Layers className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-xl font-black text-text uppercase tracking-wider">
+                <h2 className="text-xl font-black text-foreground uppercase tracking-wider">
                   Banco de Dados
                 </h2>
-                <p className="text-xs text-text opacity-60 font-bold uppercase">Backups e Limpeza</p>
+                <p className="text-xs text-muted-foreground font-bold uppercase">Backups e Limpeza</p>
               </div>
             </div>
 
@@ -486,8 +486,8 @@ const Settings: React.FC<SettingsProps> = ({
                     <Download className="w-6 h-6" />
                   </div>
                   <div className="text-left">
-                    <h3 className="font-black text-sm text-text">EXPORTAR BACKUP</h3>
-                    <p className="text-[10px] text-text opacity-60 uppercase font-bold">Baixar arquivo .json</p>
+                    <h3 className="font-black text-sm text-foreground">EXPORTAR BACKUP</h3>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Baixar arquivo .json</p>
                   </div>
                 </div>
                 <CheckCircle className="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -503,14 +503,14 @@ const Settings: React.FC<SettingsProps> = ({
                     <Upload className="w-6 h-6" />
                   </div>
                   <div className="text-left">
-                    <h3 className="font-black text-sm text-text">IMPORTAR BACKUP</h3>
-                    <p className="text-[10px] text-text opacity-60 uppercase font-bold">Restaurar dados antigos</p>
+                    <h3 className="font-black text-sm text-foreground">IMPORTAR BACKUP</h3>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Restaurar dados antigos</p>
                   </div>
                 </div>
                 <CheckCircle className="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
               </Button>
 
-              <div className="h-px bg-cardBorder my-4"></div>
+              <div className="h-px bg-muted my-4"></div>
 
               <Button
                 onClick={() => setShowClearModal(true)}
@@ -532,13 +532,13 @@ const Settings: React.FC<SettingsProps> = ({
 
           {/* About Section */}
           <Card className="p-6 opacity-80 hover:opacity-100">
-            <div className="flex items-center gap-3 mb-4 text-text">
+            <div className="flex items-center gap-3 mb-4 text-foreground">
               <Info className="w-6 h-6" />
               <h2 className="text-lg font-black uppercase">Informações</h2>
             </div>
 
-            <div className="space-y-4 text-xs text-text font-medium leading-relaxed">
-              <div className="flex justify-between items-center p-3 rounded-xl bg-cardBorder/20">
+            <div className="space-y-4 text-xs text-foreground font-medium leading-relaxed">
+              <div className="flex justify-between items-center p-3 rounded-xl bg-muted/20">
                 <span className="opacity-60 uppercase font-black">Versão</span>
                 <span className="font-black text-primary">0.26.x</span>
               </div>
@@ -554,7 +554,7 @@ const Settings: React.FC<SettingsProps> = ({
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
                 <Upload className="w-8 h-8 text-primary" />
-                <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+                <h3 className="text-2xl font-black text-foreground uppercase tracking-tight">
                   Importar Backup
                 </h3>
               </div>
@@ -575,26 +575,26 @@ const Settings: React.FC<SettingsProps> = ({
             <div className="space-y-6">
               {/* File Upload */}
               <div className="space-y-2">
-                <label className="block text-xs font-black text-text opacity-60 uppercase ml-1">
+                <label className="block text-xs font-black text-muted-foreground uppercase ml-1">
                   MÉTODO 1: CARREGAR ARQUIVO .JSON
                 </label>
                 <input
                   type="file"
                   accept=".json"
                   onChange={handleFileImport}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-dashed focus:ring-4 focus:ring-primary/20 transition-all font-bold text-sm bg-cardBackground border-cardBorder text-text"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-dashed focus:ring-4 focus:ring-primary/20 transition-all font-bold text-sm bg-card border-border text-foreground"
                 />
               </div>
 
               <div className="relative flex items-center py-2">
-                <div className="flex-grow border-t-2 border-cardBorder"></div>
+                <div className="flex-grow border-t-2 border-border"></div>
                 <span className="flex-shrink mx-4 text-xs font-black opacity-30 uppercase tracking-widest">ou</span>
-                <div className="flex-grow border-t-2 border-cardBorder"></div>
+                <div className="flex-grow border-t-2 border-border"></div>
               </div>
 
               {/* Text Import */}
               <div className="space-y-2">
-                <label className="block text-xs font-black text-text opacity-60 uppercase ml-1">
+                <label className="block text-xs font-black text-muted-foreground uppercase ml-1">
                   MÉTODO 2: COLAR TEXTO JSON
                 </label>
                 <Textarea
@@ -654,10 +654,10 @@ const Settings: React.FC<SettingsProps> = ({
               <div className="p-4 rounded-full bg-accent text-white shadow-xl animate-bounce mb-6">
                 <AlertTriangle className="w-12 h-12" />
               </div>
-              <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+              <h3 className="text-2xl font-black text-foreground uppercase tracking-tight">
                 Atenção Máxima!
               </h3>
-              <p className="text-sm text-text opacity-70 mt-2 font-medium">
+              <p className="text-sm text-muted-foreground mt-2 font-medium">
                 Esta ação apagará permanentemente todos os seus registros financeiros.
               </p>
             </div>
@@ -667,7 +667,7 @@ const Settings: React.FC<SettingsProps> = ({
                 <div className="w-2 h-2 rounded-full bg-accent"></div>
                 Dados que serão perdidos:
               </p>
-              <ul className="text-xs text-text font-bold space-y-2 ml-4">
+              <ul className="text-xs text-foreground font-bold space-y-2 ml-4">
                 <li className="flex items-center gap-2">
                   <div className="w-1 h-1 rounded-full bg-text opacity-50"></div>
                   {totalTransactions} Transações
@@ -711,10 +711,10 @@ const Settings: React.FC<SettingsProps> = ({
               <div className="p-4 rounded-full bg-primary/10 text-primary shadow-xl mb-6">
                 <PlusCircle className="w-12 h-12" />
               </div>
-              <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+              <h3 className="text-2xl font-black text-foreground uppercase tracking-tight">
                 Nova Categoria
               </h3>
-              <p className="text-sm text-text opacity-70 mt-2 font-medium">
+              <p className="text-sm text-muted-foreground mt-2 font-medium">
                 Deseja adicionar a categoria <span className="font-black text-primary">"{pendingCategory.name}"</span> em <span className="font-black">{pendingCategory.type === 'expense' ? 'DESPESAS' : 'RECEITAS'}</span>?
               </p>
             </div>
@@ -749,10 +749,10 @@ const Settings: React.FC<SettingsProps> = ({
               <div className="p-4 rounded-full bg-accent/10 text-accent shadow-xl mb-6">
                 <Trash2 className="w-12 h-12" />
               </div>
-              <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+              <h3 className="text-2xl font-black text-foreground uppercase tracking-tight">
                 Excluir Categoria
               </h3>
-              <p className="text-sm text-text opacity-70 mt-2 font-medium">
+              <p className="text-sm text-muted-foreground mt-2 font-medium">
                 Tem certeza que deseja remover <span className="font-black text-accent">"{pendingCategory.name}"</span>?
               </p>
             </div>
@@ -787,10 +787,10 @@ const Settings: React.FC<SettingsProps> = ({
               <div className="p-4 rounded-full bg-accent/10 text-accent shadow-xl mb-6">
                 <AlertTriangle className="w-12 h-12" />
               </div>
-              <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+              <h3 className="text-2xl font-black text-foreground uppercase tracking-tight">
                 Atenção!
               </h3>
-              <p className="text-sm text-text opacity-70 mt-4 font-bold leading-relaxed">
+              <p className="text-sm text-muted-foreground mt-4 font-bold leading-relaxed">
                 {errorModalMessage}
               </p>
             </div>
@@ -819,10 +819,10 @@ const Settings: React.FC<SettingsProps> = ({
               <div className="p-4 rounded-full bg-primary/10 text-primary shadow-xl mb-6">
                 <PlusCircle className="w-12 h-12" />
               </div>
-              <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+              <h3 className="text-2xl font-black text-foreground uppercase tracking-tight">
                 Novo Meio de Pagamento
               </h3>
-              <p className="text-sm text-text opacity-70 mt-2 font-medium">
+              <p className="text-sm text-muted-foreground mt-2 font-medium">
                 Deseja adicionar <span className="font-black text-primary">"{pendingPaymentMethod}"</span> aos seus meios de pagamento?
               </p>
             </div>
@@ -857,10 +857,10 @@ const Settings: React.FC<SettingsProps> = ({
               <div className="p-4 rounded-full bg-accent/10 text-accent shadow-xl mb-6">
                 <Trash2 className="w-12 h-12" />
               </div>
-              <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+              <h3 className="text-2xl font-black text-foreground uppercase tracking-tight">
                 Excluir Meio de Pagamento
               </h3>
-              <p className="text-sm text-text opacity-70 mt-2 font-medium">
+              <p className="text-sm text-muted-foreground mt-2 font-medium">
                 Tem certeza que deseja remover <span className="font-black text-accent">"{pendingPaymentMethod}"</span>?
               </p>
             </div>

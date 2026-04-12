@@ -78,7 +78,7 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
       >
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 text-text-light hover:text-text"
+          className="absolute top-3 right-3 text-foreground-light hover:text-foreground"
         >
           <X size={24} />
         </button>
@@ -158,7 +158,7 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
             })}
           </TransitionGroup>
         ) : (
-          <p className="text-center text-text-light">Sua lista está vazia.</p>
+          <p className="text-center text-foreground-light">Sua lista está vazia.</p>
         )}
 
         {shoppingList.some(item => item.purchased) && (

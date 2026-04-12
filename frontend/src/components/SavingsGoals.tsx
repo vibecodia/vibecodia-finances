@@ -161,7 +161,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
       {/* Header - Standardized with TransactionList */}
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-semibold text-text mb-1 truncate">
+          <h2 className="text-xl font-semibold text-foreground mb-1 truncate">
             Metas de Economia
           </h2>
           <p className="text-sm font-medium opacity-70 flex items-center flex-wrap gap-y-1" style={{ color: theme.primary }}>
@@ -218,7 +218,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search absolute left-3 text-text opacity-70"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search absolute left-3 text-muted-foreground"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </div>
       )}
 
@@ -227,9 +227,9 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
         {goalsForDisplay.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: theme.cardBorder }}>
-              <Target className="w-8 h-8 text-text opacity-70" />
+              <Target className="w-8 h-8 text-muted-foreground" />
             </div>
-            <p className="text-text opacity-90 mb-4">
+            <p className="text-muted-foreground mb-4">
               {showDeleted ? 'Nenhuma meta excluída encontrada' : 'Nenhuma meta cadastrada'}
             </p>
             {!showDeleted && (
@@ -272,7 +272,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in duration-200" style={{ backgroundColor: theme.cardBackground }}>
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-text truncate pr-2">
+              <h3 className="text-xl font-bold text-foreground truncate pr-2">
                 {editingGoalId ? 'Editar Meta' : 'Nova Meta'}
               </h3>
               <button
@@ -281,9 +281,9 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                   setEditingGoalId(null);
                   setFormData({ name: '', deadline: '' });
                 }}
-                className="p-2 rounded-full transition-colors hover:bg-cardBorder"
+                className="p-2 rounded-full transition-colors hover:bg-muted"
               >
-                <X className="w-5 h-5 text-text" />
+                <X className="w-5 h-5 text-foreground" />
               </button>
             </div>
 
@@ -469,7 +469,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
               className="border shadow-sm rounded-lg px-3 py-1 min-w-0 flex-1"
               style={{ backgroundColor: theme.primary + '10', borderColor: theme.cardBorder + '80' }}
             >
-              <h3 className={cn("font-bold text-base text-text break-words", isGoalDeleted && "line-through")}>
+              <h3 className={cn("font-bold text-base text-foreground break-words", isGoalDeleted && "line-through")}>
                 {goal.name}
               </h3>
             </div>
@@ -485,7 +485,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
             )}
           </div>
 
-          <div className="flex flex-wrap gap-2 text-xs text-text opacity-90">
+          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
             {goal.deadline && (
               <span className="px-2 py-1 rounded-full flex items-center gap-1 whitespace-nowrap" style={{ backgroundColor: theme.cardBorder }}>
                 <Calendar className="w-3 h-3 flex-shrink-0" />
@@ -546,7 +546,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
         {/* Progress Section */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-text opacity-70">Progresso</span>
+            <span className="text-muted-foreground">Progresso</span>
             <span className="font-bold" style={{ color: theme.text }}>
               {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}
             </span>
@@ -567,7 +567,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
               {progress.toFixed(1)}% concluído
             </span>
             {!isComplete && !isGoalDeleted && (
-              <span className="text-text opacity-50">
+              <span className="text-muted-foreground">
                 Faltam {formatCurrency(remainingAmount)}
               </span>
             )}
@@ -583,27 +583,27 @@ const GoalCard: React.FC<GoalCardProps> = ({
                 <span>Rendimento Estimado</span>
               </div>
               
-              <div className="flex items-center gap-2 bg-cardBackground border border-cardBorder rounded-lg px-1 py-0.5 shadow-sm">
+              <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-1 py-0.5 shadow-sm">
                 <button 
                   onClick={() => setMonthlyYield(prev => Math.max(0, prev - 0.1))}
-                  className="p-1 hover:bg-cardBorder rounded-md transition-colors"
+                  className="p-1 hover:bg-muted rounded-md transition-colors"
                 >
-                  <Minus className="w-3 h-3 text-text opacity-70" />
+                  <Minus className="w-3 h-3 text-muted-foreground" />
                 </button>
-                <span className="text-[10px] font-mono font-bold text-text min-w-[2.5rem] text-center">
+                <span className="text-[10px] font-mono font-bold text-foreground min-w-[2.5rem] text-center">
                   {monthlyYield.toFixed(1)}%
                 </span>
                 <button 
                   onClick={() => setMonthlyYield(prev => prev + 0.1)}
-                  className="p-1 hover:bg-cardBorder rounded-md transition-colors"
+                  className="p-1 hover:bg-muted rounded-md transition-colors"
                 >
-                  <Plus className="w-3 h-3 text-text opacity-70" />
+                  <Plus className="w-3 h-3 text-muted-foreground" />
                 </button>
               </div>
             </div>
             
             <div className="flex justify-between items-center text-xs">
-              <span className="text-text opacity-60 italic">Projeção mensal:</span>
+              <span className="text-muted-foreground italic">Projeção mensal:</span>
               <span className="text-primary font-bold">
                 {formatCurrency(goal.currentAmount * (1 + monthlyYield / 100))}
               </span>
@@ -614,7 +614,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
         {/* Contributions History */}
         {showHistory && sortedContributions.length > 0 && (
           <div className="space-y-3 pt-2 border-t" style={{ borderColor: theme.cardBorder }}>
-            <h4 className="text-xs font-bold text-text opacity-60 uppercase tracking-widest flex items-center gap-2">
+            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
               <History className="w-3.5 h-3.5" />
               {showDeleted ? 'Aportes Excluídos' : 'Histórico de Aportes'}
             </h4>
@@ -663,7 +663,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
                     <div className="flex justify-between items-center gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className={cn("text-sm font-bold text-text", contribution.status === 'deleted' && "line-through opacity-50")}>
+                          <span className={cn("text-sm font-bold text-foreground", contribution.status === 'deleted' && "line-through opacity-50")}>
                             {formatBrazilDate(new Date(contribution.date))}
                           </span>
                           {!isGoalDeleted && contribution.status !== 'deleted' && contribution.isPaid === false && (
@@ -782,7 +782,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
                   />
                 </div>
                 
-                <p className="text-[10px] text-text opacity-50 font-medium italic">
+                <p className="text-[10px] text-muted-foreground font-medium italic">
                   * O aporte será deduzido do saldo do mês selecionado.
                 </p>
               </div>

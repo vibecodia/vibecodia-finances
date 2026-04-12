@@ -105,10 +105,10 @@ const VerificationModal: React.FC = () => {
               <ShieldCheck className="w-10 h-10" />
             )}
           </div>
-          <h2 className="text-2xl font-black text-text uppercase tracking-tight mb-2">
+          <h2 className="text-2xl font-black text-foreground uppercase tracking-tight mb-2">
             Verificação Necessária
           </h2>
-          <p className="text-sm text-text opacity-70 font-medium leading-relaxed">
+          <p className="text-sm text-muted-foreground font-medium leading-relaxed">
             Por favor, insira o código de 3 dígitos para continuar.
           </p>
         </div>
@@ -126,7 +126,7 @@ const VerificationModal: React.FC = () => {
                 onChange={(e) => handleChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 className={cn(
-                  "w-16 h-20 text-4xl font-black text-center border-2 rounded-2xl transition-all focus:ring-4 focus:ring-primary/20 outline-none bg-cardBackground border-cardBorder text-text",
+                  "w-16 h-20 text-4xl font-black text-center border-2 rounded-2xl transition-all focus:ring-4 focus:ring-primary/20 outline-none bg-card border-border text-foreground",
                   error && "border-red-500 text-red-500",
                   isLoading && "opacity-50 cursor-not-allowed"
                 )}

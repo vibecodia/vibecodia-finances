@@ -22,7 +22,15 @@ import React, { useState, useMemo } from 'react';
 import { ColorPalette } from '../contexts/ThemeContext';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
 import { Transaction } from '../types';
-import { formatCurrency, formatBrazilDate } from '../utils/helpers';
+import { 
+  formatCurrency, 
+  formatBrazilDate 
+} from '../utils/helpers';
+import { Select } from './ui/Select';
+import { Card } from './ui/Card';
+import { Input } from './ui/Input';
+import { Button } from './ui/Button';
+import { cn } from '../lib/utils';
 
 
 interface HistoryItem {
@@ -402,7 +410,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
         <Home className="w-20 h-20 opacity-10" />
         <div className="max-w-md">
           <p className="text-xl font-bold">Nenhuma transação encontrada</p>
-          <p className="opacity-60 text-sm mt-2">
+          <p className="text-muted-foreground text-sm mt-2">
             Não encontramos transações com o padrão "Financiamento casa X/Y" na categoria "Moradia".
           </p>
         </div>
@@ -427,38 +435,50 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
   };
 
   const renderCardHeader = (id: string, label: string, icon: React.ReactNode, index: number, isCollapsed: boolean) => (
-    <div className="p-4 border-b font-semibold text-text flex items-center justify-between group" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+    <div className="p-4 border-b font-semibold text-foreground flex items-center justify-between group bg-muted/30 border-border">
       <div className="flex items-center gap-2">
         {icon}
-        <span className="text-sm lg:text-base">{label}</span>
+        <span className="text-sm lg:text-base uppercase font-black tracking-tight">{label}</span>
       </div>
       <div className="flex items-center gap-1">
-        <button 
+        <Button 
           onClick={(e) => { e.stopPropagation(); moveItem(index, 'up'); }}
           disabled={index === 0}
-          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 disabled:opacity-0"
+          title="Mover para Cima"
         >
           <ArrowUp className="w-4 h-4" />
-        </button>
-        <button 
+        </Button>
+        <Button 
           onClick={(e) => { e.stopPropagation(); moveItem(index, 'down'); }}
           disabled={index === layout.length - 1}
-          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 disabled:opacity-0"
+          title="Mover para Baixo"
         >
           <ArrowDown className="w-4 h-4" />
-        </button>
-        <button 
+        </Button>
+        <Button 
           onClick={() => setMaximizedId(id)}
-          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+          title="Maximizar"
         >
           <Maximize2 className="w-4 h-4" />
-        </button>
-        <button 
+        </Button>
+        <Button
           onClick={() => toggleCollapse(id)}
-          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+          title={isCollapsed ? "Expandir" : "Minimizar"}
         >
           {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -469,14 +489,14 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
     switch (item.id) {
       case 'header_summary':
         return (
-          <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <Card key={item.id} noPadding className="overflow-hidden shadow-md">
             {renderCardHeader(item.id, item.label, <Home className="w-5 h-5 text-primary" />, index, isCollapsed)}
             {!isCollapsed && (
               <div className="p-6 space-y-6">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div>
                     <h3 className="text-xl font-black text-primary">Contrato {numeroContrato}</h3>
-                    <p className="text-xs opacity-60 font-bold uppercase tracking-wider">CARTEIRA HIPOTECARIA | SISTEMA SAC</p>
+                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">CARTEIRA HIPOTECARIA | SISTEMA SAC</p>
                   </div>
                   <div className="flex gap-2">
                     <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black rounded-full uppercase">Débito Automático</span>
@@ -485,11 +505,11 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-bold uppercase opacity-60">
+                  <div className="flex justify-between text-xs font-bold uppercase text-muted-foreground">
                     <span>Progresso de Quitação</span>
                     <span>{lastParcelaPaga} / {totalParcelas} ({progressPercent.toFixed(1)}%)</span>
                   </div>
-                  <div className="h-4 w-full bg-cardBorder/30 rounded-full overflow-hidden">
+                  <div className="h-4 w-full bg-muted rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-primary transition-all duration-1000" 
                       style={{ width: `${progressPercent}%` }}
@@ -504,21 +524,21 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                     { label: 'Taxa Efetiva (A)', value: `${taxaEfetivaAnual.toFixed(2)}%`, icon: <TrendingUp className="w-4 h-4" />, highlight: true },
                     { label: 'Vencimento Final', value: formatBrazilDate(lastDate), icon: <Calendar className="w-4 h-4" /> }
                   ].map((stat, i) => (
-                    <div key={i} className="p-4 rounded-xl border flex flex-col gap-1" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '11' }}>
-                      <div className="flex items-center gap-2 text-[10px] font-black uppercase opacity-50">
+                    <div key={i} className="p-4 rounded-xl border border-border bg-muted/10 flex flex-col gap-1">
+                      <div className="flex items-center gap-2 text-[10px] font-black uppercase text-muted-foreground">
                         {stat.icon}
                         {stat.label}
                       </div>
-                      <div className={`text-sm md:text-base font-black ${stat.highlight ? 'text-primary' : ''}`}>
+                      <div className={`text-sm md:text-base font-black ${stat.highlight ? 'text-primary' : 'text-foreground'}`}>
                         {stat.value}
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t" style={{ borderColor: theme.cardBorder }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border">
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-bold opacity-60">
+                    <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase">
                       <Info className="w-4 h-4 text-primary" />
                       Utilização de FGTS DAMP III aplicada em 06/01/2026: R$ 72.244,05
                     </div>
@@ -528,29 +548,28 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                     </div>
                   </div>
                   <div className="flex items-center justify-end gap-3">
-                    <label className="text-[10px] font-black uppercase opacity-50">Ajustar total parcelas:</label>
-                    <input 
+                    <label className="text-[10px] font-black uppercase text-muted-foreground">Ajustar total parcelas:</label>
+                    <Input 
                       type="number"
                       value={totalParcelas}
                       onChange={(e) => setOverrideTotalParcelas(parseInt(e.target.value))}
-                      className="w-20 p-2 rounded-lg border text-xs font-bold text-center outline-none focus:ring-2 focus:ring-primary/20"
-                      style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
+                      className="w-24 text-center font-bold"
                     />
                   </div>
                 </div>
               </div>
             )}
-          </div>
+          </Card>
         );
 
       case 'consorcio_summary':
         return (
-          <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <Card key={item.id} noPadding className="overflow-hidden shadow-md">
             {renderCardHeader(item.id, item.label, <TrendingUp className="w-5 h-5 text-accent" />, index, isCollapsed)}
             {!isCollapsed && (
               <div className="p-6 space-y-6">
                 {!consorcioData ? (
-                  <div className="flex flex-col items-center justify-center p-10 text-center gap-3 opacity-60">
+                  <div className="flex flex-col items-center justify-center p-10 text-center gap-3 text-muted-foreground">
                     <AlertCircle className="w-10 h-10" />
                     <p className="text-sm font-bold">Nenhum dado de Consórcio encontrado</p>
                     <p className="text-[10px]">Verifique transações com "Consórcio Porto" na categoria "Outro".</p>
@@ -560,7 +579,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
                       <div>
                         <h3 className="text-lg font-black text-accent">Grupo Porto Seguro (3 Cartas)</h3>
-                        <p className="text-[10px] opacity-60 font-bold uppercase tracking-wider">Início em {formatBrazilDate(format(consorcioData.firstDate, 'yyyy-MM-dd'))}</p>
+                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Início em {formatBrazilDate(format(consorcioData.firstDate, 'yyyy-MM-dd'))}</p>
                       </div>
                       <div className="flex gap-2">
                         <span className="px-3 py-1 bg-accent/10 text-accent text-[10px] font-black rounded-full uppercase">Histórico Reconstruído</span>
@@ -570,20 +589,20 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {[
                         { label: 'Parcelas Pagas', value: `${consorcioData.count} / 200`, icon: <CheckCircle2 className="w-4 h-4" /> },
-                        { label: 'Total Investido', value: formatCurrency(consorcioData.totalPaid), icon: <ArrowUp className="w-4 h-4 text-red-500" />, highlight: true },
+                        { label: 'Total Investido', value: formatCurrency(consorcioData.totalPaid), icon: <ArrowUp className="w-4 h-4 text-destructive" />, highlight: true },
                         { label: 'Parcela Atual (3x)', value: formatCurrency(consorcioData.avgInstallment), icon: <TrendingUp className="w-4 h-4" /> },
                         { label: 'Próximo Vencimento', value: formatBrazilDate(format(consorcioData.nextVencimento, 'yyyy-MM-dd')), icon: <Calendar className="w-4 h-4" />, highlight: consorcioData.isNextPendente, status: consorcioData.isNextPendente ? 'Pendente' : 'Projetado' }
                       ].map((stat, i) => (
-                        <div key={i} className="p-4 rounded-xl border flex flex-col gap-1" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '11' }}>
-                          <div className="flex items-center gap-2 text-[10px] font-black uppercase opacity-50">
+                        <div key={i} className="p-4 rounded-xl border border-border bg-muted/10 flex flex-col gap-1">
+                          <div className="flex items-center gap-2 text-[10px] font-black uppercase text-muted-foreground">
                             {stat.icon}
                             {stat.label}
                           </div>
-                          <div className={`text-sm md:text-base font-black ${stat.highlight ? 'text-accent' : ''}`}>
+                          <div className={`text-sm md:text-base font-black ${stat.highlight ? 'text-accent' : 'text-foreground'}`}>
                             {stat.value}
                           </div>
                           {stat.status && (
-                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full w-fit ${stat.status === 'Pendente' ? 'bg-amber-500/20 text-amber-600' : 'bg-gray-500/10 text-gray-500'}`}>
+                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full w-fit ${stat.status === 'Pendente' ? 'bg-amber-500/20 text-amber-600' : 'bg-muted text-muted-foreground'}`}>
                               {stat.status}
                             </span>
                           )}
@@ -592,15 +611,15 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="p-4 rounded-xl border space-y-2" style={{ borderColor: theme.cardBorder }}>
-                        <div className="text-[10px] font-black uppercase opacity-50">Crédito Total (Líquido)</div>
+                      <div className="p-4 rounded-xl border border-border bg-muted/5 space-y-2">
+                        <div className="text-[10px] font-black uppercase text-muted-foreground">Crédito Total (Líquido)</div>
                         <div className="text-lg font-black text-primary">{formatCurrency(consorcioData.totalCreditEstimated)}</div>
-                        <div className="text-[9px] opacity-60 font-bold italic">R$ {formatCurrency(consorcioData.detalhePorCarta.credito)} por carta</div>
+                        <div className="text-[9px] text-muted-foreground font-bold italic">R$ {formatCurrency(consorcioData.detalhePorCarta.credito)} por carta</div>
                       </div>
-                      <div className="p-4 rounded-xl border space-y-2" style={{ borderColor: theme.cardBorder }}>
-                        <div className="text-[10px] font-black uppercase opacity-50">Avanço do Plano</div>
+                      <div className="p-4 rounded-xl border border-border bg-muted/5 space-y-2">
+                        <div className="text-[10px] font-black uppercase text-muted-foreground">Avanço do Plano</div>
                         <div className="flex items-center gap-3">
-                          <div className="flex-1 h-2 bg-orange-500/10 rounded-full relative">
+                          <div className="flex-1 h-2 bg-primary/10 rounded-full relative">
                             <div 
                               className="h-full bg-accent rounded-full transition-all duration-1000" 
                               style={{ width: `${consorcioData.percentPaidEstimated}%` }} 
@@ -617,15 +636,15 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                           </div>
                           <span className="text-sm font-black">{consorcioData.percentPaidEstimated.toFixed(2)}%</span>
                         </div>
-                        <div className="text-[9px] opacity-60 font-bold">Meta Contemplação: {consorcioMinContemplacao}%</div>
+                        <div className="text-[9px] text-muted-foreground font-bold">Meta Contemplação: {consorcioMinContemplacao}%</div>
                       </div>
-                      <div className="p-4 rounded-xl border space-y-2 relative group" style={{ borderColor: theme.cardBorder }}>
+                      <div className="p-4 rounded-xl border border-border bg-muted/5 space-y-2 relative group">
                         <div className="flex items-center justify-between">
-                          <div className="text-[10px] font-black uppercase opacity-50">Saldo p/ Quitação (3 Cartas)</div>
-                          <Info className="w-3 h-3 opacity-30 group-hover:opacity-100 transition-opacity text-accent" />
+                          <div className="text-[10px] font-black uppercase text-muted-foreground">Saldo p/ Quitação (3 Cartas)</div>
+                          <Info className="w-3 h-3 text-muted-foreground opacity-30 group-hover:opacity-100 transition-opacity text-accent" />
                         </div>
-                        <div className="text-lg font-black text-red-600">{formatCurrency(consorcioData.totalQuitacao)}</div>
-                        <div className="text-[9px] opacity-60 font-bold italic">R$ {formatCurrency(consorcioData.detalhePorCarta.quitacao)} cada (89,91%)</div>
+                        <div className="text-lg font-black text-destructive">{formatCurrency(consorcioData.totalQuitacao)}</div>
+                        <div className="text-[9px] text-muted-foreground font-bold italic">R$ {formatCurrency(consorcioData.detalhePorCarta.quitacao)} cada (89,91%)</div>
                         <div className="text-[8px] font-bold text-accent bg-accent/5 p-1 rounded border border-accent/10 mt-1">
                           * Inclui taxa de administração de {consorcioTaxaAdm}% e encargos contratuais.
                         </div>
@@ -635,17 +654,17 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                 )}
               </div>
             )}
-          </div>
+          </Card>
         );
 
       case 'itau_consorcio_relation':
         return (
-          <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <Card key={item.id} noPadding className="overflow-hidden shadow-md">
             {renderCardHeader(item.id, item.label, <TrendingUp className="w-5 h-5 text-primary" />, index, isCollapsed)}
             {!isCollapsed && (
               <div className="p-6 space-y-8">
                 {!relationData ? (
-                  <div className="flex flex-col items-center justify-center p-10 text-center gap-3 opacity-60">
+                  <div className="flex flex-col items-center justify-center p-10 text-center gap-3 text-muted-foreground">
                     <AlertCircle className="w-10 h-10" />
                     <p className="text-sm font-bold">Aguardando dados do Consórcio</p>
                     <p className="text-[10px]">A relação depende de dados reais do Consórcio Porto.</p>
@@ -653,68 +672,68 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                 ) : (
                   <>
                     {/* 1. Painel de Controle Estratégico */}
-                    <div className="bg-cardBorder/10 p-5 rounded-2xl border border-dashed border-cardBorder space-y-4">
+                    <div className="bg-muted/30 p-5 rounded-2xl border border-dashed border-border space-y-4">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="p-1.5 bg-primary/10 rounded-lg">
                           <Info className="w-4 h-4 text-primary" />
                         </div>
-                        <h4 className="text-xs font-black uppercase tracking-wider opacity-70">Parâmetros de Simulação Estratégica</h4>
+                        <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground">Parâmetros de Simulação Estratégica</h4>
                       </div>
                       
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black uppercase opacity-50 flex items-center gap-1">
+                          <label className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1">
                             Taxa Adm (%) <Info className="w-2.5 h-2.5 opacity-40" />
                           </label>
-                          <input 
+                          <Input 
                             type="number" 
                             value={consorcioTaxaAdm} 
                             onChange={(e) => setConsorcioTaxaAdm(Number(e.target.value))}
-                            className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm pb-1"
+                            className="h-9 text-sm font-bold"
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black uppercase opacity-50 flex items-center gap-1">
+                          <label className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1">
                             Gatilho Contemplação (%)
                           </label>
-                          <input 
+                          <Input 
                             type="number" 
                             value={consorcioMinContemplacao} 
                             onChange={(e) => setConsorcioMinContemplacao(Number(e.target.value))}
-                            className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm pb-1"
+                            className="h-9 text-sm font-bold"
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black uppercase opacity-50">Modo de Utilização</label>
-                          <select 
+                          <Select
+                            label="Modo de Utilização"
                             value={consorcioModoUso}
                             onChange={(e) => setConsorcioModoUso(e.target.value as any)}
-                            className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm pb-1 appearance-none cursor-pointer"
+                            className="h-9 text-sm font-bold"
                           >
                             <option value="total">Crédito Total (3 Cartas)</option>
                             <option value="uma">Faseado (1 Carta p/ vez)</option>
-                          </select>
+                          </Select>
                         </div>
                         {consorcioModoUso === 'uma' && (
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase opacity-50">Intervalo (meses)</label>
-                            <input 
+                            <label className="text-[10px] font-black uppercase text-muted-foreground">Intervalo (meses)</label>
+                            <Input 
                               type="number" 
                               min="1" 
                               max="24"
                               value={consorcioIntervaloMeses} 
                               onChange={(e) => setConsorcioIntervaloMeses(Number(e.target.value))}
-                              className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm pb-1"
+                              className="h-9 text-sm font-bold"
                             />
                           </div>
                         )}
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black uppercase opacity-50">Fixar Data (Manual)</label>
-                          <input 
+                          <Input
+                            label="Fixar Data (Manual)"
                             type="date" 
                             value={manualContemplacaoDate || ''} 
                             onChange={(e) => setManualContemplacaoDate(e.target.value || null)}
-                            className="w-full bg-transparent border-b border-cardBorder outline-none focus:border-primary font-bold text-sm pb-1"
+                            className="h-9 text-sm font-bold"
                           />
                         </div>
                       </div>
@@ -726,21 +745,21 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                       <div className="space-y-4">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent font-black text-xs">1</div>
-                          <h4 className="text-xs font-black uppercase opacity-60">O Gatilho: Contemplação</h4>
+                          <h4 className="text-xs font-black uppercase text-muted-foreground opacity-60">O Gatilho: Contemplação</h4>
                         </div>
                         <div className="p-5 rounded-2xl border-2 border-accent/20 bg-accent/[0.02] space-y-4">
                           <div>
-                            <span className="text-[10px] font-black uppercase opacity-50 block mb-1">Data Estimada do Aporte</span>
+                            <span className="text-[10px] font-black uppercase text-muted-foreground opacity-50 block mb-1">Data Estimada do Aporte</span>
                             <span className="text-2xl font-black text-accent">{formatBrazilDate(format(relationData.projectedContemplacaoDate, 'yyyy-MM-dd'))}</span>
-                            <p className="text-[10px] font-bold opacity-60 mt-1">Daqui a ~{relationData.mesesAteContemplacao} meses de contribuição</p>
+                            <p className="text-[10px] font-bold text-muted-foreground opacity-60 mt-1">Daqui a ~{relationData.mesesAteContemplacao} meses de contribuição</p>
                           </div>
                           <div className="pt-4 border-t border-accent/10 flex justify-between items-center">
                             <div>
-                              <span className="text-[10px] font-black uppercase opacity-50 block">Crédito Injetado</span>
+                              <span className="text-[10px] font-black uppercase text-muted-foreground opacity-50 block">Crédito Injetado</span>
                               <span className="text-lg font-black text-primary">{formatCurrency(relationData.liquidoUso)}</span>
                             </div>
                             <div className="text-right">
-                              <span className="text-[10px] font-black uppercase opacity-50 block">Modo</span>
+                              <span className="text-[10px] font-black uppercase text-muted-foreground opacity-50 block">Modo</span>
                               <span className="px-2 py-0.5 bg-primary/10 text-primary text-[9px] font-black rounded-full uppercase">
                                 {consorcioModoUso === 'total' ? 'Aporte Único' : 'Aporte Parcial'}
                               </span>
@@ -753,16 +772,16 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                       <div className="space-y-4">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-xs">2</div>
-                          <h4 className="text-xs font-black uppercase opacity-60">Impacto no Itaú</h4>
+                          <h4 className="text-xs font-black uppercase text-muted-foreground opacity-60">Impacto no Itaú</h4>
                         </div>
-                        <div className="p-5 rounded-2xl border border-cardBorder space-y-5">
+                        <div className="p-5 rounded-2xl border border-border bg-muted/5 space-y-5">
                           <div>
-                            <span className="text-[10px] font-black uppercase opacity-50 block mb-1">Saldo na Data</span>
-                            <span className="text-sm font-black opacity-60 line-through">{formatCurrency(relationData.saldoItauAtContemplacao)}</span>
+                            <span className="text-[10px] font-black uppercase text-muted-foreground opacity-50 block mb-1">Saldo na Data</span>
+                            <span className="text-sm font-black text-muted-foreground opacity-60 line-through">{formatCurrency(relationData.saldoItauAtContemplacao)}</span>
                           </div>
                           
                           <div className="pt-2">
-                            <span className="text-[10px] font-black uppercase opacity-50 block mb-1">Novo Saldo Itaú</span>
+                            <span className="text-[10px] font-black uppercase text-muted-foreground opacity-50 block mb-1">Novo Saldo Itaú</span>
                             <span className="text-xl font-black text-green-600">{formatCurrency(relationData.novoSaldoItau)}</span>
                           </div>
                           
@@ -772,13 +791,13 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                               <span className="text-green-600">-{relationData.economiaParcelas} meses</span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-bold opacity-60">Parcelas Restantes:</span>
-                              <span className="text-[10px] font-black">{relationData.novasParcelasRestantes} (eram {relationData.parcelasRestantesOriginal})</span>
+                              <span className="text-[10px] font-bold text-muted-foreground opacity-60">Parcelas Restantes:</span>
+                              <span className="text-[10px] font-black text-foreground">{relationData.novasParcelasRestantes} (eram {relationData.parcelasRestantesOriginal})</span>
                             </div>
                           </div>
 
                           <div className="pt-2">
-                            <span className="text-[10px] font-black uppercase opacity-50 block mb-1">Economia Estimada de Juros</span>
+                            <span className="text-[10px] font-black uppercase text-muted-foreground opacity-50 block mb-1">Economia Estimada de Juros</span>
                             <div className="flex items-center gap-2 text-primary">
                               <ArrowDown className="w-4 h-4" />
                               <span className="text-xl font-black">{formatCurrency(relationData.economiaJuros)}</span>
@@ -790,36 +809,36 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                       {/* Coluna 3: Resultado Consolidado */}
                       <div className="space-y-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-text/10 flex items-center justify-center text-text font-black text-xs">3</div>
-                          <h4 className="text-xs font-black uppercase opacity-60">Status Pós-Ação</h4>
+                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-foreground font-black text-xs">3</div>
+                          <h4 className="text-xs font-black uppercase text-muted-foreground opacity-60">Status Pós-Ação</h4>
                         </div>
-                        <div className="p-5 rounded-2xl bg-cardBorder/20 space-y-5 flex flex-col justify-between h-[300px]">
+                        <div className="p-5 rounded-2xl bg-muted/20 border border-border space-y-5 flex flex-col justify-between h-[300px]">
                           <div className="space-y-4">
                             <div>
-                              <span className="text-[10px] font-black uppercase opacity-50 block mb-1 text-primary">Quitação Itaú</span>
-                              <span className="text-lg font-black">{formatBrazilDate(format(relationData.novaDataQuitacao, 'yyyy-MM-dd'))}</span>
-                              <p className="text-[9px] font-bold opacity-60">Antecipação drástica do contrato SAC</p>
+                              <span className="text-[10px] font-black uppercase text-primary opacity-70 block mb-1">Quitação Itaú</span>
+                              <span className="text-lg font-black text-foreground">{formatBrazilDate(format(relationData.novaDataQuitacao, 'yyyy-MM-dd'))}</span>
+                              <p className="text-[9px] font-bold text-muted-foreground opacity-60">Antecipação drástica do contrato SAC</p>
                             </div>
                             <div>
-                              <span className="text-[10px] font-black uppercase opacity-50 block mb-1 text-accent">Restante Consórcio</span>
-                              <span className="text-lg font-black">{relationData.consorcioRestante} parcelas</span>
+                              <span className="text-[10px] font-black uppercase text-accent opacity-70 block mb-1">Restante Consórcio</span>
+                              <span className="text-lg font-black text-foreground">{relationData.consorcioRestante} parcelas</span>
                               <p className="text-[9px] font-bold text-accent italic">Total a pagar: {formatCurrency(relationData.consorcioRestanteValor)}</p>
                             </div>
-                            <div className="pt-2 border-t border-cardBorder/30">
-                              <span className="text-[10px] font-black uppercase opacity-50 block mb-1">Sobra de Crédito (Cashback)</span>
-                              <span className={`text-lg font-black ${relationData.sobraCredito >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                            <div className="pt-2 border-t border-border/30">
+                              <span className="text-[10px] font-black uppercase text-muted-foreground opacity-50 block mb-1">Sobra de Crédito (Cashback)</span>
+                              <span className={`text-lg font-black ${relationData.sobraCredito >= 0 ? 'text-green-600' : 'text-destructive'}`}>
                                 {formatCurrency(relationData.sobraCredito)}
                               </span>
-                              <p className="text-[9px] font-bold opacity-60">Crédito Injetado - Quitação Itaú</p>
+                              <p className="text-[9px] font-bold text-muted-foreground opacity-60">Crédito Injetado - Quitação Itaú</p>
                             </div>
                           </div>
                           
-                          <div className="pt-4 border-t border-cardBorder">
+                          <div className="pt-4 border-t border-border">
                             <div className="flex justify-between items-center mb-1.5">
-                              <span className="text-[10px] font-black uppercase opacity-50">Eficiência da Operação</span>
+                              <span className="text-[10px] font-black uppercase text-muted-foreground opacity-50">Eficiência da Operação</span>
                               <span className="text-[10px] font-black text-primary">ALTA</span>
                             </div>
-                            <div className="h-2 w-full bg-orange-500/10 rounded-full overflow-hidden">
+                            <div className="h-2 w-full bg-primary/10 rounded-full overflow-hidden">
                               <div className="h-full bg-primary" style={{ width: '85%' }} />
                             </div>
                           </div>
@@ -830,7 +849,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                     {/* Nota de Rodapé Profissional */}
                     <div className="flex items-start gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10">
                       <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                      <p className="text-[10px] font-medium leading-relaxed opacity-70">
+                      <p className="text-[10px] font-medium leading-relaxed text-muted-foreground opacity-70">
                         <span className="font-black text-primary uppercase mr-1">Nota Técnica:</span> 
                         Esta simulação considera a manutenção do valor de amortização base do Itaú após o aporte do consórcio. 
                         A economia de juros é uma estimativa baseada no saldo devedor amortizado e no custo de oportunidade do capital. 
@@ -841,41 +860,46 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                 )}
               </div>
             )}
-          </div>
+          </Card>
         );
 
       case 'installments_table':
         return (
-          <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <Card key={item.id} noPadding className="overflow-hidden shadow-md">
             {renderCardHeader(item.id, item.label, <Calendar className="w-5 h-5 text-primary" />, index, isCollapsed)}
             {!isCollapsed && (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-[10px] md:text-xs border-collapse">
                   <thead>
-                    <tr className="bg-cardBorder/30">
-                      <th className="p-3 border-b font-bold uppercase tracking-wider">Parcela</th>
-                      <th className="p-3 border-b font-bold uppercase tracking-wider">Vencimento</th>
-                      <th className="p-3 border-b font-bold uppercase tracking-wider text-right">Amort.</th>
-                      <th className="p-3 border-b font-bold uppercase tracking-wider text-right">Juros</th>
-                      <th className="p-3 border-b font-bold uppercase tracking-wider text-right">Seguros</th>
-                      <th className="p-3 border-b font-bold uppercase tracking-wider text-right text-blue-500">FGTS Sub.</th>
-                      <th className="p-3 border-b font-bold uppercase tracking-wider text-right text-primary">Total Pago</th>
-                      <th className="p-3 border-b font-bold uppercase tracking-wider text-right">Saldo Dev.</th>
-                      <th className="p-3 border-b font-bold uppercase tracking-wider text-center">Observação</th>
-                      <th className="p-3 border-b font-bold uppercase tracking-wider text-center">Status</th>
+                    <tr className="bg-muted/50 text-foreground">
+                      <th className="p-3 border-b border-border font-bold uppercase tracking-wider">Parcela</th>
+                      <th className="p-3 border-b border-border font-bold uppercase tracking-wider">Vencimento</th>
+                      <th className="p-3 border-b border-border font-bold uppercase tracking-wider text-right">Amort.</th>
+                      <th className="p-3 border-b border-border font-bold uppercase tracking-wider text-right">Juros</th>
+                      <th className="p-3 border-b border-border font-bold uppercase tracking-wider text-right">Seguros</th>
+                      <th className="p-3 border-b border-border font-bold uppercase tracking-wider text-right text-blue-500">FGTS Sub.</th>
+                      <th className="p-3 border-b border-border font-bold uppercase tracking-wider text-right text-primary">Total Pago</th>
+                      <th className="p-3 border-b border-border font-bold uppercase tracking-wider text-right">Saldo Dev.</th>
+                      <th className="p-3 border-b border-border font-bold uppercase tracking-wider text-center">Observação</th>
+                      <th className="p-3 border-b border-border font-bold uppercase tracking-wider text-center">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
+                  <tbody className="divide-y divide-border/30">
                     {adjustedSacData.map((d: any) => (
-                      <tr key={d.parcela} className={`${d.situacao === 'Aberta' ? 'bg-amber-500/5' : d.situacao === 'Projetada' ? 'opacity-70' : ''} ${d.operacao ? 'bg-primary/5' : ''}`}>
+                      <tr key={d.parcela} className={cn(
+                        "text-foreground hover:bg-primary/5 transition-colors",
+                        d.situacao === 'Aberta' && 'bg-amber-500/5',
+                        d.situacao === 'Projetada' && 'opacity-70',
+                        d.operacao && 'bg-primary/5'
+                      )}>
                         <td className="p-3 font-bold">{d.parcela}</td>
-                        <td className="p-3 opacity-70">{formatBrazilDate(d.vencimento)}</td>
-                        <td className="p-3 text-right">{formatCurrency(d.amortizacao)}</td>
-                        <td className="p-3 text-right">{formatCurrency(d.juros)}</td>
-                        <td className="p-3 text-right">{formatCurrency(d.seguros)}</td>
-                        <td className="p-3 text-right text-blue-500">{d.fgtsMensal > 0 ? `-${formatCurrency(d.fgtsMensal)}` : '-'}</td>
-                        <td className="p-3 text-right font-black text-primary">{formatCurrency(d.total)}</td>
-                        <td className="p-3 text-right font-medium opacity-60">{formatCurrency(d.saldoDevedor)}</td>
+                        <td className="p-3 text-muted-foreground">{formatBrazilDate(d.vencimento)}</td>
+                        <td className="p-3 text-right font-mono">{formatCurrency(d.amortizacao)}</td>
+                        <td className="p-3 text-right font-mono">{formatCurrency(d.juros)}</td>
+                        <td className="p-3 text-right font-mono">{formatCurrency(d.seguros)}</td>
+                        <td className="p-3 text-right font-mono text-blue-500">{d.fgtsMensal > 0 ? `-${formatCurrency(d.fgtsMensal)}` : '-'}</td>
+                        <td className="p-3 text-right font-mono font-black text-primary">{formatCurrency(d.total)}</td>
+                        <td className="p-3 text-right font-mono font-medium text-muted-foreground">{formatCurrency(d.saldoDevedor)}</td>
                         <td className="p-3 text-center">
                           {d.operacao && (
                             <div className="flex items-center justify-center gap-1 text-[9px] font-black uppercase text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
@@ -885,11 +909,12 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                           )}
                         </td>
                         <td className="p-3 text-center">
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-[9px] font-black uppercase",
                             d.situacao === 'Paga' ? 'bg-green-500/20 text-green-600' : 
                             d.situacao === 'Aberta' ? 'bg-amber-500/20 text-amber-600' : 
-                            'bg-gray-500/10 text-gray-500'
-                          }`}>
+                            'bg-muted text-muted-foreground'
+                          )}>
                             {d.situacao}
                           </span>
                         </td>
@@ -899,40 +924,45 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                 </table>
               </div>
             )}
-          </div>
+          </Card>
         );
 
       case 'consorcio_installments_table':
         return (
-          <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <Card key={item.id} noPadding className="overflow-hidden shadow-md">
             {renderCardHeader(item.id, item.label, <Calendar className="w-5 h-5 text-accent" />, index, isCollapsed)}
             {!isCollapsed && (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-[10px] md:text-xs border-collapse">
                   <thead>
-                    <tr className="bg-cardBorder/30">
-                      <th className="p-3 border-b font-bold uppercase tracking-wider">Parcela</th>
-                      <th className="p-3 border-b font-bold uppercase tracking-wider">Vencimento</th>
-                      <th className="p-3 border-b font-bold uppercase tracking-wider text-right text-accent">Valor (3 Cartas)</th>
-                      <th className="p-3 border-b font-bold uppercase tracking-wider text-right">Valor Individual</th>
-                      <th className="p-3 border-b font-bold uppercase tracking-wider text-right text-primary">Falta p/ Crédito</th>
-                      <th className="p-3 border-b font-bold uppercase tracking-wider text-center">Status</th>
+                    <tr className="bg-muted/50 text-foreground">
+                      <th className="p-3 border-b border-border font-bold uppercase tracking-wider">Parcela</th>
+                      <th className="p-3 border-b border-border font-bold uppercase tracking-wider">Vencimento</th>
+                      <th className="p-3 border-b border-border font-bold uppercase tracking-wider text-right text-accent">Valor (3 Cartas)</th>
+                      <th className="p-3 border-b border-border font-bold uppercase tracking-wider text-right">Valor Individual</th>
+                      <th className="p-3 border-b border-border font-bold uppercase tracking-wider text-right text-primary">Falta p/ Crédito</th>
+                      <th className="p-3 border-b border-border font-bold uppercase tracking-wider text-center">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
+                  <tbody className="divide-y divide-border/30">
                     {consorcioInstallmentsData.map((d: any) => (
-                      <tr key={d.parcela} className={`${d.situacao === 'Aberta' ? 'bg-amber-500/5' : d.situacao === 'Projetada' ? 'opacity-70' : ''}`}>
+                      <tr key={d.parcela} className={cn(
+                        "text-foreground hover:bg-primary/5 transition-colors",
+                        d.situacao === 'Aberta' && 'bg-amber-500/5',
+                        d.situacao === 'Projetada' && 'opacity-70'
+                      )}>
                         <td className="p-3 font-bold">{d.parcela} / 200</td>
-                        <td className="p-3 opacity-70">{formatBrazilDate(d.vencimento)}</td>
+                        <td className="p-3 text-muted-foreground">{formatBrazilDate(d.vencimento)}</td>
                         <td className="p-3 text-right font-black text-accent">{formatCurrency(d.valor)}</td>
-                        <td className="p-3 text-right opacity-60">{formatCurrency(d.valor / 3)}</td>
+                        <td className="p-3 text-right text-muted-foreground opacity-60">{formatCurrency(d.valor / 3)}</td>
                         <td className="p-3 text-right font-black text-primary">{formatCurrency(d.faltaParaCredito)}</td>
                         <td className="p-3 text-center">
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-[9px] font-black uppercase",
                             d.situacao === 'Paga' ? 'bg-green-500/20 text-green-600' : 
                             d.situacao === 'Aberta' ? 'bg-amber-500/20 text-amber-600' : 
-                            'bg-gray-500/10 text-gray-500'
-                          }`}>
+                            'bg-muted text-muted-foreground'
+                          )}>
                             {d.situacao}
                           </span>
                         </td>
@@ -942,7 +972,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                 </table>
               </div>
             )}
-          </div>
+          </Card>
         );
 
       default:
@@ -960,18 +990,18 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
       {maximizedId && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
           <div 
-            className="w-full h-full bg-cardBackground rounded-3xl border shadow-2xl flex flex-col overflow-hidden"
+            className="w-full h-full bg-card rounded-3xl border shadow-2xl flex flex-col overflow-hidden"
             style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
           >
             <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: theme.cardBorder }}>
               <div className="flex items-center gap-3">
-                <span className="text-xl font-bold text-text">
+                <span className="text-xl font-bold text-foreground">
                   {layout.find(i => i.id === maximizedId)?.label}
                 </span>
               </div>
               <button 
                 onClick={() => setMaximizedId(null)}
-                className="p-2 hover:bg-cardBorder rounded-xl transition-colors text-text"
+                className="p-2 hover:bg-muted rounded-xl transition-colors text-foreground"
               >
                 <ChevronDown className="w-6 h-6 rotate-180" />
               </button>
