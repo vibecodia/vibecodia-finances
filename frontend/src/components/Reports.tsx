@@ -11,6 +11,7 @@ import { getMonthlyData, getCategoryData, formatCurrency, getCurrentBrazilDate }
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { cn } from '../lib/utils';
+import MonthSegmentedControl from './MonthSegmentedControl';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, Filler);
 
@@ -229,30 +230,15 @@ const Reports: React.FC<ReportsProps> = ({ transactions, savingsGoals = [] }) =>
 
   return (
     <div className="space-y-6 relative">
-      <div className="text-center py-4">
-        <h1 className="text-2xl font-bold text-foreground mb-2">
+      <div className="flex flex-col md:flex-row md:items-center justify-between py-4 gap-4">
+        <h1 className="text-2xl font-bold text-foreground">
           Relatórios Financeiros
         </h1>
-        <div className="flex items-center justify-center gap-2 text-muted-foreground">
-          <Button
-            onClick={() => setCurrentMonth(prevMonth => subMonths(prevMonth, 1))}
-            variant="ghost"
-            size="sm"
-            className="p-1 rounded-full"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </Button>
-          <p className="text-foreground font-semibold min-w-[120px]">
-            {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
-          </p>
-          <Button
-            onClick={() => setCurrentMonth(prevMonth => addMonths(prevMonth, 1))}
-            variant="ghost"
-            size="sm"
-            className="p-1 rounded-full"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </Button>
+        <div className="w-full md:w-auto md:min-w-[400px]">
+          <MonthSegmentedControl
+            month={currentMonth}
+            onChange={(newMonth) => setCurrentMonth(newMonth)}
+          />
         </div>
       </div>
 
