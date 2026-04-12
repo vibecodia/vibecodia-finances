@@ -524,7 +524,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
               <div 
                 className={`flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 shadow-lg transition-all ${
                   isSelectedMonthCurrent 
-                    ? 'hover:bg-white/20 group cursor-pointer' 
+                    ? 'hover:bg-white/20 group cursor-pointer active:scale-95' 
                     : 'opacity-40 grayscale cursor-not-allowed'
                 }`}
                 onClick={(e) => {
@@ -533,14 +533,14 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
                   setIncludeBenefits(!includeBenefits);
                 }}
               >
-                <span className="text-[9px] font-black uppercase tracking-widest opacity-80">{includeBenefits ? 'COM FLASH' : 'SALDO PURO'}</span>
+                <span className="text-[9px] font-black uppercase tracking-widest opacity-80">{includeBenefits ? 'VALES' : 'SALDO PURO'}</span>
                 <div
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-all duration-500 ${
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 ${
                     includeBenefits && isSelectedMonthCurrent ? 'bg-green-400' : 'bg-white/20'
                   }`}
                 >
                   <span
-                    className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-md transition-all duration-500 ${
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-md transition-transform duration-300 ease-in-out ${
                       includeBenefits && isSelectedMonthCurrent ? 'translate-x-5' : 'translate-x-1'
                     }`}
                   />
