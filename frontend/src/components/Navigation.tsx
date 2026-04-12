@@ -44,7 +44,7 @@ const Navigation: React.FC = () => {
         onClick={toggleMenu}
         size="icon"
         className={cn(
-          'fixed top-4 left-4 z-[70] shadow-xl',
+          'fixed top-4 left-4 z-[150] shadow-xl',
           !isMenuOpen && 'animate-pulse',
           hideOnDesktop ? 'flex' : 'lg:hidden',
         )}
@@ -58,7 +58,7 @@ const Navigation: React.FC = () => {
         <div
           onClick={() => setIsMenuOpen(false)}
           className={cn(
-            'fixed inset-0 bg-black/50 z-[60] transition-opacity duration-300 ease-in-out',
+            'fixed inset-0 bg-black/50 z-[140] transition-opacity duration-300 ease-in-out',
             hideOnDesktop ? 'block' : 'lg:hidden',
           )}
         />
@@ -67,14 +67,16 @@ const Navigation: React.FC = () => {
       <nav
         className={cn(
           'fixed top-0 lg:top-24 left-0 h-full lg:h-[calc(100vh-6rem)] p-2 flex flex-col justify-start pt-24 lg:pt-4 w-64',
-          'transition-all duration-300 ease-in-out z-[65] lg:z-40 lg:shadow-xl bg-card border-r-2 border-border',
+          'transition-all duration-300 ease-in-out z-[145] lg:shadow-xl bg-card border-r-2 border-border',
           {
-            // Aberto manualmente (funciona em qualquer rota, mobile e desktop)
+            // Desktop behavior for normal routes: always visible (z-40)
+            'lg:z-40 lg:translate-x-0 lg:opacity-100': !hideOnDesktop,
+            // Desktop behavior for special routes (playground): hidden by default (z-[145] when open)
+            'lg:z-[145]': hideOnDesktop,
+            
+            // General state behavior
             'translate-x-0 opacity-100': isMenuOpen,
-            // Fechado em rota normal: desktop expande automaticamente
-            '-translate-x-full opacity-0 lg:translate-x-0 lg:opacity-100': !isMenuOpen && !hideOnDesktop,
-            // Fechado em rota bloqueada: fica escondido no desktop também
-            '-translate-x-full opacity-0': !isMenuOpen && hideOnDesktop,
+            '-translate-x-full opacity-0': !isMenuOpen && (hideOnDesktop || true), // true forces mobile hide
           }
         )}
       >
