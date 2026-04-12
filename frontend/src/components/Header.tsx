@@ -12,8 +12,8 @@ const Header: React.FC = () => {
     setIsPulsing(true);
     setTimeout(() => {
       setIsPulsing(false);
-      // Adiciona o parâmetro nosplash=true para recarregar sem mostrar o splash screen
-      const url = new URL(window.location.href);
+      // Adiciona o parâmetro nosplash=true e força a navegação para a raiz
+      const url = new URL(window.location.origin);
       url.searchParams.set('nosplash', 'true');
       window.location.href = url.toString();
     }, 300); // Duração da animação

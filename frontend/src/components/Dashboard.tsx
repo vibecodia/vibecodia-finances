@@ -1,5 +1,5 @@
 import { format, getDate, getDaysInMonth, isBefore, startOfMonth, endOfMonth } from 'date-fns';
-import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil } from 'lucide-react';
+import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil, Wifi } from 'lucide-react';
 import React, { useState } from 'react';
 import Confetti from 'react-confetti';
 import { useNavigate } from 'react-router-dom';
@@ -466,7 +466,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
 
         {/* Main Balance Card */}
       <div
-        className={`relative overflow-hidden rounded-[2.5rem] p-8 cursor-pointer border border-white/10 transition-all duration-500 shadow-xl text-white ${
+        className={`relative overflow-hidden rounded-[2.5rem] p-8 sm:p-10 cursor-pointer border border-white/20 transition-all duration-700 shadow-[0_20px_50px_rgba(0,0,0,0.3)] hover:shadow-[0_30px_70px_rgba(0,0,0,0.4)] text-white group ${
           isPulsing ? 'scale-[1.02]' : 'scale-100'
         }`}
         style={{
@@ -474,30 +474,40 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         }}
         onClick={handleBalanceCardClick}
       >
-        {/* Background Image Layer with slow movement */}
+        {/* Background Image Layer with slow movement and higher contrast */}
         <div 
-          className="absolute inset-0 animate-slow-zoom-pan opacity-40 bg-cover bg-center"
+          className="absolute inset-0 animate-slow-zoom-pan opacity-30 bg-cover bg-center mix-blend-overlay"
           style={{ backgroundImage: `url(${familyBg})` }}
         />
 
-        {/* Gradient Overlay for better readability and brand color */}
+        {/* Glossy/Metallic Gradient Overlay */}
         <div 
-          className="absolute inset-0"
+          className="absolute inset-0 opacity-80"
           style={{
-            backgroundImage: `linear-gradient(135deg, ${theme.primary}dd 0%, ${theme.primary}88 50%, ${theme.primary}bb 100%)`,
+            backgroundImage: `linear-gradient(135deg, ${theme.primary} 0%, ${theme.primary}aa 40%, rgba(255,255,255,0.1) 50%, ${theme.primary}aa 60%, ${theme.primary} 100%)`,
           }}
         />
 
-        <div className="relative z-10 flex flex-col h-full justify-between">
-          <div className="flex items-start justify-between mb-8">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-70 mb-1">
-                Total em Carteira
+        {/* Holographic effect on hover */}
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-1000 bg-gradient-to-tr from-transparent via-white to-transparent -translate-x-full group-hover:translate-x-full rotate-12 scale-150 pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col h-full justify-between min-h-[220px]">
+          {/* Card Top: Branding & Controls */}
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-7 rounded-md bg-gradient-to-br from-yellow-400 via-yellow-200 to-yellow-600 border border-black/10 shadow-inner flex items-center justify-center relative overflow-hidden">
+                  <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 gap-px opacity-20">
+                    {[...Array(9)].map((_, i) => <div key={i} className="border border-black/20" />)}
+                  </div>
+                </div>
+                <Wifi className="w-5 h-5 opacity-40 rotate-90" />
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-60 mt-4">
+                Vibecodia Premium
               </p>
-              <h2 className="text-xl font-black tracking-tight uppercase italic">
-                {finalBalance < -0.001 ? 'Saldo Devedor' : 'Saldo'}
-              </h2>
             </div>
+
             <div className="flex items-center gap-2">
               <Button 
                 onClick={(e) => {
@@ -506,15 +516,15 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
                 }}
                 variant="ghost"
                 size="icon"
-                className="bg-black/10 backdrop-blur-xl border border-white/10 hover:bg-black/20"
+                className="bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20 h-10 w-10 rounded-full"
               >
-                {showBalance ? <EyeOff className="w-5 h-5 opacity-70" /> : <Eye className="w-5 h-5 opacity-70" />}
+                {showBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </Button>
               
               <div 
-                className={`flex items-center gap-4 bg-black/10 backdrop-blur-xl px-5 py-3 rounded-2xl border border-white/10 shadow-lg transition-all ${
+                className={`flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 shadow-lg transition-all ${
                   isSelectedMonthCurrent 
-                    ? 'hover:bg-black/20 group cursor-pointer' 
+                    ? 'hover:bg-white/20 group cursor-pointer' 
                     : 'opacity-40 grayscale cursor-not-allowed'
                 }`}
                 onClick={(e) => {
@@ -522,17 +532,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
                   e.stopPropagation();
                   setIncludeBenefits(!includeBenefits);
                 }}
-                title={!isSelectedMonthCurrent ? "Disponível apenas no mês atual" : ""}
               >
-                {getBalanceStatusLabel()}
+                <span className="text-[9px] font-black uppercase tracking-widest opacity-80">{includeBenefits ? 'COM FLASH' : 'SALDO PURO'}</span>
                 <div
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.265,1.55)] ${
-                    includeBenefits && isSelectedMonthCurrent ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-white/10'
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-all duration-500 ${
+                    includeBenefits && isSelectedMonthCurrent ? 'bg-green-400' : 'bg-white/20'
                   }`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-xl transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.265,1.55)] ${
-                      includeBenefits && isSelectedMonthCurrent ? 'translate-x-6' : 'translate-x-1'
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-md transition-all duration-500 ${
+                      includeBenefits && isSelectedMonthCurrent ? 'translate-x-5' : 'translate-x-1'
                     }`}
                   />
                 </div>
@@ -540,19 +549,36 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="flex flex-col gap-1">
-              <p className="text-5xl sm:text-7xl font-black tracking-tighter leading-none">
+          {/* Card Middle: Main Balance */}
+          <div className="my-4">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50 mb-2">Saldo Disponível</span>
+              <p className="text-4xl sm:text-6xl font-black tracking-tighter tabular-nums drop-shadow-lg">
                 {showBalance ? formatCurrency(displayBalance) : 'R$ ••••••'}
               </p>
             </div>
+          </div>
 
+          {/* Card Bottom: Info & Type */}
+          <div className="flex items-end justify-between border-t border-white/10 pt-6">
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold opacity-50 uppercase tracking-widest">Titular</p>
+              <p className="text-sm font-black uppercase tracking-widest drop-shadow-md">Carvalho de Oliveira Neto</p>
+            </div>
+            <div className="text-right">
+              <h2 className="text-xl font-black tracking-tighter uppercase italic opacity-90 italic">
+                {finalBalance < -0.001 ? 'DÉBITO' : 'CRÉDITO'}
+              </h2>
+              <p className="text-[8px] font-black opacity-40 uppercase tracking-widest mt-1">Exp: 12/30</p>
+            </div>
           </div>
         </div>
 
+        {/* Status Indicator */}
         {finalBalance < -0.001 && (
-          <div className="absolute top-0 right-0 p-4">
-            <div className="animate-pulse bg-rose-500 w-2 h-2 rounded-full shadow-[0_0_10px_#ef4444]" />
+          <div className="absolute top-6 right-6">
+            <div className="animate-ping bg-rose-500 w-3 h-3 rounded-full absolute opacity-75" />
+            <div className="relative bg-rose-500 w-3 h-3 rounded-full shadow-[0_0_15px_#ef4444]" />
           </div>
         )}
       </div>
