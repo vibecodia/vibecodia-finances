@@ -2358,14 +2358,14 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
               <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-2">Categorias</label>
-                <div className="flex flex-wrap gap-1 max-h-48 overflow-y-auto p-1 custom-scrollbar">
+                <div className="flex flex-wrap gap-1 p-0.5">
                   {categories.map((cat, idx) => {
-                    const isFirstIncomeCategory = incomeCategories.includes(cat) && !incomeCategories.includes(categories[idx - 1]);
+                    const isFirstIncomeCategory = incomeCategories.includes(cat) && (idx === 0 || !incomeCategories.includes(categories[idx - 1]));
                     
                     return (
                       <React.Fragment key={cat}>
-                        {isFirstIncomeCategory && (
-                          <div className="w-full h-px bg-muted/30 my-1" />
+                        {isFirstIncomeCategory && idx > 0 && (
+                          <div className="w-full h-px bg-muted/40 my-3" />
                         )}
                         <button
                           onClick={() => toggleCategory(cat)}
