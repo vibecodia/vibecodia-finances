@@ -231,10 +231,10 @@ const Reports: React.FC<ReportsProps> = ({ transactions, savingsGoals = [] }) =>
   return (
     <div className="space-y-6 relative">
       <div className="flex flex-col md:flex-row md:items-center justify-between py-4 gap-4">
-        <h1 className="text-2xl font-bold text-foreground">
+        <h1 className="text-2xl font-bold text-foreground whitespace-nowrap">
           Relatórios Financeiros
         </h1>
-        <div className="w-full md:w-auto md:min-w-[400px]">
+        <div className="flex-1 w-full">
           <MonthSegmentedControl
             month={currentMonth}
             onChange={(newMonth) => setCurrentMonth(newMonth)}
