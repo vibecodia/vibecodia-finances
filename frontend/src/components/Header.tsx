@@ -30,7 +30,7 @@ const Header: React.FC = () => {
         {/* Espaço para o menu hambúrguer no mobile */}
         <div className="w-10 lg:hidden" />
 
-        <Link to="/" className="flex-1 flex flex-col items-center justify-center cursor-pointer min-w-0" onClick={handleHeaderClick}>
+        <Link to="/" className="flex-1 flex flex-col items-center justify-center cursor-pointer min-w-0">
           <h1 className="text-base sm:text-xl font-black tracking-tight whitespace-nowrap overflow-hidden">
             💰 Controle Financeiro
           </h1>
@@ -41,13 +41,13 @@ const Header: React.FC = () => {
         
         <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
           <ThemeSelector />
-          <Link 
-            to="/" 
+          <button 
+            onClick={handleHeaderClick}
             className="bg-white/10 backdrop-blur-md text-xl text-white w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl border border-white/10 shadow-sm hover:bg-white/20 transition-all active:scale-95"
-            aria-label="Ir para a página inicial"
+            aria-label="Recarregar e ir para o início"
           >
             🏠
-          </Link>
+          </button>
         </div>
       </div>
     </header>
