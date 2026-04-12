@@ -2,24 +2,86 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --color-primary: #059669;
-  --color-secondary: #047857;
-  --color-accent: #10b981;
-  --color-background: #f8fafc;
-  --color-text: #064e3b;
-  --color-card-background: #ffffff;
-  --color-card-border: #e2e8f0;
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 161 94% 30%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 161 94% 20%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 161 84% 39%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 161 94% 30%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 161 84% 39%;
+    --primary-foreground: 222.2 84% 4.9%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 161 84% 39%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 161 84% 39%;
+  }
 }
 
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
 
 .no-select {
-  -webkit-touch-callout: none; /* iOS Safari */
-  -webkit-user-select: none;   /* Safari */
-  -khtml-user-select: none;    /* Konqueror HTML */
-  -moz-user-select: none;      /* Old versions of Firefox */
-  -ms-user-select: none;       /* Internet Explorer/Edge */
-  user-select: none;           /* Non-prefixed version, currently supported by Chrome, Edge, Opera and Firefox */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 @keyframes fade-in-up {
@@ -65,7 +127,6 @@
   animation: pulse-once 0.5s ease-out;
 }
 
-/* Animações para as barras de progresso */
 @keyframes pulse-slow {
   0%, 100% { 
     opacity: 1; 
@@ -74,30 +135,6 @@
   50% { 
     opacity: 0.7; 
     transform: scaleY(1.15);
-  }
-}
-
-@keyframes push-right {
-  0%, 100% { 
-    transform: translateX(0);
-  }
-  25% { 
-    transform: translateX(2px);
-  }
-  75% { 
-    transform: translateX(-2px);
-  }
-}
-
-@keyframes push-left {
-  0%, 100% { 
-    transform: translateX(0);
-  }
-  25% { 
-    transform: translateX(-2px);
-  }
-  75% { 
-    transform: translateX(2px);
   }
 }
 
@@ -152,40 +189,10 @@
 
 /* Shortcut Focus Mode */
 .shortcut-focus-mode {
-  overflow-y: auto !important;
-  background: white !important;
-}
-
-.dark .shortcut-focus-mode {
-  background: #0f172a !important;
-}
-
-/* Hide all top-level UI elements */
-.shortcut-focus-mode header,
-.shortcut-focus-mode nav,
-.shortcut-focus-mode footer,
-.shortcut-focus-mode aside {
-  display: none !important;
-}
-
-/* In focus mode, make main occupy full width/height without padding */
-.shortcut-focus-mode main {
-  padding: 0 !important;
-  margin: 0 !important;
-  width: 100% !important;
-  max-width: 100% !important;
+  @apply overflow-y-auto bg-background;
 }
 
 /* The focused table container */
 .shortcut-focus-mode .focus-target {
-  border: none !important;
-  box-shadow: none !important;
-  border-radius: 0 !important;
-  width: 100% !important;
-  min-height: 100vh !important;
-  background: white !important;
-}
-
-.dark .shortcut-focus-mode .focus-target {
-  background: #0f172a !important;
+  @apply border-none shadow-none rounded-none w-full min-h-screen bg-background;
 }

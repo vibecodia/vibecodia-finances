@@ -6,6 +6,11 @@ import { useCategories } from '../hooks/useCategories';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { Transaction, SavingsGoal } from '../types';
 import { exportFinancialData, validateImportData, getCurrentBrazilDate, formatBrazilDate } from '../utils/helpers';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { Card } from './ui/Card';
+import { Textarea } from './ui/Textarea';
+import { cn } from '../lib/utils';
 
 interface SettingsProps {
   transactions: Transaction[];
@@ -239,7 +244,7 @@ const Settings: React.FC<SettingsProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-8">
           {/* Categories Section */}
-          <div className="rounded-3xl border-2 p-6 shadow-xl transition-all hover:shadow-2xl" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <Card className="p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-primary text-white shadow-lg">
@@ -252,19 +257,22 @@ const Settings: React.FC<SettingsProps> = ({
                   <p className="text-xs text-text opacity-60 font-bold uppercase">Gerencie suas classificações</p>
                 </div>
               </div>
-              <button 
+              <Button 
                 onClick={handleResetCategories}
-                className="text-[10px] font-black text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg border-2 border-primary/20 transition-all uppercase"
+                variant="outline"
+                size="sm"
+                className="text-[10px] uppercase"
                 title="Restaurar categorias padrão"
               >
                 Resetar Padrão
-              </button>
+              </Button>
             </div>
 
             {categoryMessage.type !== 'idle' && (
-              <div className={`mb-6 p-4 rounded-2xl border-2 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300 ${
+              <div className={cn(
+                "mb-6 p-4 rounded-2xl border-2 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300",
                 categoryMessage.type === 'success' ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-accent/10 border-accent/20 text-accent'
-              }`}>
+              )}>
                 {categoryMessage.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
                 <p className="text-xs font-bold uppercase tracking-tight">{categoryMessage.text}</p>
               </div>
@@ -272,46 +280,40 @@ const Settings: React.FC<SettingsProps> = ({
 
             <form onSubmit={handleAddCategory} className="space-y-4 mb-8">
               <div className="flex gap-2 p-1 border-2 rounded-2xl" style={{ borderColor: theme.cardBorder }}>
-                <button
+                <Button
                   type="button"
                   onClick={() => setCategoryType('expense')}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${
-                    categoryType === 'expense'
-                      ? 'bg-accent text-white shadow-md'
-                      : 'bg-transparent text-text opacity-50 hover:opacity-100'
-                  }`}
+                  variant={categoryType === 'expense' ? 'accent' : 'ghost'}
+                  size="sm"
+                  className="flex-1 text-[10px]"
                 >
                   DESPESAS
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={() => setCategoryType('income')}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${
-                    categoryType === 'income'
-                      ? 'bg-primary text-white shadow-md'
-                      : 'bg-transparent text-text opacity-50 hover:opacity-100'
-                  }`}
+                  variant={categoryType === 'income' ? 'primary' : 'ghost'}
+                  size="sm"
+                  className="flex-1 text-[10px]"
                 >
                   RECEITAS
-                </button>
+                </Button>
               </div>
 
               <div className="flex gap-2">
-                <input
+                <Input
                   type="text"
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   placeholder={`Nova categoria de ${categoryType === 'expense' ? 'despesa' : 'receita'}...`}
-                  className="flex-1 px-4 py-3 rounded-2xl border-2 focus:ring-4 focus:ring-primary/20 outline-none transition-all font-bold text-sm"
-                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
                 />
-                <button
+                <Button
                   type="submit"
                   disabled={!newCategoryName.trim()}
-                  className="p-3 bg-primary text-white rounded-2xl shadow-lg hover:opacity-90 transition-all disabled:opacity-50"
+                  size="icon"
                 >
                   <PlusCircle className="w-6 h-6" />
-                </button>
+                </Button>
               </div>
             </form>
 
@@ -366,10 +368,10 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
 
           {/* Payment Methods Section */}
-          <div className="rounded-3xl border-2 p-6 shadow-xl transition-all hover:shadow-2xl" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <Card className="p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-primary text-white shadow-lg">
@@ -382,19 +384,22 @@ const Settings: React.FC<SettingsProps> = ({
                   <p className="text-xs text-text opacity-60 font-bold uppercase">Meios de Pagamento</p>
                 </div>
               </div>
-              <button 
+              <Button 
                 onClick={handleResetPaymentMethods}
-                className="text-[10px] font-black text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg border-2 border-primary/20 transition-all uppercase"
+                variant="outline"
+                size="sm"
+                className="text-[10px] uppercase"
                 title="Restaurar meios de pagamento padrão"
               >
                 Resetar Padrão
-              </button>
+              </Button>
             </div>
 
             {paymentMethodMessage.type !== 'idle' && (
-              <div className={`mb-6 p-4 rounded-2xl border-2 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300 ${
+              <div className={cn(
+                "mb-6 p-4 rounded-2xl border-2 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300",
                 paymentMethodMessage.type === 'success' ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-accent/10 border-accent/20 text-accent'
-              }`}>
+              )}>
                 {paymentMethodMessage.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
                 <p className="text-xs font-bold uppercase tracking-tight">{paymentMethodMessage.text}</p>
               </div>
@@ -402,21 +407,19 @@ const Settings: React.FC<SettingsProps> = ({
 
             <form onSubmit={handleAddPaymentMethod} className="space-y-4 mb-8">
               <div className="flex gap-2">
-                <input
+                <Input
                   type="text"
                   value={newPaymentMethodName}
                   onChange={(e) => setNewPaymentMethodName(e.target.value)}
                   placeholder="Novo meio de pagamento (ex: Inter)..."
-                  className="flex-1 px-4 py-3 rounded-2xl border-2 focus:ring-4 focus:ring-primary/20 outline-none transition-all font-bold text-sm"
-                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
                 />
-                <button
+                <Button
                   type="submit"
                   disabled={!newPaymentMethodName.trim()}
-                  className="p-3 bg-primary text-white rounded-2xl shadow-lg hover:opacity-90 transition-all disabled:opacity-50"
+                  size="icon"
                 >
                   <PlusCircle className="w-6 h-6" />
-                </button>
+                </Button>
               </div>
             </form>
 
@@ -445,19 +448,19 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
 
         <div className="space-y-8">
           {/* Data Management Section */}
-          <div className="rounded-3xl border-2 p-6 shadow-xl relative overflow-hidden" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <Card className="p-6 relative overflow-hidden">
             {/* Disabled Overlay */}
             <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center p-6 text-center pointer-events-auto">
-              <div className="p-4 rounded-3xl bg-cardBackground/90 border-2 border-accent/30 shadow-2xl transform -rotate-2">
+              <Card variant="default" className="p-6 transform -rotate-2 border-accent/30 shadow-2xl">
                 <Layers className="w-10 h-10 text-accent mx-auto mb-3 opacity-80" />
                 <h3 className="text-lg font-black text-text uppercase tracking-tighter">Módulo em Manutenção</h3>
                 <p className="text-[10px] text-text opacity-60 font-bold uppercase mt-1">Funcionalidade desativada temporariamente</p>
-              </div>
+              </Card>
             </div>
 
             <div className="flex items-center gap-3 mb-6">
@@ -473,10 +476,10 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
 
             <div className="space-y-4">
-              <button
+              <Button
                 onClick={handleExport}
-                className="w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all hover:scale-[1.02] hover:shadow-lg group"
-                style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
+                variant="outline"
+                className="w-full h-auto p-4 flex items-center justify-between group"
               >
                 <div className="flex items-center gap-4">
                   <div className="p-2 rounded-xl bg-primary/10 text-primary transition-transform group-hover:rotate-12">
@@ -488,12 +491,12 @@ const Settings: React.FC<SettingsProps> = ({
                   </div>
                 </div>
                 <CheckCircle className="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
+              </Button>
 
-              <button
+              <Button
                 onClick={() => setShowImportModal(true)}
-                className="w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all hover:scale-[1.02] hover:shadow-lg group"
-                style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
+                variant="outline"
+                className="w-full h-auto p-4 flex items-center justify-between group"
               >
                 <div className="flex items-center gap-4">
                   <div className="p-2 rounded-xl bg-primary/10 text-primary transition-transform group-hover:rotate-12">
@@ -505,14 +508,14 @@ const Settings: React.FC<SettingsProps> = ({
                   </div>
                 </div>
                 <CheckCircle className="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
+              </Button>
 
               <div className="h-px bg-cardBorder my-4"></div>
 
-              <button
+              <Button
                 onClick={() => setShowClearModal(true)}
-                className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-accent/20 transition-all hover:bg-accent/5 hover:border-accent group"
-                style={{ backgroundColor: theme.cardBackground }}
+                variant="outline"
+                className="w-full h-auto p-4 flex items-center justify-between border-accent/20 hover:bg-accent/5 hover:border-accent group"
               >
                 <div className="flex items-center gap-4">
                   <div className="p-2 rounded-xl bg-accent/10 text-accent transition-transform group-hover:scale-110">
@@ -523,12 +526,12 @@ const Settings: React.FC<SettingsProps> = ({
                     <p className="text-[10px] text-accent opacity-60 uppercase font-bold">Ação Irreversível</p>
                   </div>
                 </div>
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
 
           {/* About Section */}
-          <div className="rounded-3xl border-2 p-6 shadow-md opacity-80 hover:opacity-100 transition-opacity" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <Card className="p-6 opacity-80 hover:opacity-100">
             <div className="flex items-center gap-3 mb-4 text-text">
               <Info className="w-6 h-6" />
               <h2 className="text-lg font-black uppercase">Informações</h2>
@@ -537,17 +540,17 @@ const Settings: React.FC<SettingsProps> = ({
             <div className="space-y-4 text-xs text-text font-medium leading-relaxed">
               <div className="flex justify-between items-center p-3 rounded-xl bg-cardBorder/20">
                 <span className="opacity-60 uppercase font-black">Versão</span>
-                <span className="font-black text-primary">{import.meta.env.APP_VERSION || '0.26.x'}</span>
+                <span className="font-black text-primary">0.26.x</span>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
 
       {/* Import Modal */}
       {showImportModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="rounded-3xl w-full max-w-2xl p-8 shadow-2xl animate-in zoom-in-95 duration-200 border-2" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <Card className="w-full max-w-2xl p-8 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
                 <Upload className="w-8 h-8 text-primary" />
@@ -555,31 +558,31 @@ const Settings: React.FC<SettingsProps> = ({
                   Importar Backup
                 </h3>
               </div>
-              <button
+              <Button
                 onClick={() => {
                   setShowImportModal(false);
                   setImportText('');
                   setImportStatus('idle');
                   setImportMessage('');
                 }}
-                className="p-2 rounded-full transition-colors hover:bg-cardBorder"
+                variant="ghost"
+                size="icon"
               >
-                <X className="w-6 h-6 text-text" />
-              </button>
+                <X className="w-6 h-6" />
+              </Button>
             </div>
 
             <div className="space-y-6">
               {/* File Upload */}
-              <div>
-                <label className="block text-xs font-black text-text opacity-60 uppercase mb-3 ml-1">
+              <div className="space-y-2">
+                <label className="block text-xs font-black text-text opacity-60 uppercase ml-1">
                   MÉTODO 1: CARREGAR ARQUIVO .JSON
                 </label>
                 <input
                   type="file"
                   accept=".json"
                   onChange={handleFileImport}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-dashed focus:ring-4 focus:ring-primary/20 transition-all font-bold text-sm"
-                  style={{ borderColor: theme.cardBorder, color: theme.text, backgroundColor: theme.cardBackground }}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-dashed focus:ring-4 focus:ring-primary/20 transition-all font-bold text-sm bg-cardBackground border-cardBorder text-text"
                 />
               </div>
 
@@ -590,27 +593,24 @@ const Settings: React.FC<SettingsProps> = ({
               </div>
 
               {/* Text Import */}
-              <div>
-                <label className="block text-xs font-black text-text opacity-60 uppercase mb-3 ml-1">
+              <div className="space-y-2">
+                <label className="block text-xs font-black text-text opacity-60 uppercase ml-1">
                   MÉTODO 2: COLAR TEXTO JSON
                 </label>
-                <textarea
+                <Textarea
                   value={importText}
                   onChange={(e) => setImportText(e.target.value)}
                   placeholder="Cole o conteúdo do arquivo JSON aqui..."
-                  className="w-full h-48 px-4 py-3 rounded-2xl border-2 focus:ring-4 focus:ring-primary/20 transition-all resize-none font-mono text-xs"
-                  style={{ borderColor: theme.cardBorder, color: theme.text, backgroundColor: theme.cardBackground }}
+                  className="h-48 font-mono text-xs"
                 />
               </div>
 
               {/* Status Message */}
               {importMessage && (
-                <div className={`flex items-center gap-3 p-4 rounded-2xl animate-in slide-in-from-bottom-2 duration-300 border-2`}
-                  style={{ 
-                    backgroundColor: theme.cardBackground,
-                    borderColor: importStatus === 'success' ? theme.primary : theme.accent,
-                    color: importStatus === 'success' ? theme.primary : theme.accent,
-                  }}>
+                <div className={cn(
+                  "flex items-center gap-3 p-4 rounded-2xl animate-in slide-in-from-bottom-2 duration-300 border-2",
+                  importStatus === 'success' ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-accent/10 border-accent/20 text-accent'
+                )}>
                   {importStatus === 'success' ? (
                     <CheckCircle className="w-6 h-6 flex-shrink-0" />
                   ) : (
@@ -622,34 +622,34 @@ const Settings: React.FC<SettingsProps> = ({
 
               {/* Actions */}
               <div className="flex gap-4 pt-4">
-                <button
+                <Button
                   onClick={() => {
                     setShowImportModal(false);
                     setImportText('');
                     setImportStatus('idle');
                     setImportMessage('');
                   }}
-                  className="flex-1 px-4 py-4 rounded-2xl font-black text-sm transition-all border-2 hover:bg-cardBorder/30 shadow-md"
-                  style={{ borderColor: theme.cardBorder, color: theme.text }}
+                  variant="outline"
+                  className="flex-1"
                 >
                   CANCELAR
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleImport}
                   disabled={!importText.trim() || importStatus === 'success'}
-                  className="flex-1 px-4 py-4 text-white rounded-2xl font-black text-sm transition-all bg-primary hover:opacity-90 shadow-xl disabled:opacity-50"
+                  className="flex-1"
                 >
                   IMPORTAR AGORA
-                </button>
+                </Button>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {showClearModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-[100] backdrop-blur-md animate-in fade-in duration-300">
-          <div className="rounded-3xl w-full max-w-md p-8 shadow-2xl border-2 border-accent" style={{ backgroundColor: theme.cardBackground }}>
+          <Card className="w-full max-w-md p-8 shadow-2xl border-accent">
             <div className="flex flex-col items-center text-center mb-8">
               <div className="p-4 rounded-full bg-accent text-white shadow-xl animate-bounce mb-6">
                 <AlertTriangle className="w-12 h-12" />
@@ -684,28 +684,29 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
 
             <div className="flex gap-4">
-              <button
+              <Button
                 onClick={() => setShowClearModal(false)}
-                className="flex-1 px-4 py-4 rounded-2xl font-black text-sm transition-all border-2 shadow-md"
-                style={{ borderColor: theme.cardBorder, color: theme.text }}
+                variant="outline"
+                className="flex-1"
               >
                 CANCELAR
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleClearAllData}
-                className="flex-1 px-4 py-4 text-white rounded-2xl font-black text-sm transition-all bg-accent hover:opacity-90 shadow-xl"
+                variant="danger"
+                className="flex-1"
               >
                 LIMPAR TUDO
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Category Add Confirmation Modal */}
       {showAddCategoryModal && pendingCategory && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="rounded-3xl w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-200 border-2" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <Card className="w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex flex-col items-center text-center mb-8">
               <div className="p-4 rounded-full bg-primary/10 text-primary shadow-xl mb-6">
                 <PlusCircle className="w-12 h-12" />
@@ -719,31 +720,31 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
 
             <div className="flex gap-4">
-              <button
+              <Button
                 onClick={() => {
                   setShowAddCategoryModal(false);
                   setPendingCategory(null);
                 }}
-                className="flex-1 px-4 py-4 rounded-2xl font-black text-sm transition-all border-2 shadow-md"
-                style={{ borderColor: theme.cardBorder, color: theme.text }}
+                variant="outline"
+                className="flex-1"
               >
                 CANCELAR
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={confirmAddCategory}
-                className="flex-1 px-4 py-4 text-white rounded-2xl font-black text-sm transition-all bg-primary hover:opacity-90 shadow-xl"
+                className="flex-1"
               >
                 CONFIRMAR
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Category Delete Confirmation Modal */}
       {showDeleteCategoryModal && pendingCategory && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="rounded-3xl w-full max-w-md p-8 shadow-2xl border-2 border-accent" style={{ backgroundColor: theme.cardBackground }}>
+          <Card className="w-full max-w-md p-8 shadow-2xl border-accent">
             <div className="flex flex-col items-center text-center mb-8">
               <div className="p-4 rounded-full bg-accent/10 text-accent shadow-xl mb-6">
                 <Trash2 className="w-12 h-12" />
@@ -757,30 +758,31 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
 
             <div className="flex gap-4">
-              <button
+              <Button
                 onClick={() => {
                   setShowDeleteCategoryModal(false);
                   setPendingCategory(null);
                 }}
-                className="flex-1 px-4 py-4 rounded-2xl font-black text-sm transition-all border-2 shadow-md"
-                style={{ borderColor: theme.cardBorder, color: theme.text }}
+                variant="outline"
+                className="flex-1"
               >
                 CANCELAR
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={confirmRemoveCategory}
-                className="flex-1 px-4 py-4 text-white rounded-2xl font-black text-sm transition-all bg-accent hover:opacity-90 shadow-xl"
+                variant="danger"
+                className="flex-1"
               >
                 EXCLUIR
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
       {/* Category Error Modal */}
       {showErrorModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[200] backdrop-blur-md animate-in fade-in duration-300">
-          <div className="rounded-3xl w-full max-w-md p-8 shadow-2xl border-2 border-accent" style={{ backgroundColor: theme.cardBackground }}>
+          <Card className="w-full max-w-md p-8 shadow-2xl border-accent">
             <div className="flex flex-col items-center text-center mb-8">
               <div className="p-4 rounded-full bg-accent/10 text-accent shadow-xl mb-6">
                 <AlertTriangle className="w-12 h-12" />
@@ -793,29 +795,26 @@ const Settings: React.FC<SettingsProps> = ({
               </p>
             </div>
 
-            <button
+            <Button
               onClick={() => {
                 if (errorTimer === 0) {
                   setShowErrorModal(false);
                 }
               }}
               disabled={errorTimer > 0}
-              className={`w-full px-4 py-4 rounded-2xl font-black text-sm transition-all shadow-xl ${
-                errorTimer > 0 
-                  ? 'bg-cardBorder text-text opacity-50 cursor-not-allowed' 
-                  : 'bg-accent text-white hover:opacity-90'
-              }`}
+              variant={errorTimer > 0 ? 'secondary' : 'danger'}
+              className="w-full"
             >
               OK {errorTimer > 0 ? `(${errorTimer}s)` : ''}
-            </button>
-          </div>
+            </Button>
+          </Card>
         </div>
       )}
 
       {/* Payment Method Add Confirmation Modal */}
       {showAddPaymentMethodModal && pendingPaymentMethod && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="rounded-3xl w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-200 border-2" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <Card className="w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex flex-col items-center text-center mb-8">
               <div className="p-4 rounded-full bg-primary/10 text-primary shadow-xl mb-6">
                 <PlusCircle className="w-12 h-12" />
@@ -829,31 +828,31 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
 
             <div className="flex gap-4">
-              <button
+              <Button
                 onClick={() => {
                   setShowAddPaymentMethodModal(false);
                   setPendingPaymentMethod(null);
                 }}
-                className="flex-1 px-4 py-4 rounded-2xl font-black text-sm transition-all border-2 shadow-md"
-                style={{ borderColor: theme.cardBorder, color: theme.text }}
+                variant="outline"
+                className="flex-1"
               >
                 CANCELAR
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={confirmAddPaymentMethod}
-                className="flex-1 px-4 py-4 text-white rounded-2xl font-black text-sm transition-all bg-primary hover:opacity-90 shadow-xl"
+                className="flex-1"
               >
                 CONFIRMAR
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Payment Method Delete Confirmation Modal */}
       {showDeletePaymentMethodModal && pendingPaymentMethod && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="rounded-3xl w-full max-w-md p-8 shadow-2xl border-2 border-accent" style={{ backgroundColor: theme.cardBackground }}>
+          <Card className="w-full max-w-md p-8 shadow-2xl border-accent">
             <div className="flex flex-col items-center text-center mb-8">
               <div className="p-4 rounded-full bg-accent/10 text-accent shadow-xl mb-6">
                 <Trash2 className="w-12 h-12" />
@@ -867,24 +866,25 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
 
             <div className="flex gap-4">
-              <button
+              <Button
                 onClick={() => {
                   setShowDeletePaymentMethodModal(false);
                   setPendingPaymentMethod(null);
                 }}
-                className="flex-1 px-4 py-4 rounded-2xl font-black text-sm transition-all border-2 shadow-md"
-                style={{ borderColor: theme.cardBorder, color: theme.text }}
+                variant="outline"
+                className="flex-1"
               >
                 CANCELAR
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={confirmRemovePaymentMethod}
-                className="flex-1 px-4 py-4 text-white rounded-2xl font-black text-sm transition-all bg-accent hover:opacity-90 shadow-xl"
+                variant="danger"
+                className="flex-1"
               >
                 EXCLUIR
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

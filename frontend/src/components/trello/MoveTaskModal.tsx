@@ -1,7 +1,9 @@
-
-import { Edit2, Trash2, ArrowRight } from 'lucide-react';
+import { Edit2, Trash2, ArrowRight, X } from 'lucide-react';
 
 import { Task } from '../../types/trello/task';
+import { Button } from '../ui/Button';
+import { Card } from '../ui/Card';
+import { cn } from '../../lib/utils';
 
 interface MoveTaskModalProps {
   isOpen: boolean;
@@ -31,60 +33,67 @@ export function MoveTaskModal({ isOpen, onClose, task, onMove, onEdit, onDelete 
   };
 
   const columns = [
-    { id: 'todo', title: 'A Fazer' },
-    { id: 'inProgress', title: 'Em Andamento' },
-    { id: 'done', title: 'Concluído' },
+    { id: 'todo', title: 'A Fazer', color: 'bg-blue-500' },
+    { id: 'inProgress', title: 'Em Andamento', color: 'bg-amber-500' },
+    { id: 'done', title: 'Concluído', color: 'bg-green-500' },
   ];
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl w-80 max-w-md">
-        <h3 className="font-handwriting text-xl font-bold text-gray-900 dark:text-white mb-4">
-          Opções da Tarefa: {task.title}
-        </h3>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-300">
+      <Card className="w-full max-w-xs shadow-2xl animate-in zoom-in-95 duration-200 p-0 overflow-hidden">
+        <div className="p-6 border-b border-border flex items-center justify-between">
+          <h3 className="text-lg font-black text-foreground uppercase tracking-tight">
+            Opções
+          </h3>
+          <Button onClick={onClose} variant="ghost" size="icon" className="h-8 w-8">
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
 
-        <div className="space-y-3 mb-4">
-          {columns.map((column) => (
-            <button
-              key={column.id}
-              onClick={() => handleMoveClick(column.id as 'todo' | 'inProgress' | 'done')}
-              disabled={task.columnId === column.id}
-              className={`w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors duration-200 font-medium font-handwriting
-                ${task.columnId === column.id
-                  ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 cursor-not-allowed'
-                  : 'bg-blue-500 hover:bg-blue-600 text-white'
-                }`}
+        <div className="p-6 space-y-6">
+          <div className="bg-muted/50 border border-border rounded-2xl p-4">
+            <p className="text-sm font-black text-foreground uppercase tracking-tight truncate">
+              "{task.title}"
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 mb-2">Mover para</p>
+            {columns.map((column) => (
+              <Button
+                key={column.id}
+                onClick={() => handleMoveClick(column.id as 'todo' | 'inProgress' | 'done')}
+                disabled={task.columnId === column.id}
+                variant={task.columnId === column.id ? 'secondary' : 'outline'}
+                className="w-full justify-start gap-3 h-12"
+              >
+                <div className={cn("w-2 h-2 rounded-full", column.color, task.columnId === column.id && "opacity-20")} />
+                <span className="text-xs">{column.title}</span>
+                {task.columnId !== column.id && <ArrowRight className="w-3.5 h-3.5 ml-auto opacity-20" />}
+              </Button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 pt-4 border-t border-border">
+            <Button
+              onClick={handleEditClick}
+              variant="secondary"
+              className="flex items-center gap-2"
             >
-              <ArrowRight className="w-4 h-4" />
-              <span>Mover para {column.title}</span>
-            </button>
-          ))}
+              <Edit2 className="w-4 h-4" />
+              <span>Editar</span>
+            </Button>
+            <Button
+              onClick={handleDeleteClick}
+              variant="danger"
+              className="flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Excluir</span>
+            </Button>
+          </div>
         </div>
-
-        <div className="flex justify-between space-x-2">
-          <button
-            onClick={handleEditClick}
-            className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-colors duration-200 font-medium font-handwriting"
-          >
-            <Edit2 className="w-4 h-4" />
-            <span>Editar</span>
-          </button>
-          <button
-            onClick={handleDeleteClick}
-            className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200 font-medium font-handwriting"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span>Excluir</span>
-          </button>
-        </div>
-
-        <button
-          onClick={onClose}
-          className="mt-4 w-full px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg transition-colors duration-200 font-medium font-handwriting"
-        >
-          Fechar
-        </button>
-      </div>
+      </Card>
     </div>
   );
 }

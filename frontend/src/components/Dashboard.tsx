@@ -11,10 +11,14 @@ import useWindowSize from '../hooks/useWindowSize';
 import { Transaction, SavingsGoal } from '../types';
 import { calculateBalances } from '../utils/balanceCalculations';
 import { formatCurrency, filterTransactionsByMonth, formatPaymentMethod, getCurrentBrazilDate } from '../utils/helpers';
+import { cn } from '../lib/utils';
 import RecentTransactionsFloatingCard from './RecentTransactionsFloatingCard';
 import MonthSegmentedControl from './MonthSegmentedControl';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 import { useCurrencyInput } from '../hooks/useCurrencyInput';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { Card } from './ui/Card';
 
 
 
@@ -79,9 +83,9 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
       {/* Header com status */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-text opacity-90">{label}</span>
+          <span className="text-sm font-semibold text-foreground opacity-90">{label}</span>
           {spent > 0 && (
-            <span className="text-[10px] text-text opacity-40 font-mono italic">
+            <span className="text-[10px] text-muted-foreground font-mono italic">
               (média diária {formatCurrency(avgDailySpent)})
             </span>
           )}
@@ -92,14 +96,14 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
       </div>
 
       {/* Barra invertida: vermelho da esquerda, verde à direita */}
-      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 relative overflow-hidden shadow-inner">
+      <div className="w-full bg-muted rounded-full h-3 relative overflow-hidden shadow-inner">
         {/* Vermelho: gasto — da esquerda */}
         <div
           className="h-3 transition-all duration-700 absolute left-0 rounded-l-full z-20"
           style={{
             width: `${spentPct}%`,
             background: isDanger
-              ? 'linear-gradient(90deg, #dc2626, #ef4444)'
+              ? 'linear-gradient(90deg, hsl(var(--destructive)), #ef4444)'
               : isWarning
                 ? 'linear-gradient(90deg, #d97706, #fbbf24)'
                 : 'linear-gradient(90deg, #f87171, #ef4444)',
@@ -108,7 +112,7 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
 
         {/* Verde: mercado (disponível — da direita, mas antes do flex) */}
         <div
-          className="bg-green-400 h-3 transition-all duration-700 absolute right-0 rounded-r-full"
+          className="bg-primary/40 h-3 transition-all duration-700 absolute right-0 rounded-r-full"
           style={{ width: `${remainingPct}%` }}
         />
 
@@ -123,7 +127,7 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
         {/* Linha divisória entre gasto e disponível */}
         {spentPct > 0 && remainingPct > 0 && (
           <div
-            className="absolute top-0 w-0.5 h-full bg-white/40 z-30"
+            className="absolute top-0 w-0.5 h-full bg-background/40 z-30"
             style={{ left: `${spentPct}%`, transform: 'translateX(-50%)' }}
           />
         )}
@@ -132,14 +136,14 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
       {/* Percentual usado abaixo da barra */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <span className="text-[10px] text-text opacity-40 font-mono">
+          <span className="text-[10px] text-muted-foreground font-mono">
             {spentPct.toFixed(0)}% utilizado
           </span>
           {flexPct > 0 && (
             <div className="flex items-center gap-3">
-               <div className="flex items-center gap-1 bg-green-500/5 px-2 py-0.5 rounded-full border border-green-500/10 transition-all hover:bg-green-500/10">
-                 <div className="w-1.5 h-1.5 bg-green-400 rounded-full shadow-[0_0_4px_rgba(74,222,128,0.5)]" />
-                 <span className="text-[9px] text-text opacity-70 font-black uppercase tracking-tighter">
+               <div className="flex items-center gap-1 bg-primary/5 px-2 py-0.5 rounded-full border border-primary/10 transition-all hover:bg-primary/10">
+                 <div className="w-1.5 h-1.5 bg-primary rounded-full shadow-[0_0_4px_rgba(74,222,128,0.5)]" />
+                 <span className="text-[9px] text-foreground opacity-70 font-black uppercase tracking-tighter">
                    Saldo Mercado: {formatCurrency(remaining - flexAmount)}
                  </span>
                </div>
@@ -165,19 +169,19 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
           <div className="text-xs font-bold text-green-600 dark:text-green-400">
             {formatCurrency(income)}
           </div>
-          <div className="text-[10px] text-text opacity-60 uppercase">Recebido</div>
+          <div className="text-[10px] text-muted-foreground uppercase">Recebido</div>
         </div>
         <div>
-          <div className="text-xs font-bold text-red-600 dark:text-red-400">
+          <div className="text-xs font-bold text-destructive">
             {formatCurrency(spent)}
           </div>
-          <div className="text-[10px] text-text opacity-60 uppercase">Gasto</div>
+          <div className="text-[10px] text-muted-foreground uppercase">Gasto</div>
         </div>
         <div>
-          <div className={`text-xs font-bold ${balance >= 0 ? 'text-primary' : 'text-red-600'}`}>
+          <div className={`text-xs font-bold ${balance >= 0 ? 'text-primary' : 'text-destructive'}`}>
             {formatCurrency(balance)}
           </div>
-          <div className="text-[10px] text-text opacity-60 uppercase">Saldo</div>
+          <div className="text-[10px] text-muted-foreground uppercase">Saldo</div>
         </div>
       </div>
     </div>
@@ -271,14 +275,15 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
             </div>
             
             <div className="relative group">
-              <input
+              <Input
                 {...inputProps}
                 autoFocus
-                className={`w-full bg-slate-100 dark:bg-slate-800 border-4 rounded-[2rem] p-6 text-4xl font-black text-center transition-all focus:outline-none shadow-xl ${
+                className={cn(
+                  "w-full bg-slate-100 dark:bg-slate-800 border-4 rounded-[2rem] p-6 text-4xl font-black text-center transition-all focus:outline-none shadow-xl",
                   isOverLimit 
                     ? 'border-red-500/50 text-red-500 ring-4 ring-red-500/10' 
                     : 'border-amber-500/30 focus:border-amber-500 focus:ring-8 focus:ring-amber-500/10 text-amber-600 dark:text-amber-400'
-                }`}
+                )}
                 placeholder="R$ 0,00"
               />
               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[9px] font-black uppercase px-4 py-1 rounded-full shadow-lg tracking-widest whitespace-nowrap">
@@ -298,19 +303,21 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
         </div>
 
         <DialogFooter className="flex items-center gap-6 sm:gap-8 pt-2">
-          <button
+          <Button
             onClick={onRemove}
-            className="text-[10px] font-black uppercase tracking-widest text-red-500/60 hover:text-red-600 transition-colors"
+            variant="ghost"
+            size="sm"
+            className="text-[10px] font-black uppercase tracking-widest text-red-500/60 hover:text-red-600"
           >
             Remover Split
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => onSave(numericValue)}
             disabled={isOverLimit || numericValue < 0}
-            className="flex-1 px-6 py-4 rounded-[1.5rem] text-xs font-black uppercase tracking-[0.2em] bg-primary text-white hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-xl shadow-primary/20"
+            className="flex-1"
           >
             Confirmar Saldo
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -501,15 +508,17 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
               </h2>
             </div>
             <div className="flex items-center gap-2">
-              <button 
+              <Button 
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowBalance(!showBalance);
                 }}
-                className="p-3 bg-black/10 backdrop-blur-xl rounded-2xl border border-white/10 hover:bg-black/20 transition-colors shadow-lg"
+                variant="ghost"
+                size="icon"
+                className="bg-black/10 backdrop-blur-xl border border-white/10 hover:bg-black/20"
               >
                 {showBalance ? <EyeOff className="w-5 h-5 opacity-70" /> : <Eye className="w-5 h-5 opacity-70" />}
-              </button>
+              </Button>
               
               <div 
                 className={`flex items-center gap-4 bg-black/10 backdrop-blur-xl px-5 py-3 rounded-2xl border border-white/10 shadow-lg transition-all ${
@@ -558,7 +567,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
       </div>
 
       {/* Barra receitas vs despesas */}
-      <div className="rounded-xl p-6 shadow-lg" style={{ backgroundColor: theme.cardBackground, border: `2px solid ${theme.cardBorder}` }}>
+      <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-green-400 rounded-full" />
@@ -620,12 +629,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
             <div className="text-xs text-text opacity-60">{formatCurrency(expensesUnpaid)}</div>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Benefícios — Flash / Vero Card */}
-      <div
-        className="rounded-xl p-6 shadow-lg space-y-6"
-        style={{ backgroundColor: theme.cardBackground, border: `2px solid ${theme.cardBorder}` }}
+      <Card
+        className="p-6 space-y-6"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -648,16 +656,18 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
 
           <div className="flex justify-end items-center gap-4 px-1">
             {isFlashSplit && (
-              <button
+              <Button
                 onClick={() => setIsSplitModalOpen(true)}
-                className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-text/40 hover:text-primary transition-colors"
+                variant="ghost"
+                size="sm"
+                className="text-[10px] font-black uppercase tracking-widest text-text/40"
                 title="Ajustar Split"
               >
-                <Pencil className="w-3 h-3" />
+                <Pencil className="w-3 h-3 mr-1.5" />
                 Ajustar
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               onClick={() => {
                 if (isFlashSplit) {
                   setFlashFlexAmount(0);
@@ -666,15 +676,18 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
                   setIsSplitModalOpen(true);
                 }
               }}
-              className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest transition-colors ${
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "text-[10px] font-black uppercase tracking-widest transition-colors",
                 isFlashSplit
                   ? 'text-red-500/60 hover:text-red-600'
                   : 'text-text/40 hover:text-primary'
-              }`}
+              )}
             >
-              {isFlashSplit ? <Trash2 className="w-3 h-3" /> : <Scissors className="w-3 h-3" />}
+              {isFlashSplit ? <Trash2 className="w-3 h-3 mr-1.5" /> : <Scissors className="w-3 h-3 mr-1.5" />}
               {isFlashSplit ? 'Remover Split' : 'Split Flex'}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -688,7 +701,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
           daysPassed={daysPassed}
           totalDays={totalDays}
         />
-      </div>
+      </Card>
 
       {/* Modal de Split do Flash */}
       <FlashSplitModal
@@ -710,9 +723,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
 
       {/* Progresso das Metas */}
       {savingsGoals.length > 0 && (
-        <div
-          className="rounded-xl p-4 border-2 cursor-pointer hover:shadow-md transition-shadow duration-200"
-          style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}
+        <Card
+          className="cursor-pointer"
           onClick={() => navigate('/goals')}
         >
           <div className="flex items-center justify-between mb-3">
@@ -739,7 +751,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
               {totalSavingsGoals > 0 ? Math.round((totalSaved / totalSavingsGoals) * 100) : 0}% concluído
             </div>
           </div>
-        </div>
+        </Card>
       )}
 
       <RecentTransactionsFloatingCard transactions={transactions} />

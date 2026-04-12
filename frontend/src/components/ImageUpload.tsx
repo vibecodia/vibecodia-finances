@@ -1,9 +1,11 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
-import { Upload, Loader2, CheckCircle, XCircle, Camera } from 'lucide-react';
+import { Upload, Loader2, CheckCircle, Camera, Link as LinkIcon, AlertCircle } from 'lucide-react';
 import React, { useState, useRef } from 'react';
 
-import { useTheme } from '../contexts/ThemeContext';
+import { Button } from './ui/Button';
+import { Card } from './ui/Card';
+import { Input } from './ui/Input';
 
 import QRScanner from './QRScanner';
 
@@ -13,27 +15,16 @@ type ImageUploadProps = {
 };
 
 const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetected }) => {
-  const { theme } = useTheme();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
   const [isLiveScanning, setIsLiveScanning] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualUrl, setManualUrl] = useState('');
 
-  const toggleManualInput = () => {
-    setShowManualInput(true);
-    // Pequeno delay para garantir que o elemento foi montado no DOM
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 100);
-  };
-
   const processQRUrl = async (qrUrl: string) => {
     if (qrUrl && (qrUrl.includes('fazenda') || qrUrl.includes('sefaz'))) {
-      setIsScanning(true);
       const pin = Cookies.get('pin_code') || '';
       try {
         const receiptResponse = await axios.get(`/api/fetch-receipt-data?url=${encodeURIComponent(qrUrl)}`, {
@@ -46,8 +37,6 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
         }
       } catch (err) {
         throw new Error('QR Code detectado, mas falha ao buscar dados na SEFAZ.');
-      } finally {
-        setIsScanning(false);
       }
     } else {
       throw new Error('Nenhum QR Code de Nota Fiscal detectado.');
@@ -164,7 +153,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       {isLiveScanning && (
         <QRScanner 
           onScan={handleLiveScan} 
@@ -177,108 +166,96 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
         />
       )}
 
-      <div className="flex gap-2">
-        <button 
+      <div className="grid grid-cols-2 gap-3">
+        <Button 
           type="button"
           onClick={() => setIsLiveScanning(true)}
-          className="flex-1 flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg transition-all hover:opacity-80 active:scale-95"
-          style={{ 
-            borderColor: theme.cardBorder,
-            backgroundColor: theme.cardBackground
-          }}
+          variant="outline"
+          className="h-auto py-6 flex flex-col gap-2 border-dashed border-2"
         >
           <Camera className="w-8 h-8 text-primary" />
-          <span className="mt-2 text-sm text-text font-medium">Escanear ao vivo</span>
-          <span className="text-xs text-text opacity-70">Abre a câmera agora</span>
-        </button>
+          <div className="text-center">
+            <span className="block text-sm font-black uppercase tracking-tight">Escanear ao vivo</span>
+            <span className="text-[10px] opacity-60 font-bold uppercase tracking-widest">Abre a câmera</span>
+          </div>
+        </Button>
 
-        <label className="flex-1 flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer transition-all hover:opacity-80 active:scale-95"
-          style={{ 
-            borderColor: theme.cardBorder,
-            backgroundColor: theme.cardBackground
-          }}>
-          {isProcessing ? (
-            <div className="flex flex-col items-center">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <span className="mt-2 text-sm text-text">
-                {isScanning ? 'Lendo SEFAZ...' : 'Lendo...'}
-              </span>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center text-center">
-              <Upload className="w-8 h-8 text-primary" />
-              <span className="mt-2 text-sm text-text font-medium">Foto da Galeria</span>
-              <span className="text-xs text-text opacity-70">Detectar na foto</span>
-            </div>
-          )}
-          <input 
-            type="file" 
-            className="hidden" 
+        <label className="flex-1">
+          <input
+            type="file"
             accept="image/*"
-            capture="environment"
             onChange={handleFileChange}
+            className="hidden"
             disabled={isProcessing}
           />
+          <Card className="h-full py-6 flex flex-col items-center justify-center gap-2 border-dashed border-2 cursor-pointer hover:bg-cardBackground/50 transition-all">
+            {isProcessing ? (
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            ) : (
+              <Upload className="w-8 h-8 text-primary" />
+            )}
+            <div className="text-center">
+              <span className="block text-sm font-black uppercase tracking-tight">Galeria / Foto</span>
+              <span className="text-[10px] opacity-60 font-bold uppercase tracking-widest">Subir imagem</span>
+            </div>
+          </Card>
         </label>
       </div>
 
+      {!showManualInput ? (
+        <Button
+          onClick={() => setShowManualInput(true)}
+          variant="ghost"
+          size="sm"
+          className="w-full text-[10px] font-black uppercase tracking-widest opacity-60"
+        >
+          <LinkIcon className="w-3.5 h-3.5 mr-1.5" />
+          Colar link da nota fiscal (URL)
+        </Button>
+      ) : (
+        <form onSubmit={handleManualSubmit} className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+          <Input
+            ref={inputRef}
+            type="url"
+            value={manualUrl}
+            onChange={(e) => setManualUrl(e.target.value)}
+            placeholder="Cole o link da nota aqui..."
+            className="text-xs py-2"
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <Button type="submit" size="sm" className="flex-1" disabled={isProcessing || !manualUrl}>
+              {isProcessing ? 'Buscando...' : 'Buscar Nota'}
+            </Button>
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                setShowManualInput(false);
+                setManualUrl('');
+                setStatus('idle');
+              }}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </form>
+      )}
+
       {status === 'success' && (
-        <div className="flex items-center gap-2 text-sm text-success justify-center p-2 rounded-lg bg-success/10 border border-success/20">
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500 animate-in zoom-in-95 duration-200">
           <CheckCircle className="w-4 h-4" />
-          <span>Dados extraídos com sucesso!</span>
+          <span className="text-[10px] font-black uppercase tracking-widest">Nota Fiscal detectada com sucesso!</span>
         </div>
       )}
 
       {status === 'error' && (
-        <div className="flex flex-col items-center gap-1 text-sm text-error text-center p-2 rounded-lg bg-error/10 border border-error/20">
-          <div className="flex items-center gap-2">
-            <XCircle className="w-4 h-4" />
-            <span>{errorMessage}</span>
-          </div>
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 animate-in shake duration-300">
+          <AlertCircle className="w-4 h-4" />
+          <span className="text-[10px] font-black uppercase tracking-widest">{errorMessage}</span>
         </div>
       )}
-
-      <div className="pt-1 text-center">
-        {!showManualInput ? (
-          <button 
-            type="button"
-            onClick={toggleManualInput}
-            className="text-[10px] text-primary hover:underline opacity-80"
-          >
-            Não conseguiu ler? Colar link manualmente
-          </button>
-        ) : (
-          <div className="space-y-2 mt-2 p-3 rounded-lg border border-dashed" style={{ borderColor: theme.cardBorder }}>
-            <input 
-              ref={inputRef}
-              type="url"
-              value={manualUrl}
-              onChange={(e) => setManualUrl(e.target.value)}
-              placeholder="Cole aqui a URL da Nota Fiscal..."
-              className="w-full p-2 text-xs rounded-lg border focus:ring-1 focus:ring-primary focus:outline-none"
-              style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-            />
-            <div className="flex gap-2">
-              <button 
-                type="button"
-                onClick={handleManualSubmit}
-                disabled={isScanning || !manualUrl}
-                className="flex-1 p-2 text-xs bg-primary text-white rounded-lg hover:bg-secondary disabled:opacity-50 transition-colors"
-              >
-                {isScanning ? 'Processando...' : 'Processar Link'}
-              </button>
-              <button 
-                type="button"
-                onClick={() => setShowManualInput(false)}
-                className="p-2 text-xs rounded-lg transition-colors"
-                style={{ backgroundColor: theme.cardBorder, color: theme.text }}
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 };

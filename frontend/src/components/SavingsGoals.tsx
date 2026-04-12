@@ -1,4 +1,4 @@
-import { Target, Plus, Minus, Trash2, Edit3, Calendar, TrendingUp, History, X, ChevronDown, RotateCcw, Check, Wallet } from 'lucide-react';
+import { Target, Plus, Minus, Trash2, Edit3, Calendar, TrendingUp, History, X, ChevronDown, RotateCcw, Check } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
 import { useTheme } from '../contexts/ThemeContext';
@@ -6,6 +6,9 @@ import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import { cn } from '../lib/utils';
 import { SavingsGoal, SavingsContribution } from '../types';
 import { formatCurrency, formatBrazilDate, getBrazilDateString } from '../utils/helpers';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { Card } from './ui/Card';
 
 import ConfirmationModal from './ConfirmationModal';
 
@@ -172,47 +175,48 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
             {deletedGoals.length > 0 && (
               <>
                 <span className="mx-2">•</span>
-                <button 
+                <Button 
                   onClick={() => setShowDeleted(!showDeleted)}
-                  className={`text-xs font-bold px-2 py-0.5 rounded-full transition-colors flex items-center gap-1 ${
-                    showDeleted 
-                      ? 'bg-accent text-white' 
-                      : 'opacity-90 hover:underline'
-                  }`}
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "text-xs font-bold px-2 py-0.5 rounded-full transition-colors flex items-center gap-1",
+                    showDeleted && "bg-accent text-white"
+                  )}
                   style={{ backgroundColor: showDeleted ? theme.accent : undefined }}
                 >
                   {deletedGoals.length} {deletedGoals.length === 1 ? 'excluída' : 'excluídas'}
                   <span className={`transition-transform ${showDeleted ? 'rotate-180' : ''}`}>
                     <ChevronDown className="w-3 h-3" />
                   </span>
-                </button>
+                </Button>
               </>
             )}
           </p>
         </div>
-        <button
+        <Button
           onClick={() => {
             setEditingGoalId(null);
             setInitialTarget(0);
             setFormData({ name: '', deadline: '' });
             setShowForm(true);
           }}
-          className="p-3 rounded-full text-white shadow-lg transition-all hover:scale-105 flex-shrink-0 bg-primary hover:bg-secondary"
+          size="icon"
+          className="flex-shrink-0"
         >
           <Plus className="w-5 h-5" />
-        </button>
+        </Button>
       </div>
 
       {/* Search Input - Standardized with TransactionList */}
       {(activeGoals.length > 0 || deletedGoals.length > 0) && (
         <div className="relative flex items-center w-full">
-          <input
+          <Input
             type="text"
             placeholder="Buscar metas..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 p-2 pl-10 rounded-lg bg-cardBackground text-text border border-cardBorder focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-            style={{ paddingRight: '2.5rem' }}
+            className="pl-10"
           />
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search absolute left-3 text-text opacity-70"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </div>
@@ -229,12 +233,11 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
               {showDeleted ? 'Nenhuma meta excluída encontrada' : 'Nenhuma meta cadastrada'}
             </p>
             {!showDeleted && (
-              <button
+              <Button
                 onClick={() => setShowForm(true)}
-                className="px-6 py-3 text-white rounded-xl font-medium transition-colors bg-primary hover:bg-secondary"
               >
                 Criar primeira meta
-              </button>
+              </Button>
             )}
           </div>
         ) : (
@@ -285,69 +288,48 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-text flex items-center gap-2">
-                  <Target className="w-4 h-4 text-primary" />
-                  Nome da Meta
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Ex: Reserva de Emergência"
-                  className="w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                  style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
-                  required
-                />
-              </div>
+              <Input
+                label="Nome da Meta"
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Ex: Reserva de Emergência"
+                required
+              />
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-text flex items-center gap-2">
-                  <Wallet className="w-4 h-4 text-primary" />
-                  Valor Objetivo (R$)
-                </label>
-                <input
-                  {...targetAmountInputProps}
-                  placeholder="0,00"
-                  className="w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                  style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
-                  required
-                />
-              </div>
+              <Input
+                {...targetAmountInputProps}
+                label="Valor Objetivo (R$)"
+                placeholder="0,00"
+                required
+              />
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-text flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-primary" />
-                  Prazo Final (Opcional)
-                </label>
-                <input
-                  type="date"
-                  value={formData.deadline}
-                  onChange={(e) => setFormData(prev => ({ ...prev, deadline: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                  style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
-                />
-              </div>
+              <Input
+                label="Prazo Final (Opcional)"
+                type="date"
+                value={formData.deadline}
+                onChange={(e) => setFormData(prev => ({ ...prev, deadline: e.target.value }))}
+              />
 
               <div className="flex gap-3 pt-4">
-                <button
+                <Button
                   type="button"
                   onClick={() => {
                     setShowForm(false);
                     setEditingGoalId(null);
                     setFormData({ name: '', deadline: '' });
                   }}
-                  className="flex-1 px-4 py-3 rounded-xl transition-all font-semibold hover:bg-cardBorder active:scale-[0.98]"
-                  style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
+                  variant="outline"
+                  className="flex-1"
                 >
                   Cancelar
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  className="flex-1 px-4 py-3 text-white rounded-xl font-bold transition-all bg-primary hover:bg-secondary active:scale-[0.98] shadow-lg shadow-primary/20"
+                  className="flex-1"
                 >
                   {editingGoalId ? 'Salvar' : 'Criar Meta'}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -475,9 +457,8 @@ const GoalCard: React.FC<GoalCardProps> = ({
   const isGoalDeleted = goal.status === 'deleted';
 
   return (
-    <div className={cn(`relative border rounded-xl p-4 hover:shadow-md transition-all no-select ${isGoalDeleted ? 'opacity-50 grayscale cursor-not-allowed' : ''}`)}
+    <Card className={cn(`relative no-select ${isGoalDeleted ? 'opacity-50 grayscale cursor-not-allowed' : ''}`)}
       style={{ 
-        backgroundColor: isGoalDeleted ? theme.background : theme.cardBackground,
         borderColor: isGoalDeleted ? theme.cardBorder : (isComplete ? theme.primary : theme.cardBorder)
       }}
     >
@@ -521,36 +502,41 @@ const GoalCard: React.FC<GoalCardProps> = ({
 
         <div className="flex items-center gap-2 flex-shrink-0">
           {isGoalDeleted ? (
-            <button
+            <Button
               onClick={onReactivate}
-              className="p-2 rounded-lg transition-colors text-white bg-primary hover:bg-secondary shadow-sm"
+              size="sm"
+              className="shadow-sm"
               title="Restaurar meta"
             >
               <RotateCcw className="w-4 h-4" />
-            </button>
+            </Button>
           ) : (
             <>
               {sortedContributions.length > 0 && (
-                <button
+                <Button
                   onClick={() => setShowHistory(!showHistory)}
-                  className="p-2 rounded-lg transition-colors text-text bg-cardBackground hover:text-primary hover:bg-cardBorder"
+                  variant="ghost"
+                  size="sm"
                   title="Ver histórico de aportes"
                 >
                   <History className="w-4 h-4" />
-                </button>
+                </Button>
               )}
-              <button
+              <Button
                 onClick={onEdit}
-                className="p-2 rounded-lg transition-colors text-text bg-cardBackground hover:text-primary hover:bg-cardBorder"
+                variant="ghost"
+                size="sm"
               >
                 <Edit3 className="w-4 h-4" />
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={onDelete}
-                className="p-2 rounded-lg transition-colors text-text bg-cardBackground hover:text-accent hover:bg-cardBorder"
+                variant="ghost"
+                size="sm"
+                className="hover:text-accent"
               >
                 <Trash2 className="w-4 h-4" />
-              </button>
+              </Button>
             </>
           )}
         </div>
@@ -638,43 +624,39 @@ const GoalCard: React.FC<GoalCardProps> = ({
                   {editingContributionId === contribution.id ? (
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-bold opacity-50 uppercase">Valor</label>
-                          <input
-                            {...editAmountInputProps}
-                            className="w-full px-2 py-1.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary"
-                            style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-bold opacity-50 uppercase">Data</label>
-                          <input
-                            type="date"
-                            value={editDate}
-                            onChange={(e) => setEditDate(e.target.value)}
-                            className="w-full px-2 py-1.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary"
-                            style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
-                          />
-                        </div>
+                        <Input
+                          {...editAmountInputProps}
+                          label="Valor"
+                          className="py-1.5"
+                        />
+                        <Input
+                          label="Data"
+                          type="date"
+                          value={editDate}
+                          onChange={(e) => setEditDate(e.target.value)}
+                          className="py-1.5"
+                        />
                       </div>
                       <div className="flex gap-2">
-                        <button
+                        <Button
                           onClick={handleUpdateContribution}
-                          className="flex-1 py-1.5 text-white rounded-lg text-xs font-bold transition-all bg-primary hover:bg-secondary"
+                          size="sm"
+                          className="flex-1"
                         >
                           Salvar
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={() => {
                             setEditingContributionId(null);
                             setInitialEditAmount(0);
                             setEditDate('');
                           }}
-                          className="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all hover:bg-cardBorder"
-                          style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
                         >
                           Cancelar
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ) : (
@@ -703,28 +685,34 @@ const GoalCard: React.FC<GoalCardProps> = ({
                         {!isGoalDeleted && contribution.status !== 'deleted' && (
                           <div className="flex items-center gap-1">
                             {contribution.isPaid === false && contribution.transactionId && (
-                              <button
+                              <Button
                                 onClick={() => onUpdatePaymentStatus(contribution.transactionId!, true)}
-                                className="p-1.5 rounded-lg transition-colors text-text hover:text-primary hover:bg-cardBorder"
+                                variant="ghost"
+                                size="sm"
+                                className="p-1.5"
                                 title="Marcar como pago"
                               >
                                 <Check className="w-3.5 h-3.5" />
-                              </button>
+                              </Button>
                             )}
-                            <button
+                            <Button
                               onClick={() => handleEditContribution(contribution)}
-                              className="p-1.5 rounded-lg transition-colors text-text hover:text-primary hover:bg-cardBorder"
+                              variant="ghost"
+                              size="sm"
+                              className="p-1.5"
                               title="Editar aporte"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               onClick={() => handleDeleteContribution(contribution.id)}
-                              className="p-1.5 rounded-lg transition-colors text-text hover:text-accent hover:bg-cardBorder"
+                              variant="ghost"
+                              size="sm"
+                              className="p-1.5 hover:text-accent"
                               title="Excluir aporte"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            </Button>
                           </div>
                         )}
                       </div>
@@ -748,51 +736,49 @@ const GoalCard: React.FC<GoalCardProps> = ({
         ) : (
           <div className="space-y-3">
             {!showAddAmount ? (
-              <button
+              <Button
                 onClick={() => setShowAddAmount(true)}
-                className="w-full py-2.5 px-4 rounded-xl transition-all text-sm font-bold bg-primary text-white hover:bg-secondary shadow-lg shadow-primary/20 active:scale-[0.98]"
+                className="w-full"
               >
                 Adicionar Aporte
-              </button>
+              </Button>
             ) : (
               <div className="p-3 rounded-xl border-2 border-dashed space-y-3 animate-in slide-in-from-top-2 duration-200" style={{ borderColor: theme.cardBorder }}>
                 <div className="flex gap-2">
-                  <div className="flex-1 relative">
-                    <input
-                      {...addAmountInputProps}
-                      placeholder="Valor"
-                      className="w-full px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary transition-all"
-                      style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
-                    />
-                  </div>
-                  <button
+                  <Input
+                    {...addAmountInputProps}
+                    placeholder="Valor"
+                    className="py-2"
+                  />
+                  <Button
                     onClick={handleAddAmount}
                     disabled={addAmountValue <= 0}
-                    className="px-4 py-2 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold bg-primary hover:bg-secondary active:scale-[0.95]"
+                    size="sm"
+                    className="h-10 w-10 p-0"
                   >
                     +
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => {
                       setShowAddAmount(false);
                       setInitialAddAmount(0);
                       setContributionDate(getBrazilDateString());
                     }}
-                    className="px-3 py-2 rounded-lg transition-all hover:bg-cardBorder active:scale-[0.95]"
-                    style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
+                    variant="outline"
+                    size="sm"
+                    className="h-10 w-10 p-0"
                   >
                     <X className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
                 
                 <div className="flex items-center gap-3">
                   <Calendar className="w-4 h-4 text-primary" />
-                  <input
+                  <Input
                     type="date"
                     value={contributionDate}
                     onChange={(e) => setContributionDate(e.target.value)}
-                    className="flex-1 px-3 py-1.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary transition-all"
-                    style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
+                    className="py-1.5"
                   />
                 </div>
                 
@@ -804,7 +790,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 };
 

@@ -49,6 +49,7 @@ import { Doughnut, Line, Pie, Scatter } from 'react-chartjs-2';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
 import { useCurrencyInput } from '../hooks/useCurrencyInput';
+import { cn } from '../lib/utils';
 import { SavingsGoal, Transaction } from '../types';
 import {
   formatCurrency,
@@ -59,6 +60,10 @@ import {
 } from '../utils/helpers';
 import TransactionForm from './TransactionForm';
 import DateRangePicker from './DateRangePicker';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { Card } from './ui/Card';
+import { Select } from './ui/Select';
 
 ChartJS.register(
   CategoryScale,
@@ -106,6 +111,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const { theme } = useTheme();
   const [layout, setLayout] = useLocalStorage<LayoutItem[]>('savings_playground_layout_v2', DEFAULT_LAYOUT);
   const [showFilters, setShowFilters] = useLocalStorage<boolean>('savings_playground_show_filters', true);
+  const [isSimCardCollapsed, setIsSimCardCollapsed] = useLocalStorage<boolean>('savings_playground_sim_collapsed', false);
 
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [countdownSimGoalId, setCountdownSimGoalId] = useState<string | null>(null);
@@ -1354,50 +1360,58 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   }, [transactions, savingsGoals, theme.cardBackground]);
 
   const renderCardHeader = (id: string, label: string, icon: React.ReactNode, index: number, isCollapsed: boolean, onToggleAll?: () => void) => (
-    <div className="p-4 border-b font-semibold text-text flex items-center justify-between group" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+    <div className="p-4 border-b font-semibold text-foreground flex items-center justify-between group bg-muted/30 border-border">
       <div className="flex items-center gap-3">
         <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/20 text-primary font-bold text-xs">
           {DEFAULT_LAYOUT.find(item => item.id === id)?.number}
         </div>
         <div className="flex items-center gap-2">
           {icon}
-          <span className="text-sm lg:text-base">{label}</span>
+          <span className="text-sm lg:text-base uppercase font-black tracking-tight">{label}</span>
         </div>
       </div>
       <div className="flex items-center gap-1">
         {onToggleAll && !isCollapsed && (
-          <button 
+          <Button 
             onClick={(e) => { e.stopPropagation(); onToggleAll(); }}
-            className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
             title="Alternar Todos"
           >
             <Eye className="w-4 h-4" />
-          </button>
+          </Button>
         )}
-        <button
+        <Button
           onClick={(e) => { e.stopPropagation(); moveItem(index, 'up'); }}
           disabled={index === 0}
-          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 disabled:opacity-0"
           title="Mover para Cima"
         >
           <ArrowUp className="w-4 h-4" />
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={(e) => { e.stopPropagation(); moveItem(index, 'down'); }}
           disabled={index === layout.length - 1}
-          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 disabled:opacity-0"
           title="Mover para Baixo"
         >
           <ArrowDown className="w-4 h-4" />
-        </button>
-        <div className="w-[1px] h-4 mx-1 bg-cardBorder opacity-0 group-hover:opacity-100" />
-        <button
+        </Button>
+        <div className="w-[1px] h-4 mx-1 bg-border opacity-0 group-hover:opacity-100" />
+        <Button
           onClick={() => toggleCollapse(id)}
-          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
           title={isCollapsed ? "Expandir" : "Minimizar"}
         >
           {isCollapsed ? <Maximize2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -1454,30 +1468,32 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             box-shadow: 0 1px 3px rgba(0,0,0,0.3);
             border: none;
           }
-        `},old_str:
+        `}
       </style>
       <div className="flex flex-col lg:flex-row gap-6 items-start mt-4">
         {/* Sidebar Filters */}
         {showFilters && (
           <div className="w-full lg:w-80 lg:sticky lg:top-24 space-y-4 flex-shrink-0 animate-in slide-in-from-left duration-300">
-            <div className="rounded-2xl border overflow-hidden shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-              <div className="p-4 font-semibold text-text flex items-center justify-between border-b" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+            <Card noPadding className="overflow-hidden shadow-sm">
+              <div className="p-4 font-semibold text-foreground flex items-center justify-between border-b bg-muted/30 border-border">
                 <div className="flex items-center gap-2">
                   <Filter className="w-5 h-5" />
                   <span>Filtros</span>
                 </div>
-                <button 
+                <Button 
                   onClick={() => setShowFilters(false)}
-                  className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+                  variant="ghost"
+                  size="sm"
                   title="Esconder Filtros"
+                  className="opacity-50 hover:opacity-100"
                 >
                   <PanelLeftClose className="w-5 h-5" />
-                </button>
+                </Button>
               </div>
 
               <div className="p-4 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-text opacity-70 mb-2">Período</label>
+                <label className="block text-xs font-medium text-foreground opacity-70 mb-2">Período</label>
                 <DateRangePicker 
                   startDate={startDate}
                   endDate={endDate}
@@ -1490,413 +1506,506 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-text opacity-70 mb-2">Meta (Tabela de Aportes)</label>
-                <select
+                <Select
+                  label="Meta (Tabela de Aportes)"
                   value={selectedGoalId || ''}
                   onChange={(e) => setSelectedGoalId(e.target.value || null)}
-                  className="w-full p-2.5 rounded-lg border text-sm"
-                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
                 >
                   <option value="">Todas as Metas</option>
                   {activeGoals.map(goal => (
                     <option key={goal.id} value={goal.id}>{goal.name}</option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               {(savingsGoals.some(g => g.status === 'deleted') || 
                 savingsGoals.some(g => g.contributions.some(c => c.status === 'deleted'))) && (
-                <div>
-                  <label className="block text-xs font-medium text-text opacity-70 mb-2">Visibilidade</label>
-                  <button
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-foreground opacity-70">Visibilidade</label>
+                  <Button
                     onClick={() => setShowDeleted(!showDeleted)}
-                    className={`w-full py-2 rounded-md text-[10px] transition-all border font-bold uppercase flex items-center justify-center gap-2 ${
-                      showDeleted 
-                        ? 'bg-accent text-white border-accent shadow-sm' 
-                        : 'bg-transparent text-text opacity-70 border-cardBorder hover:bg-cardBorder/30'
-                    }`}
-                    style={{ 
-                      backgroundColor: showDeleted ? theme.accent : 'transparent',
-                      color: showDeleted ? '#fff' : theme.text 
-                    }}
+                    variant={showDeleted ? 'accent' : 'outline'}
+                    size="sm"
+                    className="w-full uppercase text-[10px]"
                   >
-                    <Trash2 className={`w-3 h-3 ${showDeleted ? 'animate-pulse' : ''}`} />
+                    <Trash2 className={cn("w-3 h-3 mr-2", showDeleted && "animate-pulse")} />
                     {showDeleted ? 'Mostrando Excluídos' : 'Ver Excluídos'}
-                  </button>
+                  </Button>
                 </div>
               )}
 
-              <button
+              <Button
                 onClick={() => {
                   setSelectedGoalId(null);
                   setStartDate(format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
                   setEndDate(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
                 }}
-                className="w-full py-2.5 text-xs text-primary font-bold border border-primary rounded-xl hover:bg-primary hover:text-white transition-all shadow-sm"
+                variant="outline"
+                className="w-full text-xs"
               >
                 LIMPAR FILTROS
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
         )}
 
         {/* Main Content Area */}
         <div className="flex-1 space-y-8 w-full">
           {!showFilters && (
-            <button
+            <Button
               onClick={() => setShowFilters(true)}
-              className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-md hover:scale-105 transition-all animate-in slide-in-from-left duration-300"
+              className="flex items-center gap-2"
             >
               <PanelLeftOpen className="w-5 h-5" />
               MOSTRAR FILTROS
-            </button>
+            </Button>
           )}
           {/* Summary Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-              <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Total em Metas</p>
+            <Card className="p-4">
+              <p className="text-xs font-bold text-foreground opacity-60 uppercase tracking-widest mb-1">Total em Metas</p>
               <p className="text-2xl font-black text-primary">
                 {formatCurrency(activeGoals.reduce((sum, g) => sum + g.currentAmount, 0))}
               </p>
-            </div>
-            <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-              <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Total Alvo</p>
+            </Card>
+            <Card className="p-4">
+              <p className="text-xs font-bold text-foreground opacity-60 uppercase tracking-widest mb-1">Total Alvo</p>
               <p className="text-2xl font-black text-accent">
                 {formatCurrency(activeGoals.reduce((sum, g) => sum + g.targetAmount, 0))}
               </p>
-            </div>
-            <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-              <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Qtd. de Metas</p>
+            </Card>
+            <Card className="p-4">
+              <p className="text-xs font-bold text-foreground opacity-60 uppercase tracking-widest mb-1">Qtd. de Metas</p>
               <p className="text-2xl font-black text-primary">
                 {activeGoals.length}
               </p>
-            </div>
+            </Card>
           </div>
 
           {/* Card de Disponibilidade Mensal */}
-          <div ref={simulationRef} className="rounded-2xl border p-4 shadow-sm relative group/simcard" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">
-                  💰 Faça Simulações aqui
-                </p>
-                
-                <p className="text-[10px] opacity-50 mt-1">
-                  {/* TODO colocar aqui um check box para incluir vero e flash */}
-                  Receitas - Despesas (exclui Vero/Flash) 
-                </p>
+          <Card ref={simulationRef} noPadding className="relative group/simcard overflow-hidden shadow-md transition-all hover:shadow-lg">
+            <div 
+              className="p-4 border-b font-semibold text-foreground flex items-center justify-between bg-muted/30 border-border"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/20 text-primary font-bold text-xs">
+                  S
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calculator className="w-5 h-5 text-primary" />
+                  <span className="text-sm lg:text-base uppercase font-black tracking-tight">Faça Simulações aqui</span>
+                </div>
               </div>
               
-              <button
-                onClick={handlePrintSimulation}
-                className="p-2 hover:bg-cardBorder rounded-xl transition-all text-text opacity-0 group-hover/simcard:opacity-100 focus:opacity-100 flex items-center gap-2 text-[10px] font-bold border border-transparent hover:border-cardBorder"
-                title="Imprimir Simulação"
-              >
-                <Printer className="w-4 h-4 text-primary" />
-                IMPRIMIR
-              </button>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handlePrintSimulation}
+                  variant="ghost"
+                  size="sm"
+                  className="hidden group-hover/simcard:flex items-center gap-2 text-[10px] h-8"
+                  title="Imprimir Simulação"
+                >
+                  <Printer className="w-4 h-4 text-primary" />
+                  IMPRIMIR
+                </Button>
+                <div className="w-[1px] h-4 mx-1 bg-border hidden group-hover/simcard:block" />
+                <Button
+                  onClick={() => setIsSimCardCollapsed(!isSimCardCollapsed)}
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  title={isSimCardCollapsed ? "Expandir" : "Minimizar"}
+                >
+                  {isSimCardCollapsed ? <Maximize2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
+                </Button>
+              </div>
             </div>
-            <div className="mt-4 pt-4 border-t" style={{ borderColor: theme.cardBorder }}>
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Lado Esquerdo: Inputs e Impacto */}
-                <div className="lg:col-span-3 space-y-4 flex flex-col">
-                  <div className="space-y-2 flex flex-col flex-1">
-                    <p className="text-[10px] font-bold text-text opacity-60 uppercase tracking-widest">
-                      Simular Aporte
-                    </p>
-                    <p className="text-[10px] opacity-50 mt-1">
-                      {countdownSimGoal ? (
-                        <>
-                          {countdownSimExtraValue > 0 ? 'Atual com o aporte simulado' : 'Atual'}: <span className="font-mono font-bold">{formatCurrency(countdownSimGoal.currentAmount + countdownSimExtraValue)}</span>{' '}
-                          · Alvo: <span className="font-mono font-bold">{formatCurrency(countdownSimGoal.targetAmount)}</span>
-                        </>
-                      ) : (
-                        <>Selecione uma meta para ver os valores.</>
-                      )}
-                    </p>
-                    <div className="mt-auto space-y-2">
-                      <select
-                        value={countdownSimGoalIdEffective || ''}
-                        onChange={(e) => handleCountdownSimGoalChange(e.target.value)}
-                        className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
-                        style={{ borderColor: theme.cardBorder }}
-                        disabled={savingsGoals.length === 0}
-                      >
-                        <option value="" disabled>Selecione uma meta</option>
-                        {savingsGoals.map(g => (
-                          <option key={g.id} value={g.id}>{g.name}</option>
-                        ))}
-                      </select>
-                      <input
-                        {...countdownSimExtraInputProps}
-                        onFocus={() => setIsSimInputFocused(true)}
-                        onBlur={() => setIsSimInputFocused(false)}
-                        placeholder={!isSimInputFocused ? "simule agora aqui!" : "0"}
-                        className={`w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none text-right transition-all duration-300 ${
-                          !isSimInputFocused && !countdownSimExtraValue ? 'animate-pulse-border' : ''
-                        }`}
-                        style={{ 
-                          borderColor: countdownSimExtraValue > 0 ? '#10b981' : theme.cardBorder, 
-                          color: theme.text,
-                          boxShadow: countdownSimExtraValue > 0 ? '0 0 15px rgba(16, 185, 129, 0.2)' : undefined
-                        }}
-                        disabled={!countdownSimGoalIdEffective}
-                      />
-                    </div>
-                  </div>
 
-                  <div className="rounded-xl border p-4 bg-cardBorder/10 flex flex-col flex-1" style={{ borderColor: theme.cardBorder }}>
-                    <p className="text-[10px] font-bold uppercase opacity-50 mb-1">Impacto</p>
-                    <div className="mt-auto">
-                      {countdownSimGoal && countdownSimExtraValue > 0 ? (
-                        countdownSimIsGoalAchieved ? (
-                          <p className="text-sm font-black text-green-500">✅ Meta atingida!</p>
-                        ) : (
-                          <div className="text-xs">
-                            <span className="text-green-500 font-bold">
-                              Antecipa {countdownSimGoal.monthsSaved} {countdownSimGoal.monthsSaved === 1 ? 'mês' : 'meses'}
-                            </span>
-                            <div className="text-[10px] opacity-60 mt-1">
-                              Restam {countdownSimGoal.monthsWithSimulated} {countdownSimGoal.monthsWithSimulated === 1 ? 'mês' : 'meses'}
+            {!isSimCardCollapsed && (
+              <div className="p-6">
+                <div className="flex flex-col gap-8">
+                  {/* Container Superior: Simulação e Resumo */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Lado Esquerdo: Configuração e Impacto */}
+                    <div className="space-y-6">
+                      <div className="flex flex-col h-full">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
+                          <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px]">1</span>
+                          Simulação e Impacto
+                        </p>
+                        
+                        <div className="flex-1 space-y-6">
+                          {/* Seção de Input de Aporte */}
+                          <div className="rounded-2xl border border-border p-5 bg-muted/5 space-y-4">
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-bold text-foreground opacity-70 uppercase tracking-widest">
+                                Meta Alvo
+                              </p>
+                              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                {countdownSimGoal ? (
+                                  <>
+                                    Atual: <span className="font-mono font-bold text-foreground">{formatCurrency(countdownSimGoal.currentAmount)}</span> / Alvo: <span className="font-mono font-bold text-foreground">{formatCurrency(countdownSimGoal.targetAmount)}</span>
+                                  </>
+                                ) : (
+                                  <>Selecione uma meta para simular</>
+                                )}
+                              </p>
                             </div>
-                          </div>
-                        )
-                      ) : (
-                        <p className="text-xs opacity-50">Informe um valor para ver o impacto na meta.</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
 
-                {/* Centro: Resumo do Período */}
-                <div
-                  className="lg:col-span-3 rounded-xl border p-4 bg-cardBorder/10 flex flex-col h-full"
-                  style={{ borderColor: theme.cardBorder }}
-                  title={`Cálculo:\nSaldo Anterior: ${formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}\nReceitas (+): ${formatCurrency(monthlyTotals.revenues)}\nDespesas (-): ${formatCurrency(monthlyTotals.expenses)}\nAportes Reais (-): ${formatCurrency(monthlyTotals.realContributions)}\nAporte Simulado (-): ${formatCurrency(countdownSimExtraValue)}\nGasto Extra (Catastrófico) (-): ${formatCurrency(catastrophicAmountValue)}\nTotal: ${formatCurrency(countdownSimAvailableEndOfMonth)}`}
-                >
-                  <p className="text-[10px] font-bold uppercase opacity-50 mb-1">
-                    Filtro: {formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} - {formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}
-                  </p>
-                  
-                  <div className={`flex flex-col gap-1 font-black ${countdownSimAvailableColorClass}`}>
-                    <div className="flex items-center gap-1.5">
-                      {countdownSimAvailableEndOfMonth < 0 ? <AlertCircle className="w-4 h-4" /> :
-                        countdownSimAvailableEndOfMonth < 500 ? <Pin className="w-4 h-4" /> :
-                        <CheckCircle2 className="w-4 h-4" />
-                      }
-                      <span className="text-sm uppercase opacity-60 tracking-tighter">Final do Período</span>
-                    </div>
-                    <span className="text-2xl lg:text-3xl"> {formatCurrency(countdownSimAvailableEndOfMonth)}</span>
-                  </div>
-
-                  <div className="text-[11px] lg:text-[12px] opacity-40 font-mono font-normal mt-4 grid grid-cols-1 gap-y-1">
-                    <div className="flex justify-between border-b border-cardBorder/20 pb-1">
-                      <span>Saldo Anterior:</span>
-                      <span className="font-bold">{formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-cardBorder/20 pb-1">
-                      <span className="text-green-500">+ Receitas:</span>
-                      <span className="font-bold">{formatCurrency(monthlyTotals.revenues)}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-cardBorder/20 pb-1">
-                      <span className="text-red-500">- Despesas:</span>
-                      <span className="font-bold">{formatCurrency(monthlyTotals.expenses)}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-cardBorder/20 pb-1">
-                      <span className="text-red-500">- Aportes Reais:</span>
-                      <span className="font-bold">{formatCurrency(monthlyTotals.realContributions)}</span>
-                    </div>
-                    {countdownSimExtraValue > 0 && (
-                      <div className="flex justify-between border-b border-cardBorder/20 pb-1 text-primary">
-                        <span>- Aporte Simulado:</span>
-                        <span className="font-bold">{formatCurrency(countdownSimExtraValue)}</span>
-                      </div>
-                    )}
-                    {catastrophicAmountValue > 0 && (
-                      <div className="flex justify-between border-b border-cardBorder/20 pb-1 text-accent">
-                        <span>- Gastos Extra:</span>
-                        <span className="font-bold">{formatCurrency(catastrophicAmountValue)}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {countdownSimExtraValue > 0 && onAddTransaction && (
-                    <div className="mt-auto pt-4 flex flex-col items-stretch gap-1">
-                      <button
-                        onClick={() => !isSimExceedsTarget && setShowAporteForm(true)}
-                        disabled={isSimExceedsTarget}
-                        className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-bold transition-all shadow-sm w-full ${
-                          isSimExceedsTarget 
-                            ? 'bg-gray-400 cursor-not-allowed opacity-50' 
-                            : 'bg-primary text-white hover:scale-[1.02]'
-                        }`}
-                      >
-                        <PlusCircle className="w-3.5 h-3.5" />
-                        {isSimExceedsTarget ? 'VALOR EXCEDIDO' : 'REGISTRAR APORTE'}
-                      </button>
-                      {isSimExceedsTarget && countdownSimGoal && (
-                        <span className="text-[12.5px] text-accent font-bold animate-pulse text-center">
-                          Aporte maior que o restante (Faltam {formatCurrency(countdownSimGoal.targetAmount - countdownSimGoal.currentAmount)})
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Lado Direito: Projeção Dinâmica */}
-                <div
-                  className={`lg:col-span-6 rounded-xl border p-5 transition-all duration-300 ${timeTravelDate ? 'border-amber-500 bg-amber-500/5 shadow-[0_0_15px_rgba(245,158,11,0.1)]' : 'bg-cardBorder/10'}`}
-                  style={{ borderColor: timeTravelDate ? undefined : theme.cardBorder }}
-                >
-                  <div className="lg:flex lg:gap-8 h-full">
-                    {/* Controles da Projeção */}
-                    <div className="lg:w-2/5 space-y-5">
-                      {/* Toggle de Visualização */}
-                      <div className="flex gap-2 p-1 bg-cardBorder/30 rounded-xl">
-                        <button 
-                          onClick={() => setProjectionView('current')}
-                          className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${projectionView === 'current' ? 'bg-primary text-white shadow-md' : 'text-text opacity-70 hover:opacity-100'}`}
-                        >
-                          Resumo
-                        </button>
-                        <button 
-                          onClick={() => setProjectionView('forward')}
-                          className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${projectionView === 'forward' ? 'bg-primary text-white shadow-md' : 'text-text opacity-70 hover:opacity-100'}`}
-                        >
-                          Projeção
-                        </button>
-                      </div>
-
-                      {/* Time Travel Simulation */}
-                      <div className="p-3 rounded-xl bg-cardBorder/20 space-y-2 border border-cardBorder/10">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[9px] font-bold uppercase opacity-60 flex items-center gap-1">
-                            ⏳ Simular como se fosse dia...
-                          </label>
-                          {timeTravelDate && (
-                            <button 
-                              onClick={() => setTimeTravelDate(null)}
-                              className="text-[8px] font-bold text-amber-600 hover:text-amber-700 uppercase"
-                            >
-                              Reset
-                            </button>
-                          )}
-                        </div>
-                        <input
-                          type="date"
-                          value={timeTravelDate || ''}
-                          onChange={(e) => setTimeTravelDate(e.target.value || null)}
-                          className="w-full p-2 rounded-lg border text-[10px] font-bold bg-transparent outline-none"
-                          style={{ borderColor: timeTravelDate ? '#f59e0b' : theme.cardBorder, color: theme.text }}
-                        />
-                      </div>
-
-                      {/* Configurações da Projeção */}
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <label className="text-[9px] font-bold uppercase opacity-50">
-                              {projectionView === 'forward' ? 'Dias à frente' : 'Dias no período'}
-                            </label>
-                            <span className="text-[12px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md">
-                              {projectionView === 'forward' ? `${projectionDays}d` : `${currentPeriodDailyData.dailyBalances.length}d`}
-                            </span>
-                          </div>
-                          <input 
-                            type="range" 
-                            min="1" 
-                            max={Math.min(maxProjectionDays, 60)} 
-                            value={projectionDays}
-                            onChange={(e) => setProjectionDays(Number(e.target.value))}
-                            disabled={projectionView === 'current'}
-                            className={`w-full cursor-pointer ${projectionView === 'current' ? 'opacity-30' : ''}`}
-                          />
-                        </div>
-
-                        <div className="space-y-3 p-3 rounded-xl bg-red-500/5 border border-red-500/10">
-                          <label className="text-[9px] font-bold uppercase text-red-500 opacity-60 flex items-center gap-1">
-                            💣 Gasto Catastrófico
-                          </label>
-                          <div className="space-y-2">
-                            <input
-                              {...catastrophicAmountInputProps}
-                              placeholder="Valor R$"
-                              className="w-full p-2 rounded-lg border text-[10px] font-bold bg-transparent outline-none"
-                              style={{ borderColor: catastrophicAmountValue > 0 ? '#ef4444' : theme.cardBorder, color: theme.text }}
-                            />
-                            <input
-                              type="text"
-                              value={catastrophicName}
-                              onChange={(e) => setCatastrophicName(e.target.value)}
-                              placeholder="Motivo do gasto"
-                              className="w-full p-2 rounded-lg border text-[10px] font-medium bg-transparent outline-none"
-                              style={{ borderColor: theme.cardBorder, color: theme.text }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Detalhamento e Saldo Final */}
-                    <div className="lg:w-3/5 flex flex-col h-full mt-6 lg:mt-0">
-                      <div className="flex-1 space-y-2 overflow-y-auto pr-2 min-h-[200px] max-h-[300px] lg:max-h-full">
-                        {(projectionView === 'forward' ? nextDaysData.dailyBalances : currentPeriodDailyData.dailyBalances).map((day: any, index: number) => (
-                          <div key={day.date} className="flex items-center justify-between group border-b border-cardBorder/10 pb-2 last:border-0">
-                            <div className="flex flex-col">
-                              <span className="text-[10px] font-black opacity-80">
-                                {formatBrazilDate(parseLocalDate(day.date), 'dd/MM')}
-                              </span>
-                              <span className="text-[8px] opacity-40 font-mono uppercase">
-                                {formatBrazilDate(parseLocalDate(day.date), 'EEEE')}
-                              </span>
-                            </div>
-                            
-                            <div className="flex flex-col items-end">
-                              <span className={`text-[16px] font-black ${day.isNegative ? 'text-red-500 animate-pulse' : day.total < 500 ? 'text-orange-500' : 'text-primary'}`}>
-                                {formatCurrency(day.total)}
-                              </span>
-                              {(index === 0 || day.revenues > 0 || day.expenses > 0) && (
-                                <div className="text-[10px] opacity-50 font-mono flex flex-col items-end gap-0.5">
-                                  {index === 0 && day.openingBalance !== undefined && (
-                                    <span className="text-blue-400 font-bold">{formatCurrency(day.openingBalance)}</span>
+                            <div className="space-y-3">
+                              <Select
+                                value={countdownSimGoalIdEffective || ''}
+                                onChange={(e) => handleCountdownSimGoalChange(e.target.value)}
+                                disabled={savingsGoals.length === 0}
+                                className="h-10 text-xs bg-background"
+                              >
+                                <option value="" disabled>Selecione a meta...</option>
+                                {savingsGoals.map(g => (
+                                  <option key={g.id} value={g.id}>{g.name}</option>
+                                ))}
+                              </Select>
+                              
+                              <div className="relative group">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-primary opacity-50 font-bold text-xs">R$</div>
+                                <Input
+                                  {...countdownSimExtraInputProps}
+                                  onFocus={() => setIsSimInputFocused(true)}
+                                  onBlur={() => setIsSimInputFocused(false)}
+                                  placeholder={!isSimInputFocused ? "Valor do aporte..." : "0"}
+                                  className={cn(
+                                    "pl-10 text-right transition-all duration-300 h-11 text-lg font-black",
+                                    !isSimInputFocused && !countdownSimExtraValue && 'animate-pulse-border',
+                                    countdownSimExtraValue > 0 && 'border-primary ring-2 ring-primary/10 bg-primary/[0.02]'
                                   )}
-                                  <div>
-                                    {day.revenues > 0 && <span className="text-green-500">+{formatCurrency(day.revenues)}</span>}
-                                    {day.revenues > 0 && day.expenses > 0 && <span> </span>}
-                                    {day.expenses > 0 && <span className="text-red-500">-{formatCurrency(day.expenses)}</span>}
-                                  </div>
+                                  disabled={!countdownSimGoalIdEffective}
+                                />
+                              </div>
+
+                              {countdownSimExtraValue > 0 && onAddTransaction && (
+                                <div className="animate-in fade-in zoom-in duration-300">
+                                  <Button
+                                    onClick={() => !isSimExceedsTarget && setShowAporteForm(true)}
+                                    disabled={isSimExceedsTarget}
+                                    size="sm"
+                                    className="w-full text-[10px] font-black uppercase tracking-widest h-10 shadow-lg"
+                                  >
+                                    <PlusCircle className="w-4 h-4 mr-2" />
+                                    {isSimExceedsTarget ? 'VALOR EXCEDIDO' : 'REGISTRAR APORTE'}
+                                  </Button>
+                                  {isSimExceedsTarget && countdownSimGoal && (
+                                    <span className="text-[10px] text-destructive font-black animate-pulse text-center uppercase tracking-tighter block mt-2">
+                                      Aporte maior que o restante ({formatCurrency(countdownSimGoal.targetAmount - countdownSimGoal.currentAmount)})
+                                    </span>
+                                  )}
                                 </div>
                               )}
                             </div>
                           </div>
-                        ))}
-                      </div>
 
-                      {/* Resumo Final da Projeção */}
-                      <div className="mt-4 pt-4 border-t border-cardBorder/20">
-                        <div className="flex justify-between items-end">
-                          <div>
-                            <p className="text-[9px] opacity-60 font-bold uppercase tracking-wider mb-1">Saldo Projetado Final</p>
-                            <span className={`text-2xl lg:text-3xl font-black ${(projectionView === 'forward' ? nextDaysData.total : countdownSimAvailableEndOfMonth) < 0 ? 'text-red-500' : 'text-primary'}`}>
-                              {formatCurrency(projectionView === 'forward' ? nextDaysData.total : countdownSimAvailableEndOfMonth)}
-                            </span>
+                          {/* Seção de Simulação de Data e Gasto Catastrófico (Movido da Seção 3) */}
+                          <div className="rounded-2xl border border-border p-5 bg-muted/5 space-y-5">
+                            {/* Time Travel Simulation */}
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
+                                  ⏳ Simular dia...
+                                </label>
+                                {timeTravelDate && (
+                                  <button 
+                                    onClick={() => setTimeTravelDate(null)}
+                                    className="text-[9px] font-black text-amber-600 hover:text-amber-700 uppercase tracking-tighter"
+                                  >
+                                    Limpar
+                                  </button>
+                                )}
+                              </div>
+                              <Input
+                                type="date"
+                                value={timeTravelDate || ''}
+                                onChange={(e) => setTimeTravelDate(e.target.value || null)}
+                                className="h-9 text-[11px] bg-background border-border"
+                              />
+                            </div>
+
+                            {/* Gasto Catastrófico */}
+                            <div className="pt-4 border-t border-border/40 space-y-3">
+                              <label className="text-[9px] font-black uppercase text-destructive tracking-widest flex items-center gap-1.5">
+                                💣 Inserir um gasto imprevisto para simular cenário pessimista
+                              </label>
+                              <div className="grid grid-cols-2 gap-3">
+                                <Input
+                                  {...catastrophicAmountInputProps}
+                                  placeholder="Valor R$"
+                                  className="h-9 text-[11px] bg-background border-border"
+                                />
+                                <Input
+                                  type="text"
+                                  value={catastrophicName}
+                                  onChange={(e) => setCatastrophicName(e.target.value)}
+                                  placeholder="Motivo..."
+                                  className="h-9 text-[11px] bg-background border-border"
+                                />
+                              </div>
+                            </div>
                           </div>
-                          {(projectionView === 'forward' ? nextDaysData.negativeCount : currentPeriodDailyData.negativeCount) > 0 && (
-                            <div className="text-right">
-                              <span className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-md animate-bounce inline-block">
-                                {projectionView === 'forward' ? nextDaysData.negativeCount : currentPeriodDailyData.negativeCount} DIAS NEGATIVOS ⚠️
-                              </span>
+
+                          {/* Seção de Impacto */}
+                          <div className={cn(
+                            "rounded-2xl border p-5 transition-all duration-500",
+                            countdownSimGoal && countdownSimExtraValue > 0 
+                              ? "bg-primary/[0.03] border-primary/30 shadow-sm" 
+                              : "bg-muted/5 border-border opacity-50"
+                          )}>
+                            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-3 flex items-center justify-between">
+                              Resultado Estimado
+                              {countdownSimGoal && countdownSimExtraValue > 0 && (
+                                <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">Simulado</span>
+                              )}
+                            </p>
+                            
+                            <div className="min-h-[60px] flex flex-col justify-center">
+                              {countdownSimGoal && countdownSimExtraValue > 0 ? (
+                                countdownSimIsGoalAchieved ? (
+                                  <div className="flex items-center gap-3 text-primary animate-in zoom-in duration-300">
+                                    <div className="p-2 rounded-full bg-primary/20">
+                                      <CheckCircle2 className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-black uppercase tracking-tight">Meta Atingida!</p>
+                                      <p className="text-[10px] font-bold opacity-70">Aporte cobre o saldo restante.</p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2 animate-in slide-in-from-left duration-300">
+                                    <div className="flex items-baseline gap-2">
+                                      <span className="text-2xl font-black text-primary tracking-tighter">
+                                        -{countdownSimGoal.monthsSaved}
+                                      </span>
+                                      <span className="text-xs font-bold text-primary uppercase">
+                                        {countdownSimGoal.monthsSaved === 1 ? 'mês' : 'meses'}
+                                      </span>
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">
+                                      Restarão apenas {countdownSimGoal.monthsWithSimulated} {countdownSimGoal.monthsWithSimulated === 1 ? 'mês' : 'meses'} para o alvo.
+                                    </p>
+                                  </div>
+                                )
+                              ) : (
+                                <div className="flex flex-col items-center justify-center py-2 text-center">
+                                  <Info className="w-5 h-5 text-muted-foreground/30 mb-2" />
+                                  <p className="text-[10px] text-muted-foreground font-medium italic">
+                                    Selecione uma meta e valor para ver o impacto no tempo de conclusão.
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Lado Direito (Topo): Resumo do Período */}
+                    <div className="flex flex-col h-full">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px]">2</span>
+                        Resumo Financeiro
+                      </p>
+
+                      <div 
+                        className="flex-1 rounded-2xl border border-border p-5 bg-muted/10 flex flex-col"
+                        title={`Cálculo:\nSaldo Anterior: ${formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}\nReceitas (+): ${formatCurrency(monthlyTotals.revenues)}\nDespesas (-): ${formatCurrency(monthlyTotals.expenses)}\nAportes Reais (-): ${formatCurrency(monthlyTotals.realContributions)}\nAporte Simulado (-): ${formatCurrency(countdownSimExtraValue)}\nGasto Extra (Catastrófico) (-): ${formatCurrency(catastrophicAmountValue)}\nTotal: ${formatCurrency(countdownSimAvailableEndOfMonth)}`}
+                      >
+                        <div className="mb-4">
+                          <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest mb-1 opacity-70">
+                            Período de Análise
+                          </p>
+                          <p className="text-[10px] font-black text-foreground">
+                            {formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} — {formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}
+                          </p>
+                        </div>
+                        
+                        <div className={`flex flex-col gap-1 font-black ${countdownSimAvailableColorClass} p-4 rounded-xl bg-background/40 border border-border/50 mb-6`}>
+                          <div className="flex items-center gap-1.5">
+                            {countdownSimAvailableEndOfMonth < 0 ? <AlertCircle className="w-4 h-4" /> :
+                              countdownSimAvailableEndOfMonth < 500 ? <Pin className="w-4 h-4" /> :
+                              <CheckCircle2 className="w-4 h-4" />
+                            }
+                            <span className="text-[10px] uppercase opacity-60 tracking-tight">Saldo Final Estimado</span>
+                          </div>
+                          <span className="text-3xl tracking-tighter"> {formatCurrency(countdownSimAvailableEndOfMonth)}</span>
+                        </div>
+
+                        <div className="text-[11px] text-muted-foreground font-mono space-y-2.5">
+                          <div className="flex justify-between items-center border-b border-border/40 pb-1.5">
+                            <span className="opacity-70">Saldo Anterior:</span>
+                            <span className="font-bold text-foreground">{formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}</span>
+                          </div>
+                          <div className="flex justify-between items-center border-b border-border/40 pb-1.5">
+                            <span className="text-primary font-bold opacity-90">+ Receitas:</span>
+                            <span className="font-bold text-foreground">{formatCurrency(monthlyTotals.revenues)}</span>
+                          </div>
+                          <div className="flex justify-between items-center border-b border-border/40 pb-1.5">
+                            <span className="text-destructive font-bold opacity-90">- Despesas:</span>
+                            <span className="font-bold text-foreground">{formatCurrency(monthlyTotals.expenses)}</span>
+                          </div>
+                          <div className="flex justify-between items-center border-b border-border/40 pb-1.5">
+                            <span className="text-destructive font-bold opacity-90">- Aportes Reais:</span>
+                            <span className="font-bold text-foreground">{formatCurrency(monthlyTotals.realContributions)}</span>
+                          </div>
+                          {countdownSimExtraValue > 0 && (
+                            <div className="flex justify-between items-center border-b border-border/40 pb-1.5 text-primary bg-primary/5 px-2 -mx-2 rounded-md">
+                              <span className="font-bold uppercase text-[9px]">Aporte Simulado:</span>
+                              <span className="font-black underline underline-offset-4">{formatCurrency(countdownSimExtraValue)}</span>
+                            </div>
+                          )}
+                          {catastrophicAmountValue > 0 && (
+                            <div className="flex justify-between items-center border-b border-border/40 pb-1.5 text-accent bg-accent/5 px-2 -mx-2 rounded-md">
+                              <span className="font-bold uppercase text-[9px]">Gastos Extra:</span>
+                              <span className="font-black underline underline-offset-4">{formatCurrency(catastrophicAmountValue)}</span>
                             </div>
                           )}
                         </div>
                       </div>
                     </div>
                   </div>
+
+                  {/* Container Inferior: Projeção de Caixa (Full Width) */}
+                  <div className="flex flex-col border-t border-border pt-8">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px]">3</span>
+                      Projeção de Caixa
+                    </p>
+
+                    <div className={cn(
+                      "flex-1 rounded-2xl border border-border p-6 transition-all duration-300 bg-muted/10",
+                      timeTravelDate && 'border-amber-500 bg-amber-500/5 shadow-[0_0_20px_rgba(245,158,11,0.1)]'
+                    )}>
+                      <div className="lg:flex lg:gap-8 h-full">
+                        {/* Controles da Projeção */}
+                        <div className="lg:w-1/4 space-y-6">
+                          {/* Toggle de Visualização */}
+                          <div className="flex gap-2 p-1.5 bg-muted rounded-xl border border-border">
+                            <Button 
+                              onClick={() => setProjectionView('current')}
+                              variant={projectionView === 'current' ? 'primary' : 'ghost'}
+                              size="sm"
+                              className="flex-1 text-[10px] font-bold h-8"
+                            >
+                              FILTRO
+                            </Button>
+                            <Button 
+                              onClick={() => setProjectionView('forward')}
+                              variant={projectionView === 'forward' ? 'primary' : 'ghost'}
+                              size="sm"
+                              className="flex-1 text-[10px] font-bold h-8"
+                            >
+                              FUTURO
+                            </Button>
+                          </div>
+
+                          {/* Configurações da Projeção */}
+                          <div className="space-y-6">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">
+                                  {projectionView === 'forward' ? 'Dias à frente' : 'Dias no período'}
+                                </label>
+                                <span className="text-xs font-black text-primary bg-primary/10 px-2 py-1 rounded-lg border border-primary/20">
+                                  {projectionView === 'forward' ? `${projectionDays}d` : `${currentPeriodDailyData.dailyBalances.length}d`}
+                                </span>
+                              </div>
+                              <input 
+                                type="range" 
+                                min="1" 
+                                max={Math.min(maxProjectionDays, 60)} 
+                                value={projectionDays}
+                                onChange={(e) => setProjectionDays(Number(e.target.value))}
+                                disabled={projectionView === 'current'}
+                                className={cn(
+                                  "w-full cursor-pointer h-2 bg-muted rounded-lg appearance-none transition-opacity",
+                                  projectionView === 'current' ? 'opacity-30 cursor-not-allowed' : 'opacity-100'
+                                )}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Detalhamento e Saldo Final */}
+                        <div className="lg:w-3/4 flex flex-col h-full mt-8 lg:mt-0">
+                          <div className="flex-1 space-y-3 overflow-y-auto pr-3 min-h-[300px] max-h-[450px] scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+                            {(projectionView === 'forward' ? nextDaysData.dailyBalances : currentPeriodDailyData.dailyBalances).map((day: any, index: number) => (
+                              <div key={day.date} className="flex items-center justify-between group border-b border-border/10 pb-3 last:border-0 hover:bg-muted/30 p-2 rounded-lg transition-colors">
+                                <div className="flex flex-col">
+                                  <span className="text-[11px] font-black text-foreground">
+                                    {formatBrazilDate(parseLocalDate(day.date), 'dd/MM')}
+                                  </span>
+                                  <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-tighter">
+                                    {formatBrazilDate(parseLocalDate(day.date), 'EEEE')}
+                                  </span>
+                                </div>
+                                
+                                <div className="flex items-center gap-8">
+                                  <div className="hidden md:flex items-center gap-4 text-[10px] text-muted-foreground font-mono">
+                                    {day.openingBalance !== undefined && (
+                                      <div className="flex flex-col items-end">
+                                        <span className="opacity-40 uppercase text-[8px]">Início</span>
+                                        <span className="text-blue-500 font-bold opacity-80">{formatCurrency(day.openingBalance)}</span>
+                                      </div>
+                                    )}
+                                    <div className="flex flex-col items-end">
+                                      <span className="opacity-40 uppercase text-[8px]">Movimentação</span>
+                                      <div className="flex gap-2">
+                                        {day.revenues > 0 && <span className="text-primary font-bold">+{formatCurrency(day.revenues)}</span>}
+                                        {day.expenses > 0 && <span className="text-destructive font-bold">-{formatCurrency(day.expenses)}</span>}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex flex-col items-end min-w-[100px]">
+                                    <span className="opacity-40 uppercase text-[8px] md:hidden">Saldo</span>
+                                    <span className={cn(
+                                      "text-lg font-black tracking-tight",
+                                      day.isNegative ? 'text-destructive animate-pulse' : 
+                                      day.total < 500 ? 'text-amber-500' : 'text-primary'
+                                    )}>
+                                      {formatCurrency(day.total)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Resumo Final da Projeção */}
+                          <div className="mt-6 pt-6 border-t border-border/40">
+                            <div className="flex justify-between items-end">
+                              <div className="space-y-1">
+                                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Saldo Final Projetado</p>
+                                <span className={cn(
+                                  "text-3xl lg:text-5xl font-black tracking-tighter",
+                                  (projectionView === 'forward' ? nextDaysData.total : countdownSimAvailableEndOfMonth) < 0 ? 'text-destructive' : 'text-primary'
+                                )}>
+                                  {formatCurrency(projectionView === 'forward' ? nextDaysData.total : countdownSimAvailableEndOfMonth)}
+                                </span>
+                              </div>
+                              {(projectionView === 'forward' ? nextDaysData.negativeCount : currentPeriodDailyData.negativeCount) > 0 && (
+                                <div className="text-right">
+                                  <span className="bg-destructive text-destructive-foreground text-[10px] font-black px-3 py-2 rounded-xl animate-bounce inline-block uppercase tracking-widest shadow-lg">
+                                    {projectionView === 'forward' ? nextDaysData.negativeCount : currentPeriodDailyData.negativeCount} DIAS NEGATIVOS DETECTADOS ⚠️
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            )}
+          </Card>
 
           {showAporteForm && (
             <TransactionForm
@@ -1930,93 +2039,81 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             switch (item.id) {
               case 'financial_simulators':
                 return (
-                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <Card key={item.id} noPadding className="overflow-hidden shadow-md transition-all hover:shadow-lg">
                     {renderCardHeader(item.id, item.label, <Calculator className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(simChartRef))}
                     {!item.collapsed && (
                       <div className="p-6 md:p-8 space-y-8">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                           <div className="space-y-6">
                             <div className="flex gap-2 p-1 bg-cardBorder/30 rounded-xl">
-                              <button 
+                              <Button 
                                 onClick={() => setSimMode('investment')}
-                                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${simMode === 'investment' ? 'bg-primary text-white shadow-md' : 'text-text opacity-70 hover:opacity-100'}`}
+                                variant={simMode === 'investment' ? 'primary' : 'ghost'}
+                                size="sm"
+                                className="flex-1 text-[10px]"
                               >
                                 Investimento Livre
-                              </button>
-                              <button 
+                              </Button>
+                              <Button 
                                 onClick={() => setSimMode('goal_reach')}
-                                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${simMode === 'goal_reach' ? 'bg-primary text-white shadow-md' : 'text-text opacity-70 hover:opacity-100'}`}
+                                variant={simMode === 'goal_reach' ? 'primary' : 'ghost'}
+                                size="sm"
+                                className="flex-1 text-[10px]"
                               >
                                 Alcance de Meta
-                              </button>
+                              </Button>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <label className="text-[10px] font-bold uppercase opacity-50">Valor Inicial (R$)</label>
-                                <input 
-                                  {...simInitialAmountInputProps}
-                                  className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
-                                  style={{ borderColor: theme.cardBorder }}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-[10px] font-bold uppercase opacity-50">Aporte Mensal (R$)</label>
-                                <input 
-                                  {...simMonthlyAmountInputProps}
-                                  className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
-                                  style={{ borderColor: theme.cardBorder }}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-[10px] font-bold uppercase opacity-50">Juros Mensal (%)</label>
-                                <input 
-                                  type="number" 
-                                  step="0.1"
-                                  value={simInterestRate}
-                                  onChange={(e) => setSimInterestRate(Number(e.target.value))}
-                                  className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
-                                  style={{ borderColor: theme.cardBorder }}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-[10px] font-bold uppercase opacity-50">Período (Meses)</label>
-                                <input 
-                                  type="number" 
-                                  value={simPeriod}
-                                  onChange={(e) => setSimPeriod(Number(e.target.value))}
-                                  className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
-                                  style={{ borderColor: theme.cardBorder }}
-                                />
-                              </div>
+                              <Input 
+                                {...simInitialAmountInputProps}
+                                label="Valor Inicial (R$)"
+                                className="font-bold"
+                              />
+                              <Input 
+                                {...simMonthlyAmountInputProps}
+                                label="Aporte Mensal (R$)"
+                                className="font-bold"
+                              />
+                              <Input 
+                                type="number" 
+                                step="0.1"
+                                value={simInterestRate}
+                                onChange={(e) => setSimInterestRate(Number(e.target.value))}
+                                label="Juros Mensal (%)"
+                                className="font-bold"
+                              />
+                              <Input 
+                                type="number" 
+                                value={simPeriod}
+                                onChange={(e) => setSimPeriod(Number(e.target.value))}
+                                label="Período (Meses)"
+                                className="font-bold"
+                              />
                             </div>
 
                             {simMode === 'goal_reach' && (
-                              <div className="space-y-2">
-                                <label className="text-[10px] font-bold uppercase opacity-50">Vincular a Meta Existente</label>
-                                <select 
-                                  value={simTargetGoalId || ''}
-                                  onChange={(e) => {
-                                    const goalId = e.target.value;
-                                    setSimTargetGoalId(goalId);
-                                    const goal = activeGoals.find(g => g.id === goalId);
-                                    if (goal) {
-                                      setSimInitialAmount(goal.currentAmount);
-                                      const remaining = goal.targetAmount - goal.currentAmount;
-                                      if (simMonthlyAmountValue > 0) {
-                                        setSimPeriod(Math.ceil(remaining / simMonthlyAmountValue));
-                                      }
+                              <Select 
+                                label="Vincular a Meta Existente"
+                                value={simTargetGoalId || ''}
+                                onChange={(e) => {
+                                  const goalId = e.target.value;
+                                  setSimTargetGoalId(goalId);
+                                  const goal = activeGoals.find(g => g.id === goalId);
+                                  if (goal) {
+                                    setSimInitialAmount(goal.currentAmount);
+                                    const remaining = goal.targetAmount - goal.currentAmount;
+                                    if (simMonthlyAmountValue > 0) {
+                                      setSimPeriod(Math.ceil(remaining / simMonthlyAmountValue));
                                     }
-                                  }}
-                                  className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
-                                  style={{ borderColor: theme.cardBorder }}
-                                >
-                                  <option value="">Nenhuma Meta</option>
-                                  {activeGoals.map(g => (
-                                    <option key={g.id} value={g.id}>{g.name} ({formatCurrency(g.targetAmount)})</option>
-                                  ))}
-                                </select>
-                              </div>
+                                  }
+                                }}
+                              >
+                                <option value="">Nenhuma Meta</option>
+                                {activeGoals.map(g => (
+                                  <option key={g.id} value={g.id}>{g.name} ({formatCurrency(g.targetAmount)})</option>
+                                ))}
+                              </Select>
                             )}
 
                             <div className="p-5 rounded-2xl bg-primary/5 border border-primary/20 flex items-center justify-between">
@@ -2041,31 +2138,31 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                               data={simChartData}
                               options={{
                                 maintainAspectRatio: false,
-                                plugins: { legend: { display: true, labels: { color: theme.text } } },
+                                plugins: { legend: { display: true, labels: { color: 'hsl(var(--foreground))' } } },
                                 scales: {
-                                  y: { ticks: { color: theme.text, callback: (v) => formatCurrency(v as number) }, grid: { color: theme.cardBorder } },
-                                  x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
+                                  y: { ticks: { color: 'hsl(var(--foreground))', callback: (v) => formatCurrency(v as number) }, grid: { color: 'hsl(var(--border))' } },
+                                  x: { ticks: { color: 'hsl(var(--foreground))' }, grid: { color: 'hsl(var(--border))' } }
                                 }
                               }}
                             />
                           </div>
                         </div>
 
-                        <div className="pt-8 border-t" style={{ borderColor: theme.cardBorder }}>
-                          <h4 className="text-sm font-bold mb-4 flex items-center gap-2">
+                        <div className="pt-8 border-t border-border">
+                          <h4 className="text-sm font-bold mb-4 flex items-center gap-2 text-foreground">
                             <Info className="w-4 h-4 text-primary" />
                             Análise Baseada no seu Histórico de Salário
                           </h4>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="p-4 rounded-xl border bg-cardBorder/10" style={{ borderColor: theme.cardBorder }}>
-                              <p className="text-[10px] font-bold uppercase opacity-50 mb-1">Média Salarial Mensal</p>
-                              <p className="text-lg font-black text-text">{formatCurrency(salaryAnalysis.avgIncome)}</p>
-                              <p className="text-[10px] opacity-40 mt-1">Baseado em {salaryAnalysis.monthsCount} meses</p>
+                            <div className="p-4 rounded-xl border bg-muted/10 border-border">
+                              <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">Média Salarial Mensal</p>
+                              <p className="text-lg font-black text-foreground">{formatCurrency(salaryAnalysis.avgIncome)}</p>
+                              <p className="text-[10px] text-muted-foreground opacity-40 mt-1">Baseado em {salaryAnalysis.monthsCount} meses</p>
                             </div>
-                            <div className="p-4 rounded-xl border bg-cardBorder/10" style={{ borderColor: theme.cardBorder }}>
-                              <p className="text-[10px] font-bold uppercase opacity-50 mb-1">Média de Aportes</p>
+                            <div className="p-4 rounded-xl border bg-muted/10 border-border">
+                              <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">Média de Aportes</p>
                               <p className="text-lg font-black text-primary">{formatCurrency(salaryAnalysis.avgSavings)}</p>
-                              <p className="text-[10px] opacity-40 mt-1">({salaryAnalysis.avgRate.toFixed(1)}% do salário)</p>
+                              <p className="text-[10px] text-muted-foreground opacity-40 mt-1">({salaryAnalysis.avgRate.toFixed(1)}% do salário)</p>
                             </div>
                             <div className="p-4 rounded-xl border bg-primary/10 border-primary/30">
                               <p className="text-[10px] font-bold uppercase opacity-50 mb-1">Potencial em 1 Ano</p>
@@ -2078,12 +2175,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         </div>
                       </div>
                     )}
-                  </div>
+                  </Card>
                 );
 
               case 'contribution_timeline':
                 return (
-                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <Card key={item.id} noPadding className="overflow-hidden shadow-md transition-all hover:shadow-lg">
                     {renderCardHeader(item.id, item.label, <TrendingUp className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(timelineChartRef))}
                     {!item.collapsed && (
                       <div className="p-8 h-80">
@@ -2092,72 +2189,72 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                             ref={timelineChartRef}
                             data={timelineChartData}
                             options={{
-                              maintainAspectRatio: false,
-                              plugins: { legend: { labels: { color: theme.text } } },
-                              scales: {
-                                y: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } },
-                                x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } },
-                              },
-                            }}
+                                maintainAspectRatio: false,
+                                plugins: { legend: { labels: { color: 'hsl(var(--foreground))' } } },
+                                scales: {
+                                  y: { ticks: { color: 'hsl(var(--foreground))' }, grid: { color: 'hsl(var(--border))' } },
+                                  x: { ticks: { color: 'hsl(var(--foreground))' }, grid: { color: 'hsl(var(--border))' } }
+                                }
+                              }}
                           />
                         ) : (
-                          <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
+                          <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
                             <TrendingUp className="w-12 h-12 opacity-10" />
                             <span>Nenhum aporte registrado</span>
                           </div>
                         )}
                       </div>
                     )}
-                  </div>
+                  </Card>
                 );
 
               case 'goals_distribution':
                 return (
-                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <Card key={item.id} noPadding className="overflow-hidden shadow-md transition-all hover:shadow-lg">
                     {renderCardHeader(item.id, item.label, <PieChartIcon className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(distributionChartRef))}
                     {!item.collapsed && (
                       <div className="p-8 h-80">
                         {activeGoals.length > 0 ? (
-                          <Doughnut
-                            ref={distributionChartRef}
-                            data={distributionChartData}
-                            options={{ maintainAspectRatio: false, plugins: { legend: { labels: { color: theme.text } } } }}
-                          />
+                          <Doughnut 
+                              ref={distributionChartRef}
+                              data={distributionChartData} 
+                              options={{ maintainAspectRatio: false, plugins: { legend: { labels: { color: 'hsl(var(--foreground))' } } } }} 
+                            />
                         ) : (
-                          <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
+                          <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
                             <PieChartIcon className="w-12 h-12 opacity-10" />
                             <span>Nenhuma meta cadastrada</span>
                           </div>
                         )}
                       </div>
                     )}
-                  </div>
+                  </Card>
                 );
 
               case 'contribution_table':
                 return (
-                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <Card key={item.id} noPadding className="overflow-hidden shadow-md transition-all hover:shadow-lg">
                     {renderCardHeader(item.id, item.label, <BarChart3 className="w-5 h-5 text-primary" />, index, item.collapsed)}
                     {!item.collapsed && (
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm border-collapse">
                           <thead>
-                            <tr className="bg-cardBorder bg-opacity-40" style={{ color: theme.text }}>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Data</th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Meta</th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Aporte</th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-center" style={{ borderColor: theme.cardBorder }}>
+                            <tr className="bg-muted/50 text-foreground">
+                              <th className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider">Data</th>
+                              <th className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider">Meta</th>
+                              <th className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider">Aporte</th>
+                              <th className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider text-center">
                                 <Trash2 className="w-3 h-3 mx-auto" />
                               </th>
-                              <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>% da Meta</th>
+                              <th className="p-4 border-b border-border font-bold uppercase text-[10px] tracking-wider text-right">% da Meta</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
+                          <tbody className="divide-y divide-border/30">
                             {contributionTableData.length > 0 ? (
                               contributionTableData.map(c => {
                                 const isDeleted = c.status === 'deleted' || showDeleted;
                                 return (
-                                  <tr key={c.id} className={`text-text hover:bg-primary/5 transition-colors ${isDeleted ? 'opacity-50 grayscale-[0.5]' : ''}`}>
+                                  <tr key={c.id} className={`text-foreground hover:bg-primary/5 transition-colors ${isDeleted ? 'opacity-50 grayscale-[0.5]' : ''}`}>
                                     <td className={`p-4 whitespace-nowrap border-r font-mono text-xs opacity-70 ${isDeleted ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
                                       {formatBrazilDate(c.date, 'dd/MM/yyyy')}
                                     </td>
@@ -2189,7 +2286,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                               })
                             ) : (
                               <tr>
-                                <td colSpan={5} className="p-8 text-center text-text opacity-40 text-sm italic">
+                                <td colSpan={5} className="p-8 text-center text-foreground opacity-40 text-sm italic">
                                   Nenhum aporte encontrado
                                 </td>
                               </tr>
@@ -2198,12 +2295,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         </table>
                       </div>
                     )}
-                  </div>
+                  </Card>
                 );
 
               case 'savings_vs_income':
                 return (
-                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <Card key={item.id} noPadding className="overflow-hidden shadow-md transition-all hover:shadow-lg">
                     {renderCardHeader(item.id, item.label, <BarChart3 className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(savingsVsIncomeChartRef))}
                     {!item.collapsed && (
                       <div className="p-8 h-80">
@@ -2221,19 +2318,19 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                             }}
                           />
                         ) : (
-                          <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
+                          <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
                             <BarChart3 className="w-12 h-12 opacity-10" />
                             <span>Dados insuficientes para este período</span>
                           </div>
                         )}
                       </div>
                     )}
-                  </div>
+                  </Card>
                 );
 
               case 'priority_matrix':
                 return (
-                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <Card key={item.id} noPadding className="overflow-hidden shadow-md transition-all hover:shadow-lg">
                     {renderCardHeader(item.id, item.label, <AlertCircle className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(matrixChartRef))}
                     {!item.collapsed && (
                       <div className="p-8 h-96">
@@ -2269,7 +2366,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                             }}
                           />
                         ) : (
-                          <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-center gap-4 border-2 border-dashed rounded-3xl" style={{ borderColor: theme.cardBorder }}>
+                          <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-center gap-4 border-2 border-dashed rounded-3xl" style={{ borderColor: theme.cardBorder }}>
                             <AlertCircle className="w-16 h-16 opacity-10" />
                             <div className="max-w-xs">
                               <p className="text-base font-bold mb-1">Sem Prazos Definidos</p>
@@ -2279,13 +2376,13 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         )}
                       </div>
                     )}
-                  </div>
+                  </Card>
                 );
 
               case 'goals_countdown':
                 return (
-                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }} ref={countdownTableRef}>
-                    <div className="p-4 border-b font-semibold text-text flex items-center justify-between group" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+                  <Card key={item.id} noPadding className="overflow-hidden shadow-md transition-all hover:shadow-lg" ref={countdownTableRef}>
+                    <div className="p-4 border-b font-semibold text-foreground flex items-center justify-between group bg-muted/30 border-border">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/20 text-primary font-bold text-xs">
                           {DEFAULT_LAYOUT.find(it => it.id === item.id)?.number}
@@ -2296,85 +2393,91 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <button
+                        <Button
                           onClick={(e) => { e.stopPropagation(); handleCountdownPrintTable(); }}
-                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100"
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100"
                           title="Imprimir tabela"
                         >
                           <Printer className="w-4 h-4" />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={(e) => { e.stopPropagation(); moveItem(index, 'up'); }}
                           disabled={index === 0}
-                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100"
                           title="Mover para Cima"
                         >
                           <ArrowUp className="w-4 h-4" />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={(e) => { e.stopPropagation(); moveItem(index, 'down'); }}
                           disabled={index === layout.length - 1}
-                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100"
                           title="Mover para Baixo"
                         >
                           <ArrowDown className="w-4 h-4" />
-                        </button>
+                        </Button>
                         <div className="w-[1px] h-4 mx-1 bg-cardBorder opacity-0 group-hover:opacity-100" />
-                        <button
+                        <Button
                           onClick={() => toggleCollapse(item.id)}
-                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-50 hover:opacity-100"
                           title={item.collapsed ? "Expandir" : "Minimizar"}
                         >
                           {item.collapsed ? <Maximize2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                     {!item.collapsed && (
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm border-collapse">
                           <thead>
-                            <tr className="bg-cardBorder bg-opacity-40" style={{ color: theme.text }}>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Meta</th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Prazo</th>
+                            <tr className="bg-muted/50 text-foreground">
+                              <th className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider">Meta</th>
+                              <th className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider">Prazo</th>
                               <th 
                                 onClick={() => handleDaysUnitChange(daysUnit === 'days' ? 'weeks' : daysUnit === 'weeks' ? 'months' : 'days')}
-                                className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer transition-colors hover:bg-primary/10 rounded" 
-                                style={{ borderColor: theme.cardBorder }}
+                                className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider cursor-pointer transition-colors hover:bg-primary/10 rounded" 
                                 title="Clique para alternar entre dias, semanas e meses"
                               >
                                 {daysUnit === 'days' ? 'Dias' : daysUnit === 'weeks' ? 'Semanas' : 'Meses'}
                               </th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Alvo</th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Atual</th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>% Completo</th>
+                              <th className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider text-right">Alvo</th>
+                              <th className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider text-right">Atual</th>
+                              <th className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider text-right">% Completo</th>
                               <th 
                                 onClick={() => handleNeededUnitChange(neededUnit === 'daily' ? 'weekly' : neededUnit === 'weekly' ? 'monthly' : 'daily')}
-                                className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right cursor-pointer transition-colors hover:bg-primary/10 rounded" 
-                                style={{ borderColor: theme.cardBorder }}
+                                className="p-4 border-b border-border font-bold uppercase text-[10px] tracking-wider text-right cursor-pointer transition-colors hover:bg-primary/10 rounded" 
                                 title="Clique para alternar entre diário, semanal e mensal"
                               >
                                 {neededUnit === 'daily' ? 'Diário Necessário' : neededUnit === 'weekly' ? 'Semanal Necessário' : 'Mensal Necessário'}
                               </th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
+                          <tbody className="divide-y divide-border/30">
                             {countdownTableData.length > 0 ? (
                               countdownTableData.map(goal => {
                                 const statusColor =
-                                  goal.percentage >= 100 ? '#10b981' :
-                                  goal.daysLeft !== null && goal.daysLeft > 0 && (goal.targetAmount - goal.currentAmount) / goal.daysLeft * 30 <= goal.monthlyNeeded ? '#10b981' :
-                                  goal.daysLeft !== null && goal.daysLeft <= 30 ? '#ef4444' :
-                                  '#f59e0b';
+                                  goal.percentage >= 100 ? 'text-green-500' :
+                                  goal.daysLeft !== null && goal.daysLeft > 0 && (goal.targetAmount - goal.currentAmount) / goal.daysLeft * 30 <= goal.monthlyNeeded ? 'text-green-500' :
+                                  goal.daysLeft !== null && goal.daysLeft <= 30 ? 'text-destructive' :
+                                  'text-amber-500';
                                 
                                 return (
-                                  <tr key={goal.id} className="text-text hover:bg-primary/5 transition-colors">
-                                    <td className="p-4 border-r font-bold" style={{ borderColor: theme.cardBorder }}>
+                                  <tr key={goal.id} className="text-foreground hover:bg-primary/5 transition-colors">
+                                    <td className="p-4 border-r border-border font-bold">
                                       {goal.name}
                                     </td>
-                                    <td className="p-4 border-r whitespace-nowrap text-xs opacity-70" style={{ borderColor: theme.cardBorder }}>
+                                    <td className="p-4 border-r border-border whitespace-nowrap text-xs opacity-70">
                                       {goal.deadline ? formatBrazilDate(goal.deadline, 'dd/MM/yyyy') : '-'}
                                     </td>
-                                    <td className="p-4 border-r text-sm font-bold" style={{ borderColor: theme.cardBorder, color: statusColor }}>
+                                    <td className={cn("p-4 border-r border-border text-sm font-bold", statusColor)}>
                                       {goal.daysLeft !== null ? (
                                         daysUnit === 'days' 
                                           ? goal.daysLeft
@@ -2383,16 +2486,16 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                           : Math.ceil(goal.daysLeft / 30)
                                       ) : '-'}
                                     </td>
-                                    <td className="p-4 border-r text-right text-xs font-black opacity-70" style={{ borderColor: theme.cardBorder }}>
+                                    <td className="p-4 border-r border-border text-right text-xs font-black opacity-70">
                                       {formatCurrency(goal.targetAmount)}
                                     </td>
-                                    <td className="p-4 border-r text-right text-xs font-black text-primary" style={{ borderColor: theme.cardBorder }}>
+                                    <td className="p-4 border-r border-border text-right text-xs font-black text-primary">
                                       {formatCurrency(goal.currentAmount)}
                                     </td>
-                                    <td className="p-4 border-r text-right text-xs font-bold" style={{ borderColor: theme.cardBorder, color: statusColor }}>
+                                    <td className={cn("p-4 border-r border-border text-right text-xs font-bold", statusColor)}>
                                       {goal.percentage.toFixed(1)}%
                                     </td>
-                                    <td className="p-4 text-right text-xs font-bold text-accent" style={{ borderColor: theme.cardBorder }}>
+                                    <td className="p-4 text-right text-xs font-bold text-accent">
                                       {neededUnit === 'daily' && goal.daysLeft !== null && goal.daysLeft > 0
                                         ? formatCurrency((goal.targetAmount - goal.currentAmount) / goal.daysLeft)
                                         : neededUnit === 'weekly' && goal.daysLeft !== null && goal.daysLeft > 0
@@ -2405,7 +2508,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                               })
                             ) : (
                               <tr>
-                                <td colSpan={7} className="p-8 text-center text-text opacity-40 text-sm italic">
+                                <td colSpan={7} className="p-8 text-center text-foreground opacity-40 text-sm italic">
                                   Nenhuma meta cadastrada
                                 </td>
                               </tr>
@@ -2414,12 +2517,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         </table>
                       </div>
                     )}
-                  </div>
+                  </Card>
                 );
 
               case 'goals_vs_expenses':
                 return (
-                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <Card key={item.id} noPadding className="overflow-hidden shadow-md transition-all hover:shadow-lg">
                     {renderCardHeader(item.id, item.label, <BarChart3 className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(goalsVsExpensesChartRef))}
                     {!item.collapsed && (
                       <div className="p-8 space-y-6">
@@ -2434,7 +2537,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                               }}
                             />
                           ) : (
-                            <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
+                            <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
                               <BarChart3 className="w-12 h-12 opacity-10" />
                               <span>Nenhuma despesa registrada</span>
                             </div>
@@ -2454,7 +2557,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         </div>
                       </div>
                     )}
-                  </div>
+                  </Card>
                 );
 
               default:
@@ -2467,53 +2570,45 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       {/* Print Dialog - Countdown Table */}
       {showCountdownPrintDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="rounded-2xl w-full max-w-md p-6" style={{ backgroundColor: theme.cardBackground }}>
-            <h3 className="text-lg font-semibold text-text mb-4">Imprimir Contagem Regressiva</h3>
+          <Card className="w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Imprimir Contagem Regressiva</h3>
             
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-text mb-2">Título</label>
-                <input
-                  type="text"
-                  value={countdownPrintSettings.title}
-                  onChange={(e) => setCountdownPrintSettings(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg border text-sm"
-                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                />
-              </div>
+              <Input
+                label="Título"
+                type="text"
+                value={countdownPrintSettings.title}
+                onChange={(e) => setCountdownPrintSettings(prev => ({ ...prev, title: e.target.value }))}
+              />
               
-              <div>
-                <label className="block text-sm font-medium text-text mb-2">Subtítulo (Opcional)</label>
-                <input
-                  type="text"
-                  value={countdownPrintSettings.subtitle}
-                  onChange={(e) => setCountdownPrintSettings(prev => ({ ...prev, subtitle: e.target.value }))}
-                  placeholder="Ex: Relatório de Março de 2026"
-                  className="w-full px-3 py-2 rounded-lg border text-sm"
-                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                />
-              </div>
+              <Input
+                label="Subtítulo (Opcional)"
+                type="text"
+                value={countdownPrintSettings.subtitle}
+                onChange={(e) => setCountdownPrintSettings(prev => ({ ...prev, subtitle: e.target.value }))}
+                placeholder="Ex: Relatório de Março de 2026"
+              />
             </div>
 
             <div className="flex gap-3 mt-6">
-              <button
+              <Button
                 onClick={() => setShowCountdownPrintDialog(false)}
-                className="flex-1 px-4 py-2.5 rounded-xl transition-colors hover:bg-cardBorder"
-                style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
+                variant="outline"
+                className="flex-1"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => {
                   executeCountdownPrint();
                   setShowCountdownPrintDialog(false);
                 }}
-                className="flex-1 px-4 py-2.5 text-white rounded-xl font-medium transition-colors bg-primary hover:bg-secondary"
+                className="flex-1"
               >
                 Imprimir
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

@@ -1,12 +1,15 @@
-import { format, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, Wallet, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { startOfMonth, endOfMonth, isSameDay } from 'date-fns';
+import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, Wallet, ChevronDown, ChevronUp, RefreshCw, Search } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
 import { useTheme } from '../contexts/ThemeContext';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { SavingsGoal, Transaction } from '../types';
 import { formatBrazilDate, formatCurrency, formatPaymentMethod, filterTransactionsByMonth, getCurrentBrazilDate, getDaysUntilDue, isTransactionOverdue, parseLocalDate } from '../utils/helpers';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { Card } from './ui/Card';
+import { cn } from '../lib/utils';
 
 import ConfirmationModal from './ConfirmationModal';
 import DailyDateSlider from './DailyDateSlider';
@@ -398,231 +401,214 @@ const TransactionList: React.FC<TransactionListProps> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {apporteMessage && (
-        <div className="rounded-2xl border-2 p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}>
-          <div className="font-medium">{apporteMessage}</div>
-        </div>
+        <Card className="p-4 border-2 animate-in slide-in-from-top-2 duration-300" style={{ borderColor: theme.cardBorder }}>
+          <div className="font-black text-xs uppercase tracking-tight flex items-center gap-2">
+            <Check className="w-4 h-4 text-primary" />
+            {apporteMessage}
+          </div>
+        </Card>
       )}
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <div className="mb-2">
+          <div className="mb-4">
             <MonthSegmentedControl
               month={currentMonth}
               onChange={(newMonth) => setCurrentMonth(newMonth)}
             />
           </div>
-          <h2 className="text-xl font-semibold text-text truncate mb-1">
-            {type === 'expense' ? 'Despesas' : 'Receitas'} - {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
+          <h2 className="text-xl font-black text-foreground uppercase tracking-tight truncate mb-1">
+            {type === 'expense' ? 'Despesas' : 'Receitas'}
           </h2>
-          <p className="text-sm font-medium opacity-70 ml-9 flex items-center flex-wrap gap-y-1" style={{ color: type === 'income' ? theme.primary : theme.accent }}>
-            <span>Total: {formatCurrency(currentTotal)}</span>
+          <div className="flex items-center flex-wrap gap-x-4 gap-y-2">
+            <p className="text-sm font-black uppercase tracking-tighter" style={{ color: type === 'income' ? 'hsl(var(--primary))' : 'hsl(var(--accent))' }}>
+              Total: {formatCurrency(currentTotal)}
+            </p>
             {activeTransactions.length > 0 && (
-              <>
-                <span className="mx-2">•</span>
-                <span className="text-xs opacity-90">{activeTransactions.length} {activeTransactions.length === 1 ? 'item' : 'itens'}</span>
-              </>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                {activeTransactions.length} {activeTransactions.length === 1 ? 'item' : 'itens'}
+              </span>
             )}
             {deletedTransactions.length > 0 && (
-              <>
-                <span className="mx-2">•</span>
-                <button 
-                  onClick={() => setShowDeleted(!showDeleted)}
-                  className={`text-xs font-bold px-2 py-0.5 rounded-full transition-colors flex items-center gap-1 ${
-                    showDeleted 
-                      ? 'bg-accent text-white' 
-                      : 'opacity-90 hover:underline'
-                  }`}
-                  style={{ backgroundColor: showDeleted ? theme.accent : undefined }}
-                >
-                  {deletedTransactions.length} {deletedTransactions.length === 1 ? 'excluído' : 'excluídos'}
-                  <span className={`transition-transform ${showDeleted ? 'rotate-180' : ''}`}>
-                    <ChevronDown className="w-3 h-3" />
-                  </span>
-                </button>
-              </>
+              <Button 
+                onClick={() => setShowDeleted(!showDeleted)}
+                variant={showDeleted ? 'accent' : 'ghost'}
+                size="sm"
+                className="h-6 text-[10px] px-2 py-0"
+              >
+                {deletedTransactions.length} {deletedTransactions.length === 1 ? 'excluído' : 'excluídos'}
+                <ChevronDown className={cn("w-3 h-3 ml-1 transition-transform", showDeleted && "rotate-180")} />
+              </Button>
             )}
-          </p>
+          </div>
         </div>
-        <button
+        <Button
           onClick={() => {
             setFormError(null);
             setShowForm(true);
           }}
-          className={`p-3 rounded-full text-white shadow-lg transition-all hover:scale-105 flex-shrink-0 bg-primary hover:bg-secondary`}
+          size="icon"
+          className="h-14 w-14 shadow-xl"
         >
-          <Plus className="w-5 h-5" />
-        </button>
+          <Plus className="w-6 h-6" />
+        </Button>
       </div>
 
       {/* Filters */}
-      <div className="space-y-3 relative z-30">
+      <div className="space-y-4 relative z-30">
         {/* Category Filter */}
         {categories.length > 0 && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-2">
-            <Filter className="w-4 h-4 text-text opacity-70 flex-shrink-0" />
-            <button
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <Filter className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <Button
               onClick={() => handleCategoryFilterChange('all')}
-              className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
-                categoryFilter.includes('all') 
-                  ? 'bg-primary text-white' 
-                  : 'bg-cardBackground text-text hover:bg-cardBorder'
-              }`}
+              variant={categoryFilter.includes('all') ? 'primary' : 'outline'}
+              size="sm"
+              className="rounded-full text-[10px] uppercase h-8 px-4"
             >
               Todas
-            </button>
+            </Button>
             {categories.map(category => (
-              <button
+              <Button
                 key={category}
                 onClick={() => handleCategoryFilterChange(category)}
-                className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
-                  categoryFilter.includes(category) && !categoryFilter.includes('all')
-                    ? 'bg-primary text-white' 
-                    : 'bg-cardBackground text-text hover:bg-cardBorder'
-                }`}
+                variant={categoryFilter.includes(category) && !categoryFilter.includes('all') ? 'primary' : 'outline'}
+                size="sm"
+                className="rounded-full text-[10px] uppercase h-8 px-4"
               >
                 {category}
-              </button>
+              </Button>
             ))}
           </div>
         )}
 
         {/* Payment Status Filter (only for expenses) */}
         {type === 'expense' && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-2">
-            <CreditCard className="w-4 h-4 text-text opacity-70 flex-shrink-0" />
-            <button
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <CreditCard className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <Button
               onClick={() => setPaymentFilter('all')}
-              className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
-                paymentFilter === 'all' 
-                  ? 'bg-primary text-white' 
-                  : 'bg-cardBackground text-text hover:bg-cardBorder'
-              }`}
+              variant={paymentFilter === 'all' ? 'primary' : 'outline'}
+              size="sm"
+              className="rounded-full text-[10px] uppercase h-8 px-4"
             >
               Todos
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setPaymentFilter(prev => prev === 'paid' ? 'all' : 'paid')}
-              className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
-                paymentFilter === 'paid' 
-                  ? 'bg-primary text-white' 
-                  : 'bg-cardBackground text-text hover:bg-cardBorder'
-              }`}
+              variant={paymentFilter === 'paid' ? 'primary' : 'outline'}
+              size="sm"
+              className="rounded-full text-[10px] uppercase h-8 px-4"
             >
               Pagos
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setPaymentFilter(prev => prev === 'pending' ? 'all' : 'pending')}
-              className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
-                paymentFilter === 'pending' 
-                  ? 'bg-accent text-white' 
-                  : 'bg-cardBackground text-text hover:bg-cardBorder'
-              }`}
+              variant={paymentFilter === 'pending' ? 'accent' : 'outline'}
+              size="sm"
+              className="rounded-full text-[10px] uppercase h-8 px-4"
             >
               Pendentes
-            </button>
+            </Button>
           </div>
         )}
 
         {/* Payment Method Filter (only for expenses) */}
         {type === 'expense' && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-2">
-            <Wallet className="w-4 h-4 text-text opacity-70 flex-shrink-0" />
-            <button
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <Wallet className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <Button
               onClick={() => handlePaymentMethodFilterChange('all')}
-              className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
-                paymentMethodFilter.includes('all') 
-                  ? 'bg-primary text-white' 
-                  : 'bg-cardBackground text-text hover:bg-cardBorder'
-              }`}
+              variant={paymentMethodFilter.includes('all') ? 'primary' : 'outline'}
+              size="sm"
+              className="rounded-full text-[10px] uppercase h-8 px-4"
             >
               Todos
-            </button>
+            </Button>
             {paymentMethods.map(method => (
-              <button
+              <Button
                 key={method}
                 onClick={() => handlePaymentMethodFilterChange(method)}
-                className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
-                  paymentMethodFilter.includes(method) && !paymentMethodFilter.includes('all')
-                    ? 'bg-primary text-white' 
-                    : 'bg-cardBackground text-text hover:bg-cardBorder'
-                }`}
+                variant={paymentMethodFilter.includes(method) && !paymentMethodFilter.includes('all') ? 'primary' : 'outline'}
+                size="sm"
+                className="rounded-full text-[10px] uppercase h-8 px-4"
               >
                 {method}
-              </button>
+              </Button>
             ))}
           </div>
         )}
 
         {/* Search Input (only for expenses) */}
         {type === 'expense' && (
-          <div className="relative flex items-center w-full">
-            <input
+          <div className="relative flex items-center w-full group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors z-10" />
+            <Input
               type="text"
               placeholder="Buscar despesas..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 p-2 pl-10 rounded-lg bg-cardBackground text-text border border-cardBorder focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              style={{ paddingRight: '2.5rem' }} // Adjust padding for icon
+              className="pl-12"
             />
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search absolute left-3 text-text opacity-70"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
           </div>
         )}
 
         {/* Daily Filter for Income/Expense */}
         {startDateFilter && endDateFilter && (
-          <div className="flex items-center gap-3 pb-2 overflow-visible">
-            <Calendar className="w-4 h-4 text-text opacity-70 flex-shrink-0" />
+          <div className="flex items-center gap-3 pb-2">
+            <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
             <DailyDateSlider
               currentMonth={currentMonth}
               startDate={startDateFilter}
               endDate={endDateFilter}
               onChange={handleDailyFilterChange}
             />
-            <button
+            <Button
               onClick={handleClearDailyFilter}
-              className={`px-3 py-1 rounded-full bg-cardBorder text-text text-sm whitespace-nowrap transition-colors select-none ${
-                isDailyFilterActive ? 'hover:bg-cardBackground' : 'opacity-50 cursor-not-allowed'
-              }`}
+              variant="secondary"
+              size="sm"
+              className={cn("h-8 text-[10px] uppercase rounded-full", !isDailyFilterActive && "opacity-30")}
               disabled={!isDailyFilterActive}
             >
               Limpar
-            </button>
+            </Button>
           </div>
         )}
       </div>
 
       {/* Transaction List */}
-      <div className={`space-y-3 ${isSearching ? 'opacity-0 transition-opacity duration-300' : 'opacity-100 transition-opacity duration-300'}`}>
+      <div className={cn("space-y-4 transition-opacity duration-300", isSearching ? 'opacity-0' : 'opacity-100')}>
         {sortedTransactions.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: theme.cardBorder }}>
-              <Plus className="w-8 h-8 text-text opacity-70" />
+          <Card className="p-12 text-center border-2 border-dashed flex flex-col items-center justify-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+              <Plus className="w-8 h-8" />
             </div>
-            <p className="text-text mb-4 opacity-90">
-              Nenhuma {type === 'expense' ? 'despesa' : 'receita'} registrada para este mês.
+            <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
+              Nenhuma {type === 'expense' ? 'despesa' : 'receita'} encontrada
             </p>
-            <button
+            <Button
               onClick={() => setShowForm(true)}
-              className={`px-6 py-3 rounded-xl text-white font-medium transition-colors bg-primary hover:bg-secondary`}
             >
               Adicionar {type === 'expense' ? 'Despesa' : 'Receita'}
-            </button>
-          </div>
+            </Button>
+          </Card>
         ) : (
           sortedTransactions.map((transaction, index) => {
             const overdue = isTransactionOverdue(transaction);
             const daysUntilDue = transaction.dueDate ? getDaysUntilDue(transaction.dueDate) : null;
-            
             const isDeleted = transaction.status === 'deleted';
 
             return (
-              <div
+              <Card
                 key={`${transaction.id}-${index}`}
-                className={`relative border rounded-xl p-4 hover:shadow-md transition-all no-select ${animatedTransactionId === transaction.id ? 'animate-pulse-once' : ''} ${isDeleted ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
+                className={cn(
+                  "relative p-5 group no-select border-2 transition-all active:scale-[0.98]",
+                  animatedTransactionId === transaction.id && 'animate-pulse-once',
+                  isDeleted && 'opacity-50 grayscale cursor-not-allowed'
+                )}
                 style={{ 
-                  backgroundColor: isDeleted ? theme.background : theme.cardBackground,
                   borderColor: isDeleted ? theme.cardBorder : (overdue ? theme.primary : (!transaction.isPaid && type === 'expense' ? theme.accent : theme.cardBorder))
                 }}
                 onMouseDown={(e) => !isDeleted && handlePressStart(e, transaction)}
@@ -634,79 +620,78 @@ const TransactionList: React.FC<TransactionListProps> = ({
                 onTouchMove={handlePressEnd}
               >
                 {activeTransactionId === transaction.id && countdown !== null && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-xl z-10">
-                    <span className="text-white text-4xl font-bold">{countdown}</span>
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-xl z-20 backdrop-blur-sm">
+                    <span className="text-white text-6xl font-black animate-ping">{countdown}</span>
                   </div>
                 )}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div
-                        className="border shadow-sm rounded-lg px-3 py-1 min-w-0 flex-1"
-                        style={{ backgroundColor: theme.primary + '10', borderColor: theme.cardBorder + '80' }}
-                      >
-                        <h3 className={`font-bold text-base text-text break-words ${isDeleted ? 'line-through' : ''}`}>
-                          {transaction.description}
-                        </h3>
-                      </div>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <h3 className={cn(
+                        "font-black text-base text-text uppercase tracking-tight break-words flex-1",
+                        isDeleted && 'line-through'
+                      )}>
+                        {transaction.description}
+                      </h3>
                       {!isDeleted && (
                         <button
                           onClick={() => handleUpdatePaymentStatusAndAnimate(transaction.id, !transaction.isPaid)}
-                          className={`p-1 rounded-full transition-colors flex-shrink-0 ${
-                            transaction.isPaid 
-                              ? 'bg-[#D4EDDA]' 
-                              : 'bg-[#FFE0B2]'
-                          }`}
+                          className={cn(
+                            "p-2 rounded-xl transition-all shadow-sm flex-shrink-0 active:scale-90",
+                            transaction.isPaid ? 'bg-green-500/10 text-green-500' : 'bg-amber-500/10 text-amber-500'
+                          )}
                         >
-                          {transaction.isPaid ? <Check className="w-4 h-4 text-black" /> : <Clock className="w-4 h-4 text-black" />}
+                          {transaction.isPaid ? <Check className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
                         </button>
-                      )}
-                      {isDeleted && (
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-accent bg-accent/10 px-1.5 py-0.5 rounded">
-                          Excluído
-                        </span>
                       )}
                     </div>
 
                     {transaction.notes && (
-                      <div className="mb-2">
-                        <div className={`text-sm text-text opacity-80 whitespace-pre-wrap ${!expandedNotes[transaction.id] ? 'line-clamp-2' : ''} ${isDeleted ? 'line-through' : ''}`}>
+                      <div className="space-y-2">
+                        <p className={cn(
+                          "text-xs text-text opacity-70 font-medium leading-relaxed whitespace-pre-wrap bg-cardBorder/20 p-3 rounded-xl border border-cardBorder/10",
+                          !expandedNotes[transaction.id] && 'line-clamp-2',
+                          isDeleted && 'line-through'
+                        )}>
                           {formatNotes(transaction.notes)}
-                        </div>
+                        </p>
                         {( (typeof transaction.notes === 'string' && (transaction.notes.length > 40 || transaction.notes.includes('\n') || transaction.notes.startsWith('{'))) || 
                            (typeof transaction.notes === 'object')) && (
-                          <button 
+                          <Button 
                             onClick={() => toggleNotes(transaction.id)}
-                            className="mt-1 text-xs font-medium text-primary flex items-center gap-1 hover:underline"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 text-[10px] uppercase font-black"
                             disabled={isDeleted}
                           >
                             {expandedNotes[transaction.id] ? (
-                              <><ChevronUp className="w-3 h-3" /> Ver menos</>
+                              <><ChevronUp className="w-3 h-3 mr-1" /> Ver menos</>
                             ) : (
-                              <><ChevronDown className="w-3 h-3" /> Ver itens da nota</>
+                              <><ChevronDown className="w-3 h-3 mr-1" /> Ver itens da nota</>
                             )}
-                          </button>
+                          </Button>
                         )}
                       </div>
                     )}
                     
-                    <div className="flex flex-wrap gap-2 text-sm text-text opacity-90 mb-2">
-                      <span className="px-2 py-1 rounded-full truncate max-w-[120px]" style={{ backgroundColor: theme.cardBorder }}>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-cardBorder/30 text-text/60">
                         {transaction.category}
                       </span>
                       
                       {type === 'expense' && transaction.paymentMethod && (
-                        <span className="px-2 py-1 rounded-full flex items-center gap-1 whitespace-nowrap" style={{ backgroundColor: theme.cardBorder }}>
-                          <Wallet className="w-3 h-3 flex-shrink-0" />
+                        <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-cardBorder/30 text-text/60 flex items-center gap-1.5">
+                          <Wallet className="w-3 h-3" />
                           {formatPaymentMethod(transaction.paymentMethod)}
                         </span>
                       )}
                       
-                      {/* Data da transação */}
-                      <span className="whitespace-nowrap">{formatBrazilDate(transaction.date)}</span>
+                      <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-cardBorder/30 text-text/60">
+                        {formatBrazilDate(transaction.date)}
+                      </span>
                       
                       {transaction.recurrence !== 'none' && (
-                        <span className="px-2 py-1 rounded-full whitespace-nowrap" style={{ backgroundColor: theme.primary, color: 'white' }}>
+                        <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-primary text-white shadow-sm">
                           {transaction.recurrence === 'weekly' && 'Semanal'}
                           {transaction.recurrence === 'monthly' && 'Mensal'}
                           {transaction.recurrence === 'yearly' && 'Anual'}
@@ -714,73 +699,77 @@ const TransactionList: React.FC<TransactionListProps> = ({
                       )}
                     </div>
 
-                    {/* Payment Status and Due Date Info */}
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      {!isDeleted && (
-                        <>
-                          <span className={`px-2 py-1 rounded-full whitespace-nowrap`}
-                            style={{ 
-                              backgroundColor: transaction.isPaid ? '#D4EDDA' : '#FFE0B2',
-                              color: '#000000'
-                            }}>
-                            {transaction.isPaid 
-                              ? (type === 'expense' ? '✓ Pago' : '✓ Recebido') 
-                              : (type === 'expense' ? '⏳ Pendente' : '⏳ A Receber')}
+                    {/* Status Badges */}
+                    {!isDeleted && (
+                      <div className="flex flex-wrap gap-2">
+                        <span className={cn(
+                          "px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm",
+                          transaction.isPaid 
+                            ? 'bg-green-500/10 border-green-500/20 text-green-500' 
+                            : 'bg-amber-500/10 border-amber-500/20 text-amber-500'
+                        )}>
+                          {transaction.isPaid 
+                            ? (type === 'expense' ? '✓ Pago' : '✓ Recebido') 
+                            : (type === 'expense' ? '⏳ Pendente' : '⏳ A Receber')}
+                        </span>
+                        
+                        {type === 'expense' && transaction.dueDate && (
+                          <span className={cn(
+                            "px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border flex items-center gap-1.5 shadow-sm",
+                            overdue ? 'bg-accent text-white border-accent' : 'bg-amber-500/10 border-amber-500/20 text-amber-600'
+                          )}>
+                            <Calendar className="w-3 h-3" />
+                            {overdue ? 'Vencido' : 
+                             daysUntilDue === 0 ? 'Vence hoje' : 
+                             daysUntilDue === 1 ? 'Vence amanhã' :
+                             daysUntilDue !== null && daysUntilDue > 0 ? `${daysUntilDue} dias` :
+                             formatBrazilDate(transaction.dueDate)}
                           </span>
-                          
-                          {type === 'expense' && transaction.dueDate && (
-                            <span className={`px-2 py-1 rounded-full flex items-center gap-1 whitespace-nowrap`}
-                              style={{
-                                backgroundColor: '#FFE0B2',
-                                color: '#000000'
-                              }}>
-                              <Calendar className="w-3 h-3 flex-shrink-0" />
-                              <span className="truncate">
-                                {overdue ? 'Vencido' : 
-                                 daysUntilDue === 0 ? 'Vence hoje' : 
-                                 daysUntilDue === 1 ? 'Vence amanhã' :
-                                 daysUntilDue !== null && daysUntilDue > 0 ? `${daysUntilDue} dias` :
-                                 formatBrazilDate(transaction.dueDate)}
-                              </span>
-                            </span>
-                          )}
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex flex-col items-end gap-3 flex-shrink-0">
+                    <span className={cn(
+                      "font-black text-lg sm:text-2xl",
+                      isDeleted && 'line-through',
+                      type === 'income' ? 'text-primary' : 'text-accent'
+                    )}>
+                      {formatCurrency(transaction.amount)}
+                    </span>
+                    <div className="flex gap-2">
+                      {isDeleted ? (
+                        <Button
+                          onClick={() => openReactivateModal(transaction.id)}
+                          size="sm"
+                          title="Reativar transação"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            onClick={() => handleEdit(transaction)}
+                            variant="ghost"
+                            size="sm"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            onClick={() => openDeleteModal(transaction.id)}
+                            variant="ghost"
+                            size="sm"
+                            className="hover:text-accent"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </>
                       )}
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className={`font-semibold text-sm sm:text-lg ${isDeleted ? 'line-through' : ''}`}
-                      style={{ color: type === 'income' ? theme.primary : theme.accent }}>
-                      {formatCurrency(transaction.amount)}
-                    </span>
-                    {isDeleted ? (
-                      <button
-                        onClick={() => openReactivateModal(transaction.id)}
-                        className="p-2 rounded-lg transition-colors text-white bg-primary hover:bg-secondary shadow-sm"
-                        title="Reativar transação"
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                      </button>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => handleEdit(transaction)}
-                          className="p-2 rounded-lg transition-colors text-text bg-cardBackground hover:text-primary hover:bg-cardBorder"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => openDeleteModal(transaction.id)}
-                          className="p-2 rounded-lg transition-colors text-text bg-cardBackground hover:text-accent hover:bg-cardBorder"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </>
-                    )}
-                  </div>
                 </div>
-              </div>
+              </Card>
             );
           })
         )}

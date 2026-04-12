@@ -1,6 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 import { useVerification } from '../contexts/VerificationContext';
+import { Button } from './ui/Button';
+import { Card } from './ui/Card';
+import { cn } from '../lib/utils';
+import { ShieldCheck, Loader2 } from 'lucide-react';
 
 const VerificationModal: React.FC = () => {
   const [digits, setDigits] = useState<string[]>(['', '', '']);
@@ -91,12 +95,26 @@ const VerificationModal: React.FC = () => {
   const isButtonDisabled = digits.some(digit => digit === '') || isLoading;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-8 rounded-lg shadow-lg text-center">
-        <h2 className="text-2xl font-bold mb-4">Verificação Necessária</h2>
-        <p className="mb-4">Por favor, insira o código de 3 dígitos para continuar.</p>
-        <form onSubmit={handleSubmit}>
-          <div className="flex justify-center space-x-2 mb-4">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 backdrop-blur-md animate-in fade-in duration-300">
+      <Card className="w-full max-w-sm p-8 shadow-2xl animate-in zoom-in-95 duration-200 text-center">
+        <div className="flex flex-col items-center mb-6">
+          <div className="p-4 rounded-full bg-primary/10 text-primary mb-4 shadow-xl">
+            {isLoading ? (
+              <Loader2 className="w-10 h-10 animate-spin" />
+            ) : (
+              <ShieldCheck className="w-10 h-10" />
+            )}
+          </div>
+          <h2 className="text-2xl font-black text-text uppercase tracking-tight mb-2">
+            Verificação Necessária
+          </h2>
+          <p className="text-sm text-text opacity-70 font-medium leading-relaxed">
+            Por favor, insira o código de 3 dígitos para continuar.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="flex justify-center gap-3">
             {digits.map((digit, index) => (
               <input
                 key={index}
@@ -107,25 +125,33 @@ const VerificationModal: React.FC = () => {
                 value={digit}
                 onChange={(e) => handleChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
-                className="w-12 h-12 text-3xl text-center border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={cn(
+                  "w-16 h-20 text-4xl font-black text-center border-2 rounded-2xl transition-all focus:ring-4 focus:ring-primary/20 outline-none bg-cardBackground border-cardBorder text-text",
+                  error && "border-red-500 text-red-500",
+                  isLoading && "opacity-50 cursor-not-allowed"
+                )}
                 autoFocus={index === 0}
                 ref={inputRefs[index]}
-                disabled={isLoading} // Disable inputs during loading
+                disabled={isLoading}
               />
             ))}
           </div>
-          {error && <p className="text-red-500 mb-4">{error}</p>}
-          <button
+          
+          {error && (
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold uppercase tracking-tight animate-shake">
+              {error}
+            </div>
+          )}
+
+          <Button
             type="submit"
-            className={`w-full p-2 rounded-md text-white font-bold transition-colors duration-300
-              ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'}
-            `}
             disabled={isButtonDisabled}
+            className="w-full h-14 text-base"
           >
             {isLoading ? 'Verificando...' : 'Verificar'}
-          </button>
+          </Button>
         </form>
-      </div>
+      </Card>
     </div>
   );
 };
