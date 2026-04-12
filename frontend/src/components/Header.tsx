@@ -10,7 +10,10 @@ const Header: React.FC = () => {
     setIsPulsing(true);
     setTimeout(() => {
       setIsPulsing(false);
-      window.location.reload(); // Adicionado para recarregar a página
+      // Adiciona o parâmetro nosplash=true para recarregar sem mostrar o splash screen
+      const url = new URL(window.location.href);
+      url.searchParams.set('nosplash', 'true');
+      window.location.href = url.toString();
     }, 300); // Duração da animação
   };
 
