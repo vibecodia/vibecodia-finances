@@ -61,7 +61,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         primary: primaryColor,
         secondary: paletteType === 'emerald' ? '#ecfdf5' : paletteType === 'ocean' ? '#f0f9ff' : '#f5f3ff',
         accent: accentColor,
-        background: '#f1f5f9', // slate-100
+        background: '#f8fafc', // slate-50
         text: '#0f172a', // slate-900
         cardBackground: '#ffffff',
         cardBorder: `${primaryColor}33`,
@@ -123,6 +123,15 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
     };
+
+    root.style.setProperty('--background', isDarkMode ? '222.2 84% 4.9%' : '210 40% 98%');
+    root.style.setProperty('--foreground', isDarkMode ? '210 40% 98%' : '222.2 84% 4.9%');
+    root.style.setProperty('--card', isDarkMode ? '222.2 84% 4.9%' : '0 0% 100%');
+    root.style.setProperty('--card-foreground', isDarkMode ? '210 40% 98%' : '222.2 84% 4.9%');
+    root.style.setProperty('--muted', isDarkMode ? '217.2 32.6% 17.5%' : '210 40% 96.1%');
+    root.style.setProperty('--muted-foreground', isDarkMode ? '215 20.2% 65.1%' : '215.4 16.3% 46.9%');
+    root.style.setProperty('--border', isDarkMode ? '217.2 32.6% 17.5%' : '214.3 31.8% 91.4%');
+    root.style.setProperty('--input', isDarkMode ? '217.2 32.6% 17.5%' : '214.3 31.8% 91.4%');
 
     root.style.setProperty('--primary', hexToHsl(currentTheme.primary));
     root.style.setProperty('--ring', hexToHsl(currentTheme.ring));
