@@ -63,6 +63,7 @@ import {
 
 import SavingsGoalsPlayground from './SavingsGoalsPlayground';
 import FinanciamentoCasaPlayground from './FinanciamentoCasaPlayground';
+import { Button } from './ui/Button';
 
 ChartJS.register(
   CategoryScale, 

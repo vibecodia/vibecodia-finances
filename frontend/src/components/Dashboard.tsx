@@ -1,6 +1,6 @@
 import { format, getDate, getDaysInMonth, isBefore, startOfMonth, endOfMonth } from 'date-fns';
 import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Confetti from 'react-confetti';
 import { useNavigate } from 'react-router-dom';
 
@@ -337,11 +337,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   const [isFlashSplit, setIsFlashSplit] = useLocalStorage('dashboard_flash_is_split', false);
   const [flashFlexAmount, setFlashFlexAmount] = useLocalStorage('dashboard_flash_flex_amount', 0);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
-  const { theme, setThemeMonth } = useTheme();
-
-  useEffect(() => {
-    setThemeMonth(currentMonth);
-  }, [currentMonth, setThemeMonth]);
+  const { theme } = useTheme();
 
   const today = getCurrentBrazilDate();
   const isSelectedMonthCurrent = format(currentMonth, 'yyyy-MM') === format(today, 'yyyy-MM');

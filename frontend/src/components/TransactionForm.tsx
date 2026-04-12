@@ -1,5 +1,5 @@
 import { addMonths } from 'date-fns';
-import { Plus, X, CreditCard, Calculator, Wallet, Receipt, AlertCircle } from 'lucide-react';
+import { Plus, Minus, X, CreditCard, Calculator, Wallet, Receipt, AlertCircle } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 
 import { useTheme } from '../contexts/ThemeContext';
@@ -224,6 +224,13 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     }
   };
 
+  const handleSubtractNumber = () => {
+    if (calculatorAmountValue > 0) {
+      setCurrentSum(prevSum => prevSum - calculatorAmountValue);
+      setCalculatorValue(0);
+    }
+  };
+
   const handleApplyCalculation = () => {
     setAmountValue(currentSum);
     setCurrentSum(0);
@@ -291,20 +298,32 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
             {showCalculator && (
               <Card className="p-5 border-2 border-dashed space-y-4 animate-in slide-in-from-top-2 duration-200" style={{ borderColor: theme.cardBorder }}>
                 <h4 className="text-xs font-black text-muted-foreground uppercase tracking-widest">Calculadora</h4>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <Input
                     {...calculatorInputProps}
-                    placeholder="Adicionar valor"
-                    className="font-bold"
+                    placeholder="Valor"
+                    className="font-bold flex-1"
                   />
-                  <Button
-                    type="button"
-                    onClick={handleAddNumber}
-                    size="icon"
-                    className="h-12 w-12 flex-shrink-0"
-                  >
-                    <Plus className="w-5 h-5" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      onClick={handleAddNumber}
+                      size="icon"
+                      className="h-12 w-12 flex-shrink-0 bg-primary/20 hover:bg-primary/30 text-primary border-0"
+                      title="Adicionar"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleSubtractNumber}
+                      size="icon"
+                      className="h-12 w-12 flex-shrink-0 bg-accent/20 hover:bg-accent/30 text-accent border-0"
+                      title="Subtrair"
+                    >
+                      <Minus className="w-5 h-5" />
+                    </Button>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20">
                   <span className="text-[10px] font-black uppercase opacity-40">Soma Atual</span>
