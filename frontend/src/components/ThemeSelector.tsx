@@ -16,10 +16,10 @@ const ThemeSelector: React.FC = () => {
   return (
     <div 
       className={cn(
-        "flex items-center transition-all duration-500 ease-in-out relative h-10 rounded-2xl overflow-hidden",
+        "flex items-center transition-all duration-500 ease-in-out absolute right-0 h-10 sm:h-12 rounded-2xl overflow-hidden",
         isExpanded 
-          ? "bg-white/10 backdrop-blur-xl border border-white/20 px-2 shadow-2xl w-auto" 
-          : "bg-white/10 backdrop-blur-md border border-white/20 w-10 shadow-lg"
+          ? "bg-white/10 backdrop-blur-xl border border-white/20 px-2 shadow-2xl w-auto z-50" 
+          : "bg-white/10 backdrop-blur-md border border-white/20 w-10 sm:w-12 shadow-lg z-10"
       )}
     >
       {/* Botão de Trigger (Paleta) - Encolhe quando expandido */}
@@ -31,7 +31,7 @@ const ThemeSelector: React.FC = () => {
         )}
         title="Seletor de Tema"
       >
-        <Palette className="w-5 h-5 text-white" />
+        <Palette className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
       </button>
 
       {/* Conteúdo Expansível */}

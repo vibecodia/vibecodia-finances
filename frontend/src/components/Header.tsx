@@ -1,10 +1,21 @@
-import { Home, RefreshCw } from 'lucide-react';
+import { Home, RefreshCw, ShoppingBasket } from 'lucide-react';
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import ThemeSelector from './ThemeSelector';
+import ShoppingCartButton from './ShoppingCartButton';
 import { cn } from '../lib/utils';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  shoppingItemCount?: number;
+  onOpenShoppingList?: () => void;
+  animateShoppingButton?: boolean;
+}
+
+const Header: React.FC<HeaderProps> = ({ 
+  shoppingItemCount = 0, 
+  onOpenShoppingList, 
+  animateShoppingButton = false 
+}) => {
   const [isPulsing, setIsPulsing] = useState(false);
   const location = useLocation();
   const appVersion = (import.meta as any).env.APP_VERSION;
@@ -46,7 +57,18 @@ const Header: React.FC = () => {
         </Link>
         
         <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-          <ThemeSelector />
+          <div className="relative w-10 h-10 sm:w-12 sm:h-12">
+            <ThemeSelector />
+          </div>
+
+          {onOpenShoppingList && (
+            <ShoppingCartButton
+              itemCount={shoppingItemCount}
+              onClick={onOpenShoppingList}
+              animateCombined={animateShoppingButton}
+            />
+          )}
+          
           {!isRoot && (
             <button 
               onClick={handleHeaderClick}

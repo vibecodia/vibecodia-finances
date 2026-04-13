@@ -125,19 +125,14 @@ function App() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: theme.background }}>
-        {!isFocusMode && <Header />}
-        {!isFocusMode && <Navigation />}
-
         {!isFocusMode && (
-          <div className="fixed bottom-6 left-4 z-50 flex items-center">
-            <ShoppingCartButton
-              itemCount={Array.isArray(shoppingList) ? shoppingList.filter(item => !item.purchased).length : 0}
-              onClick={() => setIsShoppingListOpen(true)}
-              theme={theme}
-              animateCombined={animateCombined}
-            />
-          </div>
+          <Header 
+            shoppingItemCount={Array.isArray(shoppingList) ? shoppingList.filter(item => !item.purchased).length : 0}
+            onOpenShoppingList={() => setIsShoppingListOpen(true)}
+            animateShoppingButton={animateCombined}
+          />
         )}
+        {!isFocusMode && <Navigation />}
 
         {!isFocusMode && (
           <ShoppingListModal
