@@ -1,4 +1,4 @@
-import { Plus, Layout, Archive } from 'lucide-react';
+import { Plus, Layout, Archive, Calendar as CalendarIcon, Kanban } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 
@@ -6,6 +6,7 @@ import { useTrello } from '../../hooks/trello/useTrello';
 import { Task, Column as ColumnType } from '../../types/trello/task';
 
 import { Column } from './Column';
+import { Timeline } from './Timeline';
 import { SearchBar } from './SearchBar';
 import { TaskModal } from './TaskModal';
 import ConfirmationModal from '../ConfirmationModal';
@@ -34,6 +35,7 @@ export function Board() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
   const [showArchived, setShowArchived] = useState(false);
+  const [viewMode, setViewMode] = useState<'kanban' | 'timeline'>('kanban');
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
     taskId: string | null;
@@ -81,20 +83,46 @@ export function Board() {
       return;
     }
 
-    // Se mudou de coluna
-    if (destination.droppableId !== source.droppableId) {
-      moveTask(draggableId, destination.droppableId as Task['columnId']);
-    } else {
-      // Reordenação dentro da mesma coluna
-      const columnTasks = tasks.filter(t => t.columnId === source.droppableId);
-      const otherTasks = tasks.filter(t => t.columnId !== source.droppableId);
-      
-      const newColumnTasks = Array.from(columnTasks);
-      const [removed] = newColumnTasks.splice(source.index, 1);
-      newColumnTasks.splice(destination.index, 0, removed);
+    const newTasks = Array.from(tasks);
+    
+    // 1. Encontrar e remover a tarefa movida
+    const movedTaskIndex = newTasks.findIndex(t => t.id === draggableId);
+    if (movedTaskIndex === -1) return;
+    const [movedTask] = newTasks.splice(movedTaskIndex, 1);
 
-      reorderTasks([...otherTasks, ...newColumnTasks]);
+    // 2. Atualizar a coluna
+    movedTask.columnId = destination.droppableId as Task['columnId'];
+    movedTask.updatedAt = new Date().toISOString();
+
+    // 3. Encontrar a posição correta de inserção
+    // Pegamos as tarefas que seriam visíveis na coluna de destino (excluindo a própria se já estava lá)
+    const visibleDestTasks = filteredTasks.filter(
+      t => t.columnId === destination.droppableId && t.id !== draggableId
+    );
+
+    if (destination.index >= visibleDestTasks.length) {
+      // Se for para o final da lista visível, inserimos após a última tarefa daquela coluna no array principal
+      let lastActualIndex = -1;
+      for (let i = newTasks.length - 1; i >= 0; i--) {
+        if (newTasks[i].columnId === destination.droppableId) {
+          lastActualIndex = i;
+          break;
+        }
+      }
+      
+      if (lastActualIndex === -1) {
+        newTasks.push(movedTask);
+      } else {
+        newTasks.splice(lastActualIndex + 1, 0, movedTask);
+      }
+    } else {
+      // Inserir antes da tarefa que está atualmente na posição de destino na lista visível
+      const targetTask = visibleDestTasks[destination.index];
+      const actualTargetIndex = newTasks.findIndex(t => t.id === targetTask.id);
+      newTasks.splice(actualTargetIndex, 0, movedTask);
     }
+
+    reorderTasks(newTasks);
   };
 
   const handleMoveForward = useCallback((taskId: string) => {
@@ -121,6 +149,14 @@ export function Board() {
     if (prevColumn !== task.columnId) {
       moveTask(taskId, prevColumn);
     }
+  }, [tasks, moveTask]);
+
+  const handleArchiveTask = useCallback((taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const newColumn = task.columnId === 'archived' ? 'todo' : 'archived';
+    moveTask(taskId, newColumn);
   }, [tasks, moveTask]);
 
   const handleToggleChecklistItem = useCallback((taskId: string, itemId: string) => {
@@ -151,11 +187,38 @@ export function Board() {
         <div className="flex flex-wrap items-center gap-3">
           <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
           
+          <div className="flex items-center bg-foreground/5 p-1 rounded-xl border border-border">
+            <Button
+              variant={viewMode === 'kanban' ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('kanban')}
+              className={cn(
+                "flex items-center gap-2 h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest",
+                viewMode === 'kanban' ? "shadow-lg" : "text-muted-foreground"
+              )}
+            >
+              <Kanban className="w-3.5 h-3.5" />
+              Quadro
+            </Button>
+            <Button
+              variant={viewMode === 'timeline' ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('timeline')}
+              className={cn(
+                "flex items-center gap-2 h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest",
+                viewMode === 'timeline' ? "shadow-lg" : "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="w-3.5 h-3.5" />
+              Timeline
+            </Button>
+          </div>
+
           <Button
             variant="outline"
             onClick={() => setShowArchived(!showArchived)}
             className={cn(
-              "flex items-center gap-2",
+              "flex items-center gap-2 h-10",
               showArchived && "bg-primary/10 border-primary text-primary"
             )}
           >
@@ -189,25 +252,35 @@ export function Board() {
       </div>
 
       {/* Board Content */}
-      <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex-1 overflow-x-auto pb-6">
-          <div className="flex gap-8 h-full min-h-[600px]">
-            {columns.map((column) => (
-              <Column
-                key={column.id}
-                id={column.id}
-                title={column.title}
-                tasks={column.tasks}
-                onCardClick={handleEditTask}
-                onMoveForward={handleMoveForward}
-                onMoveBackward={handleMoveBackward}
-                onDeleteTask={(taskId) => setDeleteConfirmation({ isOpen: true, taskId })}
-                onToggleChecklistItem={handleToggleChecklistItem}
-              />
-            ))}
+      {viewMode === 'kanban' ? (
+        <DragDropContext onDragEnd={onDragEnd}>
+          <div className="flex-1 overflow-x-auto pb-6">
+            <div className="flex gap-8 h-full min-h-[600px]">
+              {columns.map((column) => (
+                <Column
+                  key={column.id}
+                  id={column.id}
+                  title={column.title}
+                  tasks={column.tasks}
+                  onCardClick={handleEditTask}
+                  onMoveForward={handleMoveForward}
+                  onMoveBackward={handleMoveBackward}
+                  onDeleteTask={(id) => setDeleteConfirmation({ isOpen: true, taskId: id })}
+                  onArchiveTask={handleArchiveTask}
+                  onToggleChecklistItem={handleToggleChecklistItem}
+                />
+              ))}
+            </div>
           </div>
+        </DragDropContext>
+      ) : (
+        <div className="flex-1 min-h-[600px]">
+          <Timeline 
+            tasks={filteredTasks} 
+            onTaskClick={handleEditTask} 
+          />
         </div>
-      </DragDropContext>
+      )}
 
       {/* Modals */}
       <TaskModal
@@ -222,6 +295,7 @@ export function Board() {
           setDeleteConfirmation({ isOpen: true, taskId });
           setIsModalOpen(false);
         }}
+        onArchive={handleArchiveTask}
         task={editingTask}
         mode={editingTask ? 'edit' : 'create'}
       />

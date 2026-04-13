@@ -1,8 +1,7 @@
 import { format, getDate, getDaysInMonth, isBefore, startOfMonth, endOfMonth } from 'date-fns';
-import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil, Wifi, Check, X } from 'lucide-react';
+import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil, Wifi, Check, X, Sword } from 'lucide-react';
 import React, { useState } from 'react';
 import Confetti from 'react-confetti';
-import { useNavigate } from 'react-router-dom';
 
 import familyBg from '../assets/family-bg.jpg';
 import { useTheme } from '../contexts/ThemeContext';
@@ -19,6 +18,8 @@ import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Card } from './ui/Card';
+import { UINinjaOverlay } from './UINinjaOverlay';
+import { BandaidEasterEgg } from './BandaidEasterEgg';
 
 
 
@@ -330,7 +331,6 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => {
-  const navigate = useNavigate();
   const { width, height } = useWindowSize();
   const [showConfetti, setShowConfetti] = useState(false);
   const [isPulsing, setIsPulsing] = useState(false);
@@ -343,7 +343,10 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(cardHolderName);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
+  const [isUINinjaActive, setIsUINinjaActive] = useState(false);
   const { theme } = useTheme();
+
+  const uiNinjaSetting = localStorage.getItem('uiNinjaEnabled') === 'true';
 
   const today = getCurrentBrazilDate();
   const isSelectedMonthCurrent = format(currentMonth, 'yyyy-MM') === format(today, 'yyyy-MM');
@@ -439,6 +442,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
 
   return (
     <div className="max-w-6xl mx-auto space-y-4">
+      {uiNinjaSetting && (
+        <UINinjaOverlay 
+          isVisible={isUINinjaActive} 
+          onComplete={() => setIsUINinjaActive(false)} 
+        />
+      )}
+
       {showConfetti && (
           <Confetti
             width={width}
@@ -450,11 +460,24 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         )}
 
         {/* Header */}
-        <div className="pt-2 pb-0 w-full">
-          <MonthSegmentedControl
-            month={currentMonth}
-            onChange={(newMonth) => setCurrentMonth(newMonth)}
-          />
+        <div className="pt-2 pb-0 w-full flex items-center gap-3">
+          <div className="flex-1">
+            <MonthSegmentedControl
+              month={currentMonth}
+              onChange={(newMonth) => setCurrentMonth(newMonth)}
+            />
+          </div>
+          {uiNinjaSetting && (
+            <Button
+              onClick={() => setIsUINinjaActive(true)}
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 rounded-2xl bg-white/50 backdrop-blur-md shadow-sm border border-white/20 text-primary hover:bg-primary hover:text-white transition-all group"
+              title="UI Ninja Mode"
+            >
+              <Sword className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+            </Button>
+          )}
         </div>
 
         {/* Main Balance Card */}
@@ -675,12 +698,14 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
       {/* Barra receitas vs despesas */}
       <Card className="relative p-6 shadow-[2px_2px_10px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker">
         {/* Adesivo Band-Aid Central */}
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] z-20 flex items-center justify-center group-hover/sticker:-translate-y-1 transition-transform overflow-hidden">
-          <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
-            {[...Array(12)].map((_, i) => <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />)}
+        <BandaidEasterEgg type="slugs" className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
+          <div className="w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] flex items-center justify-center group-hover/sticker:-translate-y-1 transition-transform overflow-hidden">
+            <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
+              {[...Array(12)].map((_, i) => <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />)}
+            </div>
+            <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
           </div>
-          <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
-        </div>
+        </BandaidEasterEgg>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-green-400 rounded-full" />
@@ -749,12 +774,14 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         className="relative p-6 space-y-6 shadow-[2px_2px_12px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker"
       >
         {/* Adesivo Band-Aid Lateral */}
-        <div className="absolute -top-4 -right-2 w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] rotate-[30deg] z-20 flex items-center justify-center group-hover/sticker:rotate-[25deg] transition-transform overflow-hidden">
-          <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
-            {[...Array(12)].map((_, i) => <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />)}
+        <BandaidEasterEgg type="coins" className="absolute -top-4 -right-2 z-20">
+          <div className="w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] rotate-[30deg] flex items-center justify-center group-hover/sticker:rotate-[25deg] transition-transform overflow-hidden">
+            <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
+              {[...Array(12)].map((_, i) => <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />)}
+            </div>
+            <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
           </div>
-          <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
-        </div>
+        </BandaidEasterEgg>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CreditCard className="w-5 h-5 text-primary" />
@@ -844,16 +871,17 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
       {/* Progresso das Metas */}
       {savingsGoals.length > 0 && (
         <Card
-          className="relative cursor-pointer shadow-[2px_2px_15px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker"
-          onClick={() => navigate('/goals')}
+          className="relative cursor-default shadow-[2px_2px_15px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker"
         >
           {/* Adesivo Band-Aid Canto */}
-          <div className="absolute -top-3 -left-2 w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] -rotate-[15deg] z-20 flex items-center justify-center group-hover/sticker:-rotate-[10deg] transition-transform overflow-hidden">
-            <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
-              {[...Array(12)].map((_, i) => <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />)}
+          <BandaidEasterEgg type="hearts" className="absolute -top-3 -left-2 z-20">
+            <div className="w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] -rotate-[15deg] flex items-center justify-center group-hover/sticker:-rotate-[10deg] transition-transform overflow-hidden">
+              <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
+                {[...Array(12)].map((_, i) => <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />)}
+              </div>
+              <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
             </div>
-            <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
-          </div>
+          </BandaidEasterEgg>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-foreground truncate pr-2">Progresso das Metas</h3>
             <Target className="w-4 h-4 text-primary flex-shrink-0" />

@@ -15,6 +15,7 @@ import { Card } from './ui/Card';
 import { cn } from '../lib/utils';
 
 import ImageUpload from './ImageUpload';
+import { FallingItems } from './FallingItems';
 
 
 interface TransactionFormProps {
@@ -23,7 +24,7 @@ interface TransactionFormProps {
   replicateTransaction?: Transaction | null; // New prop for replication
   savingsGoals?: SavingsGoal[];
   submitError?: string | null;
-  onSubmit: (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onSubmit: (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -61,6 +62,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   const [calculatorInput, setCalculatorInput] = useState(0);
   const [currentSum, setCurrentSum] = useState(0);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [animationCategory, setAnimationCategory] = useState('');
+  const [animationMode, setAnimationMode] = useState<'10s' | '15s' | 'zen'>('10s');
 
   const [initialAmount, setInitialAmount] = useState<number>(transaction?.amount ?? replicateTransaction?.amount ?? 0);
   const { inputProps: amountInputProps, numericValue: amountValue, setNumericValue: setAmountValue } = useCurrencyInput(
@@ -158,7 +162,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     .filter(g => (g.status || 'active') !== 'deleted')
     .filter(g => (g.currentAmount || 0) < (g.targetAmount || 0));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (amountValue === 0 || !formData.description || !formData.category || localError) {
@@ -176,19 +180,46 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     // Garante que a data principal seja a data de vencimento para despesas
     const finalDate = type === 'expense' ? (finalDueDate || getBrazilDateString()) : formData.date;
 
-    onSubmit({
-      type,
-      amount: amountValue,
-      description: formData.description,
-      category: formData.category,
-      date: finalDate,
-      dueDate: type === 'expense' ? (finalDueDate || undefined) : undefined,
-      isPaid: formData.isPaid,
-      recurrence: formData.recurrence,
-      paymentMethod: type === 'expense' ? formData.paymentMethod : undefined,
-      notes: formData.notes,
-      savingsGoalId: showGoalSelect ? formData.savingsGoalId : undefined,
-    });
+    try {
+      await onSubmit({
+        type,
+        amount: amountValue,
+        description: formData.description,
+        category: formData.category,
+        date: finalDate,
+        dueDate: type === 'expense' ? (finalDueDate || undefined) : undefined,
+        isPaid: formData.isPaid,
+        recurrence: formData.recurrence,
+        paymentMethod: type === 'expense' ? formData.paymentMethod : undefined,
+        notes: formData.notes,
+        savingsGoalId: showGoalSelect ? formData.savingsGoalId : undefined,
+      });
+
+      // Somente anima se não houver erro de submissão imediato (embora o erro possa vir via prop)
+      // Se o pai capturou o erro e setou submitError, o componente vai re-renderizar
+      // e podemos checar se submitError mudou, mas o try/catch aqui é mais imediato.
+      
+      const ninjaGameEnabled = localStorage.getItem('ninjaGameEnabled') !== 'false';
+      const ninjaGameMode = (localStorage.getItem('ninjaGameMode') as any) || '10s';
+      
+      if (ninjaGameEnabled) {
+        setAnimationCategory(formData.category);
+        setAnimationMode(ninjaGameMode);
+        setIsAnimating(true);
+        
+        if (ninjaGameMode === '10s') {
+          setTimeout(() => onClose(), 10000);
+        } else if (ninjaGameMode === '15s') {
+          setTimeout(() => onClose(), 15000);
+        }
+        // No Zen mode, we don't call onClose automatically
+      } else {
+        onClose();
+      }
+    } catch (error) {
+      // O erro é tratado no pai e refletido via prop submitError
+      console.error('Submit error:', error);
+    }
   };
 
   const handleReceiptDetected = (data: { description: string; amount: number; date: string; category?: string; notes?: string }) => {
@@ -240,7 +271,22 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-300">
-      <Card className="w-full max-w-md p-8 shadow-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+      <FallingItems 
+        isVisible={isAnimating} 
+        category={animationCategory} 
+        mode={animationMode}
+        onComplete={() => {
+          setIsAnimating(false);
+          if (animationMode === 'zen') {
+            onClose();
+          }
+        }} 
+      />
+      
+      <Card className={cn(
+        "w-full max-w-md p-8 shadow-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200 transition-all",
+        isAnimating && "opacity-0 scale-90"
+      )}>
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <div className={cn("p-2.5 rounded-xl text-white shadow-lg", type === 'expense' ? 'bg-accent' : 'bg-primary')}>
@@ -254,6 +300,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
             onClick={onClose}
             variant="ghost"
             size="icon"
+            disabled={isAnimating}
           >
             <X className="w-6 h-6" />
           </Button>
@@ -282,6 +329,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
                 name="amount"
                 placeholder="0,00"
                 className="text-2xl font-black"
+                disabled={isAnimating}
                 required
               />
               <Button
@@ -290,6 +338,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
                 size="icon"
                 className="h-14 w-14 flex-shrink-0 rounded-xl shadow-md"
                 title="Abrir Calculadora"
+                disabled={isAnimating}
               >
                 <Calculator className="w-6 h-6" />
               </Button>
@@ -303,6 +352,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
                     {...calculatorInputProps}
                     placeholder="Valor"
                     className="font-bold flex-1"
+                    disabled={isAnimating}
                   />
                   <div className="flex gap-1">
                     <Button
@@ -311,6 +361,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
                       size="icon"
                       className="h-12 w-12 flex-shrink-0 bg-primary/20 hover:bg-primary/30 text-primary border-0"
                       title="Adicionar"
+                      disabled={isAnimating}
                     >
                       <Plus className="w-5 h-5" />
                     </Button>
@@ -320,6 +371,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
                       size="icon"
                       className="h-12 w-12 flex-shrink-0 bg-accent/20 hover:bg-accent/30 text-accent border-0"
                       title="Subtrair"
+                      disabled={isAnimating}
                     >
                       <Minus className="w-5 h-5" />
                     </Button>
@@ -334,6 +386,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
                   onClick={handleApplyCalculation}
                   variant="outline"
                   className="w-full text-xs font-black uppercase"
+                  disabled={isAnimating}
                 >
                   Aplicar ao Valor
                 </Button>
@@ -346,6 +399,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
             name="category"
             value={formData.category}
             onChange={handleChange}
+            disabled={isAnimating}
             required
           >
             <option value="">Selecione uma categoria</option>
@@ -364,6 +418,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
               value={formData.description}
               onChange={handleChange}
               placeholder="Ex: Compras no supermercado"
+              disabled={isAnimating}
               required
             />
             {type === 'income' && formData.category === 'Rendimentos' && (
@@ -376,6 +431,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
                     variant="ghost"
                     size="sm"
                     className="px-3 py-1.5 rounded-full text-[10px] uppercase font-black border border-border"
+                    disabled={isAnimating}
                   >
                     {suggestion}
                   </Button>
@@ -390,6 +446,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
               name="savingsGoalId"
               value={formData.savingsGoalId}
               onChange={handleChange}
+              disabled={isAnimating}
               required
             >
               <option value="">Selecione uma meta</option>
@@ -410,6 +467,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
               name="paymentMethod"
               value={formData.paymentMethod}
               onChange={handleChange}
+              disabled={isAnimating}
               required
             >
               <option value="">Selecione um meio de pagamento</option>
@@ -428,6 +486,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
               name="date"
               value={formData.date}
               onChange={handleChange}
+              disabled={isAnimating}
               required
             />
           )}
@@ -439,6 +498,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
               name="dueDate"
               value={formData.dueDate}
               onChange={handleChange}
+              disabled={isAnimating}
               required={!formData.isPaid}
             />
           )}
@@ -460,9 +520,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
           <div 
             className={cn(
               "flex items-center gap-4 p-5 rounded-2xl border-2 transition-all cursor-pointer group",
-              formData.isPaid ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+              formData.isPaid ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border',
+              isAnimating && "pointer-events-none"
             )}
-            onClick={() => handleChange({ target: { name: 'isPaid', value: !formData.isPaid, type: 'checkbox', checked: !formData.isPaid } } as any)}
+            onClick={() => !isAnimating && handleChange({ target: { name: 'isPaid', value: !formData.isPaid, type: 'checkbox', checked: !formData.isPaid } } as any)}
           >
             <div className={cn(
               "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all",
@@ -485,12 +546,13 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
               onClick={onClose}
               variant="outline"
               className="flex-1"
+              disabled={isAnimating}
             >
               Cancelar
             </Button>
             <Button
               type="submit"
-              disabled={amountValue === 0 || !formData.description || !formData.category || !!localError}
+              disabled={isAnimating || amountValue === 0 || !formData.description || !formData.category || !!localError}
               className="flex-1"
             >
               {transaction ? 'Salvar' : 'Criar'}

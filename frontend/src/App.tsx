@@ -164,7 +164,7 @@ function App() {
                   savingsGoals={savingsGoals}
                   onSubmit={async (data: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
                     await addTransaction(data);
-                    navigate('/expenses');
+                    // navigate('/expenses'); // Removido para permitir que a animação termine
                   }} 
                   onClose={() => navigate('/expenses')} 
                 />
