@@ -420,19 +420,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   const totalSavingsGoals = activeGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
   const totalSaved = activeGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
 
-  const getBalanceStatusLabel = () => {
-    if (finalBalance < -0.001) return <AlertTriangle className="w-5 h-5 opacity-90" />;
-    
-    let label = includeBenefits ? 'Ocultar vales' : 'Ver vales';
-    if (!isSelectedMonthCurrent) label = 'Vales inclusos';
-
-    return (
-      <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap opacity-80">
-        {label}
-      </span>
-    );
-  };
-
   const handleBalanceCardClick = () => {
     setShowConfetti(true);
     setIsPulsing(true);

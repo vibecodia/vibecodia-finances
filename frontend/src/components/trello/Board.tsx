@@ -1,7 +1,6 @@
-import { Plus, Moon, Sun } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 
-import { useTheme } from '../../contexts/ThemeContext';
 import { useLocalStorage } from '../../hooks/trello/useLocalStorage';
 import { Task, Column as ColumnType } from '../../types/trello/task';
 
@@ -21,7 +20,6 @@ const initialColumns: ColumnType[] = [
 
 export function Board() {
   const [tasks, setTasks] = useLocalStorage<Task[]>('tasks', []);
-  const { isDarkMode, toggleTheme } = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();

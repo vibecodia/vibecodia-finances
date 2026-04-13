@@ -45,8 +45,12 @@ const Header: React.FC = () => {
           </p>
         </Link>
         
-        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-          <ThemeSelector />
+        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0 relative">
+          <div className="flex items-center justify-end min-w-[40px]">
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10">
+              <ThemeSelector />
+            </div>
+          </div>
           {!isRoot && (
             <button 
               onClick={handleHeaderClick}

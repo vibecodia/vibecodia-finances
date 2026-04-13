@@ -17,7 +17,7 @@ interface TaskCardProps {
   onDragEnd?: () => void;
 }
 
-export function TaskCard({ task, onDragStart, onCardClick, onMoveForward = () => {}, onMoveBackward = () => {}, onDelete = () => {} }: TaskCardProps) {
+export function TaskCard({ task, onDragStart, onCardClick, onMoveForward = () => {}, onMoveBackward = () => {} }: TaskCardProps) {
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.dataTransfer.effectAllowed = 'move';
     onDragStart(task);

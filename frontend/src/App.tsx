@@ -1,4 +1,3 @@
-import { Moon, Sun, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
@@ -23,7 +22,6 @@ import { useShoppingList } from './hooks/useShoppingList';
 import { getBrazilDateString } from './utils/helpers';
 import TransactionForm from './components/TransactionForm';
 import { Transaction } from './types';
-import { Button } from './components/ui/Button';
 
 const HojeRedirect = () => {
   const navigate = useNavigate();
@@ -55,7 +53,7 @@ function App() {
     isLoading,
   } = useFinancialData();
 
-  const { theme, isDarkMode, toggleTheme } = useTheme();
+  const { theme, isDarkMode } = useTheme();
   const [isShoppingListOpen, setIsShoppingListOpen] = useState(false);
   const [showInitialBalanceModal, setShowInitialBalanceModal] = useState(false);
   const { shoppingList, addItem, togglePurchased, removeItem, clearPurchased, togglePriority } = useShoppingList();
