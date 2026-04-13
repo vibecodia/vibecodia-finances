@@ -236,7 +236,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
         <div className="flex flex-col md:flex-row gap-8 pt-2">
           {renderMonth(currentMonth)}
-          <div className="hidden md:block w-px bg-cardBorder opacity-20" />
+          <div className="hidden md:block w-px bg-muted opacity-20" />
           <div className="hidden md:block">
             {renderMonth(nextMonth)}
           </div>

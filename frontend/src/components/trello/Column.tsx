@@ -3,6 +3,7 @@ import React from 'react';
 import { Task } from '../../types/trello/task';
 
 import { TaskCard } from './TaskCard';
+import { cn } from '../../lib/utils';
 
 interface ColumnProps {
   id: 'todo' | 'inProgress' | 'done';
@@ -17,34 +18,52 @@ interface ColumnProps {
   onDragLeaveColumn?: (e: React.DragEvent) => void;
   onMoveForward: (taskId: string) => void;
   onMoveBackward: (taskId: string) => void;
+  onDeleteTask: (taskId: string) => void;
 }
 
-export function Column({ id, title, tasks, onDragStart, onDragOver, onDrop, onDragLeaveColumn, dragOver, onCardClick, onDragEnd, onMoveForward, onMoveBackward }: ColumnProps) {
+export function Column({ id, title, tasks, onDragStart, onDragOver, onDrop, onDragLeaveColumn, dragOver, onCardClick, onDragEnd, onMoveForward, onMoveBackward, onDeleteTask }: ColumnProps) {
   const getColumnColor = () => {
     switch (id) {
       case 'todo':
-        return 'border-blue-200 dark:border-blue-300 bg-gradient-to-b from-blue-50 to-blue-100 dark:from-blue-100 dark:to-blue-200';
+        return 'border-blue-500/20 bg-blue-500/5';
       case 'inProgress':
-        return 'border-yellow-200 dark:border-yellow-300 bg-gradient-to-b from-yellow-50 to-yellow-100 dark:from-yellow-100 dark:to-yellow-200';
+        return 'border-amber-500/20 bg-amber-500/5';
       case 'done':
-        return 'border-green-200 dark:border-green-300 bg-gradient-to-b from-green-50 to-green-100 dark:from-green-100 dark:to-green-200';
+        return 'border-green-500/20 bg-green-500/5';
+    }
+  };
+
+  const getAccentColor = () => {
+    switch (id) {
+      case 'todo': return 'bg-blue-500';
+      case 'inProgress': return 'bg-amber-500';
+      case 'done': return 'bg-green-500';
     }
   };
 
   return (
     <div
       data-column-id={id}
-      className={`w-full rounded-xl border-2 ${getColumnColor()} p-4 transition-all duration-200 ${dragOver ? 'border-dashed border-blue-500 scale-105' : ''}`}
+      className={cn(
+        "w-full rounded-[2rem] border-2 p-6 transition-all duration-300 min-h-[500px] bg-card",
+        getColumnColor(),
+        dragOver ? 'border-dashed border-primary scale-[1.02] shadow-2xl' : 'border-transparent'
+      )}
       onDragOver={onDragOver}
       onDrop={(e) => onDrop(e, id)}
       onDragLeave={onDragLeaveColumn}
     >
-      <div className="mb-4">
-        <h2 className="font-handwriting font-bold text-gray-800 dark:text-gray-900 text-xl mb-1">{title}</h2>
-        <div className="w-12 h-1 bg-current opacity-30 rounded-full"></div>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-black text-foreground uppercase tracking-tight">{title}</h2>
+          <div className={cn("w-12 h-1.5 mt-1 rounded-full", getAccentColor())}></div>
+        </div>
+        <div className="px-3 py-1 rounded-full bg-foreground/5 text-muted-foreground text-xs font-black">
+          {tasks.length}
+        </div>
       </div>
       
-      <div className="flex flex-col gap-3 min-h-[300px]">
+      <div className="flex flex-col gap-4">
         {tasks.length > 0 ? (
           tasks.map((task) => (
             <TaskCard
@@ -55,11 +74,12 @@ export function Column({ id, title, tasks, onDragStart, onDragOver, onDrop, onDr
               onDragEnd={onDragEnd}
               onMoveForward={onMoveForward}
               onMoveBackward={onMoveBackward}
+              onDelete={onDeleteTask}
             />
           ))
         ) : (
-          <div className="flex items-center justify-center h-full text-gray-400 font-handwriting">
-            Sem tarefas
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground/20 border-2 border-dashed border-border rounded-3xl">
+            <span className="text-xs font-black uppercase tracking-widest">Vazio</span>
           </div>
         )}
       </div>

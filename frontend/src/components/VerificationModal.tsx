@@ -1,133 +1,178 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import { useVerification } from '../contexts/VerificationContext';
+import { Card } from './ui/Card';
+import { cn } from '../lib/utils';
+import { ShieldCheck, Loader2, Delete, X } from 'lucide-react';
 
 const VerificationModal: React.FC = () => {
+  const appVersion = (import.meta as any).env.APP_VERSION;
   const [digits, setDigits] = useState<string[]>(['', '', '']);
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // New loading state
+  const [isLoading, setIsLoading] = useState(false);
   const { verify, showVerificationModal } = useVerification();
-
-  const inputRefs = [
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-  ];
 
   useEffect(() => {
     if (showVerificationModal) {
-      inputRefs[0].current?.focus();
       setDigits(['', '', '']);
       setError('');
-      setIsLoading(false); // Reset loading state
+      setIsLoading(false);
     }
   }, [showVerificationModal]);
 
+  // Handle physical keyboard input
   useEffect(() => {
-    // This effect handles focusing the first input when an error occurs
-    if (error) {
-      inputRefs[0].current?.focus();
-    }
-  }, [error]);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!showVerificationModal || isLoading) return;
+
+      if (/^[0-9]$/.test(e.key)) {
+        handleDigitClick(e.key);
+      } else if (e.key === 'Backspace') {
+        handleDelete();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showVerificationModal, isLoading, digits]);
 
   const handleVerificationAttempt = async (fullCode: string) => {
     setIsLoading(true);
-    setError(''); // Clear previous errors
+    setError('');
 
     // Simulate a delay for the loading animation
-    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+    await new Promise(resolve => setTimeout(resolve, 800));
 
     if (await verify(fullCode)) {
-      // The verify function already handles closing the modal on success
       setCodeAndErrorOnSuccess();
     } else {
       setError('Código incorreto. Tente novamente.');
-      setIsLoading(false); // Stop loading on error
-      setDigits(['', '', '']); // Clear the digits
+      setIsLoading(false);
+      setDigits(['', '', '']);
     }
   };
 
-  const handleChange = (index: number, value: string) => {
-    if (!/^[0-9]$/.test(value) && value !== '') {
-      return;
-    }
+  const handleDigitClick = (digit: string) => {
+    if (isLoading) return;
+    
+    const nextEmptyIndex = digits.findIndex(d => d === '');
+    if (nextEmptyIndex !== -1) {
+      const newDigits = [...digits];
+      newDigits[nextEmptyIndex] = digit;
+      setDigits(newDigits);
 
-    const newDigits = [...digits];
-    newDigits[index] = value;
-    setDigits(newDigits);
-
-    if (value !== '' && index < inputRefs.length - 1) {
-      inputRefs[index + 1].current?.focus();
-    }
-
-    if (newDigits.every(digit => digit !== '')) {
-      const fullCode = newDigits.join('');
-      handleVerificationAttempt(fullCode);
+      if (newDigits.every(d => d !== '')) {
+        handleVerificationAttempt(newDigits.join(''));
+      }
     }
   };
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && digits[index] === '' && index > 0) {
-      inputRefs[index - 1].current?.focus();
+  const handleDelete = () => {
+    if (isLoading) return;
+    
+    const lastFilledIndex = [...digits].reverse().findIndex(d => d !== '');
+    if (lastFilledIndex !== -1) {
+      const actualIndex = digits.length - 1 - lastFilledIndex;
+      const newDigits = [...digits];
+      newDigits[actualIndex] = '';
+      setDigits(newDigits);
     }
   };
 
   const setCodeAndErrorOnSuccess = () => {
     setDigits(['', '', '']);
     setError('');
-    setIsLoading(false); // Ensure loading is false on success
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const fullCode = digits.join('');
-    handleVerificationAttempt(fullCode);
+    setIsLoading(false);
   };
 
   if (!showVerificationModal) {
     return null;
   }
 
-  const isButtonDisabled = digits.some(digit => digit === '') || isLoading;
+  const PinButton: React.FC<{ value: string; onClick: () => void; icon?: React.ReactNode }> = ({ value, onClick, icon }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={isLoading}
+      className={cn(
+        "w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center text-2xl font-black rounded-full transition-all active:scale-90",
+        "bg-white/5 border border-white/10 hover:bg-primary/20 hover:border-primary/40 hover:text-primary text-foreground/80",
+        "disabled:opacity-20 disabled:cursor-not-allowed shadow-lg",
+        "backdrop-blur-sm"
+      )}
+    >
+      {icon || value}
+    </button>
+  );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-8 rounded-lg shadow-lg text-center">
-        <h2 className="text-2xl font-bold mb-4">Verificação Necessária</h2>
-        <p className="mb-4">Por favor, insira o código de 3 dígitos para continuar.</p>
-        <form onSubmit={handleSubmit}>
-          <div className="flex justify-center space-x-2 mb-4">
+    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[200] p-4 backdrop-blur-2xl animate-in fade-in duration-500">
+      <Card className="w-full max-w-sm p-8 sm:p-10 shadow-2xl animate-in zoom-in-95 duration-300 text-center border-white/10 bg-card/40">
+        <div className="flex flex-col items-center mb-6">
+          <div className="p-5 rounded-full bg-primary/10 text-primary mb-4 shadow-[0_0_30px_rgba(var(--primary),0.2)] border border-primary/20">
+            {isLoading ? (
+              <Loader2 className="w-10 h-10 animate-spin" />
+            ) : (
+              <ShieldCheck className="w-10 h-10" />
+            )}
+          </div>
+          <h2 className="text-2xl font-black text-foreground uppercase tracking-tighter mb-2">
+            Segurança <span className="text-primary italic">Vibecodia</span>
+          </h2>
+          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest opacity-60">
+            Acesso Restrito • Digite o PIN
+          </p>
+        </div>
+
+        <div className="space-y-8">
+          {/* Display area */}
+          <div className="flex justify-center gap-4 mb-4">
             {digits.map((digit, index) => (
-              <input
+              <div
                 key={index}
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => handleChange(index, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(index, e)}
-                className="w-12 h-12 text-3xl text-center border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                autoFocus={index === 0}
-                ref={inputRefs[index]}
-                disabled={isLoading} // Disable inputs during loading
-              />
+                className={cn(
+                  "w-14 h-18 sm:w-16 sm:h-20 flex items-center justify-center text-4xl font-black border-2 rounded-2xl transition-all",
+                  digit ? "bg-primary/10 border-primary text-primary shadow-[0_0_15px_rgba(var(--primary),0.2)]" : "bg-background/20 border-border text-muted-foreground/10",
+                  error && "border-red-500 text-red-500 animate-shake bg-red-500/5",
+                  isLoading && "opacity-50"
+                )}
+              >
+                {digit ? (
+                  <div className="w-3 h-3 rounded-full bg-primary animate-in zoom-in-0 duration-200" />
+                ) : (
+                  <div className="w-2 h-2 rounded-full bg-muted-foreground/20" />
+                )}
+              </div>
             ))}
           </div>
-          {error && <p className="text-red-500 mb-4">{error}</p>}
-          <button
-            type="submit"
-            className={`w-full p-2 rounded-md text-white font-bold transition-colors duration-300
-              ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'}
-            `}
-            disabled={isButtonDisabled}
-          >
-            {isLoading ? 'Verificando...' : 'Verificar'}
-          </button>
-        </form>
-      </div>
+
+          {error && (
+            <div className="py-2 px-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-[9px] font-black uppercase tracking-widest animate-shake">
+              {error}
+            </div>
+          )}
+
+          {/* Keypad */}
+          <div className="grid grid-cols-3 gap-4 justify-items-center">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+              <PinButton key={num} value={num.toString()} onClick={() => handleDigitClick(num.toString())} />
+            ))}
+            <PinButton value="C" onClick={() => setDigits(['', '', ''])} icon={<X className="w-5 h-5 opacity-50" />} />
+            <PinButton value="0" onClick={() => handleDigitClick("0")} />
+            <PinButton value="DEL" onClick={handleDelete} icon={<Delete className="w-5 h-5 opacity-50" />} />
+          </div>
+
+          <div className="pt-4">
+            <p className="text-[8px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-30">
+              Criptografado Vibecodia v{appVersion}
+            </p>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 };
+
+
 
 export default VerificationModal;

@@ -2,19 +2,21 @@ import Cookies from "js-cookie";
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 const VERIFICATION_COOKIE_NAME: string =
-  import.meta.env.VITE_VERIFICATION_COOKIE_NAME || "user_verified";
+  (import.meta as any).env.VITE_VERIFICATION_COOKIE_NAME || "user_verified";
 const PIN_COOKIE_NAME: string = "pin_code";
 
 const VERIFICATION_TIMEOUT: number =
-  Number(import.meta.env.VITE_VERIFICATION_TIMEOUT_MS) || 15 * 60 * 1000; // Default: 15 min
+  Number((import.meta as any).env.VITE_VERIFICATION_TIMEOUT_MS) || 15 * 60 * 1000; // Default: 15 min
 
 interface VerificationContextType {
   isVerified: boolean;
+  isSettingsVerified: boolean;
   pin: string | null;
   verify: (code: string) => Promise<boolean>;
   logout: () => void;
   showVerificationModal: boolean;
   setShowVerificationModal: (show: boolean) => void;
+  setSettingsVerified: (verified: boolean) => void;
   checkVerification: () => void;
   isInitializing: boolean;
 }
@@ -35,6 +37,7 @@ interface VerificationProviderProps {
 
 export const VerificationProvider: React.FC<VerificationProviderProps> = ({ children }) => {
   const [isVerified, setIsVerified] = useState<boolean>(false);
+  const [isSettingsVerified, setIsSettingsVerified] = useState<boolean>(false);
   const [pin, setPin] = useState<string | null>(null);
   const [showVerificationModal, setShowVerificationModal] = useState<boolean>(false);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -48,6 +51,7 @@ export const VerificationProvider: React.FC<VerificationProviderProps> = ({ chil
       if (Date.now() - lastVerificationTime < VERIFICATION_TIMEOUT) {
         setIsVerified(true);
         setPin(storedPin);
+        // On initial check, we don't automatically verify settings
       } else {
         logout(); // Se o tempo expirou, faça logout
       }
@@ -74,10 +78,14 @@ export const VerificationProvider: React.FC<VerificationProviderProps> = ({ chil
       });
 
       if (response.ok) {
-        const cookieOptions = { expires: 3 }; // 3 dias
+        // Calcula a expiração em dias com base no timeout definido (js-cookie usa dias no campo expires)
+        const expirationInDays = VERIFICATION_TIMEOUT / (24 * 60 * 60 * 1000);
+        const cookieOptions = { expires: expirationInDays };
+        
         Cookies.set(VERIFICATION_COOKIE_NAME, new Date().toISOString(), cookieOptions);
         Cookies.set(PIN_COOKIE_NAME, code, cookieOptions);
         setIsVerified(true);
+        setIsSettingsVerified(true); // Verifying PIN also verifies settings
         setPin(code);
         setShowVerificationModal(false);
         return true;
@@ -93,13 +101,25 @@ export const VerificationProvider: React.FC<VerificationProviderProps> = ({ chil
     Cookies.remove(VERIFICATION_COOKIE_NAME);
     Cookies.remove(PIN_COOKIE_NAME);
     setIsVerified(false);
+    setIsSettingsVerified(false);
     setPin(null);
     setShowVerificationModal(true);
   };
 
   return (
     <VerificationContext.Provider
-      value={{ isVerified, pin, verify, logout, showVerificationModal, setShowVerificationModal, checkVerification, isInitializing }}
+      value={{ 
+        isVerified, 
+        isSettingsVerified, 
+        pin, 
+        verify, 
+        logout, 
+        showVerificationModal, 
+        setShowVerificationModal, 
+        setSettingsVerified: setIsSettingsVerified,
+        checkVerification, 
+        isInitializing 
+      }}
     >
       {children}
     </VerificationContext.Provider>

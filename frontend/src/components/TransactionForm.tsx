@@ -1,5 +1,5 @@
 import { addMonths } from 'date-fns';
-import { Plus, X, Calendar, CreditCard, Calculator, Wallet, Receipt, AlertCircle } from 'lucide-react';
+import { Plus, Minus, X, CreditCard, Calculator, Wallet, Receipt, AlertCircle } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 
 import { useTheme } from '../contexts/ThemeContext';
@@ -8,7 +8,11 @@ import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import { SavingsGoal, Transaction, PaymentMethod } from '../types';
 import { formatCurrency, getBrazilDateString } from '../utils/helpers';
-
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { Select } from './ui/Select';
+import { Card } from './ui/Card';
+import { cn } from '../lib/utils';
 
 import ImageUpload from './ImageUpload';
 
@@ -220,6 +224,13 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     }
   };
 
+  const handleSubtractNumber = () => {
+    if (calculatorAmountValue > 0) {
+      setCurrentSum(prevSum => prevSum - calculatorAmountValue);
+      setCalculatorValue(0);
+    }
+  };
+
   const handleApplyCalculation = () => {
     setAmountValue(currentSum);
     setCurrentSum(0);
@@ -228,249 +239,214 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto" style={{ backgroundColor: theme.cardBackground }}>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-text">
-            {transaction ? 'Editar' : 'Nova'} {type === 'expense' ? 'Despesa' : 'Receita'}
-          </h2>
-          <button
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-300">
+      <Card className="w-full max-w-md p-8 shadow-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className={cn("p-2.5 rounded-xl text-white shadow-lg", type === 'expense' ? 'bg-accent' : 'bg-primary')}>
+              {type === 'expense' ? <Receipt className="w-6 h-6" /> : <Wallet className="w-6 h-6" />}
+            </div>
+            <h2 className="text-xl font-black text-foreground uppercase tracking-tight">
+              {transaction ? 'Editar' : 'Nova'} {type === 'expense' ? 'Despesa' : 'Receita'}
+            </h2>
+          </div>
+          <Button
             onClick={onClose}
-            className="p-2 rounded-full transition-colors hover:bg-cardBorder"
+            variant="ghost"
+            size="icon"
           >
-            <X className="w-5 h-5 text-text" />
-          </button>
+            <X className="w-6 h-6" />
+          </Button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {(submitError || localError) && (
             <div
               ref={submitErrorRef}
               tabIndex={-1}
               role="alert"
               aria-live="assertive"
-              className="rounded-xl border px-4 py-3 text-sm font-medium outline-none flex items-center gap-2"
-              style={{ borderColor: theme.accent, color: theme.text, backgroundColor: theme.accent + '10' }}
+              className="rounded-2xl border-2 px-4 py-3 text-xs font-bold uppercase tracking-tight outline-none flex items-center gap-3 animate-in shake duration-300"
+              style={{ borderColor: theme.accent, color: theme.accent, backgroundColor: theme.accent + '10' }}
             >
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
               {submitError || localError}
             </div>
           )}
-          <div>
-            <label className="block text-sm font-medium text-text mb-2">
-              Valor (R$)
-            </label>
-            <div className="flex items-center gap-2">
-              <input
+          
+          <div className="space-y-4">
+            <div className="flex items-end gap-3">
+              <Input
                 {...amountInputProps}
+                label="Valor (R$)"
                 name="amount"
                 placeholder="0,00"
-                className="w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-                style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
+                className="text-2xl font-black"
                 required
               />
-              <button
+              <Button
                 type="button"
                 onClick={() => setShowCalculator(!showCalculator)}
-                className="p-3 text-white rounded-xl bg-primary hover:bg-secondary transition-colors flex-shrink-0"
+                size="icon"
+                className="h-14 w-14 flex-shrink-0 rounded-xl shadow-md"
                 title="Abrir Calculadora"
               >
-                <Calculator className="w-5 h-5" />
-              </button>
+                <Calculator className="w-6 h-6" />
+              </Button>
             </div>
 
             {showCalculator && (
-              <div className="mt-4 p-4 rounded-xl border" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                <h4 className="text-md font-semibold text-text mb-3">Calculadora de Soma</h4>
-                <div className="flex items-center gap-2 mb-3">
-                  <input
+              <Card className="p-5 border-2 border-dashed space-y-4 animate-in slide-in-from-top-2 duration-200" style={{ borderColor: theme.cardBorder }}>
+                <h4 className="text-xs font-black text-muted-foreground uppercase tracking-widest">Calculadora</h4>
+                <div className="flex items-center gap-2">
+                  <Input
                     {...calculatorInputProps}
-                    placeholder="Adicionar valor"
-                    className="w-full px-3 py-2 rounded-lg focus:ring-1 focus:ring-primary focus:border-transparent"
-                    style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
+                    placeholder="Valor"
+                    className="font-bold flex-1"
                   />
-                  <button
-                    type="button"
-                    onClick={handleAddNumber}
-                    className="p-2 text-white rounded-lg bg-primary hover:bg-secondary transition-colors"
-                  >
-                    <Plus className="w-5 h-5" />
-                  </button>
+                  <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      onClick={handleAddNumber}
+                      size="icon"
+                      className="h-12 w-12 flex-shrink-0 bg-primary/20 hover:bg-primary/30 text-primary border-0"
+                      title="Adicionar"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleSubtractNumber}
+                      size="icon"
+                      className="h-12 w-12 flex-shrink-0 bg-accent/20 hover:bg-accent/30 text-accent border-0"
+                      title="Subtrair"
+                    >
+                      <Minus className="w-5 h-5" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="text-right text-lg font-bold text-text mb-3">
-                  Soma Atual: {currentSum.toFixed(2).replace('.', ',')}
+                <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20">
+                  <span className="text-[10px] font-black uppercase opacity-40">Soma Atual</span>
+                  <span className="text-lg font-black text-primary">{formatCurrency(currentSum)}</span>
                 </div>
-                <button
+                <Button
                   type="button"
                   onClick={handleApplyCalculation}
-                  className="w-full px-4 py-2 text-white rounded-xl bg-primary hover:bg-secondary transition-colors"
+                  variant="outline"
+                  className="w-full text-xs font-black uppercase"
                 >
                   Aplicar ao Valor
-                </button>
-              </div>
+                </Button>
+              </Card>
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-text mb-2">
-              Categoria
-            </label>
-            <select
-              name="category"
-              value={formData.category}
-              onChange={handleChange}
-              className="w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-              style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
-              required
-            >
-              <option value="">Selecione uma categoria</option>
-              {categories.map(category => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            label="Categoria"
+            name="category"
+            value={formData.category}
+            onChange={handleChange}
+            required
+          >
+            <option value="">Selecione uma categoria</option>
+            {categories.map(category => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </Select>
 
-          <div>
-            <label className="block text-sm font-medium text-text mb-2">
-              Descrição
-            </label>
-            <input
+          <div className="space-y-2">
+            <Input
+              label="Descrição"
               type="text"
               name="description"
               value={formData.description}
               onChange={handleChange}
               placeholder="Ex: Compras no supermercado"
-              className="w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-              style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
               required
             />
             {type === 'income' && formData.category === 'Rendimentos' && (
-              <div className="flex flex-wrap gap-2 mt-2">
+              <div className="flex flex-wrap gap-2 pt-1">
                 {["Rendimentos simples", "Rendimento semanal cofrinhos", "Rendimento quinzenal cofrinhos", "Rendimento mensal cofrinhos"].map((suggestion) => (
-                  <button
+                  <Button
                     key={suggestion}
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, description: suggestion }))}
-                    className="px-3 py-1 rounded-full text-xs whitespace-nowrap transition-colors border"
-                    style={{ 
-                      backgroundColor: theme.cardBackground, 
-                      color: theme.text, 
-                      borderColor: theme.cardBorder
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = theme.cardBorder;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = theme.cardBackground;
-                    }}
+                    variant="ghost"
+                    size="sm"
+                    className="px-3 py-1.5 rounded-full text-[10px] uppercase font-black border border-border"
                   >
                     {suggestion}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
           </div>
 
           {showGoalSelect && (
-            <div>
-              <label className="block text-sm font-medium text-text mb-2">
-                Meta para o aporte
-              </label>
-              <select
-                name="savingsGoalId"
-                value={formData.savingsGoalId}
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-                style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
-                required
-              >
-                <option value="">Selecione uma meta</option>
-                {activeGoals.map(goal => {
-                  const id = goal.id || goal._id || '';
-                  return (
-                    <option key={id} value={id}>
-                      {goal.name}: {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-          )}
-
-          {type === 'expense' && (
-            <div>
-              <label className="block text-sm font-medium text-text mb-2">
-                <Wallet className="w-4 h-4 inline mr-1" />
-                Meio de Pagamento
-              </label>
-              <select
-                name="paymentMethod"
-                value={formData.paymentMethod}
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-                style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
-                required
-              >
-                <option value="">Selecione um meio de pagamento</option>
-                {paymentMethods.map(method => (
-                  <option key={method} value={method}>
-                    {method}
+            <Select
+              label="Meta para o aporte"
+              name="savingsGoalId"
+              value={formData.savingsGoalId}
+              onChange={handleChange}
+              required
+            >
+              <option value="">Selecione uma meta</option>
+              {activeGoals.map(goal => {
+                const id = goal.id || goal._id || '';
+                return (
+                  <option key={id} value={id}>
+                    {goal.name}: {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}
                   </option>
-                ))}
-              </select>
-            </div>
+                );
+              })}
+            </Select>
           )}
 
-          {/* Data da transação apenas para receitas */}
+          {type === 'expense' && (
+            <Select
+              label="Meio de Pagamento"
+              name="paymentMethod"
+              value={formData.paymentMethod}
+              onChange={handleChange}
+              required
+            >
+              <option value="">Selecione um meio de pagamento</option>
+              {paymentMethods.map(method => (
+                <option key={method} value={method}>
+                  {method}
+                </option>
+              ))}
+            </Select>
+          )}
+
           {type === 'income' && (
-            <div>
-              <label className="block text-sm font-medium text-text mb-2">
-                <Calendar className="w-4 h-4 inline mr-1" />
-                Data da Receita
-              </label>
-              <input
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-                style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
-                required
-              />
-              {formData.recurrence !== 'none' && (
-                <p className="text-xs text-text opacity-70 mt-1">
-                  Esta será a data da primeira ocorrência. As próximas serão calculadas automaticamente.
-                </p>
-              )}
-            </div>
+            <Input
+              label="Data da Receita"
+              type="date"
+              name="date"
+              value={formData.date}
+              onChange={handleChange}
+              required
+            />
           )}
 
           {type === 'expense' && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-text mb-2">
-                  <Calendar className="w-4 h-4 inline mr-1" />
-                  Data de Vencimento
-                </label>
-                <input
-                  type="date"
-                  name="dueDate"
-                  value={formData.dueDate}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-                  style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
-                  required={!formData.isPaid}
-                />
-              </div>
-            </>
+            <Input
+              label="Data de Vencimento"
+              type="date"
+              name="dueDate"
+              value={formData.dueDate}
+              onChange={handleChange}
+              required={!formData.isPaid}
+            />
           )}
 
           {type === 'expense' && (
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-text mb-1">
-                <Receipt className="w-4 h-4 inline mr-1" />
+            <div className="space-y-3">
+              <label className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                <Receipt className="w-4 h-4" />
                 Capturar via QR Code
               </label>
               <ImageUpload 
@@ -481,40 +457,47 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
           )}
 
           {/* Checkbox para "Pago" ou "Recebido" */}
-          <div className="flex items-center gap-3 p-4 rounded-xl" style={{ backgroundColor: theme.cardBackground }}>
-            <input
-              type="checkbox"
-              id="isPaid"
-              name="isPaid"
-              checked={formData.isPaid}
-              onChange={handleChange}
-              className="w-5 h-5 rounded focus:ring-primary text-primary"
-            />
-            <label htmlFor="isPaid" className="flex items-center gap-2 text-sm font-medium text-text">
-              <CreditCard className="w-4 h-4" />
-              {type === 'expense' ? 'Já foi pago' : 'Já foi recebido'}
-            </label>
+          <div 
+            className={cn(
+              "flex items-center gap-4 p-5 rounded-2xl border-2 transition-all cursor-pointer group",
+              formData.isPaid ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+            )}
+            onClick={() => handleChange({ target: { name: 'isPaid', value: !formData.isPaid, type: 'checkbox', checked: !formData.isPaid } } as any)}
+          >
+            <div className={cn(
+              "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all",
+              formData.isPaid ? 'bg-primary border-primary' : 'bg-transparent border-border group-hover:border-primary'
+            )}>
+              {formData.isPaid && <Plus className="w-4 h-4 text-white rotate-45" style={{ transform: 'rotate(0deg)' }} />}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-black text-foreground uppercase tracking-tight">
+                {type === 'expense' ? 'Já foi pago' : 'Já foi recebido'}
+              </p>
+              <p className="text-[10px] text-foreground opacity-40 font-bold uppercase">Marcar como concluído</p>
+            </div>
+            <CreditCard className={cn("w-6 h-6 transition-colors", formData.isPaid ? 'text-primary' : 'text-foreground opacity-20')} />
           </div>
 
-          <div className="flex gap-3 pt-4">
-            <button
+          <div className="flex gap-4 pt-6 border-t border-border">
+            <Button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-3 rounded-xl transition-colors hover:bg-cardBorder"
-              style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
+              variant="outline"
+              className="flex-1"
             >
               Cancelar
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              className={`flex-1 px-4 py-3 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 bg-primary hover:bg-secondary`}
+              disabled={amountValue === 0 || !formData.description || !formData.category || !!localError}
+              className="flex-1"
             >
-              <Plus className="w-4 h-4" />
-              {transaction ? 'Salvar' : 'Adicionar'}
-            </button>
+              {transaction ? 'Salvar' : 'Criar'}
+            </Button>
           </div>
         </form>
-      </div>
+      </Card>
     </div>
   );
 };

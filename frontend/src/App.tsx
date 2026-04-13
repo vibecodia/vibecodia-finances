@@ -1,4 +1,3 @@
-import { Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
@@ -16,7 +15,6 @@ import { TrelloBoard } from './components/trello/TrelloBoard';
 import VerificationModal from './components/VerificationModal';
 import { useTheme } from './contexts/ThemeContext';
 import { useVerification } from './contexts/VerificationContext';
-import ShoppingCartButton from './components/ShoppingCartButton';
 import ShoppingListModal from './components/ShoppingListModal';
 import { useFinancialData } from './hooks/useFinancialData';
 import { useShoppingList } from './hooks/useShoppingList';
@@ -34,7 +32,7 @@ const HojeRedirect = () => {
 };
 
 function App() {
-  const { pin, isInitializing } = useVerification();
+  const { pin, isInitializing, isVerified, isSettingsVerified, setShowVerificationModal } = useVerification();
   const navigate = useNavigate();
   const {
     transactions,
@@ -54,7 +52,7 @@ function App() {
     isLoading,
   } = useFinancialData();
 
-  const { theme, isDarkMode, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const [isShoppingListOpen, setIsShoppingListOpen] = useState(false);
   const [showInitialBalanceModal, setShowInitialBalanceModal] = useState(false);
   const { shoppingList, addItem, togglePurchased, removeItem, clearPurchased, togglePriority } = useShoppingList();
@@ -72,13 +70,27 @@ function App() {
   useEffect(() => {
     if (isInitializing) return;
 
-    if (pin) {
-      const hasSeenModal = sessionStorage.getItem(`hasSeenInitialBalanceModal_${pin}`);
-      if (!isLoading && transactions.length === 0 && !hasSeenModal) {
-        setShowInitialBalanceModal(true);
+    // Se tentar acessar settings sem verificação específica de settings, abre o modal
+    if (location.pathname === '/settings' && !isSettingsVerified) {
+      setShowVerificationModal(true);
+    }
+
+    // Lógica da tela de bem-vindo (Saldo Inicial)
+    // Mostra se: usuário está verificado, não está carregando e o banco está vazio
+    if (isVerified || pin) {
+      // Consideramos vazio se não houver transações ou se todas estiverem deletadas
+      const activeTransactions = transactions.filter(t => t.status !== 'deleted');
+      
+      if (!isLoading && activeTransactions.length === 0) {
+        // Verifica se já não foi fechado nesta sessão para ESTE PIN específico
+        const storageKey = `hasSeenInitialBalanceModal_${pin}`;
+        const hasSeenModal = sessionStorage.getItem(storageKey);
+        if (!hasSeenModal) {
+          setShowInitialBalanceModal(true);
+        }
       }
     }
-  }, [isLoading, transactions, pin, isInitializing]);
+  }, [isLoading, transactions?.length, pin, isVerified, isInitializing, location.pathname, isSettingsVerified, setShowVerificationModal]);
 
   useEffect(() => {
     const hasItems = Array.isArray(shoppingList) && shoppingList.filter(item => !item.purchased).length > 0;
@@ -97,54 +109,33 @@ function App() {
 
   const handleConfirmInitialBalance = (amount: number, type: 'income' | 'expense') => {
     addTransaction({
-      description: 'Saldo Inicial #1',
-      amount,
       type,
-      category: 'Saldo Inicial',
+      amount,
+      description: 'Saldo Inicial',
+      category: 'Outros',
       date: getBrazilDateString(),
       isPaid: true,
       recurrence: 'none',
-      paymentMethod: type === 'expense' ? 'pix' : undefined,
     });
-    if (pin) {
-      sessionStorage.setItem(`hasSeenInitialBalanceModal_${pin}`, 'true');
-    }
+    sessionStorage.setItem(`hasSeenInitialBalanceModal_${pin}`, 'true');
     setShowInitialBalanceModal(false);
   };
 
   const handleSkipInitialBalance = () => {
-    if (pin) {
-      sessionStorage.setItem(`hasSeenInitialBalanceModal_${pin}`, 'true');
-    }
+    sessionStorage.setItem(`hasSeenInitialBalanceModal_${pin}`, 'true');
     setShowInitialBalanceModal(false);
   };
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: theme.background }}>
-        {!isFocusMode && <Header />}
-        {!isFocusMode && <Navigation />}
-
         {!isFocusMode && (
-          <div className="fixed bottom-6 left-4 z-50 flex items-center">
-            <ShoppingCartButton
-              itemCount={Array.isArray(shoppingList) ? shoppingList.filter(item => !item.purchased).length : 0}
-              onClick={() => setIsShoppingListOpen(true)}
-              theme={theme}
-              animateCombined={animateCombined}
-            />
-
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-full bg-card-background text-text shadow-lg ml-1"
-              style={{ 
-                backgroundColor: theme.cardBackground,
-                color: theme.text
-              }}
-            >
-              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-          </div>
+          <Header 
+            shoppingItemCount={Array.isArray(shoppingList) ? shoppingList.filter(item => !item.purchased).length : 0}
+            onOpenShoppingList={() => setIsShoppingListOpen(true)}
+            animateShoppingButton={animateCombined}
+          />
         )}
+        {!isFocusMode && <Navigation />}
 
         {!isFocusMode && (
           <ShoppingListModal
@@ -157,7 +148,6 @@ function App() {
             clearPurchased={clearPurchased}
             togglePriority={togglePriority}
             theme={theme}
-            isDarkMode={isDarkMode}
           />
         )}
 
@@ -185,7 +175,14 @@ function App() {
             <Route path="/reports" element={<Reports transactions={transactions} savingsGoals={savingsGoals} />} />
             <Route path="/playground" element={<Playground transactions={transactions} savingsGoals={savingsGoals} onAddTransaction={addTransaction} />} />
             <Route path="/goals" element={<SavingsGoals goals={savingsGoals} onAdd={addSavingsGoal} onUpdate={updateSavingsGoal} onDelete={deleteSavingsGoal} onAddContribution={addSavingsContribution} onUpdateContribution={updateSavingsContribution} onDeleteContribution={deleteSavingsContribution} onUpdatePaymentStatus={updatePaymentStatus} />} />
-            <Route path="/settings" element={<Settings transactions={transactions} savingsGoals={savingsGoals} onImportData={importData} onClearAllData={clearAllData} />} />
+            <Route 
+              path="/settings" 
+              element={
+                isSettingsVerified ? (
+                  <Settings transactions={transactions} savingsGoals={savingsGoals} onImportData={importData} onClearAllData={clearAllData} />
+                ) : null
+              } 
+            />
             <Route path="/tasks" element={<TrelloBoard />} />
             <Route path="/hoje" element={<HojeRedirect />} />
           </Routes>

@@ -1,6 +1,10 @@
-import { X, Check, Trash2, PlusCircle, Star } from 'lucide-react';
+import { Check, Trash2, PlusCircle, Star, ShoppingBasket } from 'lucide-react';
 import React, { useState, useRef, useEffect } from 'react';
 import { TransitionGroup, CSSTransition } from 'react-transition-group';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { cn } from '../lib/utils';
 
 import { ColorPalette } from '../contexts/ThemeContext';
 
@@ -22,7 +26,6 @@ interface ShoppingListModalProps {
   clearPurchased: () => void;
   togglePriority: (id: string) => void;
   theme: ColorPalette;
-  isDarkMode: boolean;
 }
 
 const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
@@ -35,7 +38,6 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
   clearPurchased,
   togglePriority,
   theme,
-  isDarkMode,
 }) => {
   const [newItemName, setNewItemName] = useState('');
   const itemRefs = useRef(new Map<string, React.RefObject<HTMLLIElement>>());
@@ -57,120 +59,182 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
   }, [shoppingList]);
 
   const handleAddItem = () => {
-    addItem(newItemName);
+    if (!newItemName.trim()) return;
+    addItem(newItemName.trim());
     setNewItemName('');
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      onClick={onClose}
-    >
-      <div
-        className="bg-card-background p-6 rounded-lg shadow-xl w-11/12 max-w-md relative"
-        style={{
-          backgroundColor: theme.cardBackground,
-          color: theme.text,
-        }}
-        onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
-      >
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 text-text-light hover:text-text"
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md p-0 overflow-hidden border-none shadow-2xl">
+        <div 
+          className="p-6 transition-colors duration-300"
+          style={{ 
+            backgroundColor: theme.cardBackground,
+            color: theme.text 
+          }}
         >
-          <X size={24} />
-        </button>
-        <h2 className="text-2xl font-bold mb-4 text-center">Lista de Afazeres / Compras</h2>
+          <DialogHeader className="mb-6">
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <div 
+                className="p-2 rounded-xl"
+                style={{ backgroundColor: `${theme.primary}15` }}
+              >
+                <ShoppingBasket className="w-6 h-6" style={{ color: theme.primary }} />
+              </div>
+              <DialogTitle 
+                className="text-2xl font-black tracking-tight uppercase italic"
+                style={{ color: theme.text }}
+              >
+                Lista de Compras
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                Gerencie seus itens e afazeres
+              </DialogDescription>
+            </div>
+            <p className="text-sm text-center opacity-60 font-medium">
+              Gerencie seus itens e afazeres
+            </p>
+          </DialogHeader>
 
-        <div className="flex mb-4">
-          <input
-            type="text"
-            value={newItemName}
-            onChange={(e) => setNewItemName(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                handleAddItem();
-              }
-            }}
-            placeholder="Adicionar novo item..."
-            className="flex-grow p-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-primary"
-            style={{
-              backgroundColor: theme.background,
-              color: theme.text,
-              borderColor: theme.cardBorder,
-            }}
-          />
-          <button
-            onClick={handleAddItem}
-            className="bg-primary text-white p-2 rounded-r-md hover:bg-primary-dark flex items-center justify-center"
-          >
-            <PlusCircle size={20} />
-          </button>
+          <div className="flex gap-2 mb-6">
+            <Input
+              value={newItemName}
+              onChange={(e) => setNewItemName(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleAddItem()}
+              placeholder="O que você precisa comprar?"
+              className="flex-grow transition-all"
+              style={{ 
+                backgroundColor: theme.background,
+                borderColor: theme.cardBorder,
+                color: theme.text
+              }}
+            />
+            <Button
+              onClick={handleAddItem}
+              className="px-4 shrink-0 shadow-lg"
+              style={{ 
+                backgroundColor: theme.primary,
+                color: '#fff'
+              }}
+            >
+              <PlusCircle className="w-5 h-5" />
+            </Button>
+          </div>
+
+          <div className="space-y-4">
+            {Array.isArray(shoppingList) && shoppingList.length > 0 ? (
+              <TransitionGroup component="ul" className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                {shoppingList.map((item) => {
+                  const nodeRef = itemRefs.current.get(item.id);
+                  return (
+                    <CSSTransition
+                      key={item.id}
+                      timeout={300}
+                      classNames="shopping-list-item"
+                      nodeRef={nodeRef}
+                    >
+                      <li
+                        ref={nodeRef}
+                        className={cn(
+                          "group flex items-center justify-between p-3 rounded-xl transition-all duration-300 border",
+                          item.purchased 
+                            ? "opacity-60" 
+                            : "shadow-sm"
+                        )}
+                        style={{
+                          backgroundColor: item.purchased ? `${theme.primary}10` : theme.background,
+                          borderColor: item.purchased ? `${theme.primary}20` : theme.cardBorder,
+                        }}
+                      >
+                        <div 
+                          className="flex-grow flex items-center gap-3 cursor-pointer select-none"
+                          onClick={() => togglePurchased(item.id)}
+                        >
+                          <div 
+                            className={cn(
+                              "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
+                              item.purchased && "scale-110"
+                            )}
+                            style={{
+                              backgroundColor: item.purchased ? theme.primary : 'transparent',
+                              borderColor: item.purchased ? theme.primary : `${theme.text}20`
+                            }}
+                          >
+                            {item.purchased && <Check className="w-3 h-3 text-white stroke-[4]" />}
+                          </div>
+                          <span className={cn(
+                            "font-medium transition-all",
+                            item.purchased && "line-through opacity-50"
+                          )}>
+                            {item.name}
+                          </span>
+                          {item.isPriority && !item.purchased && (
+                            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500 animate-pulse" />
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => togglePriority(item.id)}
+                            className={cn(
+                              "h-10 w-10 rounded-xl transition-all",
+                              item.isPriority ? "text-yellow-500 bg-yellow-500/10 shadow-inner" : "opacity-60 hover:opacity-100 hover:text-yellow-500 hover:bg-yellow-500/10"
+                            )}
+                          >
+                            <Star className={cn("w-5 h-5", item.isPriority && "fill-yellow-500")} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => togglePurchased(item.id)}
+                            className={cn(
+                              "h-10 w-10 rounded-xl transition-all",
+                              item.purchased ? "text-green-500 bg-green-500/10 shadow-inner" : "opacity-60 hover:opacity-100 hover:text-green-500 hover:bg-green-500/10"
+                            )}
+                          >
+                            <Check className={cn("w-5 h-5", item.purchased && "stroke-[3]")} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeItem(item.id)}
+                            className="h-10 w-10 rounded-xl opacity-60 hover:opacity-100 hover:text-red-500 hover:bg-red-500/10 transition-all"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </Button>
+                        </div>
+                      </li>
+                    </CSSTransition>
+                  );
+                })}
+              </TransitionGroup>
+            ) : (
+              <div className="py-12 flex flex-col items-center justify-center text-center opacity-40">
+                <ShoppingBasket className="w-12 h-12 mb-3" />
+                <p className="font-medium uppercase tracking-widest text-[10px]">Sua lista está vazia</p>
+              </div>
+            )}
+          </div>
+
+          {shoppingList.some(item => item.purchased) && (
+            <Button
+              variant="outline"
+              onClick={clearPurchased}
+              className="mt-6 w-full transition-all uppercase tracking-widest text-[10px] font-bold h-10"
+              style={{
+                borderColor: `${theme.text}20`,
+                color: theme.text
+              }}
+            >
+              Limpar Itens Concluídos
+            </Button>
+          )}
         </div>
-
-        {Array.isArray(shoppingList) && shoppingList.length > 0 ? (
-          <TransitionGroup component="ul" className="space-y-2 max-h-80 overflow-y-auto pr-2">
-            {shoppingList.map((item) => {
-              const nodeRef = itemRefs.current.get(item.id);
-              return (
-                <CSSTransition
-                  key={item.id}
-                  timeout={500}
-                  classNames="shopping-list-item"
-                  nodeRef={nodeRef}
-                >
-                  <li
-                    ref={nodeRef}
-                    className={`flex items-center justify-between p-3 rounded-md transition-all duration-300 ${item.purchased ? 'bg-green-100 dark:bg-green-900 line-through opacity-70' : 'bg-background'}`}
-                    style={{
-                      backgroundColor: item.purchased ? (isDarkMode ? '#10B98133' : '#D1FAE5') : theme.background,
-                      color: theme.text,
-                    }}
-                  >
-                    <span className="flex-grow cursor-pointer" onClick={() => togglePurchased(item.id)}>
-                      {item.name}
-                    </span>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => togglePriority(item.id)}
-                        className={`p-1 rounded-full ${item.isPriority ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-300 hover:bg-gray-400'} text-white`}
-                      >
-                        <Star size={18} />
-                      </button>
-                      <button
-                        onClick={() => togglePurchased(item.id)}
-                        className={`p-1 rounded-full ${item.purchased ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-300 hover:bg-gray-400'} text-white`}
-                      >
-                        <Check size={18} />
-                      </button>
-                      <button
-                        onClick={() => removeItem(item.id)}
-                        className="p-1 rounded-full bg-red-500 hover:bg-red-600 text-white"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </li>
-                </CSSTransition>
-              );
-            })}
-          </TransitionGroup>
-        ) : (
-          <p className="text-center text-text-light">Sua lista está vazia.</p>
-        )}
-
-        {shoppingList.some(item => item.purchased) && (
-          <button
-            onClick={clearPurchased}
-            className="mt-4 w-full bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600"
-          >
-            Limpar Itens Feitos
-          </button>
-        )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

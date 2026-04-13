@@ -1,6 +1,6 @@
 import { format, getDate, getDaysInMonth, isBefore, startOfMonth, endOfMonth } from 'date-fns';
-import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil, Wifi, Check, X } from 'lucide-react';
+import React, { useState } from 'react';
 import Confetti from 'react-confetti';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,10 +11,14 @@ import useWindowSize from '../hooks/useWindowSize';
 import { Transaction, SavingsGoal } from '../types';
 import { calculateBalances } from '../utils/balanceCalculations';
 import { formatCurrency, filterTransactionsByMonth, formatPaymentMethod, getCurrentBrazilDate } from '../utils/helpers';
+import { cn } from '../lib/utils';
 import RecentTransactionsFloatingCard from './RecentTransactionsFloatingCard';
 import MonthSegmentedControl from './MonthSegmentedControl';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
 import { useCurrencyInput } from '../hooks/useCurrencyInput';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { Card } from './ui/Card';
 
 
 
@@ -79,9 +83,9 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
       {/* Header com status */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-text opacity-90">{label}</span>
+          <span className="text-sm font-semibold text-muted-foreground">{label}</span>
           {spent > 0 && (
-            <span className="text-[10px] text-text opacity-40 font-mono italic">
+            <span className="text-[10px] text-muted-foreground font-mono italic">
               (média diária {formatCurrency(avgDailySpent)})
             </span>
           )}
@@ -92,23 +96,23 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
       </div>
 
       {/* Barra invertida: vermelho da esquerda, verde à direita */}
-      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 relative overflow-hidden shadow-inner">
+      <div className="w-full bg-muted rounded-full h-3 relative overflow-hidden shadow-inner">
         {/* Vermelho: gasto — da esquerda */}
         <div
           className="h-3 transition-all duration-700 absolute left-0 rounded-l-full z-20"
           style={{
             width: `${spentPct}%`,
             background: isDanger
-              ? 'linear-gradient(90deg, #dc2626, #ef4444)'
+              ? 'linear-gradient(90deg, #ef4444, #b91c1c)'
               : isWarning
-                ? 'linear-gradient(90deg, #d97706, #fbbf24)'
-                : 'linear-gradient(90deg, #f87171, #ef4444)',
+                ? 'linear-gradient(90deg, #f59e0b, #d97706)'
+                : 'linear-gradient(90deg, #22c55e, #16a34a)',
           }}
         />
 
         {/* Verde: mercado (disponível — da direita, mas antes do flex) */}
         <div
-          className="bg-green-400 h-3 transition-all duration-700 absolute right-0 rounded-r-full"
+          className="bg-primary/40 h-3 transition-all duration-700 absolute right-0 rounded-r-full"
           style={{ width: `${remainingPct}%` }}
         />
 
@@ -123,7 +127,7 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
         {/* Linha divisória entre gasto e disponível */}
         {spentPct > 0 && remainingPct > 0 && (
           <div
-            className="absolute top-0 w-0.5 h-full bg-white/40 z-30"
+            className="absolute top-0 w-0.5 h-full bg-background/40 z-30"
             style={{ left: `${spentPct}%`, transform: 'translateX(-50%)' }}
           />
         )}
@@ -132,14 +136,14 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
       {/* Percentual usado abaixo da barra */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <span className="text-[10px] text-text opacity-40 font-mono">
+          <span className="text-[10px] text-muted-foreground font-mono">
             {spentPct.toFixed(0)}% utilizado
           </span>
           {flexPct > 0 && (
             <div className="flex items-center gap-3">
-               <div className="flex items-center gap-1 bg-green-500/5 px-2 py-0.5 rounded-full border border-green-500/10 transition-all hover:bg-green-500/10">
-                 <div className="w-1.5 h-1.5 bg-green-400 rounded-full shadow-[0_0_4px_rgba(74,222,128,0.5)]" />
-                 <span className="text-[9px] text-text opacity-70 font-black uppercase tracking-tighter">
+               <div className="flex items-center gap-1 bg-primary/5 px-2 py-0.5 rounded-full border border-primary/10 transition-all hover:bg-primary/10">
+                 <div className="w-1.5 h-1.5 bg-primary rounded-full shadow-[0_0_4px_rgba(74,222,128,0.5)]" />
+                 <span className="text-[9px] text-muted-foreground font-black uppercase tracking-tighter">
                    Saldo Mercado: {formatCurrency(remaining - flexAmount)}
                  </span>
                </div>
@@ -165,19 +169,19 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
           <div className="text-xs font-bold text-green-600 dark:text-green-400">
             {formatCurrency(income)}
           </div>
-          <div className="text-[10px] text-text opacity-60 uppercase">Recebido</div>
+          <div className="text-[10px] text-muted-foreground uppercase">Recebido</div>
         </div>
         <div>
-          <div className="text-xs font-bold text-red-600 dark:text-red-400">
+          <div className="text-xs font-bold text-destructive">
             {formatCurrency(spent)}
           </div>
-          <div className="text-[10px] text-text opacity-60 uppercase">Gasto</div>
+          <div className="text-[10px] text-muted-foreground uppercase">Gasto</div>
         </div>
         <div>
-          <div className={`text-xs font-bold ${balance >= 0 ? 'text-primary' : 'text-red-600'}`}>
+          <div className={`text-xs font-bold ${balance >= 0 ? 'text-primary' : 'text-destructive'}`}>
             {formatCurrency(balance)}
           </div>
-          <div className="text-[10px] text-text opacity-60 uppercase">Saldo</div>
+          <div className="text-[10px] text-muted-foreground uppercase">Saldo</div>
         </div>
       </div>
     </div>
@@ -224,6 +228,9 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
             <Scissors className="w-5 h-5 text-primary" />
             Split Saldo Flash
           </DialogTitle>
+          <DialogDescription>
+            Defina quanto do seu saldo Flash será reservado para gastos Flex.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
@@ -261,7 +268,7 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
 
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
-              <label className="text-xs font-black text-text/80 uppercase tracking-widest flex items-center gap-2">
+              <label className="text-xs font-black text-foreground/80 uppercase tracking-widest flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
                 Informe o Saldo Flex
               </label>
@@ -271,14 +278,15 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
             </div>
             
             <div className="relative group">
-              <input
+              <Input
                 {...inputProps}
                 autoFocus
-                className={`w-full bg-slate-100 dark:bg-slate-800 border-4 rounded-[2rem] p-6 text-4xl font-black text-center transition-all focus:outline-none shadow-xl ${
+                className={cn(
+                  "w-full bg-slate-100 dark:bg-slate-800 border-4 rounded-[2rem] p-6 text-4xl font-black text-center transition-all focus:outline-none shadow-xl",
                   isOverLimit 
                     ? 'border-red-500/50 text-red-500 ring-4 ring-red-500/10' 
                     : 'border-amber-500/30 focus:border-amber-500 focus:ring-8 focus:ring-amber-500/10 text-amber-600 dark:text-amber-400'
-                }`}
+                )}
                 placeholder="R$ 0,00"
               />
               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[9px] font-black uppercase px-4 py-1 rounded-full shadow-lg tracking-widest whitespace-nowrap">
@@ -298,19 +306,21 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
         </div>
 
         <DialogFooter className="flex items-center gap-6 sm:gap-8 pt-2">
-          <button
+          <Button
             onClick={onRemove}
-            className="text-[10px] font-black uppercase tracking-widest text-red-500/60 hover:text-red-600 transition-colors"
+            variant="ghost"
+            size="sm"
+            className="text-[10px] font-black uppercase tracking-widest text-red-500/60 hover:text-red-600"
           >
             Remover Split
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => onSave(numericValue)}
             disabled={isOverLimit || numericValue < 0}
-            className="flex-1 px-6 py-4 rounded-[1.5rem] text-xs font-black uppercase tracking-[0.2em] bg-primary text-white hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-xl shadow-primary/20"
+            className="flex-1"
           >
             Confirmar Saldo
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -329,12 +339,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   const [includeBenefits, setIncludeBenefits] = useLocalStorage('dashboard_include_benefits', true);
   const [isFlashSplit, setIsFlashSplit] = useLocalStorage('dashboard_flash_is_split', false);
   const [flashFlexAmount, setFlashFlexAmount] = useLocalStorage('dashboard_flash_flex_amount', 0);
+  const [cardHolderName, setCardHolderName] = useLocalStorage('dashboard_card_holder_name', 'Carvalho de Oliveira Neto');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [tempName, setTempName] = useState(cardHolderName);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
-  const { theme, setThemeMonth } = useTheme();
-
-  useEffect(() => {
-    setThemeMonth(currentMonth);
-  }, [currentMonth, setThemeMonth]);
+  const { theme } = useTheme();
 
   const today = getCurrentBrazilDate();
   const isSelectedMonthCurrent = format(currentMonth, 'yyyy-MM') === format(today, 'yyyy-MM');
@@ -417,19 +426,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   const totalSavingsGoals = activeGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
   const totalSaved = activeGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
 
-  const getBalanceStatusLabel = () => {
-    if (finalBalance < -0.001) return <AlertTriangle className="w-5 h-5 opacity-90" />;
-    
-    let label = includeBenefits ? 'Ocultar vales' : 'Ver vales';
-    if (!isSelectedMonthCurrent) label = 'Vales inclusos';
-
-    return (
-      <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap opacity-80">
-        {label}
-      </span>
-    );
-  };
-
   const handleBalanceCardClick = () => {
     setShowConfetti(true);
     setIsPulsing(true);
@@ -442,7 +438,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
     : ['#a8e063', '#56ab2f', '#4CAF50', '#8BC34A'];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-4">
       {showConfetti && (
           <Confetti
             width={width}
@@ -454,67 +450,101 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         )}
 
         {/* Header */}
-        <div className="text-center py-3">
-          <div className="flex items-center justify-center">
-            <MonthSegmentedControl
-              month={currentMonth}
-              onChange={(newMonth) => setCurrentMonth(newMonth)}
-            />
-          </div>
+        <div className="pt-2 pb-0 w-full">
+          <MonthSegmentedControl
+            month={currentMonth}
+            onChange={(newMonth) => setCurrentMonth(newMonth)}
+          />
         </div>
 
         {/* Main Balance Card */}
       <div
-        className={`relative overflow-hidden rounded-[2.5rem] p-8 cursor-pointer border transition-all duration-500 shadow-xl ${
-          isPulsing ? 'scale-[1.02]' : 'scale-100'
-        } ${finalBalance < -0.001 ? 'text-rose-950' : 'text-white'}`}
+        className={cn(
+          "relative overflow-hidden rounded-[2.5rem] p-8 sm:p-10 cursor-pointer border-t-2 border-l border-white/30 transition-all duration-700 text-white group isolate",
+          isPulsing ? 'scale-[1.02]' : 'scale-100',
+          finalBalance < -0.001 
+            ? "shadow-[0_20px_50px_rgba(239,68,68,0.4),inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.5)] border-red-400/50 hover:shadow-[0_40px_80px_rgba(239,68,68,0.5),inset_0_2px_6px_rgba(255,255,255,0.4),inset_0_-2px_6px_rgba(0,0,0,0.6)]" 
+            : "shadow-[0_20px_50px_rgba(0,0,0,0.6),inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.5)] border-white/20 hover:shadow-[0_40px_80px_rgba(0,0,0,0.7),inset_0_2px_6px_rgba(255,255,255,0.4),inset_0_-2px_6px_rgba(0,0,0,0.6)]"
+        )}
         style={{
-          backgroundColor: theme.primary,
-          borderColor: finalBalance < -0.001 ? '#fecaca' : 'rgba(255, 255, 255, 0.1)',
+          backgroundColor: finalBalance < -0.001 ? '#7f1d1d' : theme.primary,
+          perspective: '1000px',
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden',
+          transform: 'translateZ(0)',
+          WebkitTransform: 'translateZ(0)',
+          willChange: 'transform',
         }}
         onClick={handleBalanceCardClick}
       >
-        {/* Background Image Layer with slow movement */}
+        {/* Background Image Layer with slow movement and higher contrast */}
         <div 
-          className="absolute inset-0 animate-slow-zoom-pan opacity-50 bg-cover bg-center"
-          style={{ backgroundImage: `url(${familyBg})` }}
-        />
-
-        {/* Gradient Overlay for better readability and brand color */}
-        <div 
-          className="absolute inset-0"
-          style={{
-            backgroundImage: finalBalance < -0.001
-              ? 'radial-gradient(circle at top left, rgba(255, 241, 235, 0.7), rgba(255, 209, 255, 0.8))'
-              : `radial-gradient(circle at top left, ${theme.primary}55, ${theme.primary}bb)`,
+          className={cn(
+            "absolute inset-0 rounded-[2.5rem] bg-cover bg-center mix-blend-overlay z-0 overflow-hidden",
+            finalBalance < -0.001 ? "opacity-20 grayscale" : "opacity-30"
+          )}
+          style={{ 
+            backgroundImage: `url(${familyBg})`,
+            clipPath: 'inset(0 round 2.5rem)',
+            WebkitClipPath: 'inset(0 round 2.5rem)'
           }}
         />
 
-        <div className="relative z-10 flex flex-col h-full justify-between">
-          <div className="flex items-start justify-between mb-8">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50 mb-1">
-                {finalBalance < -0.001 ? 'Atenção • Déficit' : 'Total em Carteira'}
+        {/* Glossy/Metallic Gradient Overlay */}
+        <div 
+          className="absolute inset-0 opacity-80 rounded-[2.5rem] overflow-hidden"
+          style={{
+            backgroundImage: finalBalance < -0.001 
+              ? `linear-gradient(135deg, #7f1d1d 0%, #ef4444aa 40%, rgba(255,255,255,0.1) 50%, #ef4444aa 60%, #7f1d1d 100%)`
+              : `linear-gradient(135deg, ${theme.primary} 0%, ${theme.primary}aa 40%, rgba(255,255,255,0.1) 50%, ${theme.primary}aa 60%, ${theme.primary} 100%)`,
+            clipPath: 'inset(0 round 2.5rem)',
+            WebkitClipPath: 'inset(0 round 2.5rem)'
+          }}
+        />
+
+        {/* Holographic effect on hover */}
+        <div 
+          className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-1000 bg-gradient-to-tr from-transparent via-white to-transparent -translate-x-full group-hover:translate-x-full rotate-12 scale-150 pointer-events-none rounded-[2.5rem] overflow-hidden" 
+          style={{
+            clipPath: 'inset(0 round 2.5rem)',
+            WebkitClipPath: 'inset(0 round 2.5rem)'
+          }}
+        />
+
+        <div className="relative z-10 flex flex-col h-full justify-between min-h-[220px]">
+          {/* Card Top: Branding & Controls */}
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-7 rounded-md bg-gradient-to-br from-yellow-400 via-yellow-200 to-yellow-600 border border-black/10 shadow-inner flex items-center justify-center relative overflow-hidden">
+                  <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 gap-px opacity-20">
+                    {[...Array(9)].map((_, i) => <div key={i} className="border border-black/20" />)}
+                  </div>
+                </div>
+                <Wifi className="w-5 h-5 opacity-40 rotate-90" />
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-60 mt-4">
+                Vibecodia Premium
               </p>
-              <h2 className="text-xl font-black tracking-tight uppercase italic">
-                {finalBalance < -0.001 ? 'Saldo Devedor' : 'Saldo'}
-              </h2>
             </div>
+
             <div className="flex items-center gap-2">
-              <button 
+              <Button 
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowBalance(!showBalance);
                 }}
-                className="p-3 bg-black/10 backdrop-blur-xl rounded-2xl border border-white/10 hover:bg-black/20 transition-colors shadow-lg"
+                variant="ghost"
+                size="icon"
+                className="bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20 h-10 w-10 rounded-full"
               >
-                {showBalance ? <EyeOff className="w-5 h-5 opacity-70" /> : <Eye className="w-5 h-5 opacity-70" />}
-              </button>
+                {showBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </Button>
               
               <div 
-                className={`flex items-center gap-4 bg-black/10 backdrop-blur-xl px-5 py-3 rounded-2xl border border-white/10 shadow-lg transition-all ${
+                className={`flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 shadow-lg transition-all ${
                   isSelectedMonthCurrent 
-                    ? 'hover:bg-black/20 group cursor-pointer' 
+                    ? 'hover:bg-white/20 group cursor-pointer active:scale-95' 
                     : 'opacity-40 grayscale cursor-not-allowed'
                 }`}
                 onClick={(e) => {
@@ -522,17 +552,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
                   e.stopPropagation();
                   setIncludeBenefits(!includeBenefits);
                 }}
-                title={!isSelectedMonthCurrent ? "Disponível apenas no mês atual" : ""}
               >
-                {getBalanceStatusLabel()}
+                <span className="text-[9px] font-black uppercase tracking-widest opacity-80">{includeBenefits ? 'VALES' : 'SALDO PURO'}</span>
                 <div
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.265,1.55)] ${
-                    includeBenefits && isSelectedMonthCurrent ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-white/10'
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 ${
+                    includeBenefits && isSelectedMonthCurrent ? 'bg-green-400' : 'bg-white/20'
                   }`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-xl transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.265,1.55)] ${
-                      includeBenefits && isSelectedMonthCurrent ? 'translate-x-6' : 'translate-x-1'
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-md transition-transform duration-300 ease-in-out ${
+                      includeBenefits && isSelectedMonthCurrent ? 'translate-x-5' : 'translate-x-1'
                     }`}
                   />
                 </div>
@@ -540,43 +569,136 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="flex flex-col gap-1">
-              <p className="text-5xl sm:text-7xl font-black tracking-tighter leading-none">
+          {/* Card Middle: Main Balance */}
+          <div className="my-4">
+            <div className="flex flex-col">
+              <span className={cn(
+                "text-[10px] font-black uppercase tracking-[0.3em] mb-2 transition-colors duration-500",
+                finalBalance < -0.001 ? "text-rose-200 animate-pulse" : "opacity-50"
+              )}>
+                {finalBalance < -0.001 ? 'Atenção • Saldo Devedor' : 'Saldo Disponível'}
+              </span>
+              <p className={cn(
+                "text-4xl sm:text-6xl font-black tracking-tighter tabular-nums drop-shadow-lg transition-colors duration-500",
+                finalBalance < -0.001 ? "text-rose-100" : "text-white"
+              )}>
                 {showBalance ? formatCurrency(displayBalance) : 'R$ ••••••'}
               </p>
             </div>
+          </div>
 
+          {/* Card Bottom: Info & Type */}
+          <div className="flex items-end justify-between border-t border-white/10 pt-6">
+            <div className="space-y-1 group/titular relative">
+               <div className="flex items-center gap-2">
+                 <p className="text-[10px] font-bold opacity-50 uppercase tracking-widest">Titular</p>
+                 {!isEditingName && (
+                   <button
+                     key="edit-btn"
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       setIsEditingName(true);
+                       setTempName(cardHolderName);
+                     }}
+                     className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                     title="Editar nome"
+                   >
+                     <Pencil className="w-3 h-3 text-white/70" />
+                   </button>
+                 )}
+               </div>
+               
+               <div className="min-h-[24px] flex items-center">
+                 {isEditingName ? (
+                   <div key="edit-mode" className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                     <input
+                        id="card-holder-input"
+                        type="text"
+                        value={tempName}
+                        onChange={(e) => setTempName(e.target.value.slice(0, 100))}
+                        className="bg-white/10 border border-white/20 rounded px-2 py-0.5 text-sm font-black uppercase tracking-widest focus:outline-none focus:border-white/40 w-full max-w-[200px]"
+                        autoFocus
+                        onFocus={(e) => e.target.select()}
+                        maxLength={100}
+                       onKeyDown={(e) => {
+                         if (e.key === 'Enter') {
+                           setCardHolderName(tempName);
+                           setIsEditingName(false);
+                         } else if (e.key === 'Escape') {
+                           setIsEditingName(false);
+                         }
+                       }}
+                     />
+                     <button
+                       key="save-btn"
+                       onClick={() => {
+                         setCardHolderName(tempName);
+                         setIsEditingName(false);
+                       }}
+                       className="p-1 hover:bg-green-500/20 rounded-full text-green-400"
+                     >
+                       <Check className="w-4 h-4" />
+                     </button>
+                     <button
+                       key="cancel-btn"
+                       onClick={() => setIsEditingName(false)}
+                       className="p-1 hover:bg-red-500/20 rounded-full text-red-400"
+                     >
+                       <X className="w-4 h-4" />
+                     </button>
+                   </div>
+                 ) : (
+                   <p key="view-mode" className="text-sm font-black uppercase tracking-widest drop-shadow-md">
+                     {cardHolderName}
+                   </p>
+                 )}
+               </div>
+             </div>
+            <div className="text-right">
+              <h2 className="text-xl font-black tracking-tighter uppercase italic opacity-90 italic">
+                {finalBalance < -0.001 ? 'DÉBITO' : 'CRÉDITO'}
+              </h2>
+              <p className="text-[8px] font-black opacity-40 uppercase tracking-widest mt-1">Exp: 12/30</p>
+            </div>
           </div>
         </div>
 
+        {/* Status Indicator */}
         {finalBalance < -0.001 && (
-          <div className="absolute top-0 right-0 p-4">
-            <div className="animate-pulse bg-rose-500 w-2 h-2 rounded-full shadow-[0_0_10px_#ef4444]" />
+          <div className="absolute top-6 right-6">
+            <div className="animate-ping bg-rose-500 w-3 h-3 rounded-full absolute opacity-75" />
+            <div className="relative bg-rose-500 w-3 h-3 rounded-full shadow-[0_0_15px_#ef4444]" />
           </div>
         )}
       </div>
 
       {/* Barra receitas vs despesas */}
-      <div className="rounded-xl p-6 shadow-lg" style={{ backgroundColor: theme.cardBackground, border: `2px solid ${theme.cardBorder}` }}>
+      <Card className="relative p-6 shadow-[2px_2px_10px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker">
+        {/* Adesivo Band-Aid Central */}
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] z-20 flex items-center justify-center group-hover/sticker:-translate-y-1 transition-transform overflow-hidden">
+          <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
+            {[...Array(12)].map((_, i) => <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />)}
+          </div>
+          <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
+        </div>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-green-400 rounded-full" />
-            <span className="text-text font-medium">Receitas</span>
+            <span className="text-foreground font-medium">Receitas</span>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-red-600 rounded-full" />
-              <span className="text-text text-sm">Gastos Pagos</span>
+              <span className="text-foreground text-sm">Gastos Pagos</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-red-400 rounded-full" />
-              <span className="text-text text-sm">Não Pagos</span>
+              <span className="text-foreground text-sm">Não Pagos</span>
             </div>
           </div>
         </div>
 
-        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-5 relative overflow-hidden shadow-inner">
+        <div className="w-full bg-muted rounded-full h-5 relative overflow-hidden shadow-inner">
           <div
             className="bg-green-400 h-5 transition-all duration-700 absolute left-0 shadow-lg"
             style={{ width: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%` }}
@@ -602,35 +724,41 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
             <div className="text-lg font-bold text-green-600 dark:text-green-400">
               {currentIncome > 0 ? ((currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
             </div>
-            <div className="text-xs text-text opacity-80">Receitas</div>
-            <div className="text-xs text-text opacity-60">{formatCurrency(currentIncome)}</div>
+            <div className="text-xs text-muted-foreground">Receitas</div>
+            <div className="text-xs text-muted-foreground font-medium">{formatCurrency(currentIncome)}</div>
           </div>
           <div className="text-center">
             <div className="text-lg font-bold text-red-600 dark:text-red-400">
               {expensesPaid > 0 ? ((expensesPaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
             </div>
-            <div className="text-xs text-text opacity-80">Pagos</div>
-            <div className="text-xs text-text opacity-60">{formatCurrency(expensesPaid)}</div>
+            <div className="text-xs text-muted-foreground">Pagos</div>
+            <div className="text-xs text-muted-foreground font-medium">{formatCurrency(expensesPaid)}</div>
           </div>
           <div className="text-center">
             <div className="text-lg font-bold text-red-400 dark:text-red-300">
               {expensesUnpaid > 0 ? ((expensesUnpaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
             </div>
-            <div className="text-xs text-text opacity-80">Não Pagos</div>
-            <div className="text-xs text-text opacity-60">{formatCurrency(expensesUnpaid)}</div>
+            <div className="text-xs text-muted-foreground">Não Pagos</div>
+            <div className="text-xs text-muted-foreground font-medium">{formatCurrency(expensesUnpaid)}</div>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Benefícios — Flash / Vero Card */}
-      <div
-        className="rounded-xl p-6 shadow-lg space-y-6"
-        style={{ backgroundColor: theme.cardBackground, border: `2px solid ${theme.cardBorder}` }}
+      <Card
+        className="relative p-6 space-y-6 shadow-[2px_2px_12px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker"
       >
+        {/* Adesivo Band-Aid Lateral */}
+        <div className="absolute -top-4 -right-2 w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] rotate-[30deg] z-20 flex items-center justify-center group-hover/sticker:rotate-[25deg] transition-transform overflow-hidden">
+          <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
+            {[...Array(12)].map((_, i) => <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />)}
+          </div>
+          <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
+        </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CreditCard className="w-5 h-5 text-primary" />
-            <span className="text-text font-bold">Saldo Benefícios</span>
+            <span className="text-foreground font-bold">Saldo Benefícios</span>
           </div>
         </div>
 
@@ -648,16 +776,18 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
 
           <div className="flex justify-end items-center gap-4 px-1">
             {isFlashSplit && (
-              <button
+              <Button
                 onClick={() => setIsSplitModalOpen(true)}
-                className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-text/40 hover:text-primary transition-colors"
+                variant="ghost"
+                size="sm"
+                className="text-[10px] font-black uppercase tracking-widest text-foreground/40"
                 title="Ajustar Split"
               >
-                <Pencil className="w-3 h-3" />
+                <Pencil className="w-3 h-3 mr-1.5" />
                 Ajustar
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               onClick={() => {
                 if (isFlashSplit) {
                   setFlashFlexAmount(0);
@@ -666,15 +796,18 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
                   setIsSplitModalOpen(true);
                 }
               }}
-              className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest transition-colors ${
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "text-[10px] font-black uppercase tracking-widest transition-colors",
                 isFlashSplit
                   ? 'text-red-500/60 hover:text-red-600'
-                  : 'text-text/40 hover:text-primary'
-              }`}
+                  : 'text-foreground/40 hover:text-primary'
+              )}
             >
-              {isFlashSplit ? <Trash2 className="w-3 h-3" /> : <Scissors className="w-3 h-3" />}
+              {isFlashSplit ? <Trash2 className="w-3 h-3 mr-1.5" /> : <Scissors className="w-3 h-3 mr-1.5" />}
               {isFlashSplit ? 'Remover Split' : 'Split Flex'}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -688,7 +821,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
           daysPassed={daysPassed}
           totalDays={totalDays}
         />
-      </div>
+      </Card>
 
       {/* Modal de Split do Flash */}
       <FlashSplitModal
@@ -710,19 +843,25 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
 
       {/* Progresso das Metas */}
       {savingsGoals.length > 0 && (
-        <div
-          className="rounded-xl p-4 border-2 cursor-pointer hover:shadow-md transition-shadow duration-200"
-          style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}
+        <Card
+          className="relative cursor-pointer shadow-[2px_2px_15px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker"
           onClick={() => navigate('/goals')}
         >
+          {/* Adesivo Band-Aid Canto */}
+          <div className="absolute -top-3 -left-2 w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] -rotate-[15deg] z-20 flex items-center justify-center group-hover/sticker:-rotate-[10deg] transition-transform overflow-hidden">
+            <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
+              {[...Array(12)].map((_, i) => <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />)}
+            </div>
+            <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
+          </div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-text truncate pr-2">Progresso das Metas</h3>
+            <h3 className="text-sm font-medium text-foreground truncate pr-2">Progresso das Metas</h3>
             <Target className="w-4 h-4 text-primary flex-shrink-0" />
           </div>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-text truncate pr-2">Progresso Total</span>
-              <span className="font-medium text-text flex-shrink-0">
+              <span className="text-foreground truncate pr-2">Progresso Total</span>
+              <span className="font-medium text-foreground flex-shrink-0">
                 {formatCurrency(totalSaved)} / {formatCurrency(totalSavingsGoals)}
               </span>
             </div>
@@ -735,11 +874,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
                 }}
               />
             </div>
-            <div className="text-xs text-text opacity-80">
+            <div className="text-xs text-muted-foreground">
               {totalSavingsGoals > 0 ? Math.round((totalSaved / totalSavingsGoals) * 100) : 0}% concluído
             </div>
           </div>
-        </div>
+        </Card>
       )}
 
       <RecentTransactionsFloatingCard transactions={transactions} />

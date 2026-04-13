@@ -1,7 +1,7 @@
 {
-  "name": "Vibecodia Finances v0.60.6",
-  "short_name": "Finances v0.60.6",
-  "description": "Vibecodia - Financial Control",
+  "name": "Vibecodia Finances v{{APP_VERSION}}",
+  "short_name": "Finances v{{APP_VERSION}}",
+  "description": "Vibecodia - {{APP_SUBTITLE}}",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",

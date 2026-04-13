@@ -69,12 +69,12 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
             <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 border border-primary/20">
               <Clock className="w-4 h-4 text-primary" />
             </div>
-            <p className="text-[10px] font-bold text-text/90 tracking-widest uppercase">Recentes</p>
+            <p className="text-[10px] font-bold text-foreground/90 tracking-widest uppercase">Recentes</p>
           </div>
 
           <button onClick={() => setIsVisible(false)} className="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-text/5 transition-all group/btn">
             <svg className="absolute w-full h-full -rotate-90" viewBox="0 0 40 40">
-              <circle cx="20" cy="20" r={radius} fill="none" stroke="currentColor" strokeWidth="2.5" className="text-text/5" />
+              <circle cx="20" cy="20" r={radius} fill="none" stroke="currentColor" strokeWidth="2.5" className="text-foreground/5" />
               <circle 
                 cx="20" cy="20" r={radius} fill="none" stroke={theme.primary} strokeWidth="2.5" strokeDasharray={circumference}
                 style={{ 
@@ -84,7 +84,7 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
                 }} strokeLinecap="round" 
               />
             </svg>
-            <X className="w-4 h-4 text-text/40 group-hover/btn:text-text z-10 transition-colors" />
+            <X className="w-4 h-4 text-foreground/40 group-hover/btn:text-foreground z-10 transition-colors" />
           </button>
         </div>
 
@@ -118,12 +118,12 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
                 <div className="flex-1 min-w-0 transition-transform group-hover/item:translate-x-1">
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <p className={`text-sm font-medium truncate leading-tight transition-colors ${
-                      isDeleted ? 'text-text/30 line-through' : 'text-text/90'
+                      isDeleted ? 'text-foreground/30 line-through' : 'text-foreground/90'
                     }`}>
                       {t.description}
                     </p>
                     <div className={`flex items-center gap-0.5 font-bold text-sm transition-colors ${
-                      isDeleted ? 'text-text/20 line-through' :
+                      isDeleted ? 'text-foreground/20 line-through' :
                       t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'
                     }`}>
                       {formatCurrency(t.amount)}
@@ -131,12 +131,12 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
                   </div>
                   
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] text-text/40 font-medium tabular-nums">
+                    <span className="text-[10px] text-foreground/40 font-medium tabular-nums">
                       {format(new Date(t.updatedAt || t.createdAt), "HH:mm", { locale: ptBR })}
                     </span>
 
                     {isDeleted && (
-                      <span className="flex items-center gap-1 text-[9px] bg-text/5 text-text/40 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider border border-text/10">
+                      <span className="flex items-center gap-1 text-[9px] bg-text/5 text-foreground/40 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider border border-text/10">
                         <Trash2 className="w-2.5 h-2.5" /> Removido
                       </span>
                     )}

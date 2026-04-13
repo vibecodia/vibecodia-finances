@@ -1,8 +1,11 @@
-import { Calendar } from 'lucide-react';
+import { Calendar, ChevronRight, ChevronLeft } from 'lucide-react';
 import React from 'react';
 
 import { Task } from '../../types/trello/task';
-import { getPriorityColor, getPriorityLabel, formatDate } from '../../utils/trello/taskUtils';
+import { getPriorityLabel, formatDate } from '../../utils/trello/taskUtils';
+import { Card } from '../ui/Card';
+import { Button } from '../ui/Button';
+import { cn } from '../../lib/utils';
 
 interface TaskCardProps {
   task: Task;
@@ -10,6 +13,7 @@ interface TaskCardProps {
   onCardClick: (task: Task) => void;
   onMoveForward: (taskId: string) => void;
   onMoveBackward: (taskId: string) => void;
+  onDelete?: (taskId: string) => void;
   onDragEnd?: () => void;
 }
 
@@ -20,84 +24,69 @@ export function TaskCard({ task, onDragStart, onCardClick, onMoveForward = () =>
   };
 
   return (
-    <div className="relative">
-      <div className="absolute -top-2 right-0 flex space-x-1 z-20">
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            onMoveForward(task.id);
-          }}
-          className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded-md shadow-md transition-colors"
-          title="Mover para frente"
-        >
-          ➡️
-        </button>
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            onMoveBackward(task.id);
-          }}
-          className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded-md shadow-md transition-colors"
-          title="Mover para trás"
-        >
-          ⬅️
-        </button>
-      </div>
-      
-      <div
-        id={`task-${task.id}`}
-        draggable
-        onDragStart={handleDragStart}
-        onClick={() => onCardClick(task)}
-        
-        onContextMenu={(e) => e.preventDefault()}
-        className="bg-white dark:bg-gray-100 rounded-lg p-4 shadow-md hover:shadow-lg transition-all duration-200 cursor-grab active:cursor-grabbing border-2 border-gray-300 dark:border-gray-400 group relative overflow-hidden transform transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-xl"
-        style={{
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-        }}
-      >
-      {/* Quadro branco texture */}
-      <div className="absolute inset-0 opacity-5 pointer-events-none">
-        <div className="w-full h-full" style={{
-          backgroundImage: `
-            radial-gradient(circle at 1px 1px, rgba(0,0,0,0.15) 1px, transparent 0),
-            linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px),
-            linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px)
-          `,
-          backgroundSize: '20px 20px, 20px 20px, 20px 20px'
-        }} />
-      </div>
-      
-      <div className="flex items-start justify-between mb-2">
-        <h3 className="font-handwriting font-bold text-gray-800 dark:text-gray-900 text-base leading-tight flex-1 pr-2 relative z-10">
+    <Card
+      id={`task-${task.id}`}
+      draggable
+      onDragStart={handleDragStart}
+      onClick={() => onCardClick(task)}
+      className="group cursor-grab active:cursor-grabbing p-5 hover:scale-[1.02] transition-all relative overflow-hidden"
+    >
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <h3 className="text-sm font-black text-foreground uppercase tracking-tight leading-tight flex-1">
           {task.title}
         </h3>
-        
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              onMoveBackward(task.id);
+            }}
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 p-0"
+            title="Mover para trás"
+          >
+            <ChevronLeft className="w-3.5 h-3.5" />
+          </Button>
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              onMoveForward(task.id);
+            }}
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 p-0"
+            title="Mover para frente"
+          >
+            <ChevronRight className="w-3.5 h-3.5" />
+          </Button>
+        </div>
       </div>
       
       {task.description && (
-        <p className="hidden md:block font-handwriting text-gray-700 dark:text-gray-800 text-sm mb-3 leading-relaxed relative z-10">
+        <p className="text-xs text-muted-foreground font-medium mb-4 line-clamp-2">
           {task.description}
         </p>
       )}
       
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-1">
-          <div className={`w-2 h-2 rounded-full ${getPriorityColor(task.priority)}`} />
-          <span className="font-handwriting text-sm text-gray-600 dark:text-gray-700 font-medium relative z-10">
+      <div className="flex items-center justify-between pt-3 border-t border-border">
+        <div className="flex items-center gap-2">
+          <div className={cn("w-2 h-2 rounded-full", 
+            task.priority === 'high' ? 'bg-destructive' : 
+            task.priority === 'medium' ? 'bg-amber-500' : 'bg-primary'
+          )} />
+          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
             {getPriorityLabel(task.priority)}
           </span>
         </div>
         
         {task.date && (
-          <div className="flex items-center space-x-1 text-gray-600 dark:text-gray-700 relative z-10">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
             <Calendar className="w-3 h-3" />
-            <span className="font-handwriting text-sm">{task.date ? formatDate(task.date.toString()) : ''}</span>
+            <span className="text-[10px] font-black">{task.date ? formatDate(task.date.toString()) : ''}</span>
           </div>
         )}
       </div>
-      </div>
-    </div>
+    </Card>
   );
 }

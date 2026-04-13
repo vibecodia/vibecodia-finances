@@ -1,24 +1,35 @@
-import { X, Calendar } from 'lucide-react';
+import { X, Target, Flag, Trash2 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
 import { Task } from '../../types/trello/task';
 import { createTask } from '../../utils/trello/taskUtils';
+import { Button } from '../ui/Button';
+import { Card } from '../ui/Card';
+import { Input } from '../ui/Input';
+import { Textarea } from '../ui/Textarea';
+import { cn } from '../../lib/utils';
 
 interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (task: Task) => void;
   onDelete?: (taskId: string) => void;
-  onMove?: (taskId: string, newColumn: 'todo' | 'inProgress' | 'done') => void;
   task?: Task;
   mode: 'create' | 'edit';
 }
 
-export function TaskModal({ isOpen, onClose, onSave, task, mode, onMove }: TaskModalProps) {
+export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode }: TaskModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [date, setDate] = useState('');
+
+  const handleDelete = () => {
+    if (task && onDelete) {
+      onDelete(task.id);
+      onClose();
+    }
+  };
 
   useEffect(() => {
     if (task && mode === 'edit') {
@@ -57,140 +68,118 @@ export function TaskModal({ isOpen, onClose, onSave, task, mode, onMove }: TaskM
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="font-handwriting text-2xl font-bold text-gray-900 dark:text-white">
-            {mode === 'edit' ? 'Editar Tarefa' : 'Nova Tarefa'}
-          </h2>
-          <button
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-300">
+      <Card className="w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200 p-0 overflow-hidden">
+        <div className="flex items-center justify-between p-6 border-b border-border">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-primary/10 text-primary">
+              <Target className="w-5 h-5" />
+            </div>
+            <h2 className="text-xl font-black text-foreground uppercase tracking-tight">
+              {mode === 'edit' ? 'Editar Tarefa' : 'Nova Tarefa'}
+            </h2>
+          </div>
+          <Button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
+            variant="ghost"
+            size="icon"
           >
             <X className="w-5 h-5" />
-          </button>
+          </Button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="space-y-4">
-            <div>
-              <label className="block font-handwriting text-base font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Título *
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200 font-handwriting"
-                placeholder="Digite o título da tarefa"
-                autoFocus
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+          <div className="space-y-6">
+            <Input
+              label="Título *"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="O que precisa ser feito?"
+              autoFocus
+              required
+            />
 
-            <div>
-              <label className="block font-handwriting text-base font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Descrição
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none transition-colors duration-200 font-handwriting"
-                placeholder="Adicione uma descrição (opcional)"
-              />
-            </div>
+            <Textarea
+              label="Descrição"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Adicione mais detalhes aqui..."
+              className="min-h-[120px]"
+            />
 
-            <div>
-              <label className="block font-handwriting text-base font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <div className="space-y-3">
+              <label className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                <Flag className="w-4 h-4" />
                 Prioridade
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-3">
                 {[
                   { value: 'low', label: 'Baixa', color: 'bg-green-500' },
-                  { value: 'medium', label: 'Média', color: 'bg-yellow-500' },
+                  { value: 'medium', label: 'Média', color: 'bg-amber-500' },
                   { value: 'high', label: 'Alta', color: 'bg-red-500' },
                 ].map((option) => (
                   <button
                     key={option.value}
                     type="button"
                     onClick={() => setPriority(option.value as any)}
-                    className={`p-2 rounded-lg border-2 transition-all duration-200 flex items-center justify-center space-x-2 ${
+                    className={cn(
+                      "p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-2",
                       priority === option.value
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-                    }`}
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border opacity-40 hover:opacity-100'
+                    )}
                   >
-                    <div className={`w-2 h-2 rounded-full ${option.color}`} />
-                    <span className="font-handwriting text-sm text-gray-700 dark:text-gray-300">{option.label}</span>
+                    <div className={cn("w-3 h-3 rounded-full shadow-sm", option.color)} />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-foreground">
+                      {option.label}
+                    </span>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div>
-              <label className="block font-handwriting text-base font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Data (opcional)
-              </label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full px-3 py-2 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200 font-handwriting"
-                />
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              </div>
-            </div>
+            <Input
+              label="Data de Entrega"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </div>
 
-          <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-            {mode === 'edit' && onMove && (
-              <div className="flex space-x-2">
-                <button
-                  type="button"
-                  onClick={() => onMove(task!.id, 'todo')}
-                  className="px-3 py-1.5 text-sm bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg transition-colors duration-200 font-handwriting flex items-center gap-1"
-                >
-                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                  A Fazer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onMove(task!.id, 'inProgress')}
-                  className="px-3 py-1.5 text-sm bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded-lg transition-colors duration-200 font-handwriting flex items-center gap-1"
-                >
-                  <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                  Em Progresso
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onMove(task!.id, 'done')}
-                  className="px-3 py-1.5 text-sm bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-colors duration-200 font-handwriting flex items-center gap-1"
-                >
-                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                  Concluído
-                </button>
-              </div>
-            )}
-            <div className="flex space-x-3">
-              <button
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-border">
+            {mode === 'edit' && onDelete ? (
+              <Button
+                type="button"
+                onClick={handleDelete}
+                variant="ghost"
+                className="text-destructive hover:bg-destructive/10 w-full sm:w-auto font-black uppercase tracking-widest flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Excluir Tarefa
+              </Button>
+            ) : <div className="hidden sm:block" />}
+            
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-200 font-handwriting"
+                variant="outline"
+                className="flex-1 sm:flex-none"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={!title.trim()}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors duration-200 font-medium font-handwriting"
+                className="flex-1 sm:flex-none"
               >
-                {mode === 'edit' ? 'Salvar' : 'Criar'}
-              </button>
+                {mode === 'edit' ? 'Salvar Alterações' : 'Criar Tarefa'}
+              </Button>
             </div>
           </div>
         </form>
-      </div>
+      </Card>
     </div>
   );
 }

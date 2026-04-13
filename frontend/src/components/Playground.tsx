@@ -1536,7 +1536,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
   };
 
   const renderCardHeader = (id: string, label: string, icon: React.ReactNode, index: number, isCollapsed: boolean, onToggleAll?: () => void) => (
-    <div className="p-4 border-b font-semibold text-text flex items-center justify-between group" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+    <div className="p-4 border-b font-semibold text-foreground flex items-center justify-between group" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
       <div className="flex items-center gap-2">
         {icon}
         <span className="text-sm lg:text-base">{label}</span>
@@ -1545,7 +1545,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
         {onToggleAll && !isCollapsed && (
           <button 
             onClick={(e) => { e.stopPropagation(); onToggleAll(); }}
-            className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+            className="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:opacity-100"
             title="Alternar Todos"
           >
             <Eye className="w-4 h-4" />
@@ -1554,7 +1554,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
         <button 
           onClick={(e) => { e.stopPropagation(); moveItem(index, 'up'); }}
           disabled={index === 0}
-          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+          className="p-1.5 hover:bg-muted rounded-md transition-colors text-foreground opacity-0 group-hover:opacity-100 disabled:opacity-0"
           title="Mover para Cima"
         >
           <ArrowUp className="w-4 h-4" />
@@ -1562,22 +1562,22 @@ INSTRUÇÕES PARA SUA RESPOSTA:
         <button 
           onClick={(e) => { e.stopPropagation(); moveItem(index, 'down'); }}
           disabled={index === layout.length - 1}
-          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+          className="p-1.5 hover:bg-muted rounded-md transition-colors text-foreground opacity-0 group-hover:opacity-100 disabled:opacity-0"
           title="Mover para Baixo"
         >
           <ArrowDown className="w-4 h-4" />
         </button>
-        <div className="w-[1px] h-4 mx-1 bg-cardBorder opacity-0 group-hover:opacity-100" />
+        <div className="w-[1px] h-4 mx-1 bg-muted opacity-0 group-hover:opacity-100" />
         <button 
           onClick={() => setMaximizedId(id)}
-          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+          className="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:opacity-100"
           title="Maximizar"
         >
           <Maximize2 className="w-4 h-4" />
         </button>
         <button 
           onClick={() => toggleCollapse(id)}
-          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+          className="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:opacity-100"
           title={isCollapsed ? "Expandir" : "Minimizar"}
         >
           {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
@@ -1594,13 +1594,13 @@ INSTRUÇÕES PARA SUA RESPOSTA:
     return (
       <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-2 md:p-4 animate-in fade-in duration-200">
         <div 
-          className="w-full h-full bg-cardBackground rounded-3xl border shadow-2xl flex flex-col overflow-hidden"
+          className="w-full h-full bg-card rounded-3xl border shadow-2xl flex flex-col overflow-hidden"
           style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
         >
           {/* Header */}
           <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: theme.cardBorder }}>
             <div className="flex items-center gap-3">
-              <span className="text-xl font-bold text-text">{item.label}</span>
+              <span className="text-xl font-bold text-foreground">{item.label}</span>
               {maximizedId === 'table' && (
                 <span className="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs font-bold">
                   {filteredTransactions.length} itens
@@ -1611,7 +1611,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
               {maximizedId !== 'table' && (
                 <button 
                   onClick={() => toggleAll(maximizedChartRef)}
-                  className="p-2 px-4 hover:bg-cardBorder rounded-xl transition-all text-text flex items-center gap-2 text-sm font-bold border border-cardBorder"
+                  className="p-2 px-4 hover:bg-muted rounded-xl transition-all text-foreground flex items-center gap-2 text-sm font-bold border border-border"
                   title="Alternar Todos"
                 >
                   <Eye className="w-5 h-5" />
@@ -1620,7 +1620,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
               )}
               <button 
                 onClick={() => setMaximizedId(null)}
-                className="p-2 hover:bg-cardBorder rounded-xl transition-all text-text"
+                className="p-2 hover:bg-muted rounded-xl transition-all text-foreground"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -1778,7 +1778,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                       }
                     }} />
                   ) : (
-                  <div className="h-full flex items-center justify-center text-text opacity-40 italic text-xl">
+                  <div className="h-full flex items-center justify-center text-foreground opacity-40 italic text-xl">
                     Nenhum item selecionado para evolução de preços
                   </div>
                 )}
@@ -1792,17 +1792,17 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                       <span className="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs font-bold">
                         Total: {formatCurrency(discountAnalysis.totalDiscount)}
                       </span>
-                      <span className="px-3 py-1 bg-cardBorder/40 text-text rounded-full text-xs font-bold">
+                      <span className="px-3 py-1 bg-muted/40 text-foreground rounded-full text-xs font-bold">
                         Visitas: {discountAnalysis.visits}
                       </span>
-                      <span className="px-3 py-1 bg-cardBorder/40 text-text rounded-full text-xs font-bold">
+                      <span className="px-3 py-1 bg-muted/40 text-foreground rounded-full text-xs font-bold">
                         Lojas: {discountAnalysis.uniqueStores}
                       </span>
                     </div>
 
                     <div>
                       <div className="flex items-center justify-between gap-4 mb-3">
-                        <div className="text-sm font-black text-text uppercase tracking-wide">Descontos por dia da semana</div>
+                        <div className="text-sm font-black text-foreground uppercase tracking-wide">Descontos por dia da semana</div>
                       </div>
                       <div className="h-[520px]">
                         <Bar
@@ -1832,13 +1832,13 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                       <div className="rounded-2xl border overflow-hidden" style={{ borderColor: theme.cardBorder }}>
-                        <div className="px-5 py-4 border-b font-black text-text uppercase tracking-wide text-xs bg-cardBorder bg-opacity-40" style={{ borderColor: theme.cardBorder }}>
+                        <div className="px-5 py-4 border-b font-black text-foreground uppercase tracking-wide text-xs bg-muted bg-opacity-40" style={{ borderColor: theme.cardBorder }}>
                           Ranking de lojas por desconto
                         </div>
                         <div className="overflow-auto max-h-[520px]">
                           <table className="w-full text-left text-sm border-collapse">
                             <thead>
-                              <tr className="bg-cardBorder bg-opacity-30" style={{ color: theme.text }}>
+                              <tr className="bg-muted bg-opacity-30" style={{ color: theme.text }}>
                                 <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Loja</th>
                                 <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Visitas</th>
                                 <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Desconto</th>
@@ -1847,7 +1847,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                             </thead>
                             <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
                               {discountAnalysis.storeRanking.map(row => (
-                                <tr key={row.store} className="text-text hover:bg-primary/5 transition-colors">
+                                <tr key={row.store} className="text-foreground hover:bg-primary/5 transition-colors">
                                   <td className="p-4 font-bold">{row.store}</td>
                                   <td className="p-4 text-right font-mono opacity-80">{row.visits}</td>
                                   <td className="p-4 text-right font-black text-primary">{formatCurrency(row.total)}</td>
@@ -1860,13 +1860,13 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                       </div>
 
                       <div className="rounded-2xl border overflow-hidden" style={{ borderColor: theme.cardBorder }}>
-                        <div className="px-5 py-4 border-b font-black text-text uppercase tracking-wide text-xs bg-cardBorder bg-opacity-40" style={{ borderColor: theme.cardBorder }}>
+                        <div className="px-5 py-4 border-b font-black text-foreground uppercase tracking-wide text-xs bg-muted bg-opacity-40" style={{ borderColor: theme.cardBorder }}>
                           Melhor combinação loja + dia (top 5)
                         </div>
                         <div className="overflow-x-auto">
                           <table className="w-full text-left text-sm border-collapse">
                             <thead>
-                              <tr className="bg-cardBorder bg-opacity-30" style={{ color: theme.text }}>
+                              <tr className="bg-muted bg-opacity-30" style={{ color: theme.text }}>
                                 <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Loja</th>
                                 <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Dia</th>
                                 <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Médio/visita</th>
@@ -1876,7 +1876,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                             </thead>
                             <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
                               {discountAnalysis.bestCombos.map(row => (
-                                <tr key={`${row.store}__${row.weekday}`} className="text-text hover:bg-primary/5 transition-colors">
+                                <tr key={`${row.store}__${row.weekday}`} className="text-foreground hover:bg-primary/5 transition-colors">
                                   <td className="p-4 font-bold">{row.store}</td>
                                   <td className="p-4 font-mono opacity-80">{row.weekday}</td>
                                   <td className="p-4 text-right font-black text-primary">{formatCurrency(row.avg)}</td>
@@ -1891,7 +1891,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                     </div>
                   </>
                 ) : (
-                  <div className="h-full min-h-[500px] flex items-center justify-center text-text opacity-40 italic text-xl">
+                  <div className="h-full min-h-[500px] flex items-center justify-center text-foreground opacity-40 italic text-xl">
                     Nenhum desconto SEFAZ encontrado com os filtros atuais
                   </div>
                 )}
@@ -1901,7 +1901,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm border-collapse">
                   <thead>
-                    <tr className="bg-cardBorder bg-opacity-40" style={{ color: theme.text }}>
+                    <tr className="bg-muted bg-opacity-40" style={{ color: theme.text }}>
                       <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>{dateColumnLabel}</th>
                       <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>Descrição</th>
                       <th className="p-4 border-r border-b font-bold uppercase text-xs tracking-wider" style={{ borderColor: theme.cardBorder }}>Categoria</th>
@@ -1914,7 +1914,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                   </thead>
                   <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
                     {getSortedTransactions().map(t => (
-                      <tr key={t.id} className={`text-text hover:bg-primary/5 transition-colors group ${t.status === 'deleted' ? 'opacity-50 grayscale-[0.5]' : ''}`}>
+                      <tr key={t.id} className={`text-foreground hover:bg-primary/5 transition-colors group ${t.status === 'deleted' ? 'opacity-50 grayscale-[0.5]' : ''}`}>
                         <td className={`p-4 whitespace-nowrap border-r font-mono text-sm opacity-70 ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
                           {formatBrazilDate(getTransactionDateSource(t), 'dd/MM/yyyy')}
                         </td>
@@ -1922,7 +1922,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                           {t.description}
                         </td>
                         <td className={`p-4 border-r ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
-                          <span className="px-3 py-1 rounded-full text-xs font-bold bg-cardBorder/50">
+                          <span className="px-3 py-1 rounded-full text-xs font-bold bg-muted/50">
                             {t.category}
                           </span>
                         </td>
@@ -1961,7 +1961,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
     return (
       <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[110] p-4 md:p-6 animate-in fade-in duration-200">
         <div 
-          className="w-full max-w-2xl bg-cardBackground rounded-3xl border-2 shadow-2xl flex flex-col overflow-hidden max-h-[90vh]"
+          className="w-full max-w-2xl bg-card rounded-3xl border-2 shadow-2xl flex flex-col overflow-hidden max-h-[90vh]"
           style={{ borderColor: theme.primary, backgroundColor: theme.cardBackground }}
         >
           {/* Header */}
@@ -1971,13 +1971,13 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                 <Bot className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <span className="text-xl font-bold text-text block">Análise Inteligente (IA)</span>
-                <span className="text-xs text-text opacity-50 uppercase font-black tracking-widest">Powered by Vibecodia AI</span>
+                <span className="text-xl font-bold text-foreground block">Análise Inteligente (IA)</span>
+                <span className="text-xs text-muted-foreground uppercase font-black tracking-widest">Powered by Vibecodia AI</span>
               </div>
             </div>
             <button 
               onClick={() => { setAiAnalysis(null); setIsAnalyzing(false); }}
-              className="p-2 hover:bg-cardBorder rounded-xl transition-all text-text"
+              className="p-2 hover:bg-muted rounded-xl transition-all text-foreground"
             >
               <X className="w-6 h-6" />
             </button>
@@ -1992,8 +1992,8 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                   <Loader2 className="w-16 h-16 text-primary animate-spin relative z-10" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-text mb-2 animate-pulse">Cruzando dados e gerando insights...</h3>
-                  <p className="text-sm text-text opacity-60">Nossa inteligência artificial está analisando sua saúde financeira.</p>
+                  <h3 className="text-xl font-bold text-foreground mb-2 animate-pulse">Cruzando dados e gerando insights...</h3>
+                  <p className="text-sm text-muted-foreground">Nossa inteligência artificial está analisando sua saúde financeira.</p>
                 </div>
               </div>
             ) : (
@@ -2018,7 +2018,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                   {/* Texto da Resposta */}
                   <div className="p-6 md:p-8">
                     <div 
-                      className="text-text leading-relaxed whitespace-pre-wrap text-sm md:text-base prose prose-sm max-w-none"
+                      className="text-foreground leading-relaxed whitespace-pre-wrap text-sm md:text-base prose prose-sm max-w-none"
                       dangerouslySetInnerHTML={{ 
                         __html: formatAIText(aiAnalysis || '') 
                       }}
@@ -2026,9 +2026,9 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                   </div>
                 </div>
                 
-                <div className="flex flex-col gap-2 p-4 bg-cardBorder/20 rounded-xl border border-cardBorder">
+                <div className="flex flex-col gap-2 p-4 bg-muted/20 rounded-xl border border-border">
                   <div className="flex justify-between items-end mb-1">
-                    <p className="text-[10px] font-black uppercase text-text opacity-40">Uso da Inteligência (Tokens):</p>
+                    <p className="text-[10px] font-black uppercase text-foreground opacity-40">Uso da Inteligência (Tokens):</p>
                     {aiStats && (
                       <span className={`text-[10px] font-black ${aiStats.near_limit ? 'text-accent' : 'text-primary'}`}>
                         {aiStats.usage_percentage.toFixed(1)}%
@@ -2037,7 +2037,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                   </div>
                   
                   {aiStats && (
-                    <div className="w-full h-1.5 bg-cardBorder/30 rounded-full overflow-hidden mb-2">
+                    <div className="w-full h-1.5 bg-muted/30 rounded-full overflow-hidden mb-2">
                       <div 
                         className={`h-full transition-all duration-1000 ${
                           aiStats.usage_percentage > 80 ? 'bg-accent' : 
@@ -2052,7 +2052,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                     <span className="text-[10px] font-bold px-2 py-1 bg-primary/10 text-primary rounded">{filteredTransactions.length} Transações</span>
                     <span className="text-[10px] font-bold px-2 py-1 bg-primary/10 text-primary rounded">{startDate} → {endDate}</span>
                     {aiStats && (
-                      <span className="text-[10px] font-bold px-2 py-1 bg-cardBorder/40 text-text opacity-70 rounded">
+                      <span className="text-[10px] font-bold px-2 py-1 bg-muted/40 text-muted-foreground rounded">
                         {aiStats.current_tokens} / {aiStats.token_limit} tokens
                       </span>
                     )}
@@ -2084,7 +2084,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
     return (
       <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[120] p-4 md:p-6 animate-in fade-in duration-200">
         <div 
-          className="w-full max-w-lg bg-cardBackground rounded-3xl border-2 shadow-2xl flex flex-col overflow-hidden"
+          className="w-full max-w-lg bg-card rounded-3xl border-2 shadow-2xl flex flex-col overflow-hidden"
           style={{ borderColor: theme.primary, backgroundColor: theme.cardBackground }}
         >
           {/* Header */}
@@ -2094,13 +2094,13 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                 <Sparkles className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <span className="text-lg font-bold text-text block">Deseja adicionar alguma observação?</span>
-                <span className="text-xs text-text opacity-50 uppercase font-bold tracking-widest">Opcional • Enriquecer análise</span>
+                <span className="text-lg font-bold text-foreground block">Deseja adicionar alguma observação?</span>
+                <span className="text-xs text-muted-foreground uppercase font-bold tracking-widest">Opcional • Enriquecer análise</span>
               </div>
             </div>
             <button 
               onClick={() => setShowAIObsModal(false)}
-              className="p-2 hover:bg-cardBorder rounded-xl transition-all text-text"
+              className="p-2 hover:bg-muted rounded-xl transition-all text-foreground"
             >
               <X className="w-6 h-6" />
             </button>
@@ -2108,14 +2108,14 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
           {/* Content */}
           <div className="p-6 space-y-4">
-            <p className="text-sm text-text opacity-70 leading-relaxed">
+            <p className="text-sm text-muted-foreground leading-relaxed">
               Conte para a IA detalhes que os números não mostram. Ex: "Este mês tive um gasto extra com conserto de carro" ou "Quero focar em reduzir gastos com lazer".
             </p>
             <textarea
               value={aiObservation}
               onChange={(e) => setAiObservation(e.target.value)}
               placeholder="Digite sua observação aqui..."
-              className="w-full h-32 p-4 rounded-2xl border-2 bg-transparent text-text text-sm focus:ring-2 focus:ring-primary/20 outline-none resize-none transition-all"
+              className="w-full h-32 p-4 rounded-2xl border-2 bg-transparent text-foreground text-sm focus:ring-2 focus:ring-primary/20 outline-none resize-none transition-all"
               style={{ borderColor: theme.cardBorder }}
               autoFocus
             />
@@ -2125,7 +2125,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
           <div className="p-6 border-t flex gap-3" style={{ borderColor: theme.cardBorder }}>
             <button 
               onClick={() => { setAiObservation(''); handleAnalyzeWithAI(); }}
-              className="flex-1 py-3 px-4 bg-cardBorder/30 text-text rounded-xl font-bold text-sm hover:bg-cardBorder/50 transition-all"
+              className="flex-1 py-3 px-4 bg-muted/30 text-foreground rounded-xl font-bold text-sm hover:bg-muted/50 transition-all"
             >
               IGNORAR
             </button>
@@ -2150,10 +2150,10 @@ INSTRUÇÕES PARA SUA RESPOSTA:
       {!isFocusMode && (
         <div className="flex flex-col md:flex-row md:items-center justify-between py-8 gap-6 border-b" style={{ borderColor: theme.cardBorder }}>
           <div className="flex-1">
-            <h1 className="text-3xl lg:text-5xl font-bold text-text mb-2">
+            <h1 className="text-3xl lg:text-5xl font-bold text-foreground mb-2">
               {activeTab === 'transactions' ? '📊 Playground Financeiro' : activeTab === 'savings' ? '🎯 Análise de Metas' : '🏠 Financiamento Imobiliário'}
             </h1>
-            <p className="text-text opacity-70 text-sm md:text-base">
+            <p className="text-muted-foreground text-sm md:text-base">
               {activeTab === 'transactions'
                 ? 'Organize e analise seus dados com total liberdade'
                 : activeTab === 'savings'
@@ -2167,7 +2167,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
               className={`flex-1 md:flex-none px-6 py-3 md:py-2.5 rounded-xl font-bold text-sm transition-all border ${
                 activeTab === 'transactions'
                   ? 'bg-primary text-white border-primary shadow-md'
-                  : 'bg-transparent text-text border-cardBorder hover:bg-cardBorder/30'
+                  : 'bg-transparent text-foreground border-border hover:bg-muted/30'
               }`}
             >
               Transações
@@ -2177,7 +2177,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
               className={`flex-1 md:flex-none px-6 py-3 md:py-2.5 rounded-xl font-bold text-sm transition-all border ${
                 activeTab === 'savings'
                   ? 'bg-primary text-white border-primary shadow-md'
-                  : 'bg-transparent text-text border-cardBorder hover:bg-cardBorder/30'
+                  : 'bg-transparent text-foreground border-border hover:bg-muted/30'
               }`}
             >
               Metas de Poupança
@@ -2187,7 +2187,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
               className={`flex-1 md:flex-none px-6 py-3 md:py-2.5 rounded-xl font-bold text-sm transition-all border ${
                 activeTab === 'financiamento'
                   ? 'bg-primary text-white border-primary shadow-md'
-                  : 'bg-transparent text-text border-cardBorder hover:bg-cardBorder/30'
+                  : 'bg-transparent text-foreground border-border hover:bg-muted/30'
               }`}
             >
               🏠 Financiamento (experimental)
@@ -2203,7 +2203,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
         {showFilters && !isFocusMode && (
           <div className="w-full lg:w-80 lg:sticky lg:top-24 space-y-4 flex-shrink-0 animate-in slide-in-from-left duration-300">
             <div className="rounded-2xl border overflow-hidden shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-              <div className="p-4 font-semibold text-text flex items-center justify-between border-b" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+              <div className="p-4 font-semibold text-foreground flex items-center justify-between border-b" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
                 <div className="flex items-center gap-2">
                   <Filter className="w-5 h-5" />
                   <span>Filtros Rápidos</span>
@@ -2211,7 +2211,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                 <div className="flex items-center gap-1">
                   <button
                     onClick={handleShareUrl}
-                    className="px-2.5 py-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-70 hover:opacity-100 text-xs font-bold flex items-center gap-1.5"
+                    className="px-2.5 py-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:opacity-100 text-xs font-bold flex items-center gap-1.5"
                     title="Compartilhar"
                   >
                     {isShareCopied ? <Check className="w-4 h-4" /> : <Clipboard className="w-4 h-4" />}
@@ -2219,7 +2219,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                   </button>
                   <button 
                     onClick={() => setShowFilters(false)}
-                    className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+                    className="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:opacity-100"
                     title="Esconder Filtros"
                   >
                     <PanelLeftClose className="w-5 h-5" />
@@ -2229,7 +2229,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
               
               <div className="p-4 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-text opacity-70 mb-2">Tipo de Lançamento</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-2">Tipo de Lançamento</label>
                 <div className="grid grid-cols-3 gap-1">
                   {(['all', 'income', 'expense'] as const).map((type) => (
                     <button
@@ -2238,7 +2238,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                       className={`py-1.5 rounded-md text-[10px] transition-all border font-bold uppercase ${
                         typeFilter === type 
                           ? 'bg-primary text-white border-primary shadow-sm' 
-                          : 'bg-transparent text-text opacity-70 border-cardBorder hover:bg-cardBorder/30'
+                          : 'bg-transparent text-muted-foreground border-border hover:bg-muted/30'
                       }`}
                       style={{ 
                         backgroundColor: typeFilter === type ? theme.primary : 'transparent',
@@ -2252,7 +2252,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-text opacity-70 mb-2">Status (Pagamento/Recebimento)</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-2">Status (Pagamento/Recebimento)</label>
                 <div className="grid grid-cols-3 gap-1">
                   {(['all', 'paid', 'pending'] as const).map((status) => (
                     <button
@@ -2261,7 +2261,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                       className={`py-1.5 rounded-md text-[10px] transition-all border font-bold uppercase ${
                         statusFilter === status 
                           ? 'bg-primary text-white border-primary shadow-sm' 
-                          : 'bg-transparent text-text opacity-70 border-cardBorder hover:bg-cardBorder/30'
+                          : 'bg-transparent text-muted-foreground border-border hover:bg-muted/30'
                       }`}
                       style={{ 
                         backgroundColor: statusFilter === status ? theme.primary : 'transparent',
@@ -2276,13 +2276,13 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
               {transactions.some(t => t.status === 'deleted') && (
                 <div>
-                  <label className="block text-xs font-medium text-text opacity-70 mb-2">Visibilidade</label>
+                  <label className="block text-xs font-medium text-muted-foreground mb-2">Visibilidade</label>
                   <button
                     onClick={() => setShowDeleted(!showDeleted)}
                     className={`w-full py-2 rounded-md text-[10px] transition-all border font-bold uppercase flex items-center justify-center gap-2 ${
                       showDeleted 
                         ? 'bg-accent text-white border-accent shadow-sm' 
-                        : 'bg-transparent text-text opacity-70 border-cardBorder hover:bg-cardBorder/30'
+                        : 'bg-transparent text-muted-foreground border-border hover:bg-muted/30'
                     }`}
                     style={{ 
                       backgroundColor: showDeleted ? theme.accent : 'transparent',
@@ -2297,7 +2297,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
               <div>
                 <div className="space-y-2">
-                <label className="block text-xs font-medium text-text opacity-70 mb-2">Campo de Data</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-2">Campo de Data</label>
                 <div className="grid grid-cols-2 gap-1 mb-2">
                   {(['date', 'createdAt'] as const).map((field) => (
                     <button
@@ -2306,7 +2306,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                       className={`py-1.5 rounded-md text-[10px] transition-all border font-bold uppercase ${
                         dateField === field 
                           ? 'bg-primary text-white border-primary shadow-sm' 
-                          : 'bg-transparent text-text opacity-70 border-cardBorder hover:bg-cardBorder/30'
+                          : 'bg-transparent text-muted-foreground border-border hover:bg-muted/30'
                       }`}
                       style={{ 
                         backgroundColor: dateField === field ? theme.primary : 'transparent',
@@ -2340,9 +2340,9 @@ INSTRUÇÕES PARA SUA RESPOSTA:
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-text opacity-70 mb-1">Buscar na Planilha (Enter para focar)</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Buscar na Planilha (Enter para focar)</label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text opacity-50" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input 
                     type="text" 
                     placeholder="Ex: Supermercado..."
@@ -2356,22 +2356,22 @@ INSTRUÇÕES PARA SUA RESPOSTA:
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-text opacity-70 mb-2">Categorias</label>
-                <div className="flex flex-wrap gap-1 max-h-48 overflow-y-auto p-1 custom-scrollbar">
+                <label className="block text-xs font-medium text-muted-foreground mb-2">Categorias</label>
+                <div className="flex flex-wrap gap-1 p-0.5">
                   {categories.map((cat, idx) => {
-                    const isFirstIncomeCategory = incomeCategories.includes(cat) && !incomeCategories.includes(categories[idx - 1]);
+                    const isFirstIncomeCategory = incomeCategories.includes(cat) && (idx === 0 || !incomeCategories.includes(categories[idx - 1]));
                     
                     return (
                       <React.Fragment key={cat}>
-                        {isFirstIncomeCategory && (
-                          <div className="w-full h-px bg-cardBorder/30 my-1" />
+                        {isFirstIncomeCategory && idx > 0 && (
+                          <div className="w-full h-px bg-muted/40 my-3" />
                         )}
                         <button
                           onClick={() => toggleCategory(cat)}
                           className={`px-2.5 py-1.5 rounded-md text-[10px] transition-all border font-medium ${
                             selectedCategories.includes(cat) 
                               ? 'bg-primary text-white border-primary shadow-sm scale-105' 
-                              : 'bg-transparent text-text opacity-70 border-cardBorder'
+                              : 'bg-transparent text-muted-foreground border-border'
                           }`}
                           style={{ 
                             backgroundColor: selectedCategories.includes(cat) ? theme.primary : 'transparent',
@@ -2387,7 +2387,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-text opacity-70 mb-2">Cartões</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-2">Cartões</label>
                 <div className="flex flex-wrap gap-1">
                   {paymentMethods.map(pm => (
                     <button
@@ -2396,7 +2396,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                       className={`px-2.5 py-1.5 rounded-md text-[10px] transition-all border font-medium ${
                         selectedPaymentMethods.includes(pm) 
                           ? 'bg-primary text-white border-primary shadow-sm scale-105' 
-                          : 'bg-transparent text-text opacity-70 border-cardBorder'
+                          : 'bg-transparent text-muted-foreground border-border'
                       }`}
                       style={{ 
                         backgroundColor: selectedPaymentMethods.includes(pm) ? theme.primary : 'transparent',
@@ -2472,27 +2472,27 @@ INSTRUÇÕES PARA SUA RESPOSTA:
             return (
               <div className={`grid grid-cols-1 ${hasPassiveIncome ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-4`}>
                 <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                  <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Renda Operacional</p>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Renda Operacional</p>
                   <p className="text-2xl font-black text-orange-500">
                     {formatCurrency(filteredTransactions.filter(t => t.type === 'income' && t.category !== 'Rendimentos').reduce((acc, t) => acc + t.amount, 0))}
                   </p>
                 </div>
                 {hasPassiveIncome && (
                   <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Rendimento Passivo</p>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Rendimento Passivo</p>
                     <p className="text-2xl font-black text-orange-500">
                       {formatCurrency(passiveIncomeSum)}
                     </p>
                   </div>
                 )}
                 <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                  <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Total Despesas</p>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Total Despesas</p>
                   <p className="text-2xl font-black text-accent">
                     {formatCurrency(filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0))}
                   </p>
                 </div>
                 <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                  <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Saldo do Período</p>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Saldo do Período</p>
                   <p className={`text-2xl font-black ${
                     filteredTransactions.reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0) >= 0 
                     ? 'text-primary' : 'text-accent'
@@ -2511,7 +2511,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
               case 'income_timeline':
                 return (
                   <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    <div className="p-4 border-b font-semibold text-text flex flex-col md:flex-row md:items-center justify-between gap-4" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+                    <div className="p-4 border-b font-semibold text-foreground flex flex-col md:flex-row md:items-center justify-between gap-4" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
                       <div className="flex items-center gap-2">
                         <TrendingUp className="w-5 h-5 text-primary" />
                         <span className="text-sm lg:text-base">{item.label}</span>
@@ -2526,7 +2526,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                                                       className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${
                                                         incomeMode === 'range'
                                                           ? 'bg-primary text-white'
-                                                          : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                                          : 'bg-transparent text-muted-foreground hover:opacity-100'
                                                       }`}
                                                     >
                                                       INTERVALO
@@ -2536,7 +2536,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                                                       className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${
                                                         incomeMode === 'comparison'
                                                           ? 'bg-primary text-white'
-                                                          : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                                          : 'bg-transparent text-muted-foreground hover:opacity-100'
                                                       }`}
                                                     >
                                                       COMPARAÇÃO
@@ -2572,7 +2572,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                                                       className={`px-3 py-1 rounded text-xs font-bold transition-all ${
                                                         incomeGroupBy === 'category'
                                                           ? 'bg-primary text-white'
-                                                          : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                                          : 'bg-transparent text-muted-foreground hover:opacity-100'
                                                       }`}
                                                     >
                                                       Categoria
@@ -2582,7 +2582,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                                                       className={`px-3 py-1 rounded text-xs font-bold transition-all ${
                                                         incomeGroupBy === 'description'
                                                           ? 'bg-primary text-white'
-                                                          : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                                          : 'bg-transparent text-muted-foreground hover:opacity-100'
                                                       }`}
                                                     >
                                                       Descrição
@@ -2596,7 +2596,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                                                         className={`px-2 py-1 rounded text-[10px] font-bold transition-all uppercase ${
                                                           (item.id === 'income_timeline' ? statusFilter === status : expenseStatusFilter === status)
                                                             ? (item.id === 'income_timeline' ? 'bg-primary text-white' : 'bg-accent text-white')
-                                                            : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                                            : 'bg-transparent text-muted-foreground hover:opacity-100'
                                                         }`}
                                                       >
                                                         {status === 'all' ? 'Todos' : status === 'paid' ? 'Pagos' : 'Pend.'}
@@ -2609,16 +2609,16 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                                                 {!item.collapsed && (
                                                   <button 
                                                     onClick={(e) => { e.stopPropagation(); toggleAll(incomeChartRef); }}
-                                                    className="p-1.5 hover:bg-cardBorder rounded-md transition-all"
+                                                    className="p-1.5 hover:bg-muted rounded-md transition-all"
                                                     title="Alternar Todos"
                                                   >
                                                     <Eye className="w-4 h-4" />
                                                   </button>
                                                 )}
-                                                <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowUp className="w-4 h-4" /></button>
-                          <button onClick={() => moveItem(index, 'down')} disabled={index === layout.length - 1} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowDown className="w-4 h-4" /></button>
-                          <button onClick={() => setMaximizedId(item.id)} className="p-1.5 hover:bg-cardBorder rounded-md transition-all ml-1" title="Maximizar"><Maximize2 className="w-4 h-4" /></button>
-                          <button onClick={() => toggleCollapse(item.id)} className="p-1.5 hover:bg-cardBorder rounded-md transition-all ml-1" title={item.collapsed ? "Expandir" : "Minimizar"}>
+                                                <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1.5 hover:bg-muted rounded-md disabled:opacity-0 transition-all"><ArrowUp className="w-4 h-4" /></button>
+                          <button onClick={() => moveItem(index, 'down')} disabled={index === layout.length - 1} className="p-1.5 hover:bg-muted rounded-md disabled:opacity-0 transition-all"><ArrowDown className="w-4 h-4" /></button>
+                          <button onClick={() => setMaximizedId(item.id)} className="p-1.5 hover:bg-muted rounded-md transition-all ml-1" title="Maximizar"><Maximize2 className="w-4 h-4" /></button>
+                          <button onClick={() => toggleCollapse(item.id)} className="p-1.5 hover:bg-muted rounded-md transition-all ml-1" title={item.collapsed ? "Expandir" : "Minimizar"}>
                             {item.collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
                           </button>
                         </div>
@@ -2671,7 +2671,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                             />
                           )
                         ) : (
-                          <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
+                          <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
                             <TrendingUp className="w-12 h-12 opacity-10" />
                             <span>Nenhuma receita encontrada</span>
                           </div>
@@ -2713,7 +2713,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                             }} 
                           />
                         ) : (
-                          <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
+                          <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
                             <TrendingUp className="w-12 h-12 opacity-10" />
                             <span>Nenhum rendimento passivo registrado ainda</span>
                           </div>
@@ -2726,33 +2726,33 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
               case 'expense_timeline':
                 return (
-                  <div key={item.id} className="rounded-2xl border-2 p-0 overflow-hidden shadow-lg transition-all hover:shadow-2xl" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    <div className="p-4 md:p-6 border-b font-semibold text-text flex flex-col lg:flex-row lg:items-center justify-between gap-4" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                    <div className="p-4 border-b font-semibold text-foreground flex flex-col lg:flex-row lg:items-center justify-between gap-4" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
                       <div className="flex items-center gap-3 flex-shrink-0">
-                        <TrendingUp className="w-6 h-6 md:w-8 md:h-8 text-accent animate-pulse" />
-                        <span className="text-lg md:text-xl lg:text-2xl font-black uppercase tracking-tight">{item.label}</span>
+                        <TrendingUp className="w-5 h-5 text-accent" />
+                        <span className="text-sm lg:text-base font-bold uppercase tracking-wider">{item.label}</span>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 md:gap-3">
                         {!item.collapsed && (
                           <div className="flex flex-wrap items-center gap-2">
                             {/* Mode Toggle */}
-                            <div className="flex gap-1 border-2 rounded-xl p-1" style={{ borderColor: theme.cardBorder }}>
+                            <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
                               <button
                                 onClick={() => setExpenseMode('range')}
-                                className={`px-2 md:px-3 py-1 rounded-lg text-[9px] md:text-[10px] font-black transition-all ${
+                                className={`px-3 py-1 rounded text-xs font-bold transition-all ${
                                   expenseMode === 'range'
-                                    ? 'bg-accent text-white shadow-sm'
-                                    : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                    ? 'bg-accent text-white'
+                                    : 'bg-transparent text-muted-foreground hover:opacity-100'
                                 }`}
                               >
                                 INTERVALO
                               </button>
                               <button
                                 onClick={() => setExpenseMode('comparison')}
-                                className={`px-2 md:px-3 py-1 rounded-lg text-[9px] md:text-[10px] font-black transition-all ${
+                                className={`px-3 py-1 rounded text-xs font-bold transition-all ${
                                   expenseMode === 'comparison'
-                                    ? 'bg-accent text-white shadow-sm'
-                                    : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                    ? 'bg-accent text-white'
+                                    : 'bg-transparent text-muted-foreground hover:opacity-100'
                                 }`}
                               >
                                 COMPARAÇÃO
@@ -2760,23 +2760,23 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                             </div>
 
                             {/* Date Field Toggle */}
-                            <div className="flex gap-1 border-2 rounded-xl p-1" style={{ borderColor: theme.cardBorder }}>
+                            <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
                               <button
                                 onClick={() => setExpenseDateField('date')}
-                                className={`px-2 md:px-3 py-1 rounded-lg text-[9px] md:text-[10px] font-black transition-all uppercase ${
+                                className={`px-3 py-1 rounded text-xs font-bold transition-all ${
                                   expenseDateField === 'date'
-                                    ? 'bg-accent text-white shadow-sm'
-                                    : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                    ? 'bg-accent text-white'
+                                    : 'bg-transparent text-muted-foreground hover:opacity-100'
                                 }`}
                               >
                                 Venc.
                               </button>
                               <button
                                 onClick={() => setExpenseDateField('createdAt')}
-                                className={`px-2 md:px-3 py-1 rounded-lg text-[9px] md:text-[10px] font-black transition-all uppercase ${
+                                className={`px-3 py-1 rounded text-xs font-bold transition-all ${
                                   expenseDateField === 'createdAt'
-                                    ? 'bg-accent text-white shadow-sm'
-                                    : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                    ? 'bg-accent text-white'
+                                    : 'bg-transparent text-muted-foreground hover:opacity-100'
                                 }`}
                               >
                                 Criação
@@ -2784,23 +2784,23 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                             </div>
 
                             {/* Date/Month Inputs */}
-                            <div className="flex items-center gap-1 border-2 rounded-xl p-1 px-2 md:px-3" style={{ borderColor: theme.cardBorder }}>
+                            <div className="flex items-center gap-1 border rounded-lg p-1 px-2" style={{ borderColor: theme.cardBorder }}>
                               {expenseMode === 'range' ? (
                                 <>
                                   <input 
                                     type="date" 
                                     value={expenseTimelineStartDate}
                                     onChange={(e) => setExpenseTimelineStartDate(e.target.value)}
-                                    className="bg-transparent text-[10px] md:text-xs font-bold outline-none w-24 md:w-auto"
+                                    className="bg-transparent text-[10px] font-bold outline-none"
                                     style={{ color: theme.text }}
                                     title="Data Inicial"
                                   />
-                                  <span className="text-xs opacity-30 px-1 font-black">→</span>
+                                  <span className="text-[10px] opacity-30 px-1 font-black">→</span>
                                   <input 
                                     type="date" 
                                     value={expenseTimelineEndDate}
                                     onChange={(e) => setExpenseTimelineEndDate(e.target.value)}
-                                    className="bg-transparent text-[10px] md:text-xs font-bold outline-none w-24 md:w-auto"
+                                    className="bg-transparent text-[10px] font-bold outline-none"
                                     style={{ color: theme.text }}
                                     title="Data Final"
                                   />
@@ -2811,16 +2811,16 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                                     type="month" 
                                     value={expenseComparisonMonth1}
                                     onChange={(e) => setExpenseComparisonMonth1(e.target.value)}
-                                    className="bg-transparent text-[10px] md:text-xs font-bold outline-none"
+                                    className="bg-transparent text-[10px] font-bold outline-none"
                                     style={{ color: theme.text }}
                                     title="Mês 1"
                                   />
-                                  <span className="text-xs opacity-30 px-1 font-black">vs</span>
+                                  <span className="text-[10px] opacity-30 px-1 font-black">vs</span>
                                   <input 
                                     type="month" 
                                     value={expenseComparisonMonth2}
                                     onChange={(e) => setExpenseComparisonMonth2(e.target.value)}
-                                    className="bg-transparent text-[10px] md:text-xs font-bold outline-none"
+                                    className="bg-transparent text-[10px] font-bold outline-none"
                                     style={{ color: theme.text }}
                                     title="Mês 2"
                                   />
@@ -2829,23 +2829,23 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                             </div>
 
                             {/* Group By */}
-                            <div className="flex gap-1 border-2 rounded-xl p-1" style={{ borderColor: theme.cardBorder }}>
+                            <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
                               <button
                                 onClick={() => setExpenseGroupBy('category')}
-                                className={`px-2 md:px-3 py-1 rounded-lg text-[10px] md:text-xs font-black transition-all ${
+                                className={`px-3 py-1 rounded text-xs font-bold transition-all ${
                                   expenseGroupBy === 'category'
-                                    ? 'bg-accent text-white shadow-sm'
-                                    : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                    ? 'bg-accent text-white'
+                                    : 'bg-transparent text-muted-foreground hover:opacity-100'
                                 }`}
                               >
                                 Categ.
                               </button>
                               <button
                                 onClick={() => setExpenseGroupBy('paymentMethod')}
-                                className={`px-2 md:px-3 py-1 rounded-lg text-[10px] md:text-xs font-black transition-all ${
+                                className={`px-3 py-1 rounded text-xs font-bold transition-all ${
                                   expenseGroupBy === 'paymentMethod'
-                                    ? 'bg-accent text-white shadow-sm'
-                                    : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                    ? 'bg-accent text-white'
+                                    : 'bg-transparent text-muted-foreground hover:opacity-100'
                                 }`}
                               >
                                 Método
@@ -2853,15 +2853,15 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                             </div>
 
                             {/* Status Filter */}
-                            <div className="flex gap-1 border-2 rounded-xl p-1" style={{ borderColor: theme.cardBorder }}>
+                            <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
                               {(['all', 'paid', 'pending'] as const).map((status) => (
                                 <button
                                   key={status}
                                   onClick={() => setExpenseStatusFilter(status)}
-                                  className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all uppercase ${
+                                  className={`px-2 py-1 rounded text-[10px] font-bold transition-all uppercase ${
                                     expenseStatusFilter === status
-                                      ? 'bg-accent text-white shadow-sm'
-                                      : 'bg-transparent text-text opacity-70 hover:opacity-100'
+                                      ? 'bg-accent text-white'
+                                      : 'bg-transparent text-muted-foreground hover:opacity-100'
                                   }`}
                                 >
                                   {status === 'all' ? 'Todos' : status === 'paid' ? 'Pagos' : 'Pend.'}
@@ -2871,34 +2871,34 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                           </div>
                         )}
                         
-                        <div className="flex items-center gap-1 border-l-2 pl-2 md:pl-4" style={{ borderColor: theme.cardBorder }}>
+                        <div className="flex items-center gap-1 border-l pl-3" style={{ borderColor: theme.cardBorder }}>
                           {!item.collapsed && (
                             <button 
                               onClick={(e) => { e.stopPropagation(); toggleAll(expenseChartRef); }}
-                              className="p-1.5 md:p-2 hover:bg-cardBorder rounded-xl transition-all"
+                              className="p-1.5 hover:bg-muted rounded-md transition-all"
                               title="Alternar Todos"
                             >
-                              <Eye className="w-4 h-4 md:w-5 md:h-5" />
+                              <Eye className="w-4 h-4" />
                             </button>
                           )}
                           <button 
                             onClick={(e) => { e.stopPropagation(); handlePrintExpenseChart(); }}
-                            className="p-1.5 md:p-2 hover:bg-cardBorder rounded-xl transition-colors text-text"
+                            className="p-1.5 hover:bg-muted rounded-md transition-colors text-foreground"
                             title="Imprimir Gráfico"
                           >
-                            <Printer className="w-4 h-4 md:w-5 md:h-5" />
+                            <Printer className="w-4 h-4" />
                           </button>
-                          <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1.5 md:p-2 hover:bg-cardBorder rounded-xl disabled:opacity-0 transition-all"><ArrowUp className="w-4 h-4 md:w-5 md:h-5" /></button>
-                          <button onClick={() => moveItem(index, 'down')} disabled={index === layout.length - 1} className="p-1.5 md:p-2 hover:bg-cardBorder rounded-xl disabled:opacity-0 transition-all"><ArrowDown className="w-4 h-4 md:w-5 md:h-5" /></button>
-                          <button onClick={() => setMaximizedId(item.id)} className="p-1.5 md:p-2 hover:bg-cardBorder rounded-xl transition-all ml-1" title="Maximizar"><Maximize2 className="w-4 h-4 md:w-5 md:h-5" /></button>
-                          <button onClick={() => toggleCollapse(item.id)} className="p-1.5 md:p-2 hover:bg-cardBorder rounded-xl transition-all ml-1" title={item.collapsed ? "Expandir" : "Minimizar"}>
-                            {item.collapsed ? <ChevronDown className="w-4 h-4 md:w-5 md:h-5" /> : <ChevronUp className="w-4 h-4 md:w-5 md:h-5" />}
+                          <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1.5 hover:bg-muted rounded-md disabled:opacity-0 transition-all"><ArrowUp className="w-4 h-4" /></button>
+                          <button onClick={() => moveItem(index, 'down')} disabled={index === layout.length - 1} className="p-1.5 hover:bg-muted rounded-md disabled:opacity-0 transition-all"><ArrowDown className="w-4 h-4" /></button>
+                          <button onClick={() => setMaximizedId(item.id)} className="p-1.5 hover:bg-muted rounded-md transition-all ml-1" title="Maximizar"><Maximize2 className="w-4 h-4" /></button>
+                          <button onClick={() => toggleCollapse(item.id)} className="p-1.5 hover:bg-muted rounded-md transition-all ml-1" title={item.collapsed ? "Expandir" : "Minimizar"}>
+                            {item.collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
                           </button>
                         </div>
                       </div>
                     </div>
                     {!item.collapsed && (
-                      <div className="p-10 h-[750px]">
+                      <div className="p-8 h-[500px]">
                         {transactions.filter((t: any) => t.type === 'expense').length > 0 ? (
                           <Bar 
                             ref={expenseChartRef}
@@ -2925,7 +2925,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                             }} 
                           />
                         ) : (
-                          <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
+                          <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
                             <TrendingUp className="w-12 h-12 opacity-10" />
                             <span>Nenhuma despesa encontrada</span>
                           </div>
@@ -2944,7 +2944,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                         {filteredTransactions.length > 0 ? (
                           <Doughnut ref={categoryChartRef} data={categoryChartData} options={{ maintainAspectRatio: false, plugins: { legend: { labels: { color: theme.text, font: { size: 12 } } } } }} />
                         ) : (
-                          <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
+                          <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
                             <BarChart3 className="w-12 h-12 opacity-10" />
                             <span>Nenhum dado para os filtros selecionados</span>
                           </div>
@@ -2963,7 +2963,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                         {filteredTransactions.filter(t => t.paymentMethod).length > 0 ? (
                           <Pie ref={paymentChartRef} data={paymentChartData} options={{ maintainAspectRatio: false, plugins: { legend: { labels: { color: theme.text, font: { size: 12 } } } } }} />
                         ) : (
-                          <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
+                          <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
                             <CreditCard className="w-12 h-12 opacity-10" />
                             <span>Nenhum dado de pagamento encontrado</span>
                           </div>
@@ -2976,7 +2976,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
               case 'price_evolution':
                 return (
                   <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    <div className="p-4 border-b font-semibold text-text flex flex-col md:flex-row md:items-center justify-between gap-4" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+                    <div className="p-4 border-b font-semibold text-foreground flex flex-col md:flex-row md:items-center justify-between gap-4" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
                       <div className="flex items-center gap-2">
                         <TrendingUp className="w-5 h-5 text-primary" />
                         <span className="text-sm lg:text-base">{item.label}</span>
@@ -3004,16 +3004,16 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                           {!item.collapsed && (
                             <button 
                               onClick={(e) => { e.stopPropagation(); toggleAll(priceChartRef); }}
-                              className="p-1.5 hover:bg-cardBorder rounded-md transition-all"
+                              className="p-1.5 hover:bg-muted rounded-md transition-all"
                               title="Alternar Todos"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
                           )}
-                          <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowUp className="w-4 h-4" /></button>
-                          <button onClick={() => moveItem(index, 'down')} disabled={index === layout.length - 1} className="p-1.5 hover:bg-cardBorder rounded-md disabled:opacity-0 transition-all"><ArrowDown className="w-4 h-4" /></button>
-                          <button onClick={() => setMaximizedId(item.id)} className="p-1.5 hover:bg-cardBorder rounded-md transition-all ml-1" title="Maximizar"><Maximize2 className="w-4 h-4" /></button>
-                          <button onClick={() => toggleCollapse(item.id)} className="p-1.5 hover:bg-cardBorder rounded-md transition-all ml-1" title={item.collapsed ? "Expandir" : "Minimizar"}>
+                          <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1.5 hover:bg-muted rounded-md disabled:opacity-0 transition-all"><ArrowUp className="w-4 h-4" /></button>
+                          <button onClick={() => moveItem(index, 'down')} disabled={index === layout.length - 1} className="p-1.5 hover:bg-muted rounded-md disabled:opacity-0 transition-all"><ArrowDown className="w-4 h-4" /></button>
+                          <button onClick={() => setMaximizedId(item.id)} className="p-1.5 hover:bg-muted rounded-md transition-all ml-1" title="Maximizar"><Maximize2 className="w-4 h-4" /></button>
+                          <button onClick={() => toggleCollapse(item.id)} className="p-1.5 hover:bg-muted rounded-md transition-all ml-1" title={item.collapsed ? "Expandir" : "Minimizar"}>
                             {item.collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
                           </button>
                         </div>
@@ -3037,7 +3037,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                             }
                           }} />
                         ) : (
-                          <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-center gap-4 border-2 border-dashed rounded-3xl" style={{ borderColor: theme.cardBorder }}>
+                          <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-center gap-4 border-2 border-dashed rounded-3xl" style={{ borderColor: theme.cardBorder }}>
                             <TrendingUp className="w-16 h-16 opacity-10" />
                             <div className="max-w-xs">
                               <p className="text-base font-bold mb-1">Histórico de Preços</p>
@@ -3064,16 +3064,16 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                               <span className="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs font-bold">
                                 Total: {formatCurrency(discountAnalysis.totalDiscount)}
                               </span>
-                              <span className="px-3 py-1 bg-cardBorder/40 text-text rounded-full text-xs font-bold">
+                              <span className="px-3 py-1 bg-muted/40 text-foreground rounded-full text-xs font-bold">
                                 Visitas: {discountAnalysis.visits}
                               </span>
-                              <span className="px-3 py-1 bg-cardBorder/40 text-text rounded-full text-xs font-bold">
+                              <span className="px-3 py-1 bg-muted/40 text-foreground rounded-full text-xs font-bold">
                                 Lojas: {discountAnalysis.uniqueStores}
                               </span>
                             </div>
 
                             <div>
-                              <div className="text-xs font-black text-text uppercase tracking-wide mb-3">
+                              <div className="text-xs font-black text-foreground uppercase tracking-wide mb-3">
                                 Descontos por dia da semana
                               </div>
                               <div className="h-64">
@@ -3103,13 +3103,13 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                               <div className="rounded-2xl border overflow-hidden" style={{ borderColor: theme.cardBorder }}>
-                                <div className="px-5 py-4 border-b font-black text-text uppercase tracking-wide text-xs bg-cardBorder bg-opacity-40" style={{ borderColor: theme.cardBorder }}>
+                                <div className="px-5 py-4 border-b font-black text-foreground uppercase tracking-wide text-xs bg-muted bg-opacity-40" style={{ borderColor: theme.cardBorder }}>
                                   Ranking de lojas por desconto
                                 </div>
                                 <div className="overflow-auto max-h-80">
                                   <table className="w-full text-left text-sm border-collapse">
                                     <thead>
-                                      <tr className="bg-cardBorder bg-opacity-30" style={{ color: theme.text }}>
+                                      <tr className="bg-muted bg-opacity-30" style={{ color: theme.text }}>
                                         <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Loja</th>
                                         <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Visitas</th>
                                         <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Desconto</th>
@@ -3117,7 +3117,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                                     </thead>
                                     <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
                                       {discountAnalysis.storeRanking.map(row => (
-                                        <tr key={row.store} className="text-text hover:bg-primary/5 transition-colors">
+                                        <tr key={row.store} className="text-foreground hover:bg-primary/5 transition-colors">
                                           <td className="p-4 font-bold">{row.store}</td>
                                           <td className="p-4 text-right font-mono opacity-80">{row.visits}</td>
                                           <td className="p-4 text-right font-black text-primary">{formatCurrency(row.total)}</td>
@@ -3129,13 +3129,13 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                               </div>
 
                               <div className="rounded-2xl border overflow-hidden" style={{ borderColor: theme.cardBorder }}>
-                                <div className="px-5 py-4 border-b font-black text-text uppercase tracking-wide text-xs bg-cardBorder bg-opacity-40" style={{ borderColor: theme.cardBorder }}>
+                                <div className="px-5 py-4 border-b font-black text-foreground uppercase tracking-wide text-xs bg-muted bg-opacity-40" style={{ borderColor: theme.cardBorder }}>
                                   Melhor combinação loja + dia (top 5)
                                 </div>
                                 <div className="overflow-x-auto">
                                   <table className="w-full text-left text-sm border-collapse">
                                     <thead>
-                                      <tr className="bg-cardBorder bg-opacity-30" style={{ color: theme.text }}>
+                                      <tr className="bg-muted bg-opacity-30" style={{ color: theme.text }}>
                                         <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Loja</th>
                                         <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Dia</th>
                                         <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Médio/visita</th>
@@ -3144,7 +3144,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                                     </thead>
                                     <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
                                       {discountAnalysis.bestCombos.map(row => (
-                                        <tr key={`${row.store}__${row.weekday}`} className="text-text hover:bg-primary/5 transition-colors">
+                                        <tr key={`${row.store}__${row.weekday}`} className="text-foreground hover:bg-primary/5 transition-colors">
                                           <td className="p-4 font-bold">{row.store}</td>
                                           <td className="p-4 font-mono opacity-80">{row.weekday}</td>
                                           <td className="p-4 text-right font-black text-primary">{formatCurrency(row.avg)}</td>
@@ -3158,7 +3158,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                             </div>
                           </>
                         ) : (
-                          <div className="h-80 flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2 border-2 border-dashed rounded-3xl" style={{ borderColor: theme.cardBorder }}>
+                          <div className="h-80 flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2 border-2 border-dashed rounded-3xl" style={{ borderColor: theme.cardBorder }}>
                             <Sparkles className="w-12 h-12 opacity-10" />
                             <span>Nenhum desconto SEFAZ encontrado com os filtros atuais</span>
                           </div>
@@ -3171,14 +3171,14 @@ INSTRUÇÕES PARA SUA RESPOSTA:
               case 'table':
                 return (
                   <div key={item.id} ref={tableRef} className={`rounded-2xl border overflow-hidden shadow-md transition-all hover:shadow-lg scroll-mt-24 ${isFocusMode ? 'focus-target' : ''}`} style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    <div className="p-4 border-b font-semibold text-text flex items-center justify-between group" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+                    <div className="p-4 border-b font-semibold text-foreground flex items-center justify-between group" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
                       <div className="flex items-center gap-3">
                         <TableIcon className="w-5 h-5 text-primary" />
                         <div className="flex flex-col gap-1">
                           <span className="text-sm lg:text-base">{item.label}</span>
                           <div className="flex items-center gap-2 text-xs opacity-70">
                             <span className="px-2 py-0.5 bg-primary/20 text-primary rounded-full font-bold">{filteredTransactions.length} itens</span>
-                            <span className="text-text">•</span>
+                            <span className="text-foreground">•</span>
                             <span className="font-bold text-primary">{formatCurrency(filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0))}</span>
                           </div>
                         </div>
@@ -3196,7 +3196,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
                         <button
                           onClick={(e) => { e.stopPropagation(); handlePrintTable(); }}
-                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text"
+                          className="p-1.5 hover:bg-muted rounded-md transition-colors text-foreground"
                           title="Imprimir Tabela"
                         >
                           <Printer className="w-4 h-4" />
@@ -3211,13 +3211,13 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                             <span>{removedTransactionIds.length} removidos</span>
                           </button>
                         )}
-                        <div className="w-[1px] h-4 mx-1 bg-cardBorder opacity-0 group-hover:opacity-100" />
+                        <div className="w-[1px] h-4 mx-1 bg-muted opacity-0 group-hover:opacity-100" />
                         {!isFocusMode && (
                           <>
                             <button
                               onClick={(e) => { e.stopPropagation(); moveItem(index, 'up'); }}
                               disabled={index === 0}
-                              className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+                              className="p-1.5 hover:bg-muted rounded-md transition-colors text-foreground opacity-0 group-hover:opacity-100 disabled:opacity-0"
                               title="Mover para Cima"
                             >
                               <ArrowUp className="w-4 h-4" />
@@ -3225,14 +3225,14 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                             <button
                               onClick={(e) => { e.stopPropagation(); moveItem(index, 'down'); }}
                               disabled={index === layout.length - 1}
-                              className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+                              className="p-1.5 hover:bg-muted rounded-md transition-colors text-foreground opacity-0 group-hover:opacity-100 disabled:opacity-0"
                               title="Mover para Baixo"
                             >
                               <ArrowDown className="w-4 h-4" />
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); setMaximizedId(item.id); }}
-                              className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text"
+                              className="p-1.5 hover:bg-muted rounded-md transition-colors text-foreground"
                               title="Maximizar"
                             >
                               <Maximize2 className="w-4 h-4" />
@@ -3241,7 +3241,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                         )}
                         <button
                           onClick={() => toggleCollapse(item.id)}
-                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+                          className="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:opacity-100"
                           title={item.collapsed ? "Expandir" : "Minimizar"}
                         >
                           {item.collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
@@ -3253,20 +3253,20 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm border-collapse">
                           <thead>
-                            <tr className="bg-cardBorder bg-opacity-40" style={{ color: theme.text }}>
-                              <th onClick={() => handleSort('date')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>{dateColumnLabel} {sortBy === 'date' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
-                              <th onClick={() => handleSort('description')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Descrição {sortBy === 'description' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
-                              <th onClick={() => handleSort('category')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Categoria {sortBy === 'category' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
-                              <th onClick={() => handleSort('paymentMethod')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Pagamento {sortBy === 'paymentMethod' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+                            <tr className="bg-muted bg-opacity-40" style={{ color: theme.text }}>
+                              <th onClick={() => handleSort('date')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-muted/50 transition-colors" style={{ borderColor: theme.cardBorder }}>{dateColumnLabel} {sortBy === 'date' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+                              <th onClick={() => handleSort('description')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-muted/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Descrição {sortBy === 'description' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+                              <th onClick={() => handleSort('category')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-muted/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Categoria {sortBy === 'category' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+                              <th onClick={() => handleSort('paymentMethod')} className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer hover:bg-muted/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Pagamento {sortBy === 'paymentMethod' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
                               <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-center" style={{ borderColor: theme.cardBorder }}>
                                 <Trash2 className="w-3 h-3 mx-auto" />
                               </th>
-                              <th onClick={() => handleSort('amount')} className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right cursor-pointer hover:bg-cardBorder/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Valor {sortBy === 'amount' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+                              <th onClick={() => handleSort('amount')} className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right cursor-pointer hover:bg-muted/50 transition-colors" style={{ borderColor: theme.cardBorder }}>Valor {sortBy === 'amount' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
                             {getSortedTransactions().map(t => (
-                              <tr key={t.id} className={`text-text hover:bg-primary/5 transition-colors group ${t.status === 'deleted' ? 'opacity-50 grayscale-[0.5]' : ''}`}>
+                              <tr key={t.id} className={`text-foreground hover:bg-primary/5 transition-colors group ${t.status === 'deleted' ? 'opacity-50 grayscale-[0.5]' : ''}`}>
                                 <td className={`p-4 whitespace-nowrap border-r font-mono text-xs opacity-70 ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
                                   {formatBrazilDate(getTransactionDateSource(t), 'dd/MM/yyyy')}
                                 </td>
@@ -3285,7 +3285,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                                   </div>
                                 </td>
                                 <td className={`p-4 border-r ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
-                                  <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-cardBorder/50" style={{ color: theme.text }}>
+                                  <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-muted/50" style={{ color: theme.text }}>
                                     {t.category}
                                   </span>
                                 </td>
@@ -3311,7 +3311,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                           </tbody>
                         </table>
                         {filteredTransactions.length === 0 && (
-                          <div className="p-32 text-center text-text opacity-40 flex flex-col items-center gap-4">
+                          <div className="p-32 text-center text-foreground opacity-40 flex flex-col items-center gap-4">
                             <Search className="w-16 h-16 opacity-10" />
                             <div className="max-w-xs">
                               <p className="text-base font-bold mb-1">Planilha Vazia</p>
@@ -3335,15 +3335,15 @@ INSTRUÇÕES PARA SUA RESPOSTA:
       {/* Print Dialog Modal */}
       {showPrintDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-cardBackground rounded-2xl shadow-2xl max-w-md w-full border" style={{ borderColor: theme.cardBorder }}>
+          <div className="bg-card rounded-2xl shadow-2xl max-w-md w-full border" style={{ borderColor: theme.cardBorder }}>
             <div className="p-6 border-b" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
-              <h2 className="text-xl font-bold text-text">Personalizar Impressão</h2>
-                <p className="text-xs text-text opacity-70 mt-1">Customize os detalhes do seu relatório</p>
+              <h2 className="text-xl font-bold text-foreground">Personalizar Impressão</h2>
+                <p className="text-xs text-muted-foreground mt-1">Customize os detalhes do seu relatório</p>
               </div>
               
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-text mb-2">Título do Relatório</label>
+                  <label className="block text-sm font-semibold text-foreground mb-2">Título do Relatório</label>
                   <input
                     type="text"
                     value={printSettings.title}
@@ -3354,7 +3354,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-text mb-2">Subtítulo (Opcional)</label>
+                  <label className="block text-sm font-semibold text-foreground mb-2">Subtítulo (Opcional)</label>
                   <input
                     type="text"
                     value={printSettings.subtitle}
@@ -3369,7 +3369,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
               <div className="p-6 border-t flex gap-3" style={{ borderColor: theme.cardBorder }}>
                 <button
                   onClick={() => setShowPrintDialog(false)}
-                  className="flex-1 px-4 py-2 text-text border rounded-lg font-semibold hover:bg-cardBorder/30 transition-colors"
+                  className="flex-1 px-4 py-2 text-foreground border rounded-lg font-semibold hover:bg-muted/30 transition-colors"
                   style={{ borderColor: theme.cardBorder }}
                 >
                   Cancelar
@@ -3388,15 +3388,15 @@ INSTRUÇÕES PARA SUA RESPOSTA:
       {/* Chart Print Dialog Modal */}
       {showChartPrintDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-cardBackground rounded-2xl shadow-2xl max-w-md w-full border" style={{ borderColor: theme.cardBorder }}>
+          <div className="bg-card rounded-2xl shadow-2xl max-w-md w-full border" style={{ borderColor: theme.cardBorder }}>
             <div className="p-6 border-b" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
-              <h2 className="text-xl font-bold text-text">Personalizar Impressão do Gráfico</h2>
-              <p className="text-xs text-text opacity-70 mt-1">Customize os detalhes do seu gráfico</p>
+              <h2 className="text-xl font-bold text-foreground">Personalizar Impressão do Gráfico</h2>
+              <p className="text-xs text-muted-foreground mt-1">Customize os detalhes do seu gráfico</p>
             </div>
             
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-text mb-2">Título do Gráfico</label>
+                <label className="block text-sm font-semibold text-foreground mb-2">Título do Gráfico</label>
                 <input
                   type="text"
                   value={chartPrintSettings.title}
@@ -3407,7 +3407,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-text mb-2">Subtítulo (Opcional)</label>
+                <label className="block text-sm font-semibold text-foreground mb-2">Subtítulo (Opcional)</label>
                 <input
                   type="text"
                   value={chartPrintSettings.subtitle}
@@ -3422,7 +3422,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
             <div className="p-6 border-t flex gap-3" style={{ borderColor: theme.cardBorder }}>
               <button
                 onClick={() => setShowChartPrintDialog(false)}
-                className="flex-1 px-4 py-2 text-text border rounded-lg font-semibold hover:bg-cardBorder/30 transition-colors"
+                className="flex-1 px-4 py-2 text-foreground border rounded-lg font-semibold hover:bg-muted/30 transition-colors"
                 style={{ borderColor: theme.cardBorder }}
               >
                 Cancelar
