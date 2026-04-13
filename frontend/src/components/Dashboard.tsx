@@ -1,5 +1,5 @@
 import { format, getDate, getDaysInMonth, isBefore, startOfMonth, endOfMonth } from 'date-fns';
-import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil, Wifi } from 'lucide-react';
+import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil, Wifi, Check, X } from 'lucide-react';
 import React, { useState } from 'react';
 import Confetti from 'react-confetti';
 import { useNavigate } from 'react-router-dom';
@@ -336,6 +336,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   const [includeBenefits, setIncludeBenefits] = useLocalStorage('dashboard_include_benefits', true);
   const [isFlashSplit, setIsFlashSplit] = useLocalStorage('dashboard_flash_is_split', false);
   const [flashFlexAmount, setFlashFlexAmount] = useLocalStorage('dashboard_flash_flex_amount', 0);
+  const [cardHolderName, setCardHolderName] = useLocalStorage('dashboard_card_holder_name', 'Carvalho de Oliveira Neto');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [tempName, setTempName] = useState(cardHolderName);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const { theme } = useTheme();
 
@@ -563,10 +566,71 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
 
           {/* Card Bottom: Info & Type */}
           <div className="flex items-end justify-between border-t border-white/10 pt-6">
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold opacity-50 uppercase tracking-widest">Titular</p>
-              <p className="text-sm font-black uppercase tracking-widest drop-shadow-md">Carvalho de Oliveira Neto</p>
-            </div>
+            <div className="space-y-1 group/titular relative">
+               <div className="flex items-center gap-2">
+                 <p className="text-[10px] font-bold opacity-50 uppercase tracking-widest">Titular</p>
+                 {!isEditingName && (
+                   <button
+                     key="edit-btn"
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       setIsEditingName(true);
+                       setTempName(cardHolderName);
+                     }}
+                     className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                     title="Editar nome"
+                   >
+                     <Pencil className="w-3 h-3 text-white/70" />
+                   </button>
+                 )}
+               </div>
+               
+               <div className="min-h-[24px] flex items-center">
+                 {isEditingName ? (
+                   <div key="edit-mode" className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                     <input
+                        id="card-holder-input"
+                        type="text"
+                        value={tempName}
+                        onChange={(e) => setTempName(e.target.value.slice(0, 100))}
+                        className="bg-white/10 border border-white/20 rounded px-2 py-0.5 text-sm font-black uppercase tracking-widest focus:outline-none focus:border-white/40 w-full max-w-[200px]"
+                        autoFocus
+                        onFocus={(e) => e.target.select()}
+                        maxLength={100}
+                       onKeyDown={(e) => {
+                         if (e.key === 'Enter') {
+                           setCardHolderName(tempName);
+                           setIsEditingName(false);
+                         } else if (e.key === 'Escape') {
+                           setIsEditingName(false);
+                         }
+                       }}
+                     />
+                     <button
+                       key="save-btn"
+                       onClick={() => {
+                         setCardHolderName(tempName);
+                         setIsEditingName(false);
+                       }}
+                       className="p-1 hover:bg-green-500/20 rounded-full text-green-400"
+                     >
+                       <Check className="w-4 h-4" />
+                     </button>
+                     <button
+                       key="cancel-btn"
+                       onClick={() => setIsEditingName(false)}
+                       className="p-1 hover:bg-red-500/20 rounded-full text-red-400"
+                     >
+                       <X className="w-4 h-4" />
+                     </button>
+                   </div>
+                 ) : (
+                   <p key="view-mode" className="text-sm font-black uppercase tracking-widest drop-shadow-md">
+                     {cardHolderName}
+                   </p>
+                 )}
+               </div>
+             </div>
             <div className="text-right">
               <h2 className="text-xl font-black tracking-tighter uppercase italic opacity-90 italic">
                 {finalBalance < -0.001 ? 'DÉBITO' : 'CRÉDITO'}
