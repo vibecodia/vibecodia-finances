@@ -1,43 +1,39 @@
-import { Plus } from 'lucide-react';
-import React, { useState, useMemo } from 'react';
+import { Plus, Layout, Archive } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 
-import { useLocalStorage } from '../../hooks/trello/useLocalStorage';
+import { useTrello } from '../../hooks/trello/useTrello';
 import { Task, Column as ColumnType } from '../../types/trello/task';
 
 import { Column } from './Column';
-import { MoveTaskModal } from './MoveTaskModal';
 import { SearchBar } from './SearchBar';
 import { TaskModal } from './TaskModal';
-import { TrelloConfirmationModal } from './TrelloConfirmationModal';
 import ConfirmationModal from '../ConfirmationModal';
+import { Button } from '../ui/Button';
+import { cn } from '../../lib/utils';
 
-
-const initialColumns: ColumnType[] = [
-  { id: 'todo', title: 'A Fazer', tasks: [] },
-  { id: 'inProgress', title: 'Em Andamento', tasks: [] },
-  { id: 'done', title: 'Concluído', tasks: [] },
+const initialColumns: Omit<ColumnType, 'tasks'>[] = [
+  { id: 'todo', title: 'A Fazer' },
+  { id: 'inProgress', title: 'Em Andamento' },
+  { id: 'done', title: 'Concluído' },
 ];
 
 export function Board() {
-  const [tasks, setTasks] = useLocalStorage<Task[]>('tasks', []);
-  const [searchTerm, setSearchTerm] = useState('');
+  const { 
+    tasks, 
+    filteredTasks, 
+    searchTerm, 
+    setSearchTerm, 
+    addTask, 
+    updateTask, 
+    deleteTask, 
+    moveTask,
+    reorderTasks
+  } = useTrello();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
-  const [draggedTask, setDraggedTask] = useState<Task | null>(null);
-  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
-  const [confirmationModal, setConfirmationModal] = useState<{
-    isOpen: boolean;
-    task: Task | null;
-    fromColumn: string;
-    toColumn: string;
-  }>({ 
-    isOpen: false, 
-    task: null, 
-    fromColumn: '', 
-    toColumn: '' 
-  });
-  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
-  const [taskToMove, setTaskToMove] = useState<Task | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
     taskId: string | null;
@@ -46,18 +42,22 @@ export function Board() {
     taskId: null
   });
 
-  const filteredTasks = useMemo(() => {
-    return tasks.filter(task => 
-      task.title.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [tasks, searchTerm]);
-
   const columns = useMemo(() => {
-    return initialColumns.map(column => ({
+    const cols = initialColumns.map(column => ({
       ...column,
       tasks: filteredTasks.filter(task => task.columnId === column.id)
-    }));
-  }, [filteredTasks]);
+    })) as ColumnType[];
+
+    if (showArchived) {
+      cols.push({
+        id: 'archived',
+        title: 'Arquivados',
+        tasks: filteredTasks.filter(task => task.columnId === 'archived')
+      });
+    }
+
+    return cols;
+  }, [filteredTasks, showArchived]);
 
   const handleAddTask = () => {
     setEditingTask(undefined);
@@ -69,262 +69,176 @@ export function Board() {
     setIsModalOpen(true);
   };
 
-  const handleSaveTask = (task: Task) => {
-    if (editingTask) {
-      setTasks(prevTasks => prevTasks.map(t => t.id === task.id ? task : t));
-    } else {
-      setTasks(prevTasks => [...prevTasks, task]);
-    }
-  };
+  const onDragEnd = (result: DropResult) => {
+    const { destination, source, draggableId } = result;
 
-  const handleDeleteTask = (taskId: string) => {
-    setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
-    if (taskToMove && taskToMove.id === taskId) {
-      setIsMoveModalOpen(false);
-      setTaskToMove(null);
-    }
-    setDeleteConfirmation({ isOpen: false, taskId: null });
-  };
+    if (!destination) return;
 
-  const openDeleteModal = (taskId: string) => {
-    setDeleteConfirmation({ isOpen: true, taskId });
-  };
-
-  const handleDragStart = (task: Task) => {
-    setDraggedTask(task);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    const target = e.target as HTMLElement;
-    const columnElement = target.closest('[data-column-id]');
-    if (columnElement) {
-      setDragOverColumn(columnElement.getAttribute('data-column-id'));
-    }
-  };
-
-  const handleDragEnd = () => {
-    setDraggedTask(null);
-    setDragOverColumn(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, columnId: 'todo' | 'inProgress' | 'done') => {
-    e.preventDefault();
-    if (!draggedTask) return;
-    if (draggedTask.columnId === columnId) {
-      setDraggedTask(null);
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    ) {
       return;
     }
 
-    setConfirmationModal({
-      isOpen: true,
-      task: draggedTask,
-      fromColumn: draggedTask.columnId,
-      toColumn: columnId
-    });
-    setDragOverColumn(null);
+    // Se mudou de coluna
+    if (destination.droppableId !== source.droppableId) {
+      moveTask(draggableId, destination.droppableId as Task['columnId']);
+    } else {
+      // Reordenação dentro da mesma coluna
+      const columnTasks = tasks.filter(t => t.columnId === source.droppableId);
+      const otherTasks = tasks.filter(t => t.columnId !== source.droppableId);
+      
+      const newColumnTasks = Array.from(columnTasks);
+      const [removed] = newColumnTasks.splice(source.index, 1);
+      newColumnTasks.splice(destination.index, 0, removed);
+
+      reorderTasks([...otherTasks, ...newColumnTasks]);
+    }
   };
 
-  const handleConfirmMove = () => {
-    if (!confirmationModal.task) return;
-
-    setTasks(prevTasks => 
-      prevTasks.map(task => 
-        task.id === confirmationModal.task!.id 
-          ? { ...task, columnId: confirmationModal.toColumn as 'todo' | 'inProgress' | 'done' }
-          : task
-      )
-    );
+  const handleMoveForward = useCallback((taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
     
-    setDraggedTask(null);
-    setConfirmationModal({
-      isOpen: false,
-      task: null,
-      fromColumn: '',
-      toColumn: ''
-    });
-  };
+    let nextColumn: Task['columnId'] = task.columnId;
+    if (task.columnId === 'todo') nextColumn = 'inProgress';
+    else if (task.columnId === 'inProgress') nextColumn = 'done';
+    
+    if (nextColumn !== task.columnId) {
+      moveTask(taskId, nextColumn);
+    }
+  }, [tasks, moveTask]);
 
-  const handleCancelMove = () => {
-    setDraggedTask(null);
-    setConfirmationModal({
-      isOpen: false,
-      task: null,
-      fromColumn: '',
-      toColumn: ''
-    });
-  };
+  const handleMoveBackward = useCallback((taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    let prevColumn: Task['columnId'] = task.columnId;
+    if (task.columnId === 'done') prevColumn = 'inProgress';
+    else if (task.columnId === 'inProgress') prevColumn = 'todo';
+    
+    if (prevColumn !== task.columnId) {
+      moveTask(taskId, prevColumn);
+    }
+  }, [tasks, moveTask]);
 
-  
+  const handleToggleChecklistItem = useCallback((taskId: string, itemId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || !task.checklist) return;
 
-  const handleOpenMoveModal = (task: Task) => {
-    setEditingTask(task);
-    setIsModalOpen(true);
-  };
+    const updatedChecklist = task.checklist.map(item =>
+      item.id === itemId ? { ...item, completed: !item.completed } : item
+    );
 
-  const handleMoveForward = (taskId: string) => {
-    setTasks(prevTasks => {
-      return prevTasks.map(task => {
-        if (task.id === taskId) {
-          const currentColumn = task.columnId;
-          let newColumn: 'todo' | 'inProgress' | 'done' = currentColumn;
-          
-          if (currentColumn === 'todo') newColumn = 'inProgress';
-          else if (currentColumn === 'inProgress') newColumn = 'done';
-          
-          // Add animation class
-          const taskElement = document.getElementById(`task-${taskId}`);
-          if (taskElement) {
-            taskElement.classList.add('animate-pulse');
-            setTimeout(() => {
-              taskElement.classList.remove('animate-pulse');
-              // Show notification
-              const columnNames = {
-                todo: 'A Fazer',
-                inProgress: 'Em Andamento',
-                done: 'Concluído'
-              };
-              alert(`Card movido para ${columnNames[newColumn]}`);
-            }, 500);
-          }
-          
-          return { ...task, columnId: newColumn };
-        }
-        return task;
-      });
-    });
-  };
-
-  const handleMoveBackward = (taskId: string) => {
-    setTasks(prevTasks => {
-      return prevTasks.map(task => {
-        if (task.id === taskId) {
-          const currentColumn = task.columnId;
-          let newColumn: 'todo' | 'inProgress' | 'done' = currentColumn;
-          
-          if (currentColumn === 'inProgress') newColumn = 'todo';
-          else if (currentColumn === 'done') newColumn = 'inProgress';
-          
-          // Add animation class
-          const taskElement = document.getElementById(`task-${taskId}`);
-          if (taskElement) {
-            taskElement.classList.add('animate-pulse');
-            setTimeout(() => {
-              taskElement.classList.remove('animate-pulse');
-              // Show notification
-              const columnNames = {
-                todo: 'A Fazer',
-                inProgress: 'Em Andamento',
-                done: 'Concluído'
-              };
-              alert(`Card movido para ${columnNames[newColumn]}`);
-            }, 500);
-          }
-          
-          return { ...task, columnId: newColumn };
-        }
-        return task;
-      });
-    });
-  };
+    updateTask({ ...task, checklist: updatedChecklist });
+  }, [tasks, updateTask]);
 
   return (
-    <div 
-      className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300"
-    >
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+    <div className="min-h-screen bg-background p-4 md:p-8 space-y-8 flex flex-col">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 rounded-2xl bg-primary/10 text-primary">
+            <Layout className="w-8 h-8" />
+          </div>
           <div>
-            <h1 className="font-handwriting text-4xl font-bold text-gray-900 dark:text-white mb-2">
-              Minhas Tarefas
-            </h1>
-            <p className="font-handwriting text-gray-600 dark:text-gray-400 text-lg">
-              Organize seu trabalho e acompanhe seu progresso
-            </p>
+            <h1 className="text-3xl font-black text-foreground uppercase tracking-tight">Quadro de Tarefas</h1>
+            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Gerencie seu fluxo de trabalho</p>
           </div>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-3">
+          <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
           
-          <div className="flex items-center space-x-4">
-            <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
-            
-            <button
-              onClick={handleAddTask}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 font-medium shadow-lg hover:shadow-xl font-handwriting"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Nova Tarefa</span>
-            </button>
+          <Button
+            variant="outline"
+            onClick={() => setShowArchived(!showArchived)}
+            className={cn(
+              "flex items-center gap-2",
+              showArchived && "bg-primary/10 border-primary text-primary"
+            )}
+          >
+            <Archive className="w-4 h-4" />
+            <span className="hidden sm:inline">{showArchived ? 'Ocultar Arquivados' : 'Ver Arquivados'}</span>
+          </Button>
+
+          <Button 
+            onClick={handleAddTask}
+            className="flex items-center gap-2 shadow-lg shadow-primary/20"
+          >
+            <Plus className="w-4 h-4" />
+            Nova Tarefa
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Total', value: tasks.length, color: 'bg-foreground/5' },
+          { label: 'A Fazer', value: tasks.filter(t => t.columnId === 'todo').length, color: 'bg-blue-500/10 text-blue-500' },
+          { label: 'Em Andamento', value: tasks.filter(t => t.columnId === 'inProgress').length, color: 'bg-amber-500/10 text-amber-500' },
+          { label: 'Concluídas', value: tasks.filter(t => t.columnId === 'done').length, color: 'bg-green-500/10 text-green-500' },
+        ].map((stat) => (
+          <div key={stat.label} className={cn("p-4 rounded-2xl border border-border flex flex-col gap-1", stat.color)}>
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-70">{stat.label}</span>
+            <span className="text-2xl font-black">{stat.value}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Board Content */}
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div className="flex-1 overflow-x-auto pb-6">
+          <div className="flex gap-8 h-full min-h-[600px]">
+            {columns.map((column) => (
+              <Column
+                key={column.id}
+                id={column.id}
+                title={column.title}
+                tasks={column.tasks}
+                onCardClick={handleEditTask}
+                onMoveForward={handleMoveForward}
+                onMoveBackward={handleMoveBackward}
+                onDeleteTask={(taskId) => setDeleteConfirmation({ isOpen: true, taskId })}
+                onToggleChecklistItem={handleToggleChecklistItem}
+              />
+            ))}
           </div>
         </div>
+      </DragDropContext>
 
-        {/* Board */}
-        <div className="flex flex-row overflow-x-auto gap-6 pb-4">
-          {columns.map((column) => (
-            <Column
-              key={column.id}
-              id={column.id}
-              title={column.title}
-              tasks={column.tasks}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-              onDragEnd={handleDragEnd}
-              dragOver={dragOverColumn === column.id}
-              onCardClick={handleOpenMoveModal}
-              onMoveForward={handleMoveForward}
-              onMoveBackward={handleMoveBackward}
-              onDeleteTask={openDeleteModal}
-            />
-          ))}
-        </div>
+      {/* Modals */}
+      <TaskModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={(task) => {
+          if (editingTask) updateTask(task);
+          else addTask(task);
+          setIsModalOpen(false);
+        }}
+        onDelete={(taskId) => {
+          setDeleteConfirmation({ isOpen: true, taskId });
+          setIsModalOpen(false);
+        }}
+        task={editingTask}
+        mode={editingTask ? 'edit' : 'create'}
+      />
 
-        {/* Quick Add Button (Mobile) */}
-        <button
-          onClick={handleAddTask}
-          className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-xl hover:shadow-2xl transition-all duration-200 flex items-center justify-center z-40"
-        >
-          <Plus className="w-6 h-6" />
-        </button>
-
-        {/* Task Modal */}
-        <TaskModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSave={handleSaveTask}
-          onDelete={openDeleteModal}
-          task={editingTask}
-          mode={editingTask ? 'edit' : 'create'}
-        />
-
-        {/* Confirmation Modal */}
-        <TrelloConfirmationModal
-          isOpen={confirmationModal.isOpen}
-          onClose={handleCancelMove}
-          onConfirm={handleConfirmMove}
-          task={confirmationModal.task}
-          fromColumn={confirmationModal.fromColumn}
-          toColumn={confirmationModal.toColumn}
-        />
-
-        {/* New Move Task Modal */}
-         <MoveTaskModal
-           isOpen={isMoveModalOpen}
-           onClose={() => setIsMoveModalOpen(false)}
-           task={taskToMove}
-           onMove={handleMoveForward}
-           onEdit={handleEditTask}
-           onDelete={openDeleteModal}
-         />
-
-        <ConfirmationModal
-          isOpen={deleteConfirmation.isOpen}
-          onClose={() => setDeleteConfirmation({ isOpen: false, taskId: null })}
-          onConfirm={() => deleteConfirmation.taskId && handleDeleteTask(deleteConfirmation.taskId)}
-          title="Excluir Tarefa"
-          message="Tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita."
-          confirmText="Confirmar Exclusão"
-        />
-      </div>
+      <ConfirmationModal
+        isOpen={deleteConfirmation.isOpen}
+        onClose={() => setDeleteConfirmation({ isOpen: false, taskId: null })}
+        onConfirm={() => {
+          if (deleteConfirmation.taskId) {
+            deleteTask(deleteConfirmation.taskId);
+            setDeleteConfirmation({ isOpen: false, taskId: null });
+          }
+        }}
+        title="Excluir Tarefa"
+        message="Tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita."
+        confirmText="Confirmar Exclusão"
+      />
     </div>
   );
 }
