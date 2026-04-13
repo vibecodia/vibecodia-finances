@@ -2,7 +2,6 @@ import { format, getDate, getDaysInMonth, isBefore, startOfMonth, endOfMonth } f
 import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil, Wifi, Check, X, Sword } from 'lucide-react';
 import React, { useState } from 'react';
 import Confetti from 'react-confetti';
-import { useNavigate } from 'react-router-dom';
 
 import familyBg from '../assets/family-bg.jpg';
 import { useTheme } from '../contexts/ThemeContext';
