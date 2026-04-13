@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { X, Sword } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface UIElement {
   id: string;
