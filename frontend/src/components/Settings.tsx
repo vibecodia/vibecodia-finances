@@ -61,7 +61,7 @@ const Settings: React.FC<SettingsProps> = ({
   // Ninja Game State
   const [ninjaGameEnabled, setNinjaGameEnabled] = useState<boolean>(() => {
     const saved = localStorage.getItem('ninjaGameEnabled');
-    return saved === null ? true : saved === 'true'; // Default to true
+    return saved === 'true'; // Default to false
   });
 
   const [uiNinjaEnabled, setUiNinjaEnabled] = useState<boolean>(() => {
