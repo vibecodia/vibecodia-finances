@@ -45,8 +45,8 @@ const Header: React.FC = () => {
           </p>
         </Link>
         
-        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0 relative">
-          <div className="flex items-center justify-end min-w-[40px]">
+        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+          <div className="relative w-10 h-10 flex items-center justify-center">
             <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10">
               <ThemeSelector />
             </div>
