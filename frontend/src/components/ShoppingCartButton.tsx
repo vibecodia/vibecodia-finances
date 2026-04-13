@@ -37,7 +37,7 @@ const ShoppingCartButton: React.FC<ShoppingCartButtonProps> = ({
 
       {itemCount > 0 && (
         <span
-          className="absolute -top-2 -right-2 bg-red-600 text-white text-[11px] font-black rounded-full h-6.5 w-6.5 flex items-center justify-center shadow-[0_2px_10px_rgba(220,38,38,0.6)] border-2 border-white animate-in zoom-in duration-300 z-50 pointer-events-none"
+          className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black rounded-full min-w-[1.4rem] h-[1.4rem] px-1 flex items-center justify-center shadow-[0_2px_10px_rgba(220,38,38,0.6)] border-2 border-white animate-in zoom-in duration-300 z-50 pointer-events-none"
         >
           {itemCount}
         </span>

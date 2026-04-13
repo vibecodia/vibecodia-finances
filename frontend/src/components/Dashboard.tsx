@@ -457,7 +457,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         {/* Main Balance Card */}
       <div
         className={cn(
-          "relative overflow-hidden rounded-[2.5rem] p-8 sm:p-10 cursor-pointer border-t-2 border-l border-white/30 transition-all duration-700 text-white group",
+          "relative overflow-hidden rounded-[2.5rem] p-8 sm:p-10 cursor-pointer border-t-2 border-l border-white/30 transition-all duration-700 text-white group isolate",
           isPulsing ? 'scale-[1.02]' : 'scale-100',
           finalBalance < -0.001 
             ? "shadow-[0_20px_50px_rgba(239,68,68,0.4),inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.5)] border-red-400/50 hover:shadow-[0_40px_80px_rgba(239,68,68,0.5),inset_0_2px_6px_rgba(255,255,255,0.4),inset_0_-2px_6px_rgba(0,0,0,0.6)]" 
@@ -466,13 +466,17 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         style={{
           backgroundColor: finalBalance < -0.001 ? '#7f1d1d' : theme.primary,
           perspective: '1000px',
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden',
+          transform: 'translateZ(0)',
+          WebkitTransform: 'translateZ(0)',
         }}
         onClick={handleBalanceCardClick}
       >
         {/* Background Image Layer with slow movement and higher contrast */}
         <div 
           className={cn(
-            "absolute inset-0 animate-slow-zoom-pan bg-cover bg-center mix-blend-overlay",
+            "absolute inset-0 rounded-[2.5rem] animate-slow-zoom-pan bg-cover bg-center mix-blend-overlay z-0",
             finalBalance < -0.001 ? "opacity-20 grayscale" : "opacity-30"
           )}
           style={{ backgroundImage: `url(${familyBg})` }}
@@ -480,7 +484,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
 
         {/* Glossy/Metallic Gradient Overlay */}
         <div 
-          className="absolute inset-0 opacity-80"
+          className="absolute inset-0 opacity-80 rounded-[2.5rem]"
           style={{
             backgroundImage: finalBalance < -0.001 
               ? `linear-gradient(135deg, #7f1d1d 0%, #ef4444aa 40%, rgba(255,255,255,0.1) 50%, #ef4444aa 60%, #7f1d1d 100%)`
@@ -489,7 +493,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         />
 
         {/* Holographic effect on hover */}
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-1000 bg-gradient-to-tr from-transparent via-white to-transparent -translate-x-full group-hover:translate-x-full rotate-12 scale-150 pointer-events-none" />
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-1000 bg-gradient-to-tr from-transparent via-white to-transparent -translate-x-full group-hover:translate-x-full rotate-12 scale-150 pointer-events-none rounded-[2.5rem]" />
 
         <div className="relative z-10 flex flex-col h-full justify-between min-h-[220px]">
           {/* Card Top: Branding & Controls */}

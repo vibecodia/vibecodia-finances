@@ -19,6 +19,7 @@ const Header: React.FC<HeaderProps> = ({
   const [isPulsing, setIsPulsing] = useState(false);
   const location = useLocation();
   const appVersion = (import.meta as any).env.APP_VERSION;
+  const appSubtitle = (import.meta as any).env.APP_SUBTITLE;
 
   const isRoot = location.pathname === '/';
 
@@ -52,7 +53,7 @@ const Header: React.FC<HeaderProps> = ({
             </h1>
           </div>
           <p className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.5em] opacity-40 mt-1 leading-none">
-            Financial Control
+            {appSubtitle}
           </p>
         </Link>
         
