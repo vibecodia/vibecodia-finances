@@ -457,12 +457,15 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         {/* Main Balance Card */}
       <div
         className={cn(
-          "relative overflow-hidden rounded-[2.5rem] p-8 sm:p-10 cursor-pointer border transition-all duration-700 shadow-[0_20px_50px_rgba(0,0,0,0.3)] hover:shadow-[0_30px_70px_rgba(0,0,0,0.4)] text-white group",
+          "relative overflow-hidden rounded-[2.5rem] p-8 sm:p-10 cursor-pointer border-t-2 border-l border-white/30 transition-all duration-700 text-white group",
           isPulsing ? 'scale-[1.02]' : 'scale-100',
-          finalBalance < -0.001 ? "border-red-500/50 shadow-[0_20px_50px_rgba(239,68,68,0.2)]" : "border-white/20"
+          finalBalance < -0.001 
+            ? "shadow-[0_20px_50px_rgba(239,68,68,0.4),inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.5)] border-red-400/50 hover:shadow-[0_40px_80px_rgba(239,68,68,0.5),inset_0_2px_6px_rgba(255,255,255,0.4),inset_0_-2px_6px_rgba(0,0,0,0.6)]" 
+            : "shadow-[0_20px_50px_rgba(0,0,0,0.6),inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.5)] border-white/20 hover:shadow-[0_40px_80px_rgba(0,0,0,0.7),inset_0_2px_6px_rgba(255,255,255,0.4),inset_0_-2px_6px_rgba(0,0,0,0.6)]"
         )}
         style={{
-          backgroundColor: finalBalance < -0.001 ? '#7f1d1d' : theme.primary, // Deep red background for negative
+          backgroundColor: finalBalance < -0.001 ? '#7f1d1d' : theme.primary,
+          perspective: '1000px',
         }}
         onClick={handleBalanceCardClick}
       >
@@ -650,7 +653,14 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
       </div>
 
       {/* Barra receitas vs despesas */}
-      <Card className="p-6">
+      <Card className="relative p-6 shadow-[2px_2px_10px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker">
+        {/* Adesivo Band-Aid Central */}
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] z-20 flex items-center justify-center group-hover/sticker:-translate-y-1 transition-transform overflow-hidden">
+          <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
+            {[...Array(12)].map((_, i) => <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />)}
+          </div>
+          <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
+        </div>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-green-400 rounded-full" />
@@ -716,8 +726,15 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
 
       {/* Benefícios — Flash / Vero Card */}
       <Card
-        className="p-6 space-y-6"
+        className="relative p-6 space-y-6 shadow-[2px_2px_12px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker"
       >
+        {/* Adesivo Band-Aid Lateral */}
+        <div className="absolute -top-4 -right-2 w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] rotate-[30deg] z-20 flex items-center justify-center group-hover/sticker:rotate-[25deg] transition-transform overflow-hidden">
+          <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
+            {[...Array(12)].map((_, i) => <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />)}
+          </div>
+          <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
+        </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CreditCard className="w-5 h-5 text-primary" />
@@ -807,9 +824,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
       {/* Progresso das Metas */}
       {savingsGoals.length > 0 && (
         <Card
-          className="cursor-pointer"
+          className="relative cursor-pointer shadow-[2px_2px_15px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker"
           onClick={() => navigate('/goals')}
         >
+          {/* Adesivo Band-Aid Canto */}
+          <div className="absolute -top-3 -left-2 w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] -rotate-[15deg] z-20 flex items-center justify-center group-hover/sticker:-rotate-[10deg] transition-transform overflow-hidden">
+            <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
+              {[...Array(12)].map((_, i) => <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />)}
+            </div>
+            <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
+          </div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-foreground truncate pr-2">Progresso das Metas</h3>
             <Target className="w-4 h-4 text-primary flex-shrink-0" />
