@@ -11,7 +11,7 @@ import Reports from './components/Reports';
 import SavingsGoals from './components/SavingsGoals';
 import TransactionList from './components/TransactionList';
 import Settings from './components/Settings';
-import { TrelloBoard } from './components/trello/TrelloBoard';
+import { Board } from './components/trello/Board';
 import VerificationModal from './components/VerificationModal';
 import { useTheme } from './contexts/ThemeContext';
 import { useVerification } from './contexts/VerificationContext';
@@ -183,7 +183,7 @@ function App() {
                 ) : null
               } 
             />
-            <Route path="/tasks" element={<TrelloBoard />} />
+            <Route path="/tasks" element={<Board />} />
             <Route path="/hoje" element={<HojeRedirect />} />
           </Routes>
         </main>

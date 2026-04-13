@@ -1,4 +1,5 @@
 import { Task } from '../../types/trello/task';
+import { formatBrazilDate, getBrazilDateString } from '../helpers';
 
 export function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -15,7 +16,7 @@ export function createTask(
     title,
     description,
     priority,
-    date,
+    date: date || getBrazilDateString(),
     columnId: 'todo',
     createdAt: new Date().toISOString(),
   };
@@ -44,11 +45,5 @@ export function getPriorityLabel(priority: 'low' | 'medium' | 'high'): string {
 }
 
 export function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'America/Sao_Paulo'
-  });
+  return formatBrazilDate(dateString);
 }
