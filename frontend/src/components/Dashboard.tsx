@@ -332,7 +332,6 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => {
-  const navigate = useNavigate();
   const { width, height } = useWindowSize();
   const [showConfetti, setShowConfetti] = useState(false);
   const [isPulsing, setIsPulsing] = useState(false);
