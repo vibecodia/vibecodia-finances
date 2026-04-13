@@ -250,13 +250,6 @@ export function Board() {
             <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
             
             <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 transition-colors duration-200"
-            >
-              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
-            
-            <button
               onClick={handleAddTask}
               className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 font-medium shadow-lg hover:shadow-xl font-handwriting"
             >

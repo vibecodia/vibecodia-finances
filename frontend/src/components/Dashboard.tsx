@@ -466,17 +466,22 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
 
         {/* Main Balance Card */}
       <div
-        className={`relative overflow-hidden rounded-[2.5rem] p-8 sm:p-10 cursor-pointer border border-white/20 transition-all duration-700 shadow-[0_20px_50px_rgba(0,0,0,0.3)] hover:shadow-[0_30px_70px_rgba(0,0,0,0.4)] text-white group ${
-          isPulsing ? 'scale-[1.02]' : 'scale-100'
-        }`}
+        className={cn(
+          "relative overflow-hidden rounded-[2.5rem] p-8 sm:p-10 cursor-pointer border transition-all duration-700 shadow-[0_20px_50px_rgba(0,0,0,0.3)] hover:shadow-[0_30px_70px_rgba(0,0,0,0.4)] text-white group",
+          isPulsing ? 'scale-[1.02]' : 'scale-100',
+          finalBalance < -0.001 ? "border-red-500/50 shadow-[0_20px_50px_rgba(239,68,68,0.2)]" : "border-white/20"
+        )}
         style={{
-          backgroundColor: theme.primary,
+          backgroundColor: finalBalance < -0.001 ? '#7f1d1d' : theme.primary, // Deep red background for negative
         }}
         onClick={handleBalanceCardClick}
       >
         {/* Background Image Layer with slow movement and higher contrast */}
         <div 
-          className="absolute inset-0 animate-slow-zoom-pan opacity-30 bg-cover bg-center mix-blend-overlay"
+          className={cn(
+            "absolute inset-0 animate-slow-zoom-pan bg-cover bg-center mix-blend-overlay",
+            finalBalance < -0.001 ? "opacity-20 grayscale" : "opacity-30"
+          )}
           style={{ backgroundImage: `url(${familyBg})` }}
         />
 
@@ -484,7 +489,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         <div 
           className="absolute inset-0 opacity-80"
           style={{
-            backgroundImage: `linear-gradient(135deg, ${theme.primary} 0%, ${theme.primary}aa 40%, rgba(255,255,255,0.1) 50%, ${theme.primary}aa 60%, ${theme.primary} 100%)`,
+            backgroundImage: finalBalance < -0.001 
+              ? `linear-gradient(135deg, #7f1d1d 0%, #ef4444aa 40%, rgba(255,255,255,0.1) 50%, #ef4444aa 60%, #7f1d1d 100%)`
+              : `linear-gradient(135deg, ${theme.primary} 0%, ${theme.primary}aa 40%, rgba(255,255,255,0.1) 50%, ${theme.primary}aa 60%, ${theme.primary} 100%)`,
           }}
         />
 
@@ -552,8 +559,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
           {/* Card Middle: Main Balance */}
           <div className="my-4">
             <div className="flex flex-col">
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50 mb-2">Saldo Disponível</span>
-              <p className="text-4xl sm:text-6xl font-black tracking-tighter tabular-nums drop-shadow-lg">
+              <span className={cn(
+                "text-[10px] font-black uppercase tracking-[0.3em] mb-2 transition-colors duration-500",
+                finalBalance < -0.001 ? "text-rose-200 animate-pulse" : "opacity-50"
+              )}>
+                {finalBalance < -0.001 ? 'Atenção • Saldo Devedor' : 'Saldo Disponível'}
+              </span>
+              <p className={cn(
+                "text-4xl sm:text-6xl font-black tracking-tighter tabular-nums drop-shadow-lg transition-colors duration-500",
+                finalBalance < -0.001 ? "text-rose-100" : "text-white"
+              )}>
                 {showBalance ? formatCurrency(displayBalance) : 'R$ ••••••'}
               </p>
             </div>

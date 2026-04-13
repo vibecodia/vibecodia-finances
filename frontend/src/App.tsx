@@ -138,17 +138,6 @@ function App() {
               theme={theme}
               animateCombined={animateCombined}
             />
-
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-full bg-card-background text-text shadow-lg ml-1"
-              style={{ 
-                backgroundColor: theme.cardBackground,
-                color: theme.text
-              }}
-            >
-              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
           </div>
         )}
 
