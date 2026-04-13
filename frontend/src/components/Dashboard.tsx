@@ -14,7 +14,7 @@ import { formatCurrency, filterTransactionsByMonth, formatPaymentMethod, getCurr
 import { cn } from '../lib/utils';
 import RecentTransactionsFloatingCard from './RecentTransactionsFloatingCard';
 import MonthSegmentedControl from './MonthSegmentedControl';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
 import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -103,10 +103,10 @@ const AccountSlider: React.FC<AccountSliderProps> = ({ label, income, spent, for
           style={{
             width: `${spentPct}%`,
             background: isDanger
-              ? 'linear-gradient(90deg, hsl(var(--destructive)), #ef4444)'
+              ? 'linear-gradient(90deg, #ef4444, #b91c1c)'
               : isWarning
-                ? 'linear-gradient(90deg, #d97706, #fbbf24)'
-                : 'linear-gradient(90deg, #f87171, #ef4444)',
+                ? 'linear-gradient(90deg, #f59e0b, #d97706)'
+                : 'linear-gradient(90deg, #22c55e, #16a34a)',
           }}
         />
 
@@ -228,6 +228,9 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
             <Scissors className="w-5 h-5 text-primary" />
             Split Saldo Flash
           </DialogTitle>
+          <DialogDescription>
+            Defina quanto do seu saldo Flash será reservado para gastos Flex.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">

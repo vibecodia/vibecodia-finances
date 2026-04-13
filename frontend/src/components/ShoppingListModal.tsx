@@ -1,7 +1,7 @@
 import { Check, Trash2, PlusCircle, Star, ShoppingBasket } from 'lucide-react';
 import React, { useState, useRef, useEffect } from 'react';
 import { TransitionGroup, CSSTransition } from 'react-transition-group';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { cn } from '../lib/utils';
@@ -88,6 +88,9 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
               >
                 Lista de Compras
               </DialogTitle>
+              <DialogDescription className="sr-only">
+                Gerencie seus itens e afazeres
+              </DialogDescription>
             </div>
             <p className="text-sm text-center opacity-60 font-medium">
               Gerencie seus itens e afazeres
