@@ -10,11 +10,13 @@ const VERIFICATION_TIMEOUT: number =
 
 interface VerificationContextType {
   isVerified: boolean;
+  isSettingsVerified: boolean;
   pin: string | null;
   verify: (code: string) => Promise<boolean>;
   logout: () => void;
   showVerificationModal: boolean;
   setShowVerificationModal: (show: boolean) => void;
+  setSettingsVerified: (verified: boolean) => void;
   checkVerification: () => void;
   isInitializing: boolean;
 }
@@ -35,6 +37,7 @@ interface VerificationProviderProps {
 
 export const VerificationProvider: React.FC<VerificationProviderProps> = ({ children }) => {
   const [isVerified, setIsVerified] = useState<boolean>(false);
+  const [isSettingsVerified, setIsSettingsVerified] = useState<boolean>(false);
   const [pin, setPin] = useState<string | null>(null);
   const [showVerificationModal, setShowVerificationModal] = useState<boolean>(false);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -48,6 +51,7 @@ export const VerificationProvider: React.FC<VerificationProviderProps> = ({ chil
       if (Date.now() - lastVerificationTime < VERIFICATION_TIMEOUT) {
         setIsVerified(true);
         setPin(storedPin);
+        // On initial check, we don't automatically verify settings
       } else {
         logout(); // Se o tempo expirou, faça logout
       }
@@ -78,6 +82,7 @@ export const VerificationProvider: React.FC<VerificationProviderProps> = ({ chil
         Cookies.set(VERIFICATION_COOKIE_NAME, new Date().toISOString(), cookieOptions);
         Cookies.set(PIN_COOKIE_NAME, code, cookieOptions);
         setIsVerified(true);
+        setIsSettingsVerified(true); // Verifying PIN also verifies settings
         setPin(code);
         setShowVerificationModal(false);
         return true;
@@ -93,13 +98,25 @@ export const VerificationProvider: React.FC<VerificationProviderProps> = ({ chil
     Cookies.remove(VERIFICATION_COOKIE_NAME);
     Cookies.remove(PIN_COOKIE_NAME);
     setIsVerified(false);
+    setIsSettingsVerified(false);
     setPin(null);
     setShowVerificationModal(true);
   };
 
   return (
     <VerificationContext.Provider
-      value={{ isVerified, pin, verify, logout, showVerificationModal, setShowVerificationModal, checkVerification, isInitializing }}
+      value={{ 
+        isVerified, 
+        isSettingsVerified, 
+        pin, 
+        verify, 
+        logout, 
+        showVerificationModal, 
+        setShowVerificationModal, 
+        setSettingsVerified: setIsSettingsVerified,
+        checkVerification, 
+        isInitializing 
+      }}
     >
       {children}
     </VerificationContext.Provider>
