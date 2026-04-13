@@ -14,10 +14,11 @@ interface ColumnProps {
   onMoveForward: (taskId: string) => void;
   onMoveBackward: (taskId: string) => void;
   onDeleteTask: (taskId: string) => void;
+  onArchiveTask: (taskId: string) => void;
   onToggleChecklistItem: (taskId: string, itemId: string) => void;
 }
 
-export const Column = React.memo(({ id, title, tasks, onCardClick, onMoveForward, onMoveBackward, onDeleteTask, onToggleChecklistItem }: ColumnProps) => {
+export const Column = React.memo(({ id, title, tasks, onCardClick, onMoveForward, onMoveBackward, onDeleteTask, onArchiveTask, onToggleChecklistItem }: ColumnProps) => {
   const getColumnColor = () => {
     switch (id) {
       case 'todo':
@@ -58,32 +59,31 @@ export const Column = React.memo(({ id, title, tasks, onCardClick, onMoveForward
             {...provided.droppableProps}
             ref={provided.innerRef}
             className={cn(
-              "flex-1 rounded-[2rem] border-2 p-6 transition-all duration-300 min-h-[500px] bg-card/50 backdrop-blur-sm",
+              "flex-1 rounded-[2rem] border-2 p-6 transition-all duration-300 min-h-[500px] bg-card/50 backdrop-blur-sm flex flex-col gap-4",
               getColumnColor(),
-              snapshot.isDraggingOver ? 'border-dashed border-primary scale-[1.01] shadow-xl bg-card' : 'border-transparent'
+              snapshot.isDraggingOver ? 'border-dashed border-primary shadow-xl bg-card' : 'border-transparent'
             )}
           >
-            <div className="flex flex-col gap-4">
-              {tasks.length > 0 ? (
-                tasks.map((task, index) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    index={index}
-                    onCardClick={onCardClick}
-                    onMoveForward={onMoveForward}
+            {tasks.length > 0 ? (
+              tasks.map((task, index) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  index={index}
+                  onCardClick={onCardClick}
+                  onMoveForward={onMoveForward}
                     onMoveBackward={onMoveBackward}
                     onDelete={onDeleteTask}
+                    onArchive={onArchiveTask}
                     onToggleChecklistItem={onToggleChecklistItem}
                   />
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground/20 border-2 border-dashed border-border rounded-3xl">
-                  <span className="text-xs font-black uppercase tracking-widest">Vazio</span>
-                </div>
-              )}
-              {provided.placeholder}
-            </div>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground/20 border-2 border-dashed border-border rounded-3xl">
+                <span className="text-xs font-black uppercase tracking-widest">Vazio</span>
+              </div>
+            )}
+            {provided.placeholder}
           </div>
         )}
       </Droppable>

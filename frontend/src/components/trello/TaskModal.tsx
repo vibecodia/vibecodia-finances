@@ -1,4 +1,4 @@
-import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Check } from 'lucide-react';
+import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Check, Archive } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
@@ -16,11 +16,12 @@ interface TaskModalProps {
   onClose: () => void;
   onSave: (task: Task) => void;
   onDelete?: (taskId: string) => void;
+  onArchive?: (taskId: string) => void;
   task?: Task;
   mode: 'create' | 'edit';
 }
 
-export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode }: TaskModalProps) {
+export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, mode }: TaskModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
@@ -33,6 +34,13 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode }: Tas
   const handleDelete = () => {
     if (task && onDelete) {
       onDelete(task.id);
+      onClose();
+    }
+  };
+
+  const handleArchive = () => {
+    if (task && onArchive) {
+      onArchive(task.id);
       onClose();
     }
   };
@@ -334,17 +342,31 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode }: Tas
           </div>
 
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-border mt-auto">
-            {mode === 'edit' && onDelete ? (
-              <Button
-                type="button"
-                onClick={handleDelete}
-                variant="ghost"
-                className="text-destructive hover:bg-destructive/10 w-full sm:w-auto font-black uppercase tracking-widest flex items-center gap-2"
-              >
-                <Trash2 className="w-4 h-4" />
-                Excluir Tarefa
-              </Button>
-            ) : <div className="hidden sm:block" />}
+            <div className="flex gap-2 w-full sm:w-auto">
+              {mode === 'edit' && onDelete && (
+                <Button
+                  type="button"
+                  onClick={handleDelete}
+                  variant="ghost"
+                  className="text-destructive hover:bg-destructive/10 px-3 h-10 font-black uppercase tracking-widest flex items-center gap-2"
+                  title="Excluir"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
+              {mode === 'edit' && onArchive && (
+                <Button
+                  type="button"
+                  onClick={handleArchive}
+                  variant="ghost"
+                  className="text-muted-foreground hover:bg-primary/10 hover:text-primary px-3 h-10 font-black uppercase tracking-widest flex items-center gap-2"
+                  title={task?.columnId === 'archived' ? "Desarquivar" : "Arquivar"}
+                >
+                  <Archive className="w-4 h-4" />
+                  <span className="text-[10px]">{task?.columnId === 'archived' ? 'Desarquivar' : 'Arquivar'}</span>
+                </Button>
+              )}
+            </div>
             
             <div className="flex gap-2 w-full sm:w-auto">
               <Button
