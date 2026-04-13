@@ -12,6 +12,7 @@ interface InitialBalanceModalProps {
 }
 
 const InitialBalanceModal: React.FC<InitialBalanceModalProps> = ({ isOpen, onConfirm, onClose }) => {
+  const appVersion = (import.meta as any).env.APP_VERSION;
   const [amount] = useState(0);
   const [type, setType] = useState<'income' | 'expense'>('income');
 
@@ -124,6 +125,10 @@ const InitialBalanceModal: React.FC<InitialBalanceModalProps> = ({ isOpen, onCon
             >
               Pular por enquanto
             </button>
+
+            <p className="text-[8px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-30 pt-2">
+              Vibecodia Ecosystem v{appVersion} 🚀
+            </p>
           </div>
         </div>
       </Card>

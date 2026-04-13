@@ -30,12 +30,14 @@ const Header: React.FC = () => {
         {/* Espaço para o menu hambúrguer no mobile */}
         <div className="w-10 lg:hidden" />
 
-        <Link to="/" className="flex-1 flex flex-col items-center justify-center cursor-pointer min-w-0">
-          <h1 className="text-base sm:text-xl font-black tracking-tight whitespace-nowrap overflow-hidden">
-            💰 Controle Financeiro
-          </h1>
-          <p className="text-white/60 text-[8px] sm:text-[10px] font-black uppercase tracking-widest leading-none mt-1 truncate">
-            Beta Version | v{appVersion} 🚀
+        <Link to="/" className="flex-1 flex flex-col items-center justify-center cursor-pointer min-w-0 group">
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-black tracking-tighter uppercase italic leading-none">
+              Vibecodia <span className="text-white/30 not-italic font-bold text-[9px] tracking-widest ml-1">v{appVersion}</span>
+            </h1>
+          </div>
+          <p className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.5em] opacity-40 mt-1 leading-none">
+            Financial Control
           </p>
         </Link>
         

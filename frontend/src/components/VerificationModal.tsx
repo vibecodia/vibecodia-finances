@@ -7,6 +7,7 @@ import { cn } from '../lib/utils';
 import { ShieldCheck, Loader2 } from 'lucide-react';
 
 const VerificationModal: React.FC = () => {
+  const appVersion = (import.meta as any).env.APP_VERSION;
   const [digits, setDigits] = useState<string[]>(['', '', '']);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false); // New loading state
@@ -154,7 +155,7 @@ const VerificationModal: React.FC = () => {
             </Button>
             
             <p className="text-[8px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-30">
-              Segurança Criptografada Vibecodia
+              Segurança Criptografada Vibecodia v{appVersion}
             </p>
           </div>
         </form>

@@ -445,7 +445,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
     : ['#a8e063', '#56ab2f', '#4CAF50', '#8BC34A'];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-4">
       {showConfetti && (
           <Confetti
             width={width}
@@ -457,7 +457,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         )}
 
         {/* Header */}
-        <div className="py-3 w-full">
+        <div className="pt-2 pb-0 w-full">
           <MonthSegmentedControl
             month={currentMonth}
             onChange={(newMonth) => setCurrentMonth(newMonth)}
