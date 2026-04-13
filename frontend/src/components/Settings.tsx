@@ -1,4 +1,18 @@
-import { Settings as SettingsIcon, Download, Upload, Trash2, AlertTriangle, CheckCircle, PlusCircle, Tag, Info, Layers, X, Wallet } from 'lucide-react';
+import { 
+  Settings as SettingsIcon, 
+  Download, 
+  Upload, 
+  Trash2, 
+  AlertTriangle, 
+  CheckCircle, 
+  PlusCircle, 
+  Tag, 
+  Info, 
+  Layers, 
+  X, 
+  Wallet, 
+   Gamepad 
+ } from 'lucide-react';
 import React, { useState } from 'react';
 
 import { useTheme } from '../contexts/ThemeContext';
@@ -43,6 +57,28 @@ const Settings: React.FC<SettingsProps> = ({
   // Payment Method State
   const [newPaymentMethodName, setNewPaymentMethodName] = useState('');
   const [paymentMethodMessage, setPaymentMethodMessage] = useState({ text: '', type: 'idle' as 'idle' | 'success' | 'error' });
+
+  // Ninja Game State
+  const [ninjaGameEnabled, setNinjaGameEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('ninjaGameEnabled');
+    return saved === null ? true : saved === 'true'; // Default to true
+  });
+
+  const [ninjaGameMode, setNinjaGameMode] = useState<'10s' | '15s' | 'zen'>(() => {
+    const saved = localStorage.getItem('ninjaGameMode');
+    return (saved as any) || '10s'; // Default to 10s
+  });
+
+  const handleToggleNinjaGame = () => {
+    const newValue = !ninjaGameEnabled;
+    setNinjaGameEnabled(newValue);
+    localStorage.setItem('ninjaGameEnabled', String(newValue));
+  };
+
+  const handleSetNinjaGameMode = (mode: '10s' | '15s' | 'zen') => {
+    setNinjaGameMode(mode);
+    localStorage.setItem('ninjaGameMode', mode);
+  };
 
   // New Confirmation States
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
@@ -452,6 +488,73 @@ const Settings: React.FC<SettingsProps> = ({
         </div>
 
         <div className="space-y-8">
+          {/* Ninja Game Settings */}
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2.5 rounded-xl bg-primary text-white shadow-lg">
+                <Gamepad className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-foreground uppercase tracking-wider">
+                  Experiência
+                </h2>
+                <p className="text-xs text-muted-foreground font-bold uppercase">Gamificação</p>
+              </div>
+            </div>
+
+            <div 
+              className={cn(
+                "flex items-center justify-between p-5 rounded-2xl border-2 transition-all cursor-pointer group",
+                ninjaGameEnabled ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+              )}
+              onClick={handleToggleNinjaGame}
+            >
+              <div className="flex-1">
+                <p className="text-sm font-black text-foreground uppercase tracking-tight">
+                  Ninja Game
+                </p>
+                <p className="text-[10px] text-foreground opacity-40 font-bold uppercase">Habilitar jogo ao salvar transações</p>
+              </div>
+              <div className={cn(
+                "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative",
+                ninjaGameEnabled ? 'bg-primary' : 'bg-muted'
+              )}>
+                <div className={cn(
+                  "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
+                  ninjaGameEnabled ? 'translate-x-6' : 'translate-x-0'
+                )} />
+              </div>
+            </div>
+
+            {ninjaGameEnabled && (
+              <div className="mt-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest ml-1">Duração do Jogo</p>
+                <div className="flex gap-2 p-1 border-2 rounded-2xl" style={{ borderColor: theme.cardBorder }}>
+                  {(['10s', '15s', 'zen'] as const).map((mode) => (
+                    <Button
+                      key={mode}
+                      type="button"
+                      onClick={() => handleSetNinjaGameMode(mode)}
+                      variant={ninjaGameMode === mode ? 'primary' : 'ghost'}
+                      size="sm"
+                      className={cn(
+                        "flex-1 text-[10px] font-black uppercase tracking-widest",
+                        ninjaGameMode === mode && "shadow-lg"
+                      )}
+                    >
+                      {mode === 'zen' ? 'Modo Zen' : mode}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-[9px] text-muted-foreground font-bold italic ml-1">
+                  {ninjaGameMode === 'zen' 
+                    ? '* O jogo só termina quando você clicar no botão de fechar.' 
+                    : `* O jogo dura exatamente ${ninjaGameMode}.`}
+                </p>
+              </div>
+            )}
+          </Card>
+
           {/* Data Management Section */}
           <Card className="p-6 relative overflow-hidden">
             {/* Disabled Overlay */}

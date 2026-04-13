@@ -9,7 +9,6 @@ import {
   subDays,
   isToday,
   isWeekend,
-  differenceInDays,
   startOfDay
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';

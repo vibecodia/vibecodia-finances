@@ -263,10 +263,11 @@ const TransactionList: React.FC<TransactionListProps> = ({
           window.setTimeout(() => setApporteMessage(null), 4000);
         }
       }
-      handleCloseForm();
+      // handleCloseForm(); // Removido para permitir que a animação no TransactionForm termine
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Não foi possível salvar a transação.';
       setFormError(message);
+      throw err; // Relança para que o TransactionForm saiba que falhou e não inicie a animação
     }
   };
 

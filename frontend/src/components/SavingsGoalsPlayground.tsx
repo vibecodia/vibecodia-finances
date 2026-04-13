@@ -1012,11 +1012,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       try {
         setFormError(null);
         await onAddTransaction(transactionData);
-        setShowAporteForm(false);
+        // setShowAporteForm(false); // Removido para permitir que a animação termine
         setCountdownSimExtra(0);
       } catch (error: any) {
         console.error('Erro ao registrar aporte:', error);
         setFormError(error.message || 'Erro ao registrar aporte');
+        throw error; // Relança para o TransactionForm
       }
     }
   };
