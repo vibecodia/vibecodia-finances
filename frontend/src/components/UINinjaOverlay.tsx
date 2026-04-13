@@ -1,27 +1,24 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { X } from 'lucide-react';
 
-interface UIElement {
+// --- Tipagens ---
+
+interface UIElementData {
   id: string;
-  emoji: string | null;
-  text: string | null;
   html: string;
   x: number;
   y: number;
-  speed: number;
-  size: { width: number; height: number };
+  vx: number;
+  vy: number;
   rotation: number;
-  rotationSpeed: number;
+  rv: number;
+  width: number;
+  height: number;
   isSliced: boolean;
   sliceAngle: number;
-  type: 'text' | 'button' | 'icon' | 'card';
-  originalRect: DOMRect;
-}
-
-interface TrailPoint {
-  x: number;
-  y: number;
-  age: number;
+  halfX: number;
+  halfY: number;
+  domRef: HTMLDivElement | null;
 }
 
 interface UINinjaOverlayProps {
@@ -29,148 +26,187 @@ interface UINinjaOverlayProps {
   onComplete: () => void;
 }
 
+const GRAVITY = 0.22;
+
+// --- Componente Principal ---
+
 export const UINinjaOverlay: React.FC<UINinjaOverlayProps> = ({ isVisible, onComplete }) => {
-  const [elements, setElements] = useState<UIElement[]>([]);
-  const [trail, setTrail] = useState<TrailPoint[]>([]);
-  const [score, setScore] = useState(0);
-  const requestRef = useRef<number>();
-  const lastTimeRef = useRef<number>();
   const containerRef = useRef<HTMLDivElement>(null);
-  const mouseRef = useRef<{ x: number; y: number } | null>(null);
-  const lastMouseRef = useRef<{ x: number; y: number } | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  // Refs de Estado do Jogo (Mutable para Performance)
+  const elementsRef = useRef<UIElementData[]>([]);
+  const trailRef = useRef<{ x: number, y: number, t: number }[]>([]);
+  const mouseRef = useRef<{ x: number, y: number } | null>(null);
+  const requestRef = useRef<number>();
+  const scoreRef = useRef(0);
+  const onCompleteRef = useRef(onComplete);
 
+  // Sincronizar callback sem disparar re-renders
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+
+  const [displayScore, setDisplayScore] = useState(0);
+
+  // 1. Capturar Elementos da Interface Atual
   const captureElements = useCallback(() => {
-    // Selecionar elementos interessantes da página
-    const selectors = 'h1, h2, h3, p, span, button, .card, .rounded-xl, .font-black';
-    const foundElements = document.querySelectorAll(selectors);
-    const captured: UIElement[] = [];
+    // Selecionar elementos que dão satisfação ao fatiar
+    const selectors = 'button, .card, h1, h2, h3, [role="button"], .rounded-xl, .bg-card';
+    const found = document.querySelectorAll(selectors);
+    const captured: UIElementData[] = [];
 
-    foundElements.forEach((el, index) => {
+    found.forEach((el, index) => {
       const rect = el.getBoundingClientRect();
-      // Filtrar elementos pequenos ou fora da tela inicial
-      if (rect.width < 10 || rect.height < 10 || rect.top > window.innerHeight) return;
       
-      // Apenas uma amostra para não sobrecarregar
-      if (Math.random() > 0.4) return;
+      // Ignorar elementos ocultos ou muito pequenos
+      if (rect.width < 15 || rect.height < 15 || rect.top < -100) return;
+      
+      // Seleção aleatória para não sobrecarregar a tela (50% de chance)
+      if (Math.random() > 0.5) return;
 
       captured.push({
         id: `ui-${index}-${Date.now()}`,
-        emoji: null,
-        text: el.textContent?.trim().substring(0, 20) || null,
         html: el.outerHTML,
         x: rect.left + rect.width / 2,
         y: rect.top + rect.height / 2,
-        speed: 1 + Math.random() * 2,
-        size: { width: rect.width, height: rect.height },
+        vx: (Math.random() - 0.5) * 6, // Impulso lateral
+        vy: -(Math.random() * 12 + 6), // Lançar para cima
         rotation: 0,
-        rotationSpeed: (Math.random() - 0.5) * 4,
+        rv: (Math.random() - 0.5) * 0.15,
+        width: rect.width,
+        height: rect.height,
         isSliced: false,
         sliceAngle: 0,
-        type: el.tagName.toLowerCase() === 'button' ? 'button' : 'text',
-        originalRect: rect
+        halfX: 0,
+        halfY: 0,
+        domRef: null
       });
 
-      // Esconder o elemento original
+      // Esconder o elemento original da página
       (el as HTMLElement).style.visibility = 'hidden';
     });
 
-    setElements(captured);
+    elementsRef.current = captured;
   }, []);
 
   const restoreElements = useCallback(() => {
-    const selectors = 'h1, h2, h3, p, span, button, .card, .rounded-xl, .font-black';
+    const selectors = 'button, .card, h1, h2, h3, [role="button"], .rounded-xl, .bg-card';
     document.querySelectorAll(selectors).forEach(el => {
       (el as HTMLElement).style.visibility = 'visible';
     });
   }, []);
 
+  // 2. Loop de Animação Principal
   useEffect(() => {
-    if (isVisible) {
-      captureElements();
-      setScore(0);
-    } else {
+    if (!isVisible) {
       restoreElements();
-      setElements([]);
+      return;
     }
-    return () => restoreElements();
-  }, [isVisible, captureElements, restoreElements]);
 
-  const animate = useCallback((time: number) => {
-    if (lastTimeRef.current !== undefined) {
-      const deltaTime = time - lastTimeRef.current;
+    // Reset jogo
+    scoreRef.current = 0;
+    setDisplayScore(0);
+    captureElements();
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-      setElements(prevElements => {
-        const newElements = prevElements.map(el => {
-          let { y, rotation, isSliced, sliceAngle } = el;
-          
-          y += el.speed;
-          rotation += el.rotationSpeed;
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    window.addEventListener('resize', resize);
+    resize();
 
-          if (!isSliced && mouseRef.current && lastMouseRef.current) {
-            const x1 = lastMouseRef.current.x;
-            const y1 = lastMouseRef.current.y;
-            const x2 = mouseRef.current.x;
-            const y2 = mouseRef.current.y;
+    const update = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            const dx = x2 - x1;
-            const dy = y2 - y1;
-            
-            if (dx !== 0 || dy !== 0) {
-              const t = ((el.x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy);
-              const closestX = x1 + Math.max(0, Math.min(1, t)) * dx;
-              const closestY = y1 + Math.max(0, Math.min(1, t)) * dy;
-              
-              const distDx = el.x - closestX;
-              const distDy = y - closestY;
-              const distance = Math.sqrt(distDx * distDx + distDy * distDy);
+      // --- Desenhar Trail (Canvas) ---
+      const now = Date.now();
+      trailRef.current = trailRef.current.filter(p => now - p.t < 160);
+      if (mouseRef.current) trailRef.current.push({ ...mouseRef.current, t: now });
 
-              if (distance < Math.max(el.size.width, el.size.height) * 0.5) {
-                isSliced = true;
-                setScore(s => s + 1);
-                sliceAngle = Math.atan2(dy, dx) * (180 / Math.PI);
-              }
+      if (trailRef.current.length > 2) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(trailRef.current[0].x, trailRef.current[0].y);
+        for (let i = 1; i < trailRef.current.length; i++) {
+          ctx.lineTo(trailRef.current[i].x, trailRef.current[i].y);
+        }
+        ctx.strokeStyle = '#22d3ee'; // Cyan 400
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+        
+        // Efeito Neon Glow
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = 'rgba(34, 211, 238, 0.8)';
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // --- Física dos Elementos (DOM + Parábola) ---
+      elementsRef.current.forEach((el) => {
+        if (!el.domRef) return;
+
+        if (!el.isSliced) {
+          el.x += el.vx;
+          el.y += el.vy;
+          el.vy += GRAVITY;
+          el.rotation += el.rv;
+        } else {
+          // Metades se separam violentamente
+          el.halfX += 6;
+          el.halfY += GRAVITY * 2.5;
+          el.y += el.vy + el.halfY;
+          el.vy += GRAVITY;
+        }
+
+        // Atualização direta no DOM para performance (bypass React render)
+        el.domRef.style.transform = `translate(${el.x}px, ${el.y}px) translate(-50%, -50%) rotate(${el.rotation}rad)`;
+
+        // --- Detecção de Colisão ---
+        if (!el.isSliced && trailRef.current.length >= 2 && mouseRef.current) {
+          const m = mouseRef.current;
+          const dist = Math.hypot(el.x - m.x, el.y - m.y);
+          const hitbox = Math.max(el.width, el.height) * 0.55;
+
+          if (dist < hitbox) {
+            el.isSliced = true;
+            const p1 = trailRef.current[trailRef.current.length - 2];
+            el.sliceAngle = Math.atan2(m.y - p1.y, m.x - p1.x);
+            scoreRef.current++;
+            setDisplayScore(scoreRef.current);
+
+            // Animar as metades no primeiro frame do corte
+            const upper = el.domRef.querySelector('.ui-upper') as HTMLElement;
+            const lower = el.domRef.querySelector('.ui-lower') as HTMLElement;
+            if (upper && lower) {
+              upper.style.transform = `rotate(${el.sliceAngle}rad) translateY(-20px) rotate(-10deg)`;
+              lower.style.transform = `rotate(${el.sliceAngle}rad) translateY(20px) rotate(10deg)`;
             }
           }
-
-          return { ...el, y, rotation, isSliced, sliceAngle };
-        });
-
-        return newElements.filter(el => el.y < window.innerHeight + 200);
-      });
-
-      setTrail(prevTrail => {
-        const newTrail = prevTrail
-          .map(p => ({ ...p, age: p.age + deltaTime }))
-          .filter(p => p.age < 300);
-
-        if (mouseRef.current) {
-          newTrail.push({ ...mouseRef.current, age: 0 });
         }
-        return newTrail;
       });
 
-      lastMouseRef.current = mouseRef.current;
-    }
-    
-    lastTimeRef.current = time;
-    requestRef.current = requestAnimationFrame(animate);
-  }, []);
-
-  useEffect(() => {
-    if (isVisible) {
-      requestRef.current = requestAnimationFrame(animate);
-    } else if (requestRef.current) {
-      cancelAnimationFrame(requestRef.current);
-    }
-    return () => {
-      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+      requestRef.current = requestAnimationFrame(update);
     };
-  }, [isVisible, animate]);
 
-  const handleMouseMove = (e: React.MouseEvent | React.TouchEvent) => {
-    const x = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const y = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    mouseRef.current = { x, y };
+    requestRef.current = requestAnimationFrame(update);
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+      restoreElements();
+    };
+  }, [isVisible, captureElements, restoreElements]);
+
+  const handleInput = (e: React.MouseEvent | React.TouchEvent) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    mouseRef.current = { x: clientX, y: clientY };
   };
 
   if (!isVisible) return null;
@@ -178,96 +214,72 @@ export const UINinjaOverlay: React.FC<UINinjaOverlayProps> = ({ isVisible, onCom
   return (
     <div 
       ref={containerRef}
-      className="fixed inset-0 pointer-events-auto z-[10000] overflow-hidden cursor-none touch-none bg-black/20 backdrop-blur-[2px]"
-      onMouseMove={handleMouseMove}
-      onTouchMove={handleMouseMove}
+      className="fixed inset-0 z-[10000] overflow-hidden bg-black/60 backdrop-blur-[6px] touch-none select-none cursor-none"
+      onMouseMove={handleInput}
+      onTouchMove={handleInput}
+      onMouseDown={handleInput}
+      onTouchStart={handleInput}
+      onMouseUp={() => { mouseRef.current = null; }}
+      onTouchEnd={() => { mouseRef.current = null; }}
     >
-      <div className="absolute top-10 left-1/2 -translate-x-1/2 text-white text-4xl font-black italic uppercase tracking-tighter drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] flex flex-col items-center pointer-events-none">
-        <span className="text-xs tracking-widest opacity-70 mb-1 font-sans">UI DESTRUIDA</span>
-        <span className="text-6xl animate-bounce">{score}</span>
+      {/* HUD Score Estilizado */}
+      <div className="absolute top-10 left-10 flex flex-col pointer-events-none z-50 animate-in slide-in-from-left duration-500">
+        <span className="text-cyan-400 text-[10px] font-black tracking-[0.4em] uppercase mb-1">Interface Destruída</span>
+        <span className="text-white text-8xl font-black italic tracking-tighter drop-shadow-[0_0_25px_rgba(34,211,238,0.6)] leading-none">
+          {displayScore}
+        </span>
       </div>
 
       <button
-        onClick={onComplete}
-        className="absolute top-10 right-10 bg-white/20 hover:bg-red-500 text-white p-4 rounded-2xl font-black uppercase backdrop-blur-md border-2 border-white/20 transition-all hover:scale-110 active:scale-95 z-[10001] cursor-pointer group"
+        onClick={() => onCompleteRef.current()}
+        className="absolute top-10 right-10 bg-white/10 hover:bg-red-500 text-white p-5 rounded-3xl font-black backdrop-blur-xl border-2 border-white/20 transition-all hover:scale-110 active:scale-95 z-50 cursor-pointer group"
       >
-        <X className="w-6 h-6" />
+        <X className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
       </button>
 
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 text-white/60 text-xs font-black uppercase tracking-[0.3em] pointer-events-none animate-pulse">
-        Corte a Interface!
-      </div>
+      {/* Rastro da Lâmina (Canvas Overlay) */}
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
 
-      <svg className="absolute inset-0 w-full h-full pointer-events-none">
-        <defs>
-          <filter id="ui-glow">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-            <feMerge>
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-        </defs>
-        {trail.length > 1 && (
-          <path
-            d={`M ${trail.map(p => `${p.x} ${p.y}`).join(' L ')}`}
-            fill="none"
-            stroke="cyan"
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            filter="url(#ui-glow)"
-            className="opacity-80"
-          />
-        )}
-      </svg>
-
-      {elements.map((el) => (
-        <div
-          key={el.id}
-          className="absolute pointer-events-none"
-          style={{
-            left: `${el.x}px`,
-            top: `${el.y}px`,
-            width: `${el.size.width}px`,
-            height: `${el.size.height}px`,
-            transform: `translate(-50%, -50%) rotate(${el.rotation}deg)`,
-          }}
-        >
-          {el.isSliced ? (
-            <div 
-              className="relative w-full h-full animate-out fade-out duration-700 fill-mode-forwards"
-              style={{ transform: `rotate(${el.sliceAngle}deg)` }}
-            >
+      {/* Camada de Destruição (DOM Elements) */}
+      <div className="absolute inset-0 pointer-events-none">
+        {elementsRef.current.map((el) => (
+          <div
+            key={el.id}
+            ref={(ref) => { el.domRef = ref; }}
+            className="absolute will-change-transform"
+            style={{ width: el.width, height: el.height }}
+          >
+            <div className="relative w-full h-full">
+              {/* Metade Superior */}
               <div 
-                className="absolute inset-0 overflow-hidden"
-                style={{ 
-                  clipPath: 'inset(0 0 50% 0)',
-                  transform: 'translateY(-20px) rotate(-15deg)',
-                }}
+                className="ui-upper absolute inset-0 overflow-hidden transition-transform duration-700 ease-out"
+                style={{ clipPath: 'inset(0 0 50% 0)' }}
                 dangerouslySetInnerHTML={{ __html: el.html }}
               />
+              {/* Metade Inferior */}
               <div 
-                className="absolute inset-0 overflow-hidden"
-                style={{ 
-                  clipPath: 'inset(50% 0 0 0)',
-                  transform: 'translateY(20px) rotate(15deg)',
-                }}
+                className="ui-lower absolute inset-0 overflow-hidden transition-transform duration-700 ease-out"
+                style={{ clipPath: 'inset(50% 0 0 0)' }}
                 dangerouslySetInnerHTML={{ __html: el.html }}
               />
             </div>
-          ) : (
-            <div 
-              className="w-full h-full drop-shadow-xl overflow-hidden rounded-lg"
-              dangerouslySetInnerHTML={{ __html: el.html }}
-            />
-          )}
-        </div>
-      ))}
+          </div>
+        ))}
+      </div>
+
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 text-cyan-500/20 text-[10px] font-black uppercase tracking-[1.2em] pointer-events-none animate-pulse">
+        SISTEMA VULNERÁVEL
+      </div>
 
       <style>{`
         .cursor-none { cursor: none !important; }
-        [dangerouslySetInnerHTML] * { pointer-events: none !important; }
+        /* Garantir que nada dentro das metades fatiadas responda a eventos ou quebre o layout */
+        .ui-upper *, .ui-lower * { 
+          pointer-events: none !important; 
+          user-select: none !important;
+          animation: none !important;
+          transition: none !important;
+        }
       `}</style>
     </div>
   );
