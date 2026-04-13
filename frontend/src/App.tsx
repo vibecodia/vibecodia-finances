@@ -15,7 +15,6 @@ import { TrelloBoard } from './components/trello/TrelloBoard';
 import VerificationModal from './components/VerificationModal';
 import { useTheme } from './contexts/ThemeContext';
 import { useVerification } from './contexts/VerificationContext';
-import ShoppingCartButton from './components/ShoppingCartButton';
 import ShoppingListModal from './components/ShoppingListModal';
 import { useFinancialData } from './hooks/useFinancialData';
 import { useShoppingList } from './hooks/useShoppingList';
@@ -53,7 +52,7 @@ function App() {
     isLoading,
   } = useFinancialData();
 
-  const { theme, isDarkMode } = useTheme();
+  const { theme } = useTheme();
   const [isShoppingListOpen, setIsShoppingListOpen] = useState(false);
   const [showInitialBalanceModal, setShowInitialBalanceModal] = useState(false);
   const { shoppingList, addItem, togglePurchased, removeItem, clearPurchased, togglePriority } = useShoppingList();
@@ -145,7 +144,6 @@ function App() {
             clearPurchased={clearPurchased}
             togglePriority={togglePriority}
             theme={theme}
-            isDarkMode={isDarkMode}
           />
         )}
 

@@ -1,4 +1,4 @@
-import { X, Check, Trash2, PlusCircle, Star, ShoppingBasket } from 'lucide-react';
+import { Check, Trash2, PlusCircle, Star, ShoppingBasket } from 'lucide-react';
 import React, { useState, useRef, useEffect } from 'react';
 import { TransitionGroup, CSSTransition } from 'react-transition-group';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
@@ -26,7 +26,6 @@ interface ShoppingListModalProps {
   clearPurchased: () => void;
   togglePriority: (id: string) => void;
   theme: ColorPalette;
-  isDarkMode: boolean;
 }
 
 const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
@@ -39,7 +38,6 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
   clearPurchased,
   togglePriority,
   theme,
-  isDarkMode,
 }) => {
   const [newItemName, setNewItemName] = useState('');
   const itemRefs = useRef(new Map<string, React.RefObject<HTMLLIElement>>());

@@ -1,4 +1,4 @@
-import { Home, RefreshCw, ShoppingBasket } from 'lucide-react';
+import { Home, RefreshCw } from 'lucide-react';
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import ThemeSelector from './ThemeSelector';
