@@ -1,5 +1,5 @@
 import { format, getDate, getDaysInMonth, isBefore, startOfMonth, endOfMonth } from 'date-fns';
-import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil, Wifi, Check, X } from 'lucide-react';
+import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil, Wifi, Check, X, Sword } from 'lucide-react';
 import React, { useState } from 'react';
 import Confetti from 'react-confetti';
 import { useNavigate } from 'react-router-dom';
@@ -19,6 +19,7 @@ import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Card } from './ui/Card';
+import { UINinjaOverlay } from './UINinjaOverlay';
 
 
 
@@ -343,7 +344,10 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(cardHolderName);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
+  const [isUINinjaActive, setIsUINinjaActive] = useState(false);
   const { theme } = useTheme();
+
+  const uiNinjaSetting = localStorage.getItem('uiNinjaEnabled') === 'true';
 
   const today = getCurrentBrazilDate();
   const isSelectedMonthCurrent = format(currentMonth, 'yyyy-MM') === format(today, 'yyyy-MM');
@@ -439,6 +443,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
 
   return (
     <div className="max-w-6xl mx-auto space-y-4">
+      {uiNinjaSetting && (
+        <UINinjaOverlay 
+          isVisible={isUINinjaActive} 
+          onComplete={() => setIsUINinjaActive(false)} 
+        />
+      )}
+
       {showConfetti && (
           <Confetti
             width={width}
@@ -450,11 +461,24 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         )}
 
         {/* Header */}
-        <div className="pt-2 pb-0 w-full">
-          <MonthSegmentedControl
-            month={currentMonth}
-            onChange={(newMonth) => setCurrentMonth(newMonth)}
-          />
+        <div className="pt-2 pb-0 w-full flex items-center gap-3">
+          <div className="flex-1">
+            <MonthSegmentedControl
+              month={currentMonth}
+              onChange={(newMonth) => setCurrentMonth(newMonth)}
+            />
+          </div>
+          {uiNinjaSetting && (
+            <Button
+              onClick={() => setIsUINinjaActive(true)}
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 rounded-2xl bg-white/50 backdrop-blur-md shadow-sm border border-white/20 text-primary hover:bg-primary hover:text-white transition-all group"
+              title="UI Ninja Mode"
+            >
+              <Sword className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+            </Button>
+          )}
         </div>
 
         {/* Main Balance Card */}

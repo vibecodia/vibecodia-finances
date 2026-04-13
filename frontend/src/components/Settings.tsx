@@ -64,6 +64,11 @@ const Settings: React.FC<SettingsProps> = ({
     return saved === null ? true : saved === 'true'; // Default to true
   });
 
+  const [uiNinjaEnabled, setUiNinjaEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('uiNinjaEnabled');
+    return saved === 'true'; // Default to false
+  });
+
   const [ninjaGameMode, setNinjaGameMode] = useState<'10s' | '15s' | 'zen'>(() => {
     const saved = localStorage.getItem('ninjaGameMode');
     return (saved as any) || '10s'; // Default to 10s
@@ -73,6 +78,12 @@ const Settings: React.FC<SettingsProps> = ({
     const newValue = !ninjaGameEnabled;
     setNinjaGameEnabled(newValue);
     localStorage.setItem('ninjaGameEnabled', String(newValue));
+  };
+
+  const handleToggleUiNinja = () => {
+    const newValue = !uiNinjaEnabled;
+    setUiNinjaEnabled(newValue);
+    localStorage.setItem('uiNinjaEnabled', String(newValue));
   };
 
   const handleSetNinjaGameMode = (mode: '10s' | '15s' | 'zen') => {
@@ -504,16 +515,16 @@ const Settings: React.FC<SettingsProps> = ({
 
             <div 
               className={cn(
-                "flex items-center justify-between p-5 rounded-2xl border-2 transition-all cursor-pointer group",
+                "flex items-center justify-between p-5 rounded-2xl border-2 transition-all cursor-pointer group mb-4",
                 ninjaGameEnabled ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
               )}
               onClick={handleToggleNinjaGame}
             >
               <div className="flex-1">
                 <p className="text-sm font-black text-foreground uppercase tracking-tight">
-                  Ninja Game
+                  Ninja das Transações
                 </p>
-                <p className="text-[10px] text-foreground opacity-40 font-bold uppercase">Habilitar jogo ao salvar transações</p>
+                <p className="text-[10px] text-foreground opacity-40 font-bold uppercase">Chuva de emojis ao salvar</p>
               </div>
               <div className={cn(
                 "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative",
@@ -522,6 +533,30 @@ const Settings: React.FC<SettingsProps> = ({
                 <div className={cn(
                   "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
                   ninjaGameEnabled ? 'translate-x-6' : 'translate-x-0'
+                )} />
+              </div>
+            </div>
+
+            <div 
+              className={cn(
+                "flex items-center justify-between p-5 rounded-2xl border-2 transition-all cursor-pointer group",
+                uiNinjaEnabled ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+              )}
+              onClick={handleToggleUiNinja}
+            >
+              <div className="flex-1">
+                <p className="text-sm font-black text-foreground uppercase tracking-tight">
+                  UI Ninja (Dashboard)
+                </p>
+                <p className="text-[10px] text-foreground opacity-40 font-bold uppercase">Cortar elementos da tela inicial</p>
+              </div>
+              <div className={cn(
+                "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative",
+                uiNinjaEnabled ? 'bg-primary' : 'bg-muted'
+              )}>
+                <div className={cn(
+                  "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
+                  uiNinjaEnabled ? 'translate-x-6' : 'translate-x-0'
                 )} />
               </div>
             </div>
