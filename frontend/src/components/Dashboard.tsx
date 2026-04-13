@@ -470,30 +470,43 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
           WebkitBackfaceVisibility: 'hidden',
           transform: 'translateZ(0)',
           WebkitTransform: 'translateZ(0)',
+          willChange: 'transform',
         }}
         onClick={handleBalanceCardClick}
       >
         {/* Background Image Layer with slow movement and higher contrast */}
         <div 
           className={cn(
-            "absolute inset-0 rounded-[2.5rem] animate-slow-zoom-pan bg-cover bg-center mix-blend-overlay z-0",
+            "absolute inset-0 rounded-[2.5rem] bg-cover bg-center mix-blend-overlay z-0 overflow-hidden",
             finalBalance < -0.001 ? "opacity-20 grayscale" : "opacity-30"
           )}
-          style={{ backgroundImage: `url(${familyBg})` }}
+          style={{ 
+            backgroundImage: `url(${familyBg})`,
+            clipPath: 'inset(0 round 2.5rem)',
+            WebkitClipPath: 'inset(0 round 2.5rem)'
+          }}
         />
 
         {/* Glossy/Metallic Gradient Overlay */}
         <div 
-          className="absolute inset-0 opacity-80 rounded-[2.5rem]"
+          className="absolute inset-0 opacity-80 rounded-[2.5rem] overflow-hidden"
           style={{
             backgroundImage: finalBalance < -0.001 
               ? `linear-gradient(135deg, #7f1d1d 0%, #ef4444aa 40%, rgba(255,255,255,0.1) 50%, #ef4444aa 60%, #7f1d1d 100%)`
               : `linear-gradient(135deg, ${theme.primary} 0%, ${theme.primary}aa 40%, rgba(255,255,255,0.1) 50%, ${theme.primary}aa 60%, ${theme.primary} 100%)`,
+            clipPath: 'inset(0 round 2.5rem)',
+            WebkitClipPath: 'inset(0 round 2.5rem)'
           }}
         />
 
         {/* Holographic effect on hover */}
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-1000 bg-gradient-to-tr from-transparent via-white to-transparent -translate-x-full group-hover:translate-x-full rotate-12 scale-150 pointer-events-none rounded-[2.5rem]" />
+        <div 
+          className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-1000 bg-gradient-to-tr from-transparent via-white to-transparent -translate-x-full group-hover:translate-x-full rotate-12 scale-150 pointer-events-none rounded-[2.5rem] overflow-hidden" 
+          style={{
+            clipPath: 'inset(0 round 2.5rem)',
+            WebkitClipPath: 'inset(0 round 2.5rem)'
+          }}
+        />
 
         <div className="relative z-10 flex flex-col h-full justify-between min-h-[220px]">
           {/* Card Top: Branding & Controls */}
