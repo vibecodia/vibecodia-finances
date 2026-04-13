@@ -1,8 +1,8 @@
-import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Check, Archive } from 'lucide-react';
+import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Check, Archive, AlertCircle, PauseCircle, Ban, Tag } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
-import { Task, ChecklistItem } from '../../types/trello/task';
+import { Task, ChecklistItem, TaskFlag, TaskLabel } from '../../types/trello/task';
 import { createTask } from '../../utils/trello/taskUtils';
 import { getBrazilDateString } from '../../utils/helpers';
 import { Button } from '../ui/Button';
@@ -30,6 +30,14 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
   const [newChecklistItem, setNewChecklistItem] = useState('');
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [tempItemText, setTempItemText] = useState('');
+  const [flag, setFlag] = useState<TaskFlag>('none');
+  const [labels, setLabels] = useState<TaskLabel[]>([]);
+  const [newLabelText, setNewLabelText] = useState('');
+  const [newLabelColor, setNewLabelColor] = useState('#3b82f6'); // Default blue
+
+  const labelColors = [
+    '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'
+  ];
 
   const handleDelete = () => {
     if (task && onDelete) {
@@ -52,14 +60,33 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
       setPriority(task.priority);
       setDate(task.date ? (typeof task.date === 'string' ? task.date : getBrazilDateString(task.date)) : '');
       setChecklist(task.checklist || []);
+      setFlag(task.flag || 'none');
+      setLabels(task.labels || []);
     } else {
       setTitle('');
       setDescription('');
       setPriority('medium');
       setDate(getBrazilDateString());
       setChecklist([]);
+      setFlag('none');
+      setLabels([]);
     }
   }, [task, mode, isOpen]);
+
+  const addLabel = () => {
+    if (!newLabelText.trim()) return;
+    const newLabel: TaskLabel = {
+      id: Date.now().toString(),
+      text: newLabelText.trim(),
+      color: newLabelColor
+    };
+    setLabels([...labels, newLabel]);
+    setNewLabelText('');
+  };
+
+  const removeLabel = (id: string) => {
+    setLabels(labels.filter(label => label.id !== id));
+  };
 
   const addChecklistItem = () => {
     if (!newChecklistItem.trim()) return;
@@ -116,6 +143,8 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
         priority,
         date: date || undefined,
         checklist,
+        flag,
+        labels,
         updatedAt: new Date().toISOString()
       });
     } else {
@@ -123,6 +152,8 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
       onSave({
         ...newTask,
         checklist,
+        flag,
+        labels,
         updatedAt: new Date().toISOString()
       });
     }
@@ -206,6 +237,38 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
                 </div>
               </div>
 
+              <div className="space-y-3">
+                <label className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" />
+                  Status / Flag
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { value: 'none', label: 'Nenhum', icon: X, color: 'text-muted-foreground' },
+                    { value: 'blocked', label: 'Bloqueado', icon: Ban, color: 'text-red-500' },
+                    { value: 'impediment', label: 'Impedimento', icon: AlertCircle, color: 'text-amber-500' },
+                    { value: 'paused', label: 'Pausa', icon: PauseCircle, color: 'text-blue-500' },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setFlag(option.value as TaskFlag)}
+                      className={cn(
+                        "p-2 rounded-xl border-2 transition-all flex flex-col items-center gap-1",
+                        flag === option.value
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border opacity-40 hover:opacity-100'
+                      )}
+                    >
+                      <option.icon className={cn("w-4 h-4", option.color)} />
+                      <span className="text-[9px] font-black uppercase tracking-tight text-center leading-none">
+                        {option.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <Input
                 label="Data de Entrega"
                 type="date"
@@ -215,6 +278,79 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
             </div>
 
             <div className="space-y-6">
+              <div className="space-y-3">
+                <label className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                  <Tag className="w-4 h-4" />
+                  Labels Customizáveis
+                </label>
+                
+                <div className="flex flex-col gap-3">
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <Input
+                        type="text"
+                        value={newLabelText}
+                        onChange={(e) => setNewLabelText(e.target.value)}
+                        placeholder="Nome da label..."
+                        className="pr-10"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addLabel();
+                          }
+                        }}
+                      />
+                      <div 
+                        className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border border-white/20"
+                        style={{ backgroundColor: newLabelColor }}
+                      />
+                    </div>
+                    <Button type="button" onClick={addLabel} size="icon">
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {labelColors.map(color => (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => setNewLabelColor(color)}
+                        className={cn(
+                          "w-6 h-6 rounded-full border-2 transition-all hover:scale-110",
+                          newLabelColor === color ? "border-primary scale-110" : "border-transparent"
+                        )}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {labels.map(label => (
+                    <div
+                      key={label.id}
+                      className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider text-white shadow-sm transition-all hover:scale-105"
+                      style={{ backgroundColor: label.color }}
+                    >
+                      {label.text}
+                      <button
+                        type="button"
+                        onClick={() => removeLabel(label.id)}
+                        className="hover:text-black/50 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {labels.length === 0 && (
+                    <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 italic">
+                      Nenhuma label adicionada
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="space-y-3">
                 <label className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4" />

@@ -9,7 +9,7 @@ interface ConfirmationModalProps {
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  message: string;
+  message: string | React.ReactNode;
   confirmText?: string;
 }
 
@@ -34,9 +34,9 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             <h3 className="text-2xl font-black text-foreground uppercase tracking-tight mb-3">
               {title}
             </h3>
-            <p className="text-sm text-muted-foreground font-medium leading-relaxed">
+            <div className="text-sm text-muted-foreground font-medium leading-relaxed">
               {message}
-            </p>
+            </div>
           </div>
         </div>
         <div className="px-8 py-6 flex flex-col sm:flex-row-reverse gap-4 bg-muted/50 border-t border-border">
