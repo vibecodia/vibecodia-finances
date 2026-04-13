@@ -17,7 +17,35 @@ interface BandaidEasterEggProps {
 export const BandaidEasterEgg: React.FC<BandaidEasterEggProps> = ({ type, children, className }) => {
   const [particles, setParticles] = useState<Particle[]>([]);
 
+  const playSquishSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      oscillator.type = 'sine';
+      // Frequência começa média e cai rápido para simular o "squish"
+      oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+
+      gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.1);
+      
+      // Fechar o contexto após o som para economizar recursos
+      setTimeout(() => audioCtx.close(), 200);
+    } catch (e) {
+      console.error('Audio context error:', e);
+    }
+  };
+
   const handleClick = () => {
+    playSquishSound();
     const emojis = {
       slugs: ['🐌', '🐛', '🐌'],
       coins: ['🪙', '✨', '💰'],
