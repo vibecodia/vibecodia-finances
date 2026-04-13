@@ -1,9 +1,9 @@
-import { Plus, Layout, Archive, Calendar as CalendarIcon, Kanban, Download, Upload, History } from 'lucide-react';
+import { Plus, Layout, Archive, Calendar as CalendarIcon, Kanban, Download, Upload, Filter, X as XIcon, ChevronDown, Tag } from 'lucide-react';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 
 import { useTrello } from '../../hooks/trello/useTrello';
-import { Task, Column as ColumnType } from '../../types/trello/task';
+import { Task, Column as ColumnType, TaskFlag } from '../../types/trello/task';
 import { exportTrelloData, validateTrelloImport, TrelloExportData } from '../../utils/trello/trelloIO';
 import { formatBrazilDate, getCurrentBrazilDate } from '../../utils/helpers';
 
@@ -13,7 +13,6 @@ import { SearchBar } from './SearchBar';
 import { TaskModal } from './TaskModal';
 import ConfirmationModal from '../ConfirmationModal';
 import { Button } from '../ui/Button';
-import { Card } from '../ui/Card';
 import { cn } from '../../lib/utils';
 
 const initialColumns: Omit<ColumnType, 'tasks'>[] = [
@@ -40,6 +39,8 @@ export function Board() {
   const [editingTask, setEditingTask] = useState<Task | undefined>();
   const [showArchived, setShowArchived] = useState(false);
   const [viewMode, setViewMode] = useState<'kanban' | 'timeline'>('kanban');
+  const [selectedFlagFilter, setSelectedFlagFilter] = useState<TaskFlag | 'all'>('all');
+  const [selectedLabelFilter, setSelectedLabelFilter] = useState<string | 'all'>('all');
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
     taskId: string | null;
@@ -51,22 +52,44 @@ export function Board() {
   const [importData, setImportData] = useState<TrelloExportData | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const allLabels = useMemo(() => {
+    const labelsMap = new Map<string, { text: string, color: string }>();
+    tasks.forEach(task => {
+      task.labels?.forEach(label => {
+        if (!labelsMap.has(label.text)) {
+          labelsMap.set(label.text, { text: label.text, color: label.color });
+        }
+      });
+    });
+    return Array.from(labelsMap.values());
+  }, [tasks]);
+
+  const finalFilteredTasks = useMemo(() => {
+    return filteredTasks.filter(task => {
+      const flagMatch = selectedFlagFilter === 'all' || task.flag === selectedFlagFilter;
+      const labelMatch = selectedLabelFilter === 'all' || 
+        task.labels?.some(l => l.text === selectedLabelFilter);
+      
+      return flagMatch && labelMatch;
+    });
+  }, [filteredTasks, selectedFlagFilter, selectedLabelFilter]);
+
   const columns = useMemo(() => {
     const cols = initialColumns.map(column => ({
       ...column,
-      tasks: filteredTasks.filter(task => task.columnId === column.id)
+      tasks: finalFilteredTasks.filter(task => task.columnId === column.id)
     })) as ColumnType[];
 
     if (showArchived) {
       cols.push({
         id: 'archived',
         title: 'Arquivados',
-        tasks: filteredTasks.filter(task => task.columnId === 'archived')
+        tasks: finalFilteredTasks.filter(task => task.columnId === 'archived')
       });
     }
 
     return cols;
-  }, [filteredTasks, showArchived]);
+  }, [finalFilteredTasks, showArchived]);
 
   const handleAddTask = () => {
     setEditingTask(undefined);
@@ -237,6 +260,60 @@ export function Board() {
         <div className="flex flex-wrap items-center gap-3">
           <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
           
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-4 py-2 bg-foreground/5 hover:bg-foreground/10 rounded-xl border border-border transition-all group/filter relative">
+              <Filter className="w-3.5 h-3.5 text-muted-foreground group-hover/filter:text-primary transition-colors" />
+              <div className="relative flex items-center">
+                <select
+                  value={selectedFlagFilter}
+                  onChange={(e) => setSelectedFlagFilter(e.target.value as any)}
+                  className="appearance-none bg-transparent text-[10px] font-black uppercase tracking-widest focus:outline-none cursor-pointer pr-5 z-10 text-foreground"
+                >
+                  <option value="all" className="bg-card text-foreground">Todas as Flags</option>
+                  <option value="none" className="bg-card text-foreground">Sem Flag</option>
+                  <option value="blocked" className="bg-card text-red-500">Bloqueado</option>
+                  <option value="impediment" className="bg-card text-amber-500">Impedimento</option>
+                  <option value="paused" className="bg-card text-blue-500">Pausa</option>
+                </select>
+                <ChevronDown className="w-3 h-3 absolute right-0 text-muted-foreground pointer-events-none group-hover/filter:text-primary transition-colors" />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 px-4 py-2 bg-foreground/5 hover:bg-foreground/10 rounded-xl border border-border transition-all group/label relative">
+              <Tag className="w-3.5 h-3.5 text-muted-foreground group-hover/label:text-primary transition-colors" />
+              <div className="relative flex items-center">
+                <select
+                  value={selectedLabelFilter}
+                  onChange={(e) => setSelectedLabelFilter(e.target.value)}
+                  className="appearance-none bg-transparent text-[10px] font-black uppercase tracking-widest focus:outline-none cursor-pointer pr-5 z-10 text-foreground"
+                >
+                  <option value="all" className="bg-card text-foreground">Todas as Labels</option>
+                  {allLabels.map(label => (
+                    <option key={label.text} value={label.text} className="bg-card" style={{ color: label.color }}>
+                      {label.text}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3 h-3 absolute right-0 text-muted-foreground pointer-events-none group-hover/label:text-primary transition-colors" />
+              </div>
+            </div>
+
+            {(selectedFlagFilter !== 'all' || selectedLabelFilter !== 'all') && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setSelectedFlagFilter('all');
+                  setSelectedLabelFilter('all');
+                }}
+                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                title="Limpar Filtros"
+              >
+                <XIcon className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+          
           <div className="flex items-center bg-foreground/5 p-1 rounded-xl border border-border">
             <Button
               variant={viewMode === 'kanban' ? 'primary' : 'ghost'}
@@ -354,7 +431,7 @@ export function Board() {
       ) : (
         <div className="flex-1 min-h-[600px]">
           <Timeline 
-            tasks={filteredTasks} 
+            tasks={finalFilteredTasks} 
             onTaskClick={handleEditTask} 
           />
         </div>

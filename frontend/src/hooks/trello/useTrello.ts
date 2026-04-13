@@ -7,10 +7,19 @@ export function useTrello() {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredTasks = useMemo(() => {
-    return tasks.filter(task => 
-      task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.description.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    return tasks.filter(task => {
+      const lowerSearch = searchTerm.toLowerCase();
+      const matchesText = task.title.toLowerCase().includes(lowerSearch) ||
+        task.description.toLowerCase().includes(lowerSearch);
+      
+      const matchesLabels = task.labels?.some(label => 
+        label.text.toLowerCase().includes(lowerSearch)
+      ) || false;
+
+      const matchesFlag = task.flag?.toLowerCase().includes(lowerSearch) || false;
+
+      return matchesText || matchesLabels || matchesFlag;
+    });
   }, [tasks, searchTerm]);
 
   const addTask = useCallback((task: Task) => {

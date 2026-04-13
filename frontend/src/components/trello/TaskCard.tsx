@@ -1,13 +1,32 @@
-import { Calendar, ChevronRight, ChevronLeft, Trash2, CheckSquare, ListTodo, Archive } from 'lucide-react';
+import { Calendar, ChevronRight, ChevronLeft, Trash2, CheckSquare, ListTodo, Archive, Ban, AlertCircle, PauseCircle } from 'lucide-react';
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 
-import { Task } from '../../types/trello/task';
+import { Task, TaskFlag } from '../../types/trello/task';
 import { getPriorityLabel, formatDate } from '../../utils/trello/taskUtils';
 import { parseLocalDate, getCurrentBrazilDate } from '../../utils/helpers';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { cn } from '../../lib/utils';
+
+const FlagIcon = ({ flag }: { flag?: TaskFlag }) => {
+  if (!flag || flag === 'none') return null;
+
+  const config = {
+    blocked: { icon: Ban, color: 'text-red-500', label: 'Bloqueado' },
+    impediment: { icon: AlertCircle, color: 'text-amber-500', label: 'Impedimento' },
+    paused: { icon: PauseCircle, color: 'text-blue-500', label: 'Pausa' },
+  };
+
+  const { icon: Icon, color, label } = config[flag];
+
+  return (
+    <div className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded bg-foreground/5", color)} title={label}>
+      <Icon className="w-3 h-3" />
+      <span className="text-[8px] font-black uppercase tracking-tighter">{label}</span>
+    </div>
+  );
+};
 
 interface TaskCardProps {
   task: Task;
@@ -54,16 +73,35 @@ export const TaskCard = React.memo(({
               "p-5 relative overflow-hidden transition-all duration-200",
               !snapshot.isDragging && "hover:scale-[1.02] hover:shadow-md",
               snapshot.isDragging && "shadow-2xl ring-2 ring-primary ring-offset-2 rotate-2 scale-105 pointer-events-none",
-              task.columnId === 'done' && "opacity-80"
+              task.columnId === 'done' && "opacity-80",
+              task.flag === 'blocked' && "bg-red-500/5",
+              task.flag === 'impediment' && "bg-amber-500/5",
+              task.flag === 'paused' && "bg-blue-500/5"
             )}
           >
+            {task.labels && task.labels.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {task.labels.map(label => (
+                  <div
+                    key={label.id}
+                    className="h-1.5 w-8 rounded-full shadow-sm"
+                    style={{ backgroundColor: label.color }}
+                    title={label.text}
+                  />
+                ))}
+              </div>
+            )}
+
             <div className="flex items-start justify-between gap-3 mb-3">
-              <h3 className={cn(
-                "text-sm font-black text-foreground uppercase tracking-tight leading-tight flex-1",
-                task.columnId === 'done' && "line-through decoration-2"
-              )}>
-                {task.title}
-              </h3>
+              <div className="flex-1 flex flex-col gap-1">
+                <FlagIcon flag={task.flag} />
+                <h3 className={cn(
+                  "text-sm font-black text-foreground uppercase tracking-tight leading-tight",
+                  task.columnId === 'done' && "line-through decoration-2"
+                )}>
+                  {task.title}
+                </h3>
+              </div>
               <div className="flex gap-1 transition-opacity">
                 <Button
                   onClick={(e) => {

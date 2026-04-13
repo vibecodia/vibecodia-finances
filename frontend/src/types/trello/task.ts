@@ -4,6 +4,14 @@ export interface ChecklistItem {
   completed: boolean;
 }
 
+export type TaskFlag = 'blocked' | 'impediment' | 'paused' | 'none';
+
+export interface TaskLabel {
+  id: string;
+  text: string;
+  color: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -14,6 +22,8 @@ export interface Task {
   createdAt: string;
   checklist?: ChecklistItem[];
   updatedAt?: string;
+  flag?: TaskFlag;
+  labels?: TaskLabel[];
 }
 
 export interface Column {
