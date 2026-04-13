@@ -78,9 +78,13 @@ function App() {
     // Lógica da tela de bem-vindo (Saldo Inicial)
     // Mostra se: usuário está verificado, não está carregando e o banco está vazio
     if (isVerified || pin) {
-      if (!isLoading && (!transactions || transactions.length === 0)) {
-        // Verifica se já não foi fechado nesta sessão (independente do PIN para ser mais robusto)
-        const hasSeenModal = sessionStorage.getItem('hasSeenInitialBalanceModal');
+      // Consideramos vazio se não houver transações ou se todas estiverem deletadas
+      const activeTransactions = transactions.filter(t => t.status !== 'deleted');
+      
+      if (!isLoading && activeTransactions.length === 0) {
+        // Verifica se já não foi fechado nesta sessão para ESTE PIN específico
+        const storageKey = `hasSeenInitialBalanceModal_${pin}`;
+        const hasSeenModal = sessionStorage.getItem(storageKey);
         if (!hasSeenModal) {
           setShowInitialBalanceModal(true);
         }
@@ -113,12 +117,12 @@ function App() {
       isPaid: true,
       recurrence: 'none',
     });
-    sessionStorage.setItem('hasSeenInitialBalanceModal', 'true');
+    sessionStorage.setItem(`hasSeenInitialBalanceModal_${pin}`, 'true');
     setShowInitialBalanceModal(false);
   };
 
   const handleSkipInitialBalance = () => {
-    sessionStorage.setItem('hasSeenInitialBalanceModal', 'true');
+    sessionStorage.setItem(`hasSeenInitialBalanceModal_${pin}`, 'true');
     setShowInitialBalanceModal(false);
   };
 
