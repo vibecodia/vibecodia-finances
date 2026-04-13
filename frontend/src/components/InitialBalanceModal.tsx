@@ -121,7 +121,7 @@ const InitialBalanceModal: React.FC<InitialBalanceModalProps> = ({ isOpen, onCon
             
             <button
               onClick={onClose}
-              className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-40 hover:opacity-100 transition-opacity"
+              className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-60 hover:opacity-100 hover:text-primary transition-all active:scale-95 py-2 px-4 rounded-xl hover:bg-primary/5"
             >
               Pular por enquanto
             </button>
