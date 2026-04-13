@@ -1,9 +1,11 @@
-import { Plus, Layout, Archive, Calendar as CalendarIcon, Kanban } from 'lucide-react';
-import { useState, useMemo, useCallback } from 'react';
+import { Plus, Layout, Archive, Calendar as CalendarIcon, Kanban, Download, Upload, History } from 'lucide-react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 
 import { useTrello } from '../../hooks/trello/useTrello';
 import { Task, Column as ColumnType } from '../../types/trello/task';
+import { exportTrelloData, validateTrelloImport, TrelloExportData } from '../../utils/trello/trelloIO';
+import { formatBrazilDate, getCurrentBrazilDate } from '../../utils/helpers';
 
 import { Column } from './Column';
 import { Timeline } from './Timeline';
@@ -11,6 +13,7 @@ import { SearchBar } from './SearchBar';
 import { TaskModal } from './TaskModal';
 import ConfirmationModal from '../ConfirmationModal';
 import { Button } from '../ui/Button';
+import { Card } from '../ui/Card';
 import { cn } from '../../lib/utils';
 
 const initialColumns: Omit<ColumnType, 'tasks'>[] = [
@@ -29,7 +32,8 @@ export function Board() {
     updateTask, 
     deleteTask, 
     moveTask,
-    reorderTasks
+    reorderTasks,
+    importTasks
   } = useTrello();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,6 +47,9 @@ export function Board() {
     isOpen: false,
     taskId: null
   });
+
+  const [importData, setImportData] = useState<TrelloExportData | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const columns = useMemo(() => {
     const cols = initialColumns.map(column => ({
@@ -69,6 +76,49 @@ export function Board() {
   const handleEditTask = (task: Task) => {
     setEditingTask(task);
     setIsModalOpen(true);
+  };
+
+  const handleExport = () => {
+    const json = exportTrelloData(tasks);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const date = formatBrazilDate(getCurrentBrazilDate(), 'yyyy-MM-dd');
+    link.download = `trello-board-${date}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      const validated = validateTrelloImport(result);
+      if (validated) {
+        setImportData(validated);
+      } else {
+        alert('Arquivo inválido ou corrompido.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Limpa para permitir re-importar o mesmo arquivo
+  };
+
+  const confirmImport = () => {
+    if (importData) {
+      importTasks(importData.tasks);
+      setImportData(null);
+    }
   };
 
   const onDragEnd = (result: DropResult) => {
@@ -226,6 +276,34 @@ export function Board() {
             <span className="hidden sm:inline">{showArchived ? 'Ocultar Arquivados' : 'Ver Arquivados'}</span>
           </Button>
 
+          <div className="flex items-center gap-2 border-l border-border pl-3 ml-1">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".json"
+              className="hidden"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleImportClick}
+              className="h-10 w-10 text-muted-foreground hover:text-primary"
+              title="Importar Versão"
+            >
+              <Upload className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleExport}
+              className="h-10 w-10 text-muted-foreground hover:text-primary"
+              title="Gerar Versão e Exportar"
+            >
+              <Download className="w-4 h-4" />
+            </Button>
+          </div>
+
           <Button 
             onClick={handleAddTask}
             className="flex items-center gap-2 shadow-lg shadow-primary/20"
@@ -312,6 +390,38 @@ export function Board() {
         title="Excluir Tarefa"
         message="Tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita."
         confirmText="Confirmar Exclusão"
+      />
+
+      <ConfirmationModal
+        isOpen={!!importData}
+        onClose={() => setImportData(null)}
+        onConfirm={confirmImport}
+        title="Importar Versão do Quadro"
+        message={
+          importData ? (
+            <div className="space-y-4 py-2">
+              <p>Você está prestes a importar uma nova versão do seu quadro de tarefas.</p>
+              <div className="bg-muted/50 p-4 rounded-xl border border-border space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-black uppercase opacity-50">Versão</span>
+                  <span className="text-xs font-bold text-primary">{importData.version}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-black uppercase opacity-50">Data de Geração</span>
+                  <span className="text-xs font-bold">{new Date(importData.timestamp).toLocaleString('pt-BR')}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-black uppercase opacity-50">Total de Tarefas</span>
+                  <span className="text-xs font-bold">{importData.metadata.taskCount}</span>
+                </div>
+              </div>
+              <p className="text-destructive font-bold text-xs uppercase tracking-tight">
+                Atenção: Isso substituirá todas as tarefas atuais do seu quadro.
+              </p>
+            </div>
+          ) : ""
+        }
+        confirmText="Confirmar Importação"
       />
     </div>
   );

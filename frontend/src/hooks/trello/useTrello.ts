@@ -33,6 +33,10 @@ export function useTrello() {
     setTasks(reorderedTasks);
   }, [setTasks]);
 
+  const importTasks = useCallback((newTasks: Task[]) => {
+    setTasks(newTasks);
+  }, [setTasks]);
+
   return {
     tasks,
     filteredTasks,
@@ -42,6 +46,7 @@ export function useTrello() {
     updateTask,
     deleteTask,
     moveTask,
-    reorderTasks
+    reorderTasks,
+    importTasks
   };
 }
