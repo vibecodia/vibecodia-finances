@@ -11,7 +11,6 @@ import {
   Layers, 
   Wallet, 
    Gamepad,
-   Pencil,
    CreditCard,
    Scissors,
    Check,
@@ -59,7 +58,7 @@ const Settings: React.FC<SettingsProps> = ({
   const [showBalance, setShowBalance] = useLocalStorage('dashboard_show_balance', true);
   const [includeBenefits, setIncludeBenefits] = useLocalStorage('dashboard_include_benefits', true);
 
-  const { inputProps: flexAmountProps, numericValue: flexAmountValue, setNumericValue: setFlexAmountValue } = useCurrencyInput(flashFlexAmount);
+  const { inputProps: flexAmountProps, numericValue: flexAmountValue } = useCurrencyInput(flashFlexAmount);
   const [tempName, setTempName] = useState(cardHolderName);
 
   const [importText, setImportText] = useState('');
