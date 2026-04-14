@@ -6,6 +6,13 @@ set -e
 SRC_DIR="$(dirname "$0")"
 ROOT_DIR="$SRC_DIR/.."
 DIST_DIR="$ROOT_DIR/../dist"
+PUBLIC_DIR="$ROOT_DIR/../public"
+
+# Copiar o manifest.json do public para o dist (garante que a versão correta seja usada)
+if [ -f "$PUBLIC_DIR/manifest.json" ]; then
+    cp "$PUBLIC_DIR/manifest.json" "$DIST_DIR/manifest.json"
+    echo "✅ Copied manifest.json to dist with version: $(grep '\"name\"' "$DIST_DIR/manifest.json" | head -1)"
+fi
 
 # Copiar o JS minificado para o dist
 cp "$SRC_DIR/vibecodia-assist.min.js" "$DIST_DIR/vibecodia-assist.min.js"
