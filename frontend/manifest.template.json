@@ -1,6 +1,6 @@
 {
   "name": "Vibecodia Finances v{{APP_VERSION}}",
-  "short_name": "Finances v{{APP_VERSION}}",
+  "short_name": "Finances",
   "description": "Vibecodia - {{APP_SUBTITLE}}",
   "start_url": "/",
   "display": "standalone",
