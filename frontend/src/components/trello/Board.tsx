@@ -48,6 +48,13 @@ export function Board() {
     isOpen: false,
     taskId: null
   });
+  const [archiveConfirmation, setArchiveConfirmation] = useState<{
+    isOpen: boolean;
+    taskId: string | null;
+  }>({
+    isOpen: false,
+    taskId: null
+  });
 
   const [importData, setImportData] = useState<TrelloExportData | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -228,8 +235,13 @@ export function Board() {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    const newColumn = task.columnId === 'archived' ? 'todo' : 'archived';
-    moveTask(taskId, newColumn);
+    if (task.columnId === 'archived') {
+      // Unarchive directly back to 'todo'
+      moveTask(taskId, 'todo');
+    } else {
+      // Ask for confirmation before archiving
+      setArchiveConfirmation({ isOpen: true, taskId });
+    }
   }, [tasks, moveTask]);
 
   const handleToggleChecklistItem = useCallback((taskId: string, itemId: string) => {
@@ -467,6 +479,20 @@ export function Board() {
         title="Excluir Tarefa"
         message="Tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita."
         confirmText="Confirmar Exclusão"
+      />
+
+      <ConfirmationModal
+        isOpen={archiveConfirmation.isOpen}
+        onClose={() => setArchiveConfirmation({ isOpen: false, taskId: null })}
+        onConfirm={() => {
+          if (archiveConfirmation.taskId) {
+            moveTask(archiveConfirmation.taskId, 'archived');
+            setArchiveConfirmation({ isOpen: false, taskId: null });
+          }
+        }}
+        title="Arquivar Tarefa"
+        message="Deseja arquivar esta tarefa? Ela poderá ser visualizada na seção de arquivados."
+        confirmText="Arquivar Tarefa"
       />
 
       <ConfirmationModal
