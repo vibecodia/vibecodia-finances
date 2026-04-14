@@ -11,20 +11,27 @@ const APP_SUBTITLE = 'Financial Control';
 
 // Plugin to process manifest.json template
 function processManifestPlugin(): Plugin {
+  const generateManifest = () => {
+    const templatePath = resolve(__dirname, '../manifest.template.json');
+    const outputPath = resolve(__dirname, '../../public/manifest.json');
+    try {
+      let manifest = readFileSync(templatePath, 'utf-8');
+      manifest = manifest.replace(/{{APP_VERSION}}/g, packageJson.version);
+      manifest = manifest.replace(/{{APP_SUBTITLE}}/g, APP_SUBTITLE);
+      writeFileSync(outputPath, manifest);
+      console.log(`✅ Manifest generated at ${outputPath} with version ${packageJson.version}`);
+    } catch (err) {
+      console.error('Error processing manifest template:', err);
+    }
+  };
+
   return {
     name: 'process-manifest',
     buildStart() {
-      const templatePath = resolve(__dirname, '../manifest.template.json');
-      const outputPath = resolve(__dirname, '../../public/manifest.json');
-      try {
-        let manifest = readFileSync(templatePath, 'utf-8');
-        manifest = manifest.replace(/{{APP_VERSION}}/g, packageJson.version);
-        manifest = manifest.replace(/{{APP_SUBTITLE}}/g, APP_SUBTITLE);
-        writeFileSync(outputPath, manifest);
-        console.log(`✅ Manifest generated at ${outputPath} with version ${packageJson.version}`);
-      } catch (err) {
-        console.error('Error processing manifest template:', err);
-      }
+      generateManifest();
+    },
+    buildEnd() {
+      generateManifest();
     },
     transformIndexHtml(html) {
       return html
