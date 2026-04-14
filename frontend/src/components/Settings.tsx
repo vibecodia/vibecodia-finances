@@ -9,7 +9,6 @@ import {
   Tag, 
   Info, 
   Layers, 
-  X, 
   Wallet, 
    Gamepad,
    Pencil,
@@ -17,10 +16,11 @@ import {
    Scissors,
    Check,
    Eye,
-   EyeOff
- } from 'lucide-react';
-import React, { useState } from 'react';
-
+   EyeOff,
+   X
+   } from 'lucide-react';
+   import React, { useState } from 'react';
+   import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useCategories } from '../hooks/useCategories';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
@@ -48,6 +48,7 @@ const Settings: React.FC<SettingsProps> = ({
   onClearAllData 
 }) => {
   const { theme } = useTheme();
+  const navigate = useNavigate();
   const { expenseCategories, incomeCategories, addCategory, removeCategory, resetToDefaults: resetCategoriesToDefaults } = useCategories();
   const { paymentMethods, addPaymentMethod, removePaymentMethod, resetToDefaults: resetPaymentMethodsToDefaults } = usePaymentMethods();
   
@@ -292,18 +293,29 @@ const Settings: React.FC<SettingsProps> = ({
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto pb-12">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-6 border-b" style={{ borderColor: theme.cardBorder }}>
-        <div>
-          <h1 className="text-3xl lg:text-5xl font-black text-foreground mb-2 tracking-tight">
-            Configurações
-          </h1>
-          <p className="text-muted-foreground text-lg font-medium">
-            Personalize sua experiência e gerencie seus dados locais
-          </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-6 border-b" style={{ borderColor: theme.cardBorder }}>
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <div className="p-3 rounded-2xl bg-primary text-white shadow-lg shadow-primary/20">
+            <SettingsIcon className="w-8 h-8" />
+          </div>
+          <div>
+            <h1 className="text-3xl lg:text-5xl font-black text-foreground mb-1 tracking-tight">
+              Configurações
+            </h1>
+            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">
+              Gerencie categorias, pagamentos e dados
+            </p>
+          </div>
         </div>
-        <div className="p-3 rounded-2xl bg-primary/10 border-2 border-primary/20 animate-pulse hidden md:block">
-          <SettingsIcon className="w-8 h-8 text-primary" />
-        </div>
+
+        <Button
+          onClick={() => navigate('/')}
+          variant="outline"
+          className="group flex items-center gap-2 h-12 px-6 rounded-2xl border-2 hover:bg-destructive/5 hover:border-destructive hover:text-destructive transition-all"
+        >
+          <X className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+          <span className="font-black uppercase text-xs tracking-widest">Sair</span>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

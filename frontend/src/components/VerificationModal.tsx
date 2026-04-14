@@ -1,16 +1,31 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 import { useVerification } from '../contexts/VerificationContext';
 import { Card } from './ui/Card';
 import { cn } from '../lib/utils';
-import { ShieldCheck, Loader2, Delete, X } from 'lucide-react';
+import { ShieldCheck, Loader2, Delete, X, ArrowLeft } from 'lucide-react';
+import { Button } from './ui/Button';
 
 const VerificationModal: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const appVersion = (import.meta as any).env.APP_VERSION;
   const [digits, setDigits] = useState<string[]>(['', '', '']);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { verify, showVerificationModal } = useVerification();
+  const { verify, showVerificationModal, setShowVerificationModal, isVerified } = useVerification();
+
+  const handleExit = () => {
+    if (isLoading) return;
+    
+    // Se estiver tentando acessar settings e não for verificado, volta para home
+    if (location.pathname === '/settings') {
+      navigate('/');
+    }
+    
+    setShowVerificationModal(false);
+  };
 
   useEffect(() => {
     if (showVerificationModal) {
@@ -162,7 +177,19 @@ const VerificationModal: React.FC = () => {
             <PinButton value="DEL" onClick={handleDelete} icon={<Delete className="w-5 h-5 opacity-50" />} />
           </div>
 
-          <div className="pt-4">
+          <div className="flex flex-col items-center gap-6">
+            {(isVerified || location.pathname === '/settings') && (
+              <Button
+                variant="ghost"
+                onClick={handleExit}
+                disabled={isLoading}
+                className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-all flex items-center gap-2"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Desistir e Voltar
+              </Button>
+            )}
+
             <p className="text-[8px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-30">
               Criptografado Vibecodia v{appVersion}
             </p>
