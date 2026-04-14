@@ -572,7 +572,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                   <div className="flex flex-col items-center justify-center p-10 text-center gap-3 text-muted-foreground">
                     <AlertCircle className="w-10 h-10" />
                     <p className="text-sm font-bold">Nenhum dado de Consórcio encontrado</p>
-                    <p className="text-[10px]">Verifique transações com "Consórcio Porto" na categoria "Outros".</p>
+                    <p className="text-[10px]">Verifique transações com "Consórcio Porto" na categoria "Patrimônio".</p>
                   </div>
                 ) : (
                   <>
