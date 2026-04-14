@@ -376,20 +376,20 @@ export function Board() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={handleImportClick}
-              className="h-10 w-10 text-muted-foreground hover:text-primary"
-              title="Importar Versão"
-            >
-              <Upload className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
               onClick={handleExport}
               className="h-10 w-10 text-muted-foreground hover:text-primary"
               title="Gerar Versão e Exportar"
             >
               <Download className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleImportClick}
+              className="h-10 w-10 text-muted-foreground hover:text-primary"
+              title="Importar Versão"
+            >
+              <Upload className="w-4 h-4" />
             </Button>
           </div>
 
