@@ -9,15 +9,22 @@ import {
   Tag, 
   Info, 
   Layers, 
-  X, 
   Wallet, 
-   Gamepad 
- } from 'lucide-react';
-import React, { useState } from 'react';
-
+   Gamepad,
+   CreditCard,
+   Scissors,
+   Check,
+   Eye,
+   EyeOff,
+   X
+   } from 'lucide-react';
+   import React, { useState } from 'react';
+   import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useCategories } from '../hooks/useCategories';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
+import { useLocalStorage } from '../hooks/trello/useLocalStorage';
+import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import { Transaction, SavingsGoal } from '../types';
 import { exportFinancialData, validateImportData, getCurrentBrazilDate, formatBrazilDate } from '../utils/helpers';
 import { Button } from './ui/Button';
@@ -40,9 +47,20 @@ const Settings: React.FC<SettingsProps> = ({
   onClearAllData 
 }) => {
   const { theme } = useTheme();
+  const navigate = useNavigate();
   const { expenseCategories, incomeCategories, addCategory, removeCategory, resetToDefaults: resetCategoriesToDefaults } = useCategories();
   const { paymentMethods, addPaymentMethod, removePaymentMethod, resetToDefaults: resetPaymentMethodsToDefaults } = usePaymentMethods();
   
+  // Dashboard Editable Info
+  const [cardHolderName, setCardHolderName] = useLocalStorage('dashboard_card_holder_name', 'Carvalho de Oliveira Neto');
+  const [flashFlexAmount, setFlashFlexAmount] = useLocalStorage('dashboard_flash_flex_amount', 0);
+  const [isFlashSplit, setIsFlashSplit] = useLocalStorage('dashboard_flash_is_split', false);
+  const [showBalance, setShowBalance] = useLocalStorage('dashboard_show_balance', true);
+  const [includeBenefits, setIncludeBenefits] = useLocalStorage('dashboard_include_benefits', true);
+
+  const { inputProps: flexAmountProps, numericValue: flexAmountValue } = useCurrencyInput(flashFlexAmount);
+  const [tempName, setTempName] = useState(cardHolderName);
+
   const [importText, setImportText] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
@@ -274,18 +292,29 @@ const Settings: React.FC<SettingsProps> = ({
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto pb-12">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-6 border-b" style={{ borderColor: theme.cardBorder }}>
-        <div>
-          <h1 className="text-3xl lg:text-5xl font-black text-foreground mb-2 tracking-tight">
-            Configurações
-          </h1>
-          <p className="text-muted-foreground text-lg font-medium">
-            Personalize sua experiência e gerencie seus dados locais
-          </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-6 border-b" style={{ borderColor: theme.cardBorder }}>
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <div className="p-3 rounded-2xl bg-primary text-white shadow-lg shadow-primary/20">
+            <SettingsIcon className="w-8 h-8" />
+          </div>
+          <div>
+            <h1 className="text-3xl lg:text-5xl font-black text-foreground mb-1 tracking-tight">
+              Configurações
+            </h1>
+            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">
+              Gerencie categorias, pagamentos e dados
+            </p>
+          </div>
         </div>
-        <div className="p-3 rounded-2xl bg-primary/10 border-2 border-primary/20 animate-pulse hidden md:block">
-          <SettingsIcon className="w-8 h-8 text-primary" />
-        </div>
+
+        <Button
+          onClick={() => navigate('/')}
+          variant="outline"
+          className="group flex items-center gap-2 h-12 px-6 rounded-2xl border-2 hover:bg-destructive/5 hover:border-destructive hover:text-destructive transition-all"
+        >
+          <X className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+          <span className="font-black uppercase text-xs tracking-widest">Sair</span>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -493,6 +522,131 @@ const Settings: React.FC<SettingsProps> = ({
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Dashboard Info Section */}
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2.5 rounded-xl bg-primary text-white shadow-lg">
+                <CreditCard className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-foreground uppercase tracking-wider">
+                  Dashboard
+                </h2>
+                <p className="text-xs text-muted-foreground font-bold uppercase">Personalização Visual</p>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {/* Visibility & Benefits Toggles */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div 
+                  className={cn(
+                    "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
+                    showBalance ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                  )}
+                  onClick={() => setShowBalance(!showBalance)}
+                >
+                  <div className="flex-1">
+                    <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
+                      Mostrar Saldo
+                    </p>
+                    <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">Privacidade no Dashboard</p>
+                  </div>
+                  {showBalance ? <Eye className="w-5 h-5 text-primary" /> : <EyeOff className="w-5 h-5 opacity-40" />}
+                </div>
+
+                <div 
+                  className={cn(
+                    "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
+                    includeBenefits ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                  )}
+                  onClick={() => setIncludeBenefits(!includeBenefits)}
+                >
+                  <div className="flex-1">
+                    <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
+                      Incluir Benefícios
+                    </p>
+                    <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">Somar Flash/Vero no total</p>
+                  </div>
+                  <Wallet className={cn("w-5 h-5 transition-colors", includeBenefits ? 'text-primary' : 'opacity-40')} />
+                </div>
+              </div>
+
+              <div className="h-px bg-muted my-2"></div>
+
+              {/* Card Holder Name */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-1">
+                  Titular do Cartão
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    value={tempName}
+                    onChange={(e) => setTempName(e.target.value)}
+                    placeholder="Nome no cartão..."
+                  />
+                  <Button
+                    onClick={() => setCardHolderName(tempName)}
+                    size="icon"
+                    disabled={tempName === cardHolderName}
+                    title="Salvar Nome"
+                  >
+                    <Check className="w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="h-px bg-muted my-4"></div>
+
+              {/* Flash Split */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-1 flex items-center gap-2">
+                    <Scissors className="w-4 h-4" />
+                    Split Flash (Flex)
+                  </label>
+                  <div 
+                    className={cn(
+                      "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative cursor-pointer",
+                      isFlashSplit ? 'bg-primary' : 'bg-muted'
+                    )}
+                    onClick={() => setIsFlashSplit(!isFlashSplit)}
+                  >
+                    <div className={cn(
+                      "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
+                      isFlashSplit ? 'translate-x-6' : 'translate-x-0'
+                    )} />
+                  </div>
+                </div>
+
+                {isFlashSplit && (
+                  <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+                    <div className="flex gap-2">
+                      <Input
+                        {...flexAmountProps}
+                        label="Saldo Flex (R$)"
+                        className="font-bold"
+                      />
+                      <Button
+                        onClick={() => setFlashFlexAmount(flexAmountValue)}
+                        size="icon"
+                        className="mt-auto h-12 w-12"
+                        disabled={flexAmountValue === flashFlexAmount}
+                        title="Salvar Saldo Flex"
+                      >
+                        <Check className="w-5 h-5" />
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground font-bold italic ml-1">
+                      * Este valor será reservado do saldo total Flash para gastos Flex.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </Card>

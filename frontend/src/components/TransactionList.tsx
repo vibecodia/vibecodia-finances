@@ -75,7 +75,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
         return t.paymentMethod && paymentMethodFilter.includes(formatPaymentMethod(t.paymentMethod));
       })
       .filter(t => {
-        if (type === 'expense' && searchTerm) {
+        if (searchTerm) {
           return t.description.toLowerCase().includes(searchTerm.toLowerCase());
         }
         return true;
@@ -538,19 +538,17 @@ const TransactionList: React.FC<TransactionListProps> = ({
           </div>
         )}
 
-        {/* Search Input (only for expenses) */}
-        {type === 'expense' && (
-          <div className="relative flex items-center w-full group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors z-10" />
-            <Input
-              type="text"
-              placeholder="Buscar despesas..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-12"
-            />
-          </div>
-        )}
+        {/* Search Input */}
+        <div className="relative flex items-center w-full group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors z-10" />
+          <Input
+            type="text"
+            placeholder={type === 'expense' ? "Buscar despesas..." : "Buscar receitas..."}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-12"
+          />
+        </div>
 
         {/* Daily Filter for Income/Expense */}
         {startDateFilter && endDateFilter && (

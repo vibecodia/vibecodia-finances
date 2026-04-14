@@ -2184,13 +2184,16 @@ INSTRUÇÕES PARA SUA RESPOSTA:
             </button>
             <button
               onClick={() => setActiveTab('financiamento')}
-              className={`flex-1 md:flex-none px-6 py-3 md:py-2.5 rounded-xl font-bold text-sm transition-all border ${
+              className={`flex-1 md:flex-none px-6 py-3 md:py-2.5 rounded-xl font-bold text-sm transition-all border flex items-center justify-center gap-2 ${
                 activeTab === 'financiamento'
                   ? 'bg-primary text-white border-primary shadow-md'
                   : 'bg-transparent text-foreground border-border hover:bg-muted/30'
               }`}
             >
-              🏠 Financiamento (experimental)
+              Financiamento
+              <span className="text-[8px] bg-accent text-white px-1.5 py-0.5 rounded-full uppercase tracking-tighter animate-pulse font-black">
+                Experimental
+              </span>
             </button>
           </div>
         </div>
@@ -3449,10 +3452,35 @@ INSTRUÇÕES PARA SUA RESPOSTA:
 
       {/* Financiamento Tab */}
       {activeTab === 'financiamento' && (
-        <FinanciamentoCasaPlayground 
-          transactions={transactions} 
-          theme={theme}
-        />
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
+          <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-primary via-primary/90 to-accent p-10 lg:p-14 text-white shadow-2xl">
+            <div className="relative z-10 flex flex-col items-center justify-center text-center gap-10">
+              <div className="space-y-6 flex flex-col items-center max-w-2xl">
+                <div className="inline-flex items-center gap-2.5 px-4 py-1.5 bg-white/20 backdrop-blur-xl rounded-full text-[10px] font-black uppercase tracking-[0.3em] border border-white/30 shadow-xl animate-pulse">
+                  <Sparkles className="w-3.5 h-3.5 text-white shadow-sm" />
+                  Módulo Premium Experimental
+                </div>
+                <h2 className="text-4xl lg:text-7xl font-black tracking-tighter leading-[0.9] drop-shadow-2xl">
+                  Simulador de <br />
+                  <span className="text-white/70 italic">Financiamento</span>
+                </h2>
+                <p className="text-sm lg:text-lg font-bold text-white/70 leading-relaxed max-w-xl">
+                  Projete o futuro da sua casa própria com inteligência. Compare cenários, 
+                  analise amortizações e economize milhares em juros com nossa ferramenta estratégica.
+                </p>
+              </div>
+            </div>
+            
+            {/* Background Decorations */}
+            <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-[500px] h-[500px] bg-white/10 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-accent/20 rounded-full blur-[120px] pointer-events-none" />
+          </div>
+
+          <FinanciamentoCasaPlayground 
+            transactions={transactions} 
+            theme={theme}
+          />
+        </div>
       )}
     </div>
   );

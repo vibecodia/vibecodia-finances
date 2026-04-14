@@ -31,6 +31,16 @@ const HojeRedirect = () => {
   return null;
 };
 
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+};
+
 function App() {
   const { pin, isInitializing, isVerified, isSettingsVerified, setShowVerificationModal } = useVerification();
   const navigate = useNavigate();
@@ -128,6 +138,7 @@ function App() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: theme.background }}>
+        <ScrollToTop />
         {!isFocusMode && (
           <Header 
             shoppingItemCount={Array.isArray(shoppingList) ? shoppingList.filter(item => !item.purchased).length : 0}
