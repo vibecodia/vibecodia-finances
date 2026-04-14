@@ -28,6 +28,7 @@ infra/docker/.env
 # User uploaded content
 uploads/
 public/uploads/
+public/manifest.json
 
 # Editor and OS files
 .vscode/*
@@ -83,3 +84,4 @@ backend/*.prod.ts
 *.backup
 *~
 .aider*
+public/manifest.json
