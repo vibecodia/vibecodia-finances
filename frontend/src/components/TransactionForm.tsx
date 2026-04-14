@@ -12,6 +12,7 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Card } from './ui/Card';
+import { Textarea } from './ui/Textarea';
 import { cn } from '../lib/utils';
 
 import ImageUpload from './ImageUpload';
@@ -239,7 +240,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     setAmountValue(amount);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type: inputType } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -515,6 +516,27 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
               />
             </div>
           )}
+
+          <div className="space-y-1.5">
+            <Textarea
+              label="Notas"
+              name="notes"
+              value={formData.notes || ''}
+              onChange={handleChange}
+              placeholder="Adicione observações importantes aqui..."
+              disabled={isAnimating}
+              maxLength={1000}
+              className="min-h-[100px] text-sm font-bold"
+            />
+            <div className="flex justify-end pr-1">
+              <span className={cn(
+                "text-[10px] font-black uppercase tracking-widest",
+                (formData.notes?.length || 0) >= 1000 ? "text-accent" : "text-muted-foreground opacity-40"
+              )}>
+                {(formData.notes?.length || 0)}/1000
+              </span>
+            </div>
+          </div>
 
           {/* Checkbox para "Pago" ou "Recebido" */}
           <div 
