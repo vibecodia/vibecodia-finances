@@ -31,8 +31,8 @@ const Navigation: React.FC = () => {
     { id: '/reports', label: 'Relatórios', icon: BarChart3 },
     { id: '/playground', label: 'Playground', icon: PieChart },
     { id: '/goals', label: 'Metas', icon: Target },
-    { id: '/settings', label: 'Config', icon: Settings },
     { id: '/tasks', label: 'Tarefas', icon: CheckSquare },
+    { id: '/settings', label: 'Config', icon: Settings },
   ];
 
   return (

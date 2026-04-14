@@ -80,14 +80,15 @@ export const TaskCard = React.memo(({
             )}
           >
             {task.labels && task.labels.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-2">
+              <div className="flex flex-wrap gap-1.5 mb-2.5">
                 {task.labels.map(label => (
                   <div
                     key={label.id}
-                    className="h-1.5 w-8 rounded-full shadow-sm"
+                    className="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider text-white shadow-sm flex items-center justify-center min-w-[20px]"
                     style={{ backgroundColor: label.color }}
-                    title={label.text}
-                  />
+                  >
+                    {label.text}
+                  </div>
                 ))}
               </div>
             )}
