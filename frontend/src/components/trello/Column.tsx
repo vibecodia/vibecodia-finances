@@ -15,10 +15,11 @@ interface ColumnProps {
   onMoveBackward: (taskId: string) => void;
   onDeleteTask: (taskId: string) => void;
   onArchiveTask: (taskId: string) => void;
+  onFocusTask: (task: Task) => void;
   onToggleChecklistItem: (taskId: string, itemId: string) => void;
 }
 
-export const Column = React.memo(({ id, title, tasks, onCardClick, onMoveForward, onMoveBackward, onDeleteTask, onArchiveTask, onToggleChecklistItem }: ColumnProps) => {
+export const Column = React.memo(({ id, title, tasks, onCardClick, onMoveForward, onMoveBackward, onDeleteTask, onArchiveTask, onFocusTask, onToggleChecklistItem }: ColumnProps) => {
   const getColumnColor = () => {
     switch (id) {
       case 'todo':
@@ -75,9 +76,9 @@ export const Column = React.memo(({ id, title, tasks, onCardClick, onMoveForward
                     onMoveBackward={onMoveBackward}
                     onDelete={onDeleteTask}
                     onArchive={onArchiveTask}
+                    onFocus={onFocusTask}
                     onToggleChecklistItem={onToggleChecklistItem}
-                  />
-              ))
+                    />              ))
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground/20 border-2 border-dashed border-border rounded-3xl">
                 <span className="text-xs font-black uppercase tracking-widest">Vazio</span>

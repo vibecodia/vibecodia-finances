@@ -12,7 +12,7 @@ import {
   startOfDay
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Maximize2 } from 'lucide-react';
 
 import { Task } from '../../types/trello/task';
 import { Button } from '../ui/Button';
@@ -21,9 +21,10 @@ import { cn } from '../../lib/utils';
 interface TimelineProps {
   tasks: Task[];
   onTaskClick: (task: Task) => void;
+  onTaskFocus: (task: Task) => void;
 }
 
-export const Timeline = ({ tasks, onTaskClick }: TimelineProps) => {
+export const Timeline = ({ tasks, onTaskClick, onTaskFocus }: TimelineProps) => {
   const [currentDate, setCurrentDate] = React.useState(new Date());
 
   // Gerar o intervalo de 14 dias (uma semana antes e uma depois da data atual)
@@ -113,18 +114,32 @@ export const Timeline = ({ tasks, onTaskClick }: TimelineProps) => {
             {tasksWithDates.length > 0 ? (
               tasksWithDates.map((task) => (
                 <div key={task.id} className="flex border-b border-border/50 hover:bg-primary/5 transition-colors group">
-                  <div 
-                    className="w-48 flex-shrink-0 border-r border-border p-4 flex items-center gap-2 cursor-pointer"
-                    onClick={() => onTaskClick(task)}
-                  >
-                    <div className={cn(
-                      "w-2 h-2 rounded-full flex-shrink-0",
-                      task.priority === 'high' ? 'bg-destructive' : 
-                      task.priority === 'medium' ? 'bg-amber-500' : 'bg-primary'
-                    )} />
-                    <span className="text-xs font-bold truncate group-hover:text-primary transition-colors">
-                      {task.title}
-                    </span>
+                  <div className="w-48 flex-shrink-0 border-r border-border p-4 flex items-center justify-between group/row overflow-hidden">
+                    <div 
+                      className="flex items-center gap-2 cursor-pointer min-w-0 flex-1"
+                      onClick={() => onTaskClick(task)}
+                    >
+                      <div className={cn(
+                        "w-2 h-2 rounded-full flex-shrink-0",
+                        task.priority === 'high' ? 'bg-destructive' : 
+                        task.priority === 'medium' ? 'bg-amber-500' : 'bg-primary'
+                      )} />
+                      <span className="text-xs font-bold truncate group-hover/row:text-primary transition-colors">
+                        {task.title}
+                      </span>
+                    </div>
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTaskFocus(task);
+                      }}
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 p-0 text-primary opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0 ml-1"
+                      title="Modo Foco"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5" />
+                    </Button>
                   </div>
                   
                   <div className="flex-1 flex relative h-14">

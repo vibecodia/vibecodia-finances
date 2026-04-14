@@ -10,6 +10,7 @@ import { formatBrazilDate, getCurrentBrazilDate } from '../../utils/helpers';
 import { Column } from './Column';
 import { Timeline } from './Timeline';
 import { SearchBar } from './SearchBar';
+import { TaskCard } from './TaskCard';
 import { TaskModal } from './TaskModal';
 import ConfirmationModal from '../ConfirmationModal';
 import { Button } from '../ui/Button';
@@ -37,6 +38,7 @@ export function Board() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
+  const [focusedTask, setFocusedTask] = useState<Task | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [viewMode, setViewMode] = useState<'kanban' | 'timeline'>('kanban');
   const [selectedFlagFilter, setSelectedFlagFilter] = useState<TaskFlag | 'all'>('all');
@@ -107,6 +109,10 @@ export function Board() {
     setEditingTask(task);
     setIsModalOpen(true);
   };
+
+  const handleFocusTask = useCallback((task: Task) => {
+    setFocusedTask(task);
+  }, []);
 
   const handleExport = () => {
     const json = exportTrelloData(tasks);
@@ -252,8 +258,14 @@ export function Board() {
       item.id === itemId ? { ...item, completed: !item.completed } : item
     );
 
-    updateTask({ ...task, checklist: updatedChecklist });
-  }, [tasks, updateTask]);
+    const updatedTask = { ...task, checklist: updatedChecklist };
+    updateTask(updatedTask);
+    
+    // Se esta tarefa estiver sendo exibida no modo foco, atualize o estado local
+    if (focusedTask?.id === taskId) {
+      setFocusedTask(updatedTask);
+    }
+  }, [tasks, updateTask, focusedTask]);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 space-y-8 flex flex-col">
@@ -434,6 +446,7 @@ export function Board() {
                   onMoveBackward={handleMoveBackward}
                   onDeleteTask={(id) => setDeleteConfirmation({ isOpen: true, taskId: id })}
                   onArchiveTask={handleArchiveTask}
+                  onFocusTask={handleFocusTask}
                   onToggleChecklistItem={handleToggleChecklistItem}
                 />
               ))}
@@ -444,8 +457,29 @@ export function Board() {
         <div className="flex-1 min-h-[600px]">
           <Timeline 
             tasks={finalFilteredTasks} 
-            onTaskClick={handleEditTask} 
+            onTaskClick={handleFocusTask} 
+            onTaskFocus={handleFocusTask}
           />
+        </div>
+      )}
+
+      {/* Focus Modal */}
+      {focusedTask && (
+        <div 
+          className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setFocusedTask(null)}
+        >
+          <div 
+            className="w-full max-w-3xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <TaskCard 
+              task={focusedTask} 
+              isFocusMode 
+              onCloseFocus={() => setFocusedTask(null)}
+              onToggleChecklistItem={handleToggleChecklistItem}
+            />
+          </div>
         </div>
       )}
 
