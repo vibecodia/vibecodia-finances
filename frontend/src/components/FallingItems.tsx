@@ -11,6 +11,7 @@ interface FallingItemsProps {
 
 const CATEGORY_EMOJIS: Record<string, string[]> = {
   'Moradia': ['🏠', '🏡', '🏢', '🏘️', '🔑'],
+  'Patrimônio': ['🏠', '🏡', '🏢', '🏘️', '🔑'],
   'Dívidas': ['💸', '🧾', '💳', '📉', '💰'],
   'Educação': ['📚', '🎓', '✏️', '📓', '🏫'],
   'Serviços': ['🛠️', '🔌', '⚙️', '🔩', '🔧'],
@@ -24,7 +25,7 @@ const CATEGORY_EMOJIS: Record<string, string[]> = {
   'Compras': ['🛍️', '🛒', '🏷️', '🎁', '👜'],
   'Consumo': ['🛒', '🥛', '🍞', '🥤', '🍱'],
   'Aporte': ['📈', '💰', '🏦', '💹', '💎', '💸'],
-  'Outro': ['✨', '📦', '🌀', '🎯', '🌈'],
+  'Outros': ['✨', '📦', '🌀', '🎯', '🌈'],
   'Salário': ['💵', '💰', '🏦', '💸', '🤑'],
   'Vale': ['🎟️', '🎫', '🍔', '🍕'],
   'Reembolsos': ['🔙', '💵', '💰', '💸'],

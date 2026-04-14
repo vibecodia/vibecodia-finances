@@ -386,7 +386,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
       .filter((t: any) => 
         t.type === 'expense' && 
         t.status !== 'deleted' && 
-        t.category?.toLowerCase() === 'moradia' &&
+        t.category === 'Patrimônio' &&
         /Financiamento casa \d+\/\d+/i.test(t.description || '')
       )
       .map((t: any): any => {
@@ -411,7 +411,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
         <div className="max-w-md">
           <p className="text-xl font-bold">Nenhuma transação encontrada</p>
           <p className="text-muted-foreground text-sm mt-2">
-            Não encontramos transações com o padrão "Financiamento casa X/Y" na categoria "Moradia".
+            Não encontramos transações com o padrão "Financiamento casa X/Y" na categoria "Patrimônio".
           </p>
         </div>
       </div>
@@ -572,7 +572,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                   <div className="flex flex-col items-center justify-center p-10 text-center gap-3 text-muted-foreground">
                     <AlertCircle className="w-10 h-10" />
                     <p className="text-sm font-bold">Nenhum dado de Consórcio encontrado</p>
-                    <p className="text-[10px]">Verifique transações com "Consórcio Porto" na categoria "Outro".</p>
+                    <p className="text-[10px]">Verifique transações com "Consórcio Porto" na categoria "Outros".</p>
                   </div>
                 ) : (
                   <>

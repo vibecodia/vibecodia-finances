@@ -517,7 +517,8 @@ export const EXPENSE_CATEGORIES = [
   'Compras',
   'Consumo',
   'Aporte',
-  'Outro'
+  'Outros',
+  'Patrimônio'
 ];
 
 export const INCOME_CATEGORIES = [
