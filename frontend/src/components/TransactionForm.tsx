@@ -513,6 +513,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
               <ImageUpload 
                 onReceiptDetected={handleReceiptDetected}
                 onUploadError={(error) => console.error(error)}
+                disabled={true}
               />
             </div>
           )}

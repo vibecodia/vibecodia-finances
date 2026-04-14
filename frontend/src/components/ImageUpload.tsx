@@ -6,15 +6,17 @@ import React, { useState, useRef } from 'react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Input } from './ui/Input';
+import { cn } from '../lib/utils';
 
 import QRScanner from './QRScanner';
 
 type ImageUploadProps = {
   onUploadError?: (error: string) => void;
   onReceiptDetected?: (data: { description: string; amount: number; date: string }) => void;
+  disabled?: boolean;
 };
 
-const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetected }) => {
+const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetected, disabled }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLiveScanning, setIsLiveScanning] = useState(false);
@@ -180,15 +182,21 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
           </div>
         </Button>
 
-        <label className="flex-1">
+        <label className={cn(
+          "flex-1",
+          disabled ? "cursor-not-allowed" : "cursor-pointer"
+        )}>
           <input
             type="file"
             accept="image/*"
             onChange={handleFileChange}
             className="hidden"
-            disabled={isProcessing}
+            disabled={disabled || isProcessing}
           />
-          <Card className="h-full py-6 flex flex-col items-center justify-center gap-2 border-dashed border-2 cursor-pointer hover:bg-card/50 transition-all">
+          <Card className={cn(
+            "h-full py-6 flex flex-col items-center justify-center gap-2 border-dashed border-2 transition-all",
+            disabled ? "opacity-50" : "hover:bg-card/50"
+          )}>
             {isProcessing ? (
               <Loader2 className="w-8 h-8 text-primary animate-spin" />
             ) : (
