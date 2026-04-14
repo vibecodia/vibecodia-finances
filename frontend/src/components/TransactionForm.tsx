@@ -200,7 +200,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
       // Se o pai capturou o erro e setou submitError, o componente vai re-renderizar
       // e podemos checar se submitError mudou, mas o try/catch aqui é mais imediato.
       
-      const ninjaGameEnabled = localStorage.getItem('ninjaGameEnabled') !== 'false';
+      const ninjaGameEnabled = localStorage.getItem('ninjaGameEnabled') === 'true';
       const ninjaGameMode = (localStorage.getItem('ninjaGameMode') as any) || '10s';
       
       if (ninjaGameEnabled) {
