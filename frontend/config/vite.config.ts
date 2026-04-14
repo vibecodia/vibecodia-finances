@@ -3,6 +3,7 @@ import { resolve } from 'path';
 
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, Plugin } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
 
 const packageJsonPath = resolve(__dirname, '../../package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
@@ -46,7 +47,18 @@ export default defineConfig(({ mode }) => {
 
   return {
     root: resolve(__dirname, '..'),
-    plugins: [react(), processManifestPlugin()],
+    plugins: [
+      react(),
+      processManifestPlugin(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        manifest: false,
+        injectRegister: 'auto',
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
+        },
+      }),
+    ],
     define: {
       'import.meta.env.APP_VERSION': JSON.stringify(packageJson.version),
       'import.meta.env.APP_SUBTITLE': JSON.stringify(APP_SUBTITLE),
