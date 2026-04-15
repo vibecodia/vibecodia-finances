@@ -24,6 +24,7 @@ export interface Task {
   updatedAt?: string;
   flag?: TaskFlag;
   labels?: TaskLabel[];
+  dependsOn?: string[];
 }
 
 export interface Column {

@@ -186,11 +186,26 @@ export function Board() {
     }
 
     const newTasks = Array.from(tasks);
-    
+
     // 1. Encontrar e remover a tarefa movida
     const movedTaskIndex = newTasks.findIndex(t => t.id === draggableId);
     if (movedTaskIndex === -1) return;
-    const [movedTask] = newTasks.splice(movedTaskIndex, 1);
+    const movedTask = newTasks[movedTaskIndex];
+
+    // Validação de dependências ao mover para "done" via drag and drop
+    if (destination.droppableId === 'done' && movedTask.columnId !== 'done') {
+      const pendingDependencies = movedTask.dependsOn?.filter(depId => {
+        const depTask = tasks.find(t => t.id === depId);
+        return depTask && depTask.columnId !== 'done';
+      });
+
+      if (pendingDependencies && pendingDependencies.length > 0) {
+        alert('Esta tarefa não pode ser concluída pois possui dependências pendentes.');
+        return;
+      }
+    }
+
+    newTasks.splice(movedTaskIndex, 1);
 
     // 2. Atualizar a coluna
     movedTask.columnId = destination.droppableId as Task['columnId'];
@@ -230,11 +245,23 @@ export function Board() {
   const handleMoveForward = useCallback((taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    
+
     let nextColumn: Task['columnId'] = task.columnId;
     if (task.columnId === 'todo') nextColumn = 'inProgress';
     else if (task.columnId === 'inProgress') nextColumn = 'done';
-    
+
+    if (nextColumn === 'done') {
+      const pendingDependencies = task.dependsOn?.filter(depId => {
+        const depTask = tasks.find(t => t.id === depId);
+        return depTask && depTask.columnId !== 'done';
+      });
+
+      if (pendingDependencies && pendingDependencies.length > 0) {
+        alert('Esta tarefa não pode ser concluída pois possui dependências pendentes.');
+        return;
+      }
+    }
+
     if (nextColumn !== task.columnId) {
       moveTask(taskId, nextColumn);
     }
@@ -457,6 +484,7 @@ export function Board() {
                   id={column.id}
                   title={column.title}
                   tasks={column.tasks}
+                  allTasks={tasks}
                   isMinimal={!!columnViewModes[column.id]}
                   onToggleMinimal={() => toggleColumnMinimal(column.id)}
                   onCardClick={handleEditTask}
@@ -516,6 +544,7 @@ export function Board() {
         }}
         onArchive={handleArchiveTask}
         task={editingTask}
+        allTasks={tasks}
         mode={editingTask ? 'edit' : 'create'}
       />
 

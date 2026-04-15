@@ -1,5 +1,5 @@
-import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Check, Archive, AlertCircle, PauseCircle, Ban, Tag } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Check, Archive, AlertCircle, PauseCircle, Ban, Tag, Link2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
 import { Task, ChecklistItem, TaskFlag, TaskLabel } from '../../types/trello/task';
@@ -18,10 +18,11 @@ interface TaskModalProps {
   onDelete?: (taskId: string) => void;
   onArchive?: (taskId: string) => void;
   task?: Task;
+  allTasks?: Task[];
   mode: 'create' | 'edit';
 }
 
-export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, mode }: TaskModalProps) {
+export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, allTasks = [], mode }: TaskModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
@@ -34,10 +35,48 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
   const [labels, setLabels] = useState<TaskLabel[]>([]);
   const [newLabelText, setNewLabelText] = useState('');
   const [newLabelColor, setNewLabelColor] = useState('#3b82f6'); // Default blue
+  const [dependsOn, setDependsOn] = useState<string[]>([]);
 
   const labelColors = [
     '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'
   ];
+
+  const availableTasks = useMemo(() => {
+    return allTasks.filter(t => 
+      t.id !== task?.id && 
+      (t.columnId === 'todo' || t.columnId === 'inProgress')
+    );
+  }, [allTasks, task]);
+
+  const hasCycle = (taskId: string, targetDependencyId: string, currentTasks: Task[]): boolean => {
+    const visited = new Set<string>();
+    const stack = [targetDependencyId];
+
+    while (stack.length > 0) {
+      const currentId = stack.pop()!;
+      if (currentId === taskId) return true;
+      if (visited.has(currentId)) continue;
+      visited.add(currentId);
+
+      const currentTask = currentTasks.find(t => t.id === currentId);
+      if (currentTask?.dependsOn) {
+        stack.push(...currentTask.dependsOn);
+      }
+    }
+    return false;
+  };
+
+  const toggleDependency = (depId: string) => {
+    if (dependsOn.includes(depId)) {
+      setDependsOn(dependsOn.filter(id => id !== depId));
+    } else {
+      if (task?.id && hasCycle(task.id, depId, allTasks)) {
+        alert('Esta dependência criaria um ciclo (A depende de B e B depende de A).');
+        return;
+      }
+      setDependsOn([...dependsOn, depId]);
+    }
+  };
 
   const handleDelete = () => {
     if (task && onDelete) {
@@ -62,6 +101,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
       setChecklist(task.checklist || []);
       setFlag(task.flag || 'none');
       setLabels(task.labels || []);
+      setDependsOn(task.dependsOn || []);
     } else {
       setTitle('');
       setDescription('');
@@ -70,6 +110,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
       setChecklist([]);
       setFlag('none');
       setLabels([]);
+      setDependsOn([]);
     }
   }, [task, mode, isOpen]);
 
@@ -145,6 +186,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
         checklist,
         flag,
         labels,
+        dependsOn,
         updatedAt: new Date().toISOString()
       });
     } else {
@@ -154,6 +196,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
         checklist,
         flag,
         labels,
+        dependsOn,
         updatedAt: new Date().toISOString()
       });
     }
@@ -275,6 +318,47 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
               />
+
+              <div className="space-y-3">
+                <label className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                  <Link2 className="w-4 h-4" />
+                  Depende de (Apenas A Fazer / Em Andamento)
+                </label>
+                <div className="max-h-[150px] overflow-y-auto border-2 border-border rounded-xl p-3 space-y-2 bg-card/50">
+                  {availableTasks.length > 0 ? (
+                    availableTasks.map(t => (
+                      <label 
+                        key={t.id} 
+                        className={cn(
+                          "flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors hover:bg-foreground/5",
+                          dependsOn.includes(t.id) && "bg-primary/5 text-primary"
+                        )}
+                      >
+                        <div 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            toggleDependency(t.id);
+                          }}
+                          className={cn(
+                            "w-4 h-4 rounded border-2 flex items-center justify-center transition-colors",
+                            dependsOn.includes(t.id) ? "bg-primary border-primary" : "border-muted-foreground/30"
+                          )}
+                        >
+                          {dependsOn.includes(t.id) && <Check className="w-3 h-3 text-white" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-black uppercase tracking-tight truncate">{t.title}</p>
+                          <span className="text-[9px] opacity-60 uppercase font-bold">{t.columnId === 'todo' ? 'A Fazer' : 'Em Andamento'}</span>
+                        </div>
+                      </label>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 italic">
+                      Nenhuma tarefa disponível para dependência
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="space-y-6">

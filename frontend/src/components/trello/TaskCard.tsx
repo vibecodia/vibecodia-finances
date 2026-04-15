@@ -1,4 +1,4 @@
-import { Calendar, ChevronRight, ChevronLeft, Trash2, CheckSquare, ListTodo, Archive, Ban, AlertCircle, PauseCircle, Maximize2, X } from 'lucide-react';
+import { Calendar, ChevronRight, ChevronLeft, Trash2, CheckSquare, ListTodo, Archive, Ban, AlertCircle, PauseCircle, Maximize2, X, Link2 } from 'lucide-react';
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 
@@ -30,6 +30,7 @@ const FlagIcon = ({ flag }: { flag?: TaskFlag }) => {
 
 interface TaskCardProps {
   task: Task;
+  allTasks?: Task[];
   index?: number;
   isFocusMode?: boolean;
   isMinimalOverride?: boolean;
@@ -45,6 +46,7 @@ interface TaskCardProps {
 
 export const TaskCard = React.memo(({ 
   task, 
+  allTasks = [],
   index = 0,
   isFocusMode = false,
   isMinimalOverride,
@@ -62,6 +64,13 @@ export const TaskCard = React.memo(({
   const isDone = task.columnId === 'done';
   const isMinimal = !isFocusMode && (isMinimalOverride ?? isDone);
 
+  const pendingDependencies = task.dependsOn?.filter(depId => {
+    const depTask = allTasks.find(t => t.id === depId);
+    return depTask && depTask.columnId !== 'done';
+  }) || [];
+
+  const isBlocked = pendingDependencies.length > 0 && !isDone;
+
   const CardContent = (
     <Card
       noPadding
@@ -71,6 +80,7 @@ export const TaskCard = React.memo(({
         isMinimal ? "p-3 bg-muted/30 hover:bg-muted/50" : "p-5",
         !isFocusMode && "hover:scale-[1.01] hover:shadow-md",
         isDone && "opacity-60 grayscale-[0.2]",
+        isBlocked && "opacity-50 grayscale bg-muted/20 cursor-not-allowed",
         task.flag === 'blocked' && "bg-red-500/5",
         task.flag === 'impediment' && "bg-amber-500/5",
         task.flag === 'paused' && "bg-blue-500/5"
@@ -108,9 +118,20 @@ export const TaskCard = React.memo(({
         isFocusMode ? "mb-8" : isMinimal ? "mb-0" : "mb-3"
       )}>
         <div className="flex-1 flex flex-col gap-1 min-w-0">
-          {!isMinimal && <FlagIcon flag={task.flag} />}
+          {!isMinimal && (
+            <div className="flex flex-wrap gap-2 items-center">
+              <FlagIcon flag={task.flag} />
+              {isBlocked && (
+                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/10 text-red-500" title={`Depende de ${pendingDependencies.length} tarefa(s) pendente(s)`}>
+                  <Link2 className="w-3 h-3" />
+                  <span className="text-[8px] font-black uppercase tracking-tighter">Bloqueada</span>
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-2">
             {isMinimal && <CheckSquare className="w-3.5 h-3.5 text-primary/60 shrink-0" />}
+            {isMinimal && isBlocked && <Link2 className="w-3 h-3 text-red-500 shrink-0" />}
             <h3 className={cn(
               "font-black text-foreground uppercase tracking-tight leading-tight",
               isFocusMode ? "text-3xl" : "text-sm",

@@ -21,6 +21,7 @@ interface ColumnProps {
   onArchiveTask: (taskId: string) => void;
   onFocusTask: (task: Task) => void;
   onToggleChecklistItem: (taskId: string, itemId: string) => void;
+  allTasks: Task[];
 }
 
 export const Column = React.memo(({ 
@@ -35,7 +36,8 @@ export const Column = React.memo(({
   onDeleteTask, 
   onArchiveTask, 
   onFocusTask, 
-  onToggleChecklistItem 
+  onToggleChecklistItem,
+  allTasks
 }: ColumnProps) => {
   const getColumnColor = () => {
     switch (id) {
@@ -69,10 +71,10 @@ export const Column = React.memo(({
               onClick={onToggleMinimal}
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-muted-foreground hover:text-primary transition-colors"
+              className="h-10 w-10 rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-muted/50 transition-all duration-200"
               title={isMinimal ? "Expandir todos" : "Minimizar todos"}
             >
-              {isMinimal ? <Maximize2 className="w-3 h-3" /> : <Minimize2 className="w-3 h-3" />}
+              {isMinimal ? <Maximize2 className="w-5 h-5" /> : <Minimize2 className="w-5 h-5" />}
             </Button>
           </div>
           <div className={cn("w-12 h-1.5 mt-1 rounded-full", getAccentColor())}></div>
@@ -98,6 +100,7 @@ export const Column = React.memo(({
                 <TaskCard
                   key={task.id}
                   task={task}
+                  allTasks={allTasks}
                   index={index}
                   isMinimalOverride={isMinimal}
                   onCardClick={onCardClick}
