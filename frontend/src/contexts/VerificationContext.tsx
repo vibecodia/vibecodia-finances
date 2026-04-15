@@ -61,6 +61,12 @@ export const VerificationProvider: React.FC<VerificationProviderProps> = ({ chil
     const storedPin = Cookies.get(PIN_COOKIE_NAME);
     const isGuestMode = localStorage.getItem(GUEST_MODE_STORAGE_KEY) === "true";
 
+    // Se estiver na rota /guest, não forçamos a verificação nem abrimos o modal
+    if (location.pathname === '/guest') {
+      setIsInitializing(false);
+      return;
+    }
+
     if (lastVerification && storedPin) {
       const lastVerificationTime = new Date(lastVerification).getTime();
       if (Date.now() - lastVerificationTime < VERIFICATION_TIMEOUT) {
