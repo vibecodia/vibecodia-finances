@@ -64,6 +64,14 @@ const VerificationModal: React.FC = () => {
       setError('Código incorreto. Tente novamente.');
       setIsLoading(false);
       setDigits(['', '', '']);
+      
+      // Se errar o PIN e não estiver verificado, volta para a tela de boas-vindas
+      if (!isVerified) {
+        setTimeout(() => {
+          setShowVerificationModal(false);
+          navigate('/guest');
+        }, 1500); // Dá um tempo para o usuário ler o erro antes de fechar
+      }
     }
   };
 

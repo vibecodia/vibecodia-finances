@@ -13,6 +13,7 @@ export const useFinancialData = () => {
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [monthlyBalances, setMonthlyBalances] = useState<MonthlyBalance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const headers = useMemo(() => ({
     'Content-Type': 'application/json',
@@ -32,6 +33,7 @@ export const useFinancialData = () => {
         
         setTransactions(storedTransactions ? JSON.parse(storedTransactions) : []);
         setSavingsGoals(storedGoals ? JSON.parse(storedGoals) : []);
+        setHasLoaded(true);
       } catch (error) {
         console.error('Error reading guest data:', error);
       } finally {
@@ -44,6 +46,7 @@ export const useFinancialData = () => {
       setTransactions([]);
       setSavingsGoals([]);
       setIsLoading(false);
+      setHasLoaded(false);
       return;
     }
 
@@ -62,6 +65,7 @@ export const useFinancialData = () => {
       const goalsData = await goalsRes.json();
       setTransactions(transactionsData);
       setSavingsGoals(goalsData);
+      setHasLoaded(true);
     } catch (error) {
       console.error('Error fetching financial data:', error);
       setTransactions([]);
@@ -508,5 +512,6 @@ export const useFinancialData = () => {
     clearAllData,
     monthlyBalances,
     isLoading,
+    hasLoaded,
   };
 };

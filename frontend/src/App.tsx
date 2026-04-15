@@ -60,6 +60,11 @@ function App() {
       setShowVerificationModal(false); // Hide modal before redirecting
       navigate('/guest');
     }
+
+    // Se estiver verificado ou em modo guest e estiver na rota /guest, vai para home
+    if ((isVerified || isGuest) && location.pathname === '/guest') {
+      navigate('/');
+    }
   }, [isVerified, isGuest, isInitializing, location.pathname, navigate, setShowVerificationModal]);
 
   const {
@@ -78,6 +83,7 @@ function App() {
     importData,
     clearAllData,
     isLoading,
+    hasLoaded,
   } = useFinancialData();
 
   const { theme } = useTheme();
@@ -93,6 +99,7 @@ function App() {
 
   const routesWithoutDesktopMenu = ['/playground'];
   const hideMenuOnDesktop = routesWithoutDesktopMenu.includes(location.pathname);
+  const isGuestRoute = location.pathname === '/guest';
 
   useEffect(() => {
     if (isInitializing) return;
@@ -103,8 +110,8 @@ function App() {
     }
 
     // Lógica da tela de bem-vindo (Saldo Inicial)
-    // Mostra se: usuário está verificado ou em modo guest, não está carregando e o banco está vazio
-    if (isVerified || isGuest || pin) {
+    // Mostra se: usuário está verificado ou em modo guest, não está carregando, os dados foram carregados e o banco está vazio
+    if ((isVerified || isGuest || pin) && hasLoaded) {
       // Consideramos vazio se não houver transações ou se todas estiverem deletadas
       const activeTransactions = transactions.filter(t => t.status !== 'deleted');
       
@@ -123,7 +130,7 @@ function App() {
         }
       }
     }
-  }, [isLoading, transactions?.length, pin, isVerified, isGuest, isInitializing, location.pathname, isSettingsVerified, setShowVerificationModal]);
+  }, [isLoading, hasLoaded, transactions?.length, pin, isVerified, isGuest, isInitializing, location.pathname, isSettingsVerified, setShowVerificationModal]);
 
   useEffect(() => {
     const hasItems = Array.isArray(shoppingList) && shoppingList.filter(item => !item.purchased).length > 0;
@@ -189,16 +196,16 @@ function App() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: theme.background }}>
         <ScrollToTop />
-        {!isFocusMode && (
+        {!isFocusMode && !isGuestRoute && (
           <Header 
             shoppingItemCount={Array.isArray(shoppingList) ? shoppingList.filter(item => !item.purchased).length : 0}
             onOpenShoppingList={() => setIsShoppingListOpen(true)}
             animateShoppingButton={animateCombined}
           />
         )}
-        {!isFocusMode && <Navigation />}
+        {!isFocusMode && !isGuestRoute && <Navigation />}
 
-        {!isFocusMode && (
+        {!isFocusMode && !isGuestRoute && (
           <ShoppingListModal
             isOpen={isShoppingListOpen}
             onClose={() => setIsShoppingListOpen(false)}
