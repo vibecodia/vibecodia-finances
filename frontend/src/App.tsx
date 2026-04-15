@@ -25,7 +25,7 @@ import TransactionForm from './components/TransactionForm';
 import { Transaction } from './types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './components/ui/dialog';
 import { Button } from './components/ui/Button';
-import { MapPin } from 'lucide-react';
+import { MapPin, X } from 'lucide-react';
 
 const HojeRedirect = () => {
   const navigate = useNavigate();
@@ -265,10 +265,21 @@ function App() {
 
         {/* Modal de Confirmação do Tour - Estilizado como GuestEntry/InitialBalance */}
         <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
-          <DialogContent className="max-w-md p-10 border-white/10 bg-slate-900/95 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl overflow-hidden">
+          <DialogContent className="max-w-md p-10 border-white/10 bg-slate-900/95 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl overflow-hidden [&>button]:hidden">
             {/* Linha decorativa no topo similar ao InitialBalanceModal */}
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50" />
             
+            {/* Botão de Fechar Customizado (Substituindo o padrão do componente Dialog) */}
+            <button 
+              onClick={() => {
+                setShowConfirm(false);
+                localStorage.setItem('tour_skipped', 'true');
+              }}
+              className="absolute top-6 right-6 p-2.5 rounded-xl bg-white/5 border border-white/10 text-muted-foreground hover:text-white hover:bg-red-500/20 hover:border-red-500/30 transition-all active:scale-90 z-10"
+            >
+              <X size={18} />
+            </button>
+
             <DialogHeader className="flex flex-col items-center text-center space-y-6">
               <div className="p-6 rounded-full bg-primary/10 text-primary border border-primary/20 shadow-[0_0_30px_rgba(var(--primary),0.2)] animate-pulse">
                 <MapPin className="w-12 h-12" />

@@ -13,10 +13,17 @@ interface InitialBalanceModalProps {
 
 const InitialBalanceModal: React.FC<InitialBalanceModalProps> = ({ isOpen, onConfirm, onClose }) => {
   const appVersion = (import.meta as any).env.APP_VERSION;
-  const [amount] = useState(0);
   const [type, setType] = useState<'income' | 'expense'>('income');
 
-  const { inputProps: amountInputProps, numericValue: amountValue } = useCurrencyInput(amount);
+  const { inputProps: amountInputProps, numericValue: amountValue, setNumericValue } = useCurrencyInput(0);
+
+  // Reset value when modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      setNumericValue(0);
+      setType('income');
+    }
+  }, [isOpen, setNumericValue]);
 
   const handleConfirm = () => {
     if (amountValue > 0) {
