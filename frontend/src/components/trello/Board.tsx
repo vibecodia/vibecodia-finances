@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 
 import { useTrello } from '../../hooks/trello/useTrello';
+import { useLocalStorage } from '../../hooks/trello/useLocalStorage';
 import { Task, Column as ColumnType, TaskFlag } from '../../types/trello/task';
 import { exportTrelloData, validateTrelloImport, TrelloExportData } from '../../utils/trello/trelloIO';
 import { formatBrazilDate, getCurrentBrazilDate } from '../../utils/helpers';
@@ -60,6 +61,21 @@ export function Board() {
 
   const [importData, setImportData] = useState<TrelloExportData | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // View mode per column (true = minimal, false = expanded)
+  const [columnViewModes, setColumnViewModes] = useLocalStorage<Record<string, boolean>>('trello_column_view_modes', {
+    todo: false,
+    inProgress: false,
+    done: true,
+    archived: true
+  });
+
+  const toggleColumnMinimal = useCallback((columnId: string) => {
+    setColumnViewModes((prev: Record<string, boolean>) => ({
+      ...prev,
+      [columnId]: !prev[columnId]
+    }));
+  }, [setColumnViewModes]);
 
   const allLabels = useMemo(() => {
     const labelsMap = new Map<string, { text: string, color: string }>();
@@ -441,6 +457,8 @@ export function Board() {
                   id={column.id}
                   title={column.title}
                   tasks={column.tasks}
+                  isMinimal={!!columnViewModes[column.id]}
+                  onToggleMinimal={() => toggleColumnMinimal(column.id)}
                   onCardClick={handleEditTask}
                   onMoveForward={handleMoveForward}
                   onMoveBackward={handleMoveBackward}
