@@ -4,7 +4,6 @@ import { useVerification } from '../contexts/VerificationContext';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { ShieldCheck, UserCircle, ArrowRight, Info, Globe } from 'lucide-react';
-import { cn } from '../lib/utils';
 import PlansSection from './PlansSection';
 
 const GuestEntry: React.FC = () => {

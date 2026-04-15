@@ -1,13 +1,11 @@
 import { useEffect, useCallback, useState } from 'react';
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
-import { useVerification } from '../contexts/VerificationContext';
 
 const TOUR_SKIPPED_KEY = "tour_skipped";
 const TOUR_EVENT_NAME = "vibecodia_start_tour_confirm";
 
 export const useTour = () => {
-  const { isGuest } = useVerification();
   const [showConfirm, setShowConfirm] = useState(false);
 
   // Listener para eventos globais de tour

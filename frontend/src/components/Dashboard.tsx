@@ -1,10 +1,9 @@
 import { format, getDate, getDaysInMonth, isBefore, startOfMonth, endOfMonth } from 'date-fns';
-import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil, Wifi, Check, X, Sword, Camera, RotateCcw, MapPin } from 'lucide-react';
+import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil, Wifi, Check, X, Sword, Camera, RotateCcw } from 'lucide-react';
 import React, { useState, useRef } from 'react';
 import Confetti from 'react-confetti';
 
 import { useTheme } from '../contexts/ThemeContext';
-import { useVerification } from '../contexts/VerificationContext';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
 import useWindowSize from '../hooks/useWindowSize';
 import { Transaction, SavingsGoal } from '../types';
@@ -332,7 +331,6 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
 
 const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => {
   const { width, height } = useWindowSize();
-  const { isGuest } = useVerification();
   const [showConfetti, setShowConfetti] = useState(false);
   const [isPulsing, setIsPulsing] = useState(false);
   const [currentMonth, setCurrentMonth] = useState<Date>(getCurrentBrazilDate());

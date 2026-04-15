@@ -1,4 +1,4 @@
-import { Home, TrendingDown, TrendingUp, BarChart3, Target, Calendar, Settings, Menu, X, CheckSquare, PieChart, LogOut, HelpCircle, ShieldPlus, Construction, MessageSquareCode, MessageCircle, Lock } from 'lucide-react';
+import { Home, TrendingDown, TrendingUp, BarChart3, Target, Calendar, Settings, Menu, X, CheckSquare, PieChart, LogOut, HelpCircle, Construction, MessageSquareCode, MessageCircle, Lock } from 'lucide-react';
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
