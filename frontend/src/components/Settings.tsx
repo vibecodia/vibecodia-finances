@@ -52,7 +52,7 @@ const Settings: React.FC<SettingsProps> = ({
   const { paymentMethods, addPaymentMethod, removePaymentMethod, resetToDefaults: resetPaymentMethodsToDefaults } = usePaymentMethods();
   
   // Dashboard Editable Info
-  const [cardHolderName, setCardHolderName] = useLocalStorage('dashboard_card_holder_name', 'Carvalho de Oliveira Neto');
+  const [cardHolderName, setCardHolderName] = useLocalStorage('dashboard_card_holder_name', 'Convidado altere aqui');
   const [flashFlexAmount, setFlashFlexAmount] = useLocalStorage('dashboard_flash_flex_amount', 0);
   const [isFlashSplit, setIsFlashSplit] = useLocalStorage('dashboard_flash_is_split', false);
   const [showBalance, setShowBalance] = useLocalStorage('dashboard_show_balance', true);

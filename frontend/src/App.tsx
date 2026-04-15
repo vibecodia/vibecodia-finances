@@ -16,6 +16,7 @@ import VerificationModal from './components/VerificationModal';
 import { useTheme } from './contexts/ThemeContext';
 import { useVerification } from './contexts/VerificationContext';
 import ShoppingListModal from './components/ShoppingListModal';
+import GuestEntry from './components/GuestEntry';
 import { useFinancialData } from './hooks/useFinancialData';
 import { useShoppingList } from './hooks/useShoppingList';
 import { getBrazilDateString } from './utils/helpers';
@@ -42,8 +43,20 @@ const ScrollToTop = () => {
 };
 
 function App() {
-  const { pin, isInitializing, isVerified, isSettingsVerified, setShowVerificationModal } = useVerification();
+  const { pin, isInitializing, isVerified, isGuest, isSettingsVerified, setShowVerificationModal } = useVerification();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (isInitializing) return;
+
+    // Se não estiver verificado e não estiver em modo guest, e não estiver na rota /guest, redireciona
+    if (!isVerified && !isGuest && location.pathname !== '/guest') {
+      setShowVerificationModal(false); // Hide modal before redirecting
+      navigate('/guest');
+    }
+  }, [isVerified, isGuest, isInitializing, location.pathname, navigate, setShowVerificationModal]);
+
   const {
     transactions,
     savingsGoals,
@@ -69,7 +82,6 @@ function App() {
   const [animateCombined, setAnimateCombined] = useState(false);
 
   // Rotas onde o menu lateral não fica expandido no desktop
-  const location = useLocation();
   const isFocusMode = 
     new URLSearchParams(location.search).get('view') === 'focus' || 
     location.pathname === '/hoje';
@@ -86,21 +98,27 @@ function App() {
     }
 
     // Lógica da tela de bem-vindo (Saldo Inicial)
-    // Mostra se: usuário está verificado, não está carregando e o banco está vazio
-    if (isVerified || pin) {
+    // Mostra se: usuário está verificado ou em modo guest, não está carregando e o banco está vazio
+    if (isVerified || isGuest || pin) {
       // Consideramos vazio se não houver transações ou se todas estiverem deletadas
       const activeTransactions = transactions.filter(t => t.status !== 'deleted');
       
       if (!isLoading && activeTransactions.length === 0) {
-        // Verifica se já não foi fechado nesta sessão para ESTE PIN específico
-        const storageKey = `hasSeenInitialBalanceModal_${pin}`;
-        const hasSeenModal = sessionStorage.getItem(storageKey);
-        if (!hasSeenModal) {
-          setShowInitialBalanceModal(true);
+        // Verifica se já não foi fechado nesta sessão para ESTE PIN específico (ou 'guest')
+        const identifier = pin || (isGuest ? 'guest' : '');
+        if (identifier) {
+          const storageKey = `hasSeenInitialBalanceModal_${identifier}`;
+          const hasSeenModal = sessionStorage.getItem(storageKey);
+          
+          // Se não houver transações e não vimos o modal na sessão, mostramos.
+          // O "transactions.length === 0" já garante que só chamamos se o saldo estiver zerado.
+          if (!hasSeenModal) {
+            setShowInitialBalanceModal(true);
+          }
         }
       }
     }
-  }, [isLoading, transactions?.length, pin, isVerified, isInitializing, location.pathname, isSettingsVerified, setShowVerificationModal]);
+  }, [isLoading, transactions?.length, pin, isVerified, isGuest, isInitializing, location.pathname, isSettingsVerified, setShowVerificationModal]);
 
   useEffect(() => {
     const hasItems = Array.isArray(shoppingList) && shoppingList.filter(item => !item.purchased).length > 0;
@@ -127,12 +145,18 @@ function App() {
       isPaid: true,
       recurrence: 'none',
     });
-    sessionStorage.setItem(`hasSeenInitialBalanceModal_${pin}`, 'true');
+    const identifier = pin || (isGuest ? 'guest' : '');
+    if (identifier) {
+      sessionStorage.setItem(`hasSeenInitialBalanceModal_${identifier}`, 'true');
+    }
     setShowInitialBalanceModal(false);
   };
 
   const handleSkipInitialBalance = () => {
-    sessionStorage.setItem(`hasSeenInitialBalanceModal_${pin}`, 'true');
+    const identifier = pin || (isGuest ? 'guest' : '');
+    if (identifier) {
+      sessionStorage.setItem(`hasSeenInitialBalanceModal_${identifier}`, 'true');
+    }
     setShowInitialBalanceModal(false);
   };
 
@@ -166,6 +190,7 @@ function App() {
         <main className={`w-full transition-all duration-300 ${isFocusMode ? 'p-0' : 'px-4 sm:px-6 lg:px-12 pb-20'} ${hideMenuOnDesktop || isFocusMode ? '' : 'lg:pl-72'}`}>
           <Routes>
             <Route path="/" element={<Dashboard transactions={transactions} savingsGoals={savingsGoals} />} />
+            <Route path="/guest" element={<GuestEntry />} />
             <Route path="/expenses" element={<TransactionList type="expense" transactions={transactions} savingsGoals={savingsGoals} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} />} />
             <Route 
               path="/expenses/new" 
@@ -209,4 +234,3 @@ function App() {
 }
 
 export default App;
-

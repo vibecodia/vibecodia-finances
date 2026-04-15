@@ -1,13 +1,15 @@
-import { Home, TrendingDown, TrendingUp, BarChart3, Target, Calendar, Settings, Menu, X, CheckSquare, PieChart } from 'lucide-react';
+import { Home, TrendingDown, TrendingUp, BarChart3, Target, Calendar, Settings, Menu, X, CheckSquare, PieChart, LogOut } from 'lucide-react';
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 import { cn } from '../lib/utils';
 import { Button } from './ui/Button';
+import { useVerification } from '../contexts/VerificationContext';
 
 const Navigation: React.FC = () => {
   const location = useLocation();
   const activeTab = location.pathname;
+  const { logout, isGuest } = useVerification();
 
   // Rotas onde o menu começa fechado no desktop
   const routesWithoutDesktopMenu = ['/playground'];
@@ -105,6 +107,22 @@ const Navigation: React.FC = () => {
               </Link>
             );
           })}
+        </div>
+
+        {/* Botão de Sair no rodapé do menu */}
+        <div className="mt-auto pb-4 pt-4 border-t border-border w-full">
+          <button
+            onClick={() => {
+              handleLinkClick();
+              logout();
+            }}
+            className="flex flex-row items-center gap-3 py-2 px-4 rounded-lg w-full text-left transition-all text-red-500 hover:bg-red-500/10 font-bold"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="text-sm">
+              {isGuest ? 'Sair do Modo Convidado' : 'Sair'}
+            </span>
+          </button>
         </div>
       </nav>
     </>

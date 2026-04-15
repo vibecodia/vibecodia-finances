@@ -178,7 +178,7 @@ const VerificationModal: React.FC = () => {
           </div>
 
           <div className="flex flex-col items-center gap-6">
-            {(isVerified || location.pathname === '/settings') && (
+            {(isVerified || location.pathname === '/settings') ? (
               <Button
                 variant="ghost"
                 onClick={handleExit}
@@ -187,6 +187,18 @@ const VerificationModal: React.FC = () => {
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Desistir e Voltar
+              </Button>
+            ) : location.pathname !== '/guest' && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowVerificationModal(false);
+                  navigate('/guest');
+                }}
+                disabled={isLoading}
+                className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-all flex items-center gap-2"
+              >
+                Explorar Outras Opções
               </Button>
             )}
 
