@@ -12,6 +12,12 @@ export interface TaskLabel {
   color: string;
 }
 
+export interface BoardTheme {
+  id: string;
+  name: string;
+  color?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -25,6 +31,7 @@ export interface Task {
   flag?: TaskFlag;
   labels?: TaskLabel[];
   dependsOn?: string[];
+  themeId: string;
 }
 
 export interface Column {

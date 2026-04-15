@@ -9,6 +9,7 @@ export function createTask(
   title: string,
   description: string,
   priority: 'low' | 'medium' | 'high',
+  themeId: string,
   date?: string
 ): Task {
   return {
@@ -16,6 +17,7 @@ export function createTask(
     title,
     description,
     priority,
+    themeId,
     date: date || getBrazilDateString(),
     columnId: 'todo',
     createdAt: new Date().toISOString(),

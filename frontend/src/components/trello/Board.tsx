@@ -1,4 +1,4 @@
-import { Plus, Layout, Archive, Calendar as CalendarIcon, Kanban, Download, Upload, Filter, X as XIcon, ChevronDown, Tag } from 'lucide-react';
+import { Plus, Layout, Archive, Calendar as CalendarIcon, Kanban, Download, Upload, Filter, X as XIcon, ChevronDown, Tag, FolderKanban, Check, Pencil } from 'lucide-react';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 
@@ -13,6 +13,7 @@ import { Timeline } from './Timeline';
 import { SearchBar } from './SearchBar';
 import { TaskCard } from './TaskCard';
 import { TaskModal } from './TaskModal';
+import { ThemeSelector } from './ThemeSelector';
 import ConfirmationModal from '../ConfirmationModal';
 import { Button } from '../ui/Button';
 import { cn } from '../../lib/utils';
@@ -26,6 +27,11 @@ const initialColumns: Omit<ColumnType, 'tasks'>[] = [
 export function Board() {
   const { 
     tasks, 
+    themes,
+    currentTheme,
+    setCurrentThemeId,
+    addTheme,
+    updateTheme,
     filteredTasks, 
     searchTerm, 
     setSearchTerm, 
@@ -34,8 +40,38 @@ export function Board() {
     deleteTask, 
     moveTask,
     reorderTasks,
-    importTasks
+    importTasks,
+    importFullData
   } = useTrello();
+
+  const [showThemeSelector, setShowThemeSelector] = useState(true);
+  const [isNewThemeModalOpen, setIsNewThemeModalOpen] = useState(false);
+  const [newThemeName, setNewThemeName] = useState('');
+  
+  const [isEditingThemeName, setIsEditingThemeName] = useState(false);
+  const [tempThemeName, setTempThemeName] = useState(currentTheme.name);
+
+  // Configurações por tema
+  const [columnViewModesByTheme, setColumnViewModesByTheme] = useLocalStorage<Record<string, Record<string, boolean>>>('trello_column_view_modes_by_theme', {});
+
+  const currentThemeViewModes = useMemo(() => {
+    return columnViewModesByTheme[currentTheme.id] || {
+      todo: false,
+      inProgress: false,
+      done: true,
+      archived: true
+    };
+  }, [columnViewModesByTheme, currentTheme.id]);
+
+  const toggleColumnMinimal = useCallback((columnId: string) => {
+    setColumnViewModesByTheme((prev) => ({
+      ...prev,
+      [currentTheme.id]: {
+        ...currentThemeViewModes,
+        [columnId]: !currentThemeViewModes[columnId]
+      }
+    }));
+  }, [setColumnViewModesByTheme, currentTheme.id, currentThemeViewModes]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
@@ -62,32 +98,19 @@ export function Board() {
   const [importData, setImportData] = useState<TrelloExportData | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // View mode per column (true = minimal, false = expanded)
-  const [columnViewModes, setColumnViewModes] = useLocalStorage<Record<string, boolean>>('trello_column_view_modes', {
-    todo: false,
-    inProgress: false,
-    done: true,
-    archived: true
-  });
-
-  const toggleColumnMinimal = useCallback((columnId: string) => {
-    setColumnViewModes((prev: Record<string, boolean>) => ({
-      ...prev,
-      [columnId]: !prev[columnId]
-    }));
-  }, [setColumnViewModes]);
-
   const allLabels = useMemo(() => {
     const labelsMap = new Map<string, { text: string, color: string }>();
-    tasks.forEach(task => {
-      task.labels?.forEach(label => {
-        if (!labelsMap.has(label.text)) {
-          labelsMap.set(label.text, { text: label.text, color: label.color });
-        }
+    tasks
+      .filter(t => t.themeId === currentTheme.id)
+      .forEach(task => {
+        task.labels?.forEach(label => {
+          if (!labelsMap.has(label.text)) {
+            labelsMap.set(label.text, { text: label.text, color: label.color });
+          }
+        });
       });
-    });
     return Array.from(labelsMap.values());
-  }, [tasks]);
+  }, [tasks, currentTheme.id]);
 
   const finalFilteredTasks = useMemo(() => {
     return filteredTasks.filter(task => {
@@ -131,7 +154,9 @@ export function Board() {
   }, []);
 
   const handleExport = () => {
-    const json = exportTrelloData(tasks);
+    const json = exportTrelloData(tasks, themes, currentTheme.id, {
+      columnViewModesByTheme
+    });
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -168,7 +193,13 @@ export function Board() {
 
   const confirmImport = () => {
     if (importData) {
-      importTasks(importData.tasks);
+      importFullData(importData.tasks, importData.themes, importData.currentThemeId);
+      
+      // Restaurar configurações se presentes
+      if (importData.settings?.columnViewModesByTheme) {
+        setColumnViewModesByTheme(importData.settings.columnViewModesByTheme);
+      }
+      
       setImportData(null);
     }
   };
@@ -310,16 +341,91 @@ export function Board() {
     }
   }, [tasks, updateTask, focusedTask]);
 
+  if (showThemeSelector) {
+    return (
+      <ThemeSelector 
+        themes={themes}
+        tasks={tasks}
+        onSelectTheme={(id) => {
+          setCurrentThemeId(id);
+          setShowThemeSelector(false);
+        }}
+        onAddTheme={(name) => {
+          const theme = addTheme(name);
+          setCurrentThemeId(theme.id);
+          setShowThemeSelector(false);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 space-y-8 flex flex-col">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className="p-3 rounded-2xl bg-primary/10 text-primary">
-            <Layout className="w-8 h-8" />
-          </div>
+          <button 
+            onClick={() => setShowThemeSelector(true)}
+            className="p-3 rounded-2xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all group relative"
+            title="Mudar de Tema"
+          >
+            <FolderKanban className="w-8 h-8" />
+            <div className="absolute -bottom-1 -right-1 bg-background border-2 border-primary rounded-full p-0.5">
+              <ChevronDown className="w-3 h-3 text-primary" />
+            </div>
+          </button>
           <div>
-            <h1 className="text-3xl font-black text-foreground uppercase tracking-tight">Quadro de Tarefas</h1>
+            <div className="flex items-center gap-2 group/theme-name">
+              {isEditingThemeName ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={tempThemeName}
+                    onChange={(e) => setTempThemeName(e.target.value)}
+                    className="bg-foreground/5 border-2 border-primary/30 rounded-lg px-2 py-1 text-2xl font-black uppercase tracking-tight focus:outline-none focus:border-primary w-full max-w-[300px]"
+                    autoFocus
+                    onFocus={(e) => e.target.select()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && tempThemeName.trim()) {
+                        updateTheme(currentTheme.id, { name: tempThemeName.trim() });
+                        setIsEditingThemeName(false);
+                      } else if (e.key === 'Escape') {
+                        setIsEditingThemeName(false);
+                        setTempThemeName(currentTheme.name);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (tempThemeName.trim() && tempThemeName !== currentTheme.name) {
+                        updateTheme(currentTheme.id, { name: tempThemeName.trim() });
+                      }
+                      setIsEditingThemeName(false);
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <h1 
+                    className="text-3xl font-black text-foreground uppercase tracking-tight cursor-pointer hover:text-primary transition-colors"
+                    onClick={() => {
+                      setIsEditingThemeName(true);
+                      setTempThemeName(currentTheme.name);
+                    }}
+                  >
+                    {currentTheme.name}
+                  </h1>
+                  <button
+                     onClick={() => {
+                       setIsEditingThemeName(true);
+                       setTempThemeName(currentTheme.name);
+                     }}
+                     className="p-1 hover:bg-foreground/10 rounded-full transition-all"
+                   >
+                     <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                   </button>
+                </div>
+              )}
+              <div className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest">Tema Ativo</div>
+            </div>
             <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Gerencie seu fluxo de trabalho</p>
           </div>
         </div>
@@ -328,35 +434,35 @@ export function Board() {
           <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
           
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 px-4 py-2 bg-foreground/5 hover:bg-foreground/10 rounded-xl border border-border transition-all group/filter relative">
-              <Filter className="w-3.5 h-3.5 text-muted-foreground group-hover/filter:text-primary transition-colors" />
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-foreground/5 hover:bg-foreground/10 rounded-xl border border-border transition-all group/filter relative">
+              <Filter className="w-3 h-3 text-muted-foreground group-hover/filter:text-primary transition-colors" />
               <div className="relative flex items-center">
                 <select
                   value={selectedFlagFilter}
                   onChange={(e) => setSelectedFlagFilter(e.target.value as any)}
-                  className="appearance-none bg-transparent text-[10px] font-black uppercase tracking-widest focus:outline-none cursor-pointer pr-5 z-10 text-foreground"
+                  className="appearance-none bg-transparent text-[11px] font-black uppercase tracking-widest focus:outline-none cursor-pointer pr-5 z-10 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <option value="all" className="bg-card text-foreground">Todas as Flags</option>
-                  <option value="none" className="bg-card text-foreground">Sem Flag</option>
-                  <option value="blocked" className="bg-card text-red-500">Bloqueado</option>
-                  <option value="impediment" className="bg-card text-amber-500">Impedimento</option>
-                  <option value="paused" className="bg-card text-blue-500">Pausa</option>
+                  <option value="all" className="bg-background text-foreground">Todas as Flags</option>
+                  <option value="none" className="bg-background text-foreground">Sem Flag</option>
+                  <option value="blocked" className="bg-background text-red-500">Bloqueado</option>
+                  <option value="impediment" className="bg-background text-amber-500">Impedimento</option>
+                  <option value="paused" className="bg-background text-blue-500">Pausa</option>
                 </select>
                 <ChevronDown className="w-3 h-3 absolute right-0 text-muted-foreground pointer-events-none group-hover/filter:text-primary transition-colors" />
               </div>
             </div>
 
-            <div className="flex items-center gap-2 px-4 py-2 bg-foreground/5 hover:bg-foreground/10 rounded-xl border border-border transition-all group/label relative">
-              <Tag className="w-3.5 h-3.5 text-muted-foreground group-hover/label:text-primary transition-colors" />
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-foreground/5 hover:bg-foreground/10 rounded-xl border border-border transition-all group/label relative">
+              <Tag className="w-3 h-3 text-muted-foreground group-hover/label:text-primary transition-colors" />
               <div className="relative flex items-center">
                 <select
                   value={selectedLabelFilter}
                   onChange={(e) => setSelectedLabelFilter(e.target.value)}
-                  className="appearance-none bg-transparent text-[10px] font-black uppercase tracking-widest focus:outline-none cursor-pointer pr-5 z-10 text-foreground"
+                  className="appearance-none bg-transparent text-[11px] font-black uppercase tracking-widest focus:outline-none cursor-pointer pr-5 z-10 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <option value="all" className="bg-card text-foreground">Todas as Labels</option>
+                  <option value="all" className="bg-background text-foreground">Todas as Labels</option>
                   {allLabels.map(label => (
-                    <option key={label.text} value={label.text} className="bg-card" style={{ color: label.color }}>
+                    <option key={label.text} value={label.text} className="bg-background text-foreground">
                       {label.text}
                     </option>
                   ))}
@@ -459,12 +565,13 @@ export function Board() {
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
-          { label: 'Total', value: tasks.length, color: 'bg-foreground/5' },
-          { label: 'A Fazer', value: tasks.filter(t => t.columnId === 'todo').length, color: 'bg-blue-500/10 text-blue-500' },
-          { label: 'Em Andamento', value: tasks.filter(t => t.columnId === 'inProgress').length, color: 'bg-amber-500/10 text-amber-500' },
-          { label: 'Concluídas', value: tasks.filter(t => t.columnId === 'done').length, color: 'bg-green-500/10 text-green-500' },
+          { label: 'Total', value: filteredTasks.length, color: 'bg-foreground/5' },
+          { label: 'A Fazer', value: filteredTasks.filter(t => t.columnId === 'todo').length, color: 'bg-blue-500/10 text-blue-500' },
+          { label: 'Em Andamento', value: filteredTasks.filter(t => t.columnId === 'inProgress').length, color: 'bg-amber-500/10 text-amber-500' },
+          { label: 'Concluídas', value: filteredTasks.filter(t => t.columnId === 'done').length, color: 'bg-green-500/10 text-green-500' },
+          { label: 'Arquivadas', value: filteredTasks.filter(t => t.columnId === 'archived').length, color: 'bg-gray-500/10 text-gray-500' },
         ].map((stat) => (
           <div key={stat.label} className={cn("p-4 rounded-2xl border border-border flex flex-col gap-1", stat.color)}>
             <span className="text-[10px] font-black uppercase tracking-widest opacity-70">{stat.label}</span>
@@ -483,10 +590,10 @@ export function Board() {
                   key={column.id}
                   id={column.id}
                   title={column.title}
-                  tasks={column.tasks}
-                  allTasks={tasks}
-                  isMinimal={!!columnViewModes[column.id]}
-                  onToggleMinimal={() => toggleColumnMinimal(column.id)}
+              tasks={column.tasks}
+              allTasks={tasks}
+              isMinimal={!!currentThemeViewModes[column.id]}
+              onToggleMinimal={() => toggleColumnMinimal(column.id)}
                   onCardClick={handleEditTask}
                   onMoveForward={handleMoveForward}
                   onMoveBackward={handleMoveBackward}
@@ -598,9 +705,15 @@ export function Board() {
                   <span className="text-[10px] font-black uppercase opacity-50">Total de Tarefas</span>
                   <span className="text-xs font-bold">{importData.metadata.taskCount}</span>
                 </div>
+                {importData.metadata.themeCount && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-black uppercase opacity-50">Total de Temas</span>
+                    <span className="text-xs font-bold">{importData.metadata.themeCount}</span>
+                  </div>
+                )}
               </div>
               <p className="text-destructive font-bold text-xs uppercase tracking-tight">
-                Atenção: Isso substituirá todas as tarefas atuais do seu quadro.
+                Atenção: Isso substituirá todas as tarefas e temas atuais do seu quadro.
               </p>
             </div>
           ) : ""

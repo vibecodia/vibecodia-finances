@@ -190,7 +190,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
         updatedAt: new Date().toISOString()
       });
     } else {
-      const newTask = createTask(title.trim(), description.trim(), priority, date || undefined);
+      const newTask = createTask(title.trim(), description.trim(), priority, task?.themeId || '', date || undefined);
       onSave({
         ...newTask,
         checklist,
