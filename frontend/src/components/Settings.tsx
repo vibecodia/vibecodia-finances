@@ -16,7 +16,9 @@ import {
    Check,
    Eye,
    EyeOff,
-   X
+   X,
+   Clock,
+   Ghost
    } from 'lucide-react';
    import React, { useState } from 'react';
    import { useNavigate } from 'react-router-dom';
@@ -57,6 +59,9 @@ const Settings: React.FC<SettingsProps> = ({
   const [isFlashSplit, setIsFlashSplit] = useLocalStorage('dashboard_flash_is_split', false);
   const [showBalance, setShowBalance] = useLocalStorage('dashboard_show_balance', true);
   const [includeBenefits, setIncludeBenefits] = useLocalStorage('dashboard_include_benefits', true);
+  const [recentTransactionsDuration, setRecentTransactionsDuration] = useLocalStorage('recent_transactions_duration', 15);
+  const [recentTransactionsEnabled, setRecentTransactionsEnabled] = useLocalStorage('recent_transactions_enabled', true);
+  const [recentTransactionsOpacity, setRecentTransactionsOpacity] = useLocalStorage('recent_transactions_opacity', 80);
 
   const { inputProps: flexAmountProps, numericValue: flexAmountValue } = useCurrencyInput(flashFlexAmount);
   const [tempName, setTempName] = useState(cardHolderName);
@@ -645,6 +650,70 @@ const Settings: React.FC<SettingsProps> = ({
                     <p className="text-[10px] text-muted-foreground font-bold italic ml-1">
                       * Este valor será reservado do saldo total Flash para gastos Flex.
                     </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="h-px bg-muted my-4"></div>
+
+              {/* Recents Settings */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-1 flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    Recentes Flutuante
+                  </label>
+                  <div 
+                    className={cn(
+                      "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative cursor-pointer",
+                      recentTransactionsEnabled ? 'bg-primary' : 'bg-muted'
+                    )}
+                    onClick={() => setRecentTransactionsEnabled(!recentTransactionsEnabled)}
+                  >
+                    <div className={cn(
+                      "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
+                      recentTransactionsEnabled ? 'translate-x-6' : 'translate-x-0'
+                    )} />
+                  </div>
+                </div>
+
+                {recentTransactionsEnabled && (
+                  <div className="space-y-6 animate-in slide-in-from-top-2 duration-200 p-4 rounded-2xl bg-muted/20 border-2 border-dashed border-muted">
+                    {/* Duration Slider */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <p className="text-[10px] font-black text-foreground uppercase tracking-tight">Duração: {recentTransactionsDuration}s</p>
+                        <p className="text-[8px] text-muted-foreground font-bold uppercase">3s - 15s</p>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="3" 
+                        max="15" 
+                        step="1"
+                        value={recentTransactionsDuration}
+                        onChange={(e) => setRecentTransactionsDuration(Number(e.target.value))}
+                        className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                      />
+                    </div>
+
+                    {/* Opacity Slider */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <Ghost className="w-3.5 h-3.5 opacity-60" />
+                          <p className="text-[10px] font-black text-foreground uppercase tracking-tight">Transparência: {recentTransactionsOpacity}%</p>
+                        </div>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="10" 
+                        max="100" 
+                        step="5"
+                        value={recentTransactionsOpacity}
+                        onChange={(e) => setRecentTransactionsOpacity(Number(e.target.value))}
+                        className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
