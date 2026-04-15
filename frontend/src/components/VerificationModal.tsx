@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useVerification } from '../contexts/VerificationContext';
 import { Card } from './ui/Card';
 import { cn } from '../lib/utils';
-import { ShieldCheck, Loader2, Delete, X, ArrowLeft } from 'lucide-react';
+import { ShieldCheck, Loader2, Delete, X, ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from './ui/Button';
 
 const VerificationModal: React.FC = () => {
@@ -132,6 +132,13 @@ const VerificationModal: React.FC = () => {
     <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[200] p-4 backdrop-blur-2xl animate-in fade-in duration-500">
       <Card className="w-full max-w-sm p-8 sm:p-10 shadow-2xl animate-in zoom-in-95 duration-300 text-center border-white/10 bg-card/40">
         <div className="flex flex-col items-center mb-6">
+          <button
+            onClick={() => window.location.reload()}
+            className="absolute top-4 left-4 p-2 rounded-xl bg-white/5 border border-white/10 text-muted-foreground hover:text-primary hover:bg-primary/10 hover:border-primary/20 transition-all active:scale-90"
+            title="Recarregar página"
+          >
+            <RefreshCw size={16} />
+          </button>
           <div className="p-5 rounded-full bg-primary/10 text-primary mb-4 shadow-[0_0_30px_rgba(var(--primary),0.2)] border border-primary/20">
             {isLoading ? (
               <Loader2 className="w-10 h-10 animate-spin" />
