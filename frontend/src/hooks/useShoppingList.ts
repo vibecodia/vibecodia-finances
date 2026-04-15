@@ -10,10 +10,10 @@ interface ShoppingItem {
   createdAt: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || '/api';
 
 export const useShoppingList = () => {
-  const { pin } = useVerification();
+  const { pin, isGuest } = useVerification();
   const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
 
   const headers = useMemo(() => ({
@@ -23,6 +23,11 @@ export const useShoppingList = () => {
 
   useEffect(() => {
     const fetchShoppingList = async () => {
+      if (isGuest) {
+        const storedList = localStorage.getItem('guest_shopping_list');
+        setShoppingList(storedList ? JSON.parse(storedList) : []);
+        return;
+      }
       if (!pin) return;
       try {
         const response = await fetch(`${API_BASE_URL}/shopping-list`, { headers });
@@ -34,7 +39,7 @@ export const useShoppingList = () => {
       }
     };
     fetchShoppingList();
-  }, [pin, headers]);
+  }, [pin, isGuest, headers]);
 
   const sortedShoppingList = [...shoppingList].sort((a, b) => {
     if (a.isPriority && !b.isPriority) return -1;
@@ -43,7 +48,22 @@ export const useShoppingList = () => {
   });
 
   const addItem = async (name: string) => {
-    if (name.trim() === '' || !pin) return;
+    if (name.trim() === '' || (!pin && !isGuest)) return;
+
+    if (isGuest) {
+      const newItem: ShoppingItem = {
+        id: crypto.randomUUID(),
+        name: name.trim(),
+        purchased: false,
+        isPriority: false,
+        createdAt: new Date().toISOString(),
+      };
+      const updatedList = [newItem, ...shoppingList];
+      setShoppingList(updatedList);
+      localStorage.setItem('guest_shopping_list', JSON.stringify(updatedList));
+      return;
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/shopping-list`, {
         method: 'POST',
@@ -59,7 +79,17 @@ export const useShoppingList = () => {
   };
 
   const togglePriority = async (id: string) => {
-    if (!pin) return;
+    if (!pin && !isGuest) return;
+
+    if (isGuest) {
+      const updatedList = shoppingList.map(item => 
+        item.id === id ? { ...item, isPriority: !item.isPriority } : item
+      );
+      setShoppingList(updatedList);
+      localStorage.setItem('guest_shopping_list', JSON.stringify(updatedList));
+      return;
+    }
+
     try {
       const itemToUpdate = shoppingList.find(item => item.id === id);
       if (!itemToUpdate) return;
@@ -73,7 +103,6 @@ export const useShoppingList = () => {
 
       if (!response.ok) throw new Error('Failed to toggle priority');
       const updatedItem = await response.json();
-      console.log("Backend confirmed update for item:", updatedItem);
       setShoppingList((prevList) =>
         prevList.map((item) =>
           item.id === id ? updatedItem : item
@@ -86,7 +115,17 @@ export const useShoppingList = () => {
   };
 
   const togglePurchased = async (id: string) => {
-    if (!pin) return;
+    if (!pin && !isGuest) return;
+
+    if (isGuest) {
+      const updatedList = shoppingList.map(item => 
+        item.id === id ? { ...item, purchased: !item.purchased } : item
+      );
+      setShoppingList(updatedList);
+      localStorage.setItem('guest_shopping_list', JSON.stringify(updatedList));
+      return;
+    }
+
     try {
       const itemToUpdate = shoppingList.find(item => item.id === id);
       if (!itemToUpdate) return;
@@ -109,7 +148,15 @@ export const useShoppingList = () => {
   };
 
   const removeItem = async (id: string) => {
-    if (!pin) return;
+    if (!pin && !isGuest) return;
+
+    if (isGuest) {
+      const updatedList = shoppingList.filter(item => item.id !== id);
+      setShoppingList(updatedList);
+      localStorage.setItem('guest_shopping_list', JSON.stringify(updatedList));
+      return;
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/shopping-list/${id}`, {
         method: 'DELETE',
@@ -123,7 +170,15 @@ export const useShoppingList = () => {
   };
 
   const clearPurchased = async () => {
-    if (!pin) return;
+    if (!pin && !isGuest) return;
+
+    if (isGuest) {
+      const updatedList = shoppingList.filter(item => !item.purchased);
+      setShoppingList(updatedList);
+      localStorage.setItem('guest_shopping_list', JSON.stringify(updatedList));
+      return;
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/shopping-list/purchased`, {
         method: 'DELETE',

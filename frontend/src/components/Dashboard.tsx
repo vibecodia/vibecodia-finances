@@ -1,9 +1,8 @@
 import { format, getDate, getDaysInMonth, isBefore, startOfMonth, endOfMonth } from 'date-fns';
-import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil, Wifi, Check, X, Sword } from 'lucide-react';
-import React, { useState } from 'react';
+import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil, Wifi, Check, X, Sword, Camera, RotateCcw } from 'lucide-react';
+import React, { useState, useRef } from 'react';
 import Confetti from 'react-confetti';
 
-import familyBg from '../assets/family-bg.jpg';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
 import useWindowSize from '../hooks/useWindowSize';
@@ -339,14 +338,60 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   const [includeBenefits, setIncludeBenefits] = useLocalStorage('dashboard_include_benefits', true);
   const [isFlashSplit, setIsFlashSplit] = useLocalStorage('dashboard_flash_is_split', false);
   const [flashFlexAmount, setFlashFlexAmount] = useLocalStorage('dashboard_flash_flex_amount', 0);
-  const [cardHolderName, setCardHolderName] = useLocalStorage('dashboard_card_holder_name', 'Carvalho de Oliveira Neto');
+  const [cardHolderName, setCardHolderName] = useLocalStorage('dashboard_card_holder_name', 'alterar aqui');
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(cardHolderName);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const [isUINinjaActive, setIsUINinjaActive] = useState(false);
+  const [customBg, setCustomBg] = useLocalStorage('dashboard_background_image', '');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { theme } = useTheme();
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1200;
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        setCustomBg(dataUrl);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const resetBackground = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCustomBg('');
+  };
+
   const uiNinjaSetting = localStorage.getItem('uiNinjaEnabled') === 'true';
+  const backgroundImage = customBg;
 
   const today = getCurrentBrazilDate();
   const isSelectedMonthCurrent = format(currentMonth, 'yyyy-MM') === format(today, 'yyyy-MM');
@@ -460,28 +505,31 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         )}
 
         {/* Header */}
-        <div className="pt-2 pb-0 w-full flex items-center gap-3">
+        <div className="pt-2 pb-0 w-full flex items-center gap-3" id="tour-month-selector">
           <div className="flex-1">
             <MonthSegmentedControl
               month={currentMonth}
               onChange={(newMonth) => setCurrentMonth(newMonth)}
             />
           </div>
-          {uiNinjaSetting && (
-            <Button
-              onClick={() => setIsUINinjaActive(true)}
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 rounded-2xl bg-white/50 backdrop-blur-md shadow-sm border border-white/20 text-primary hover:bg-primary hover:text-white transition-all group"
-              title="UI Ninja Mode"
-            >
-              <Sword className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-            </Button>
-          )}
+          <div className="flex items-center">
+            {uiNinjaSetting && (
+              <Button
+                onClick={() => setIsUINinjaActive(true)}
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 rounded-2xl bg-white/50 backdrop-blur-md shadow-sm border border-white/20 text-primary hover:bg-primary hover:text-white transition-all group"
+                title="UI Ninja Mode"
+              >
+                <Sword className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Main Balance Card */}
       <div
+        id="tour-balance-card"
         className={cn(
           "relative overflow-hidden rounded-[2.5rem] p-8 sm:p-10 cursor-pointer border-t-2 border-l border-white/30 transition-all duration-700 text-white group isolate",
           isPulsing ? 'scale-[1.02]' : 'scale-100',
@@ -501,16 +549,27 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         onClick={handleBalanceCardClick}
       >
         {/* Background Image Layer with slow movement and higher contrast */}
-        <div 
-          className={cn(
-            "absolute inset-0 rounded-[2.5rem] bg-cover bg-center mix-blend-overlay z-0 overflow-hidden",
-            finalBalance < -0.001 ? "opacity-20 grayscale" : "opacity-30"
-          )}
-          style={{ 
-            backgroundImage: `url(${familyBg})`,
-            clipPath: 'inset(0 round 2.5rem)',
-            WebkitClipPath: 'inset(0 round 2.5rem)'
-          }}
+        {backgroundImage && (
+          <div 
+            className={cn(
+              "absolute inset-0 rounded-[2.5rem] bg-cover bg-center mix-blend-overlay z-0 overflow-hidden",
+              finalBalance < -0.001 ? "opacity-20 grayscale" : "opacity-30"
+            )}
+            style={{ 
+              backgroundImage: `url(${backgroundImage})`,
+              clipPath: 'inset(0 round 2.5rem)',
+              WebkitClipPath: 'inset(0 round 2.5rem)'
+            }}
+          />
+        )}
+
+        {/* Input de Arquivo Oculto */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleImageChange}
+          accept="image/*"
+          className="hidden"
         />
 
         {/* Glossy/Metallic Gradient Overlay */}
@@ -545,6 +604,27 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
                   </div>
                 </div>
                 <Wifi className="w-5 h-5 opacity-40 rotate-90" />
+                <div className="flex items-center gap-1 ml-2 transition-opacity">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
+                    className="p-1.5 bg-white/10 hover:bg-white/20 active:bg-white/30 rounded-lg border border-white/10 transition-all"
+                    title="Alterar fundo"
+                  >
+                    <Camera className="w-3.5 h-3.5 text-white/80" />
+                  </button>
+                  {customBg && (
+                    <button
+                      onClick={resetBackground}
+                      className="p-1.5 bg-white/10 hover:bg-white/20 active:bg-white/30 rounded-lg border border-white/10 transition-all"
+                      title="Resetar fundo"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-white/80" />
+                    </button>
+                  )}
+                </div>
               </div>
               <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-60 mt-4">
                 Vibecodia Premium
@@ -611,7 +691,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
           </div>
 
           {/* Card Bottom: Info & Type */}
-          <div className="flex items-end justify-between border-t border-white/10 pt-6">
+          <div className="flex items-end justify-between border-t border-white/10 pt-6" id="tour-card-customization">
             <div className="space-y-1 group/titular relative">
                <div className="flex items-center gap-2">
                  <p className="text-[10px] font-bold opacity-50 uppercase tracking-widest">Titular</p>
@@ -696,7 +776,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
       </div>
 
       {/* Barra receitas vs despesas */}
-      <Card className="relative p-6 shadow-[2px_2px_10px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker">
+      <Card className="relative p-6 shadow-[2px_2px_10px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker" id="tour-income-expense-bar">
         {/* Adesivo Band-Aid Central */}
         <BandaidEasterEgg type="slugs" className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
           <div className="w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] flex items-center justify-center group-hover/sticker:-translate-y-1 transition-transform overflow-hidden">

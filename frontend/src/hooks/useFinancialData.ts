@@ -5,14 +5,15 @@ import { useVerification } from '../contexts/VerificationContext';
 import { Transaction, SavingsGoal, SavingsContribution, MonthlyBalance } from '../types';
 import { getCurrentBrazilDate, getBrazilDateString } from '../utils/helpers';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || '/api';
 
 export const useFinancialData = () => {
-  const { pin, isInitializing } = useVerification();
+  const { pin, isGuest, isInitializing } = useVerification();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [monthlyBalances, setMonthlyBalances] = useState<MonthlyBalance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const headers = useMemo(() => ({
     'Content-Type': 'application/json',
@@ -21,14 +22,34 @@ export const useFinancialData = () => {
 
   const fetchData = async () => {
     if (isInitializing) {
-      return; // Wait for verification context to initialize
+      return;
     }
+
+    if (isGuest) {
+      setIsLoading(true);
+      try {
+        const storedTransactions = localStorage.getItem('guest_transactions');
+        const storedGoals = localStorage.getItem('guest_goals');
+        
+        setTransactions(storedTransactions ? JSON.parse(storedTransactions) : []);
+        setSavingsGoals(storedGoals ? JSON.parse(storedGoals) : []);
+        setHasLoaded(true);
+      } catch (error) {
+        console.error('Error reading guest data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
     if (!pin) {
       setTransactions([]);
       setSavingsGoals([]);
       setIsLoading(false);
+      setHasLoaded(false);
       return;
     }
+
     setIsLoading(true);
     try {
       const [transactionsRes, goalsRes] = await Promise.all([
@@ -44,6 +65,7 @@ export const useFinancialData = () => {
       const goalsData = await goalsRes.json();
       setTransactions(transactionsData);
       setSavingsGoals(goalsData);
+      setHasLoaded(true);
     } catch (error) {
       console.error('Error fetching financial data:', error);
       setTransactions([]);
@@ -54,7 +76,16 @@ export const useFinancialData = () => {
   };
 
   const refreshGoals = async () => {
-    if (isInitializing || !pin) return;
+    if (isInitializing) return;
+    
+    if (isGuest) {
+      const storedGoals = localStorage.getItem('guest_goals');
+      setSavingsGoals(storedGoals ? JSON.parse(storedGoals) : []);
+      return;
+    }
+
+    if (!pin) return;
+
     try {
       const goalsRes = await fetch(`${API_BASE_URL}/goals`, { headers });
       if (!goalsRes.ok) return;
@@ -73,8 +104,8 @@ export const useFinancialData = () => {
       const balancesMap = new Map<string, { income: number; expenses: number }>();
 
       transactions.forEach(transaction => {
-        const tDate = transaction.date.slice(0, 10); // sem new Date(), sem risco de fuso
-        const monthKey = tDate.slice(0, 7);          // "yyyy-MM" direto da string
+        const tDate = transaction.date.slice(0, 10);
+        const monthKey = tDate.slice(0, 7);
 
         if (!balancesMap.has(monthKey)) {
           balancesMap.set(monthKey, { income: 0, expenses: 0 });
@@ -82,8 +113,6 @@ export const useFinancialData = () => {
 
         if (!transaction.isPaid) return;
 
-        // Só conta se a transação é <= data efetiva do mês
-        // Para meses passados: último dia do mês. Para mês atual: hoje.
         const [year, month] = monthKey.split('-').map(Number);
         const lastDayOfMonth = format(endOfMonth(new Date(year, month - 1, 1)), 'yyyy-MM-dd');
         const effectiveDate = lastDayOfMonth < todayStr ? lastDayOfMonth : todayStr;
@@ -121,14 +150,32 @@ export const useFinancialData = () => {
 
   useEffect(() => {
     fetchData();
-  }, [pin, headers, isInitializing]);
+  }, [pin, isGuest, isInitializing]);
 
   useEffect(() => {
     calculateMonthlyBalances();
   }, [transactions, calculateMonthlyBalances]);
 
   const addTransaction = async (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!pin) throw new Error('PIN not verified');
+    if (!pin && !isGuest) throw new Error('PIN not verified');
+
+    if (isGuest) {
+      const newTransaction: Transaction = {
+        ...transaction,
+        id: crypto.randomUUID(),
+        createdAt: getCurrentBrazilDate().toISOString(),
+        updatedAt: getCurrentBrazilDate().toISOString(),
+      };
+      const updatedTransactions = [newTransaction, ...transactions];
+      setTransactions(updatedTransactions);
+      localStorage.setItem('guest_transactions', JSON.stringify(updatedTransactions));
+      
+      if (newTransaction.category === 'Aporte' && newTransaction.savingsGoalId) {
+        refreshGoals();
+      }
+      return newTransaction;
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/transactions`, {
         method: 'POST',
@@ -156,12 +203,22 @@ export const useFinancialData = () => {
       return newTransaction;
     } catch (error) {
       console.error('Error adding transaction:', error);
-      throw error; // Re-throw to propagate the error
+      throw error;
     }
   };
 
   const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
-    if (!pin) throw new Error('PIN not verified');
+    if (!pin && !isGuest) throw new Error('PIN not verified');
+
+    if (isGuest) {
+      const updatedTransactions = transactions.map(t => 
+        t.id === id ? { ...t, ...updates, updatedAt: getCurrentBrazilDate().toISOString() } : t
+      );
+      setTransactions(updatedTransactions);
+      localStorage.setItem('guest_transactions', JSON.stringify(updatedTransactions));
+      return;
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/transactions/${id}`, {
         method: 'PUT',
@@ -173,7 +230,6 @@ export const useFinancialData = () => {
       setTransactions(prev => prev.map(transaction =>
         transaction.id === id ? updatedTransaction : transaction
       ));
-      // Refresh both because update might sync with goals
       fetchData();
     } catch (error) {
       console.error('Error updating transaction:', error);
@@ -182,7 +238,17 @@ export const useFinancialData = () => {
   };
 
   const deleteTransaction = async (id: string) => {
-    if (!pin) throw new Error('PIN not verified');
+    if (!pin && !isGuest) throw new Error('PIN not verified');
+
+    if (isGuest) {
+      const updatedTransactions: Transaction[] = transactions.map(t => 
+        t.id === id ? { ...t, status: 'deleted', deletedAt: getCurrentBrazilDate().toISOString() } : t
+      );
+      setTransactions(updatedTransactions);
+      localStorage.setItem('guest_transactions', JSON.stringify(updatedTransactions));
+      return;
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/transactions/${id}`, {
         method: 'DELETE',
@@ -190,13 +256,9 @@ export const useFinancialData = () => {
       });
       if (!response.ok) throw new Error('Failed to delete transaction');
       
-      // Em vez de remover, marcamos como deletado para que o card de atividades
-      // possa mostrar o efeito visual de "riscado" por alguns segundos.
       setTransactions(prev => prev.map(t => 
         t.id === id ? { ...t, status: 'deleted', deletedAt: new Date().toISOString() } : t
       ));
-      // Refresh both transactions and goals because deleting a transaction 
-      // might also delete a savings contribution (sync)
       fetchData();
     } catch (error) {
       console.error('Error deleting transaction:', error);
@@ -204,7 +266,17 @@ export const useFinancialData = () => {
   };
 
   const updatePaymentStatus = async (id: string, isPaid: boolean) => {
-    if (!pin) throw new Error('PIN not verified');
+    if (!pin && !isGuest) throw new Error('PIN not verified');
+
+    if (isGuest) {
+      const updatedTransactions = transactions.map(t => 
+        t.id === id ? { ...t, isPaid, updatedAt: getCurrentBrazilDate().toISOString() } : t
+      );
+      setTransactions(updatedTransactions);
+      localStorage.setItem('guest_transactions', JSON.stringify(updatedTransactions));
+      return;
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/transactions/${id}`, {
         method: 'PUT',
@@ -226,7 +298,22 @@ export const useFinancialData = () => {
   };
 
   const addSavingsGoal = async (goal: Omit<SavingsGoal, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!pin) throw new Error('PIN not verified');
+    if (!pin && !isGuest) throw new Error('PIN not verified');
+
+    if (isGuest) {
+      const newGoal: SavingsGoal = {
+        ...goal,
+        id: crypto.randomUUID(),
+        createdAt: getCurrentBrazilDate().toISOString(),
+        updatedAt: getCurrentBrazilDate().toISOString(),
+        contributions: [],
+      };
+      const updatedGoals = [newGoal, ...savingsGoals];
+      setSavingsGoals(updatedGoals);
+      localStorage.setItem('guest_goals', JSON.stringify(updatedGoals));
+      return;
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/goals`, {
         method: 'POST',
@@ -246,7 +333,17 @@ export const useFinancialData = () => {
   };
 
   const updateSavingsGoal = async (id: string, updates: Partial<SavingsGoal>) => {
-    if (!pin) throw new Error('PIN not verified');
+    if (!pin && !isGuest) throw new Error('PIN not verified');
+
+    if (isGuest) {
+      const updatedGoals = savingsGoals.map(g => 
+        g.id === id ? { ...g, ...updates, updatedAt: getCurrentBrazilDate().toISOString() } : g
+      );
+      setSavingsGoals(updatedGoals);
+      localStorage.setItem('guest_goals', JSON.stringify(updatedGoals));
+      return;
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/goals/${id}`, {
         method: 'PUT',
@@ -415,5 +512,6 @@ export const useFinancialData = () => {
     clearAllData,
     monthlyBalances,
     isLoading,
+    hasLoaded,
   };
 };

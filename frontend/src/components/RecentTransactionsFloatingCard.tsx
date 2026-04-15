@@ -7,6 +7,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import { Transaction } from '../types';
 import { formatCurrency } from '../utils/helpers';
 
+import { useLocalStorage } from '../hooks/trello/useLocalStorage';
+
 interface RecentTransactionsFloatingCardProps {
   transactions: Transaction[];
 }
@@ -16,7 +18,12 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
   const [timerProgress, setTimerProgress] = useState(0);
   const { theme } = useTheme();
 
-  const DURATION = 15000; 
+  // Settings from LocalStorage
+  const [recentTransactionsDuration] = useLocalStorage('recent_transactions_duration', 15);
+  const [recentTransactionsEnabled] = useLocalStorage('recent_transactions_enabled', true);
+  const [recentTransactionsOpacity] = useLocalStorage('recent_transactions_opacity', 80);
+
+  const DURATION = recentTransactionsDuration * 1000; 
   const radius = 15;
   const circumference = 2 * Math.PI * radius;
 
@@ -29,7 +36,10 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
     .slice(0, 3);
 
   useEffect(() => {
-    if (recentTransactions.length === 0) return;
+    if (!recentTransactionsEnabled || recentTransactions.length === 0) {
+      setIsVisible(false);
+      return;
+    }
 
     // Dispara a aparição do card
     const showTimeout = setTimeout(() => {
@@ -44,21 +54,48 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
       clearTimeout(showTimeout);
       clearTimeout(hideTimeout);
     };
-  }, [transactions]); 
+  }, [transactions, recentTransactionsEnabled, DURATION]); 
 
-  if (recentTransactions.length === 0) return null;
+  if (!recentTransactionsEnabled || recentTransactions.length === 0) return null;
 
   const strokeDashoffset = circumference - (timerProgress / 100) * circumference;
 
   if (typeof document === 'undefined') return null;
 
+  const getBackgroundColor = () => {
+    const hex = theme.cardBackground;
+    let r = 0, g = 0, b = 0;
+    
+    // Simplificado para hex de 7 caracteres (#RRGGBB) que é o padrão do ThemeContext
+    if (hex.startsWith('#') && hex.length === 7) {
+      r = parseInt(hex.slice(1, 3), 16);
+      g = parseInt(hex.slice(3, 5), 16);
+      b = parseInt(hex.slice(5, 7), 16);
+    } else if (hex.startsWith('#') && hex.length === 4) {
+      r = parseInt(hex[1] + hex[1], 16);
+      g = parseInt(hex[2] + hex[2], 16);
+      b = parseInt(hex[3] + hex[3], 16);
+    } else {
+      // Fallback se não for hex
+      return hex;
+    }
+    
+    return `rgba(${r}, ${g}, ${b}, ${recentTransactionsOpacity / 100})`;
+  };
+
   return createPortal(
-    <div className={`fixed bottom-4 right-8 z-[100] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] transform ${
-      isVisible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-12 opacity-0 scale-95 pointer-events-none'
-    }`}>
+    <div 
+      className={`fixed bottom-4 right-8 z-[100] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] transform ${
+        isVisible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-12 opacity-0 scale-95 pointer-events-none'
+      }`}
+      style={{ willChange: 'transform, opacity' }}
+    >
       <div 
-        className="w-85 rounded-[2.5rem] p-6 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] border backdrop-blur-2xl relative overflow-hidden"
-        style={{ backgroundColor: `${theme.cardBackground}cc`, borderColor: `${theme.cardBorder}44` }}
+        className="w-80 rounded-[2.5rem] p-6 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] border backdrop-blur-2xl relative overflow-hidden transition-colors duration-500"
+        style={{ 
+          backgroundColor: getBackgroundColor(), 
+          borderColor: `${theme.cardBorder}44` 
+        }}
       >
         <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-[60px] opacity-20 pointer-events-none"
              style={{ backgroundColor: theme.primary }} />

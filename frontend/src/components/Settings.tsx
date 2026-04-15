@@ -16,11 +16,16 @@ import {
    Check,
    Eye,
    EyeOff,
-   X
+   X,
+   Clock,
+   Ghost,
+   ShieldCheck,
+   Lock
    } from 'lucide-react';
    import React, { useState } from 'react';
    import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
+import { useVerification } from '../contexts/VerificationContext';
 import { useCategories } from '../hooks/useCategories';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
@@ -48,15 +53,19 @@ const Settings: React.FC<SettingsProps> = ({
 }) => {
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const { isGuest, setShowVerificationModal } = useVerification();
   const { expenseCategories, incomeCategories, addCategory, removeCategory, resetToDefaults: resetCategoriesToDefaults } = useCategories();
   const { paymentMethods, addPaymentMethod, removePaymentMethod, resetToDefaults: resetPaymentMethodsToDefaults } = usePaymentMethods();
   
   // Dashboard Editable Info
-  const [cardHolderName, setCardHolderName] = useLocalStorage('dashboard_card_holder_name', 'Carvalho de Oliveira Neto');
+  const [cardHolderName, setCardHolderName] = useLocalStorage('dashboard_card_holder_name', 'alterar aqui');
   const [flashFlexAmount, setFlashFlexAmount] = useLocalStorage('dashboard_flash_flex_amount', 0);
   const [isFlashSplit, setIsFlashSplit] = useLocalStorage('dashboard_flash_is_split', false);
   const [showBalance, setShowBalance] = useLocalStorage('dashboard_show_balance', true);
   const [includeBenefits, setIncludeBenefits] = useLocalStorage('dashboard_include_benefits', true);
+  const [recentTransactionsDuration, setRecentTransactionsDuration] = useLocalStorage('recent_transactions_duration', 15);
+  const [recentTransactionsEnabled, setRecentTransactionsEnabled] = useLocalStorage('recent_transactions_enabled', true);
+  const [recentTransactionsOpacity, setRecentTransactionsOpacity] = useLocalStorage('recent_transactions_opacity', 80);
 
   const { inputProps: flexAmountProps, numericValue: flexAmountValue } = useCurrencyInput(flashFlexAmount);
   const [tempName, setTempName] = useState(cardHolderName);
@@ -291,7 +300,32 @@ const Settings: React.FC<SettingsProps> = ({
   const totalGoals = savingsGoals.length;
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto pb-12">
+    <div className="space-y-8 max-w-4xl mx-auto pb-12 relative min-h-[600px]">
+      {/* Guest Mode Overlay */}
+      {isGuest && (
+        <div className="absolute inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-background/60 backdrop-blur-md rounded-3xl" />
+          <Card className="relative z-[70] p-10 max-w-sm text-center border-primary/20 shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-primary/20 shadow-[0_0_30px_rgba(var(--primary),0.2)]">
+              <Lock className="w-8 h-8 text-primary" />
+            </div>
+            <h2 className="text-2xl font-black text-foreground uppercase tracking-tighter mb-4">
+              Acesso <span className="text-primary italic">Restrito</span>
+            </h2>
+            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-8 leading-relaxed opacity-60">
+              Para gerenciar categorias, pagamentos e dados, você precisa de um PIN.
+            </p>
+            <Button 
+              onClick={() => setShowVerificationModal(true)}
+              className="w-full py-6 text-sm font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-primary/20"
+            >
+              <ShieldCheck className="w-5 h-5" />
+              RECEBER PIN
+            </Button>
+          </Card>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-6 border-b" style={{ borderColor: theme.cardBorder }}>
         <div className="flex flex-col md:flex-row md:items-center gap-4">
           <div className="p-3 rounded-2xl bg-primary text-white shadow-lg shadow-primary/20">
@@ -645,6 +679,70 @@ const Settings: React.FC<SettingsProps> = ({
                     <p className="text-[10px] text-muted-foreground font-bold italic ml-1">
                       * Este valor será reservado do saldo total Flash para gastos Flex.
                     </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="h-px bg-muted my-4"></div>
+
+              {/* Recents Settings */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-1 flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    Recentes Flutuante
+                  </label>
+                  <div 
+                    className={cn(
+                      "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative cursor-pointer",
+                      recentTransactionsEnabled ? 'bg-primary' : 'bg-muted'
+                    )}
+                    onClick={() => setRecentTransactionsEnabled(!recentTransactionsEnabled)}
+                  >
+                    <div className={cn(
+                      "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
+                      recentTransactionsEnabled ? 'translate-x-6' : 'translate-x-0'
+                    )} />
+                  </div>
+                </div>
+
+                {recentTransactionsEnabled && (
+                  <div className="space-y-6 animate-in slide-in-from-top-2 duration-200 p-4 rounded-2xl bg-muted/20 border-2 border-dashed border-muted">
+                    {/* Duration Slider */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <p className="text-[10px] font-black text-foreground uppercase tracking-tight">Duração: {recentTransactionsDuration}s</p>
+                        <p className="text-[8px] text-muted-foreground font-bold uppercase">3s - 15s</p>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="3" 
+                        max="15" 
+                        step="1"
+                        value={recentTransactionsDuration}
+                        onChange={(e) => setRecentTransactionsDuration(Number(e.target.value))}
+                        className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                      />
+                    </div>
+
+                    {/* Opacity Slider */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <Ghost className="w-3.5 h-3.5 opacity-60" />
+                          <p className="text-[10px] font-black text-foreground uppercase tracking-tight">Transparência: {recentTransactionsOpacity}%</p>
+                        </div>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="10" 
+                        max="100" 
+                        step="5"
+                        value={recentTransactionsOpacity}
+                        onChange={(e) => setRecentTransactionsOpacity(Number(e.target.value))}
+                        className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
