@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { FolderKanban, Layout, Plus, Crown, AlertCircle } from 'lucide-react';
 import { BoardTheme, Task } from '../../types/trello/task';
 import { Button } from '../ui/Button';
@@ -13,7 +13,7 @@ interface ThemeSelectorProps {
 }
 
 export function ThemeSelector({ themes, tasks, onSelectTheme, onAddTheme }: ThemeSelectorProps) {
-  const { isGuest, isVerified, setShowVerificationModal } = useVerification();
+  const { isGuest } = useVerification();
   const [isNewThemeModalOpen, setIsNewThemeModalOpen] = useState(false);
   const [newThemeName, setNewThemeName] = useState('');
 

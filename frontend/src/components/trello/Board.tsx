@@ -1,4 +1,4 @@
-import { Plus, Layout, Archive, Calendar as CalendarIcon, Kanban, Download, Upload, Filter, X as XIcon, ChevronDown, Tag, FolderKanban, Check, Pencil } from 'lucide-react';
+import { Plus, Archive, Calendar as CalendarIcon, Kanban, Download, Upload, Filter, X as XIcon, ChevronDown, Tag, FolderKanban, Pencil } from 'lucide-react';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 
@@ -40,13 +40,10 @@ export function Board() {
     deleteTask, 
     moveTask,
     reorderTasks,
-    importTasks,
     importFullData
   } = useTrello();
 
   const [showThemeSelector, setShowThemeSelector] = useState(true);
-  const [isNewThemeModalOpen, setIsNewThemeModalOpen] = useState(false);
-  const [newThemeName, setNewThemeName] = useState('');
   
   const [isEditingThemeName, setIsEditingThemeName] = useState(false);
   const [tempThemeName, setTempThemeName] = useState(currentTheme.name);
