@@ -1,15 +1,19 @@
 import React from 'react';
 import { Droppable } from '@hello-pangea/dnd';
 
+import { Maximize2, Minimize2 } from 'lucide-react';
 import { Task } from '../../types/trello/task';
 
 import { TaskCard } from './TaskCard';
 import { cn } from '../../lib/utils';
+import { Button } from '../ui/Button';
 
 interface ColumnProps {
   id: 'todo' | 'inProgress' | 'done' | 'archived';
   title: string;
   tasks: Task[];
+  isMinimal: boolean;
+  onToggleMinimal: () => void;
   onCardClick: (task: Task) => void;
   onMoveForward: (taskId: string) => void;
   onMoveBackward: (taskId: string) => void;
@@ -17,9 +21,24 @@ interface ColumnProps {
   onArchiveTask: (taskId: string) => void;
   onFocusTask: (task: Task) => void;
   onToggleChecklistItem: (taskId: string, itemId: string) => void;
+  allTasks: Task[];
 }
 
-export const Column = React.memo(({ id, title, tasks, onCardClick, onMoveForward, onMoveBackward, onDeleteTask, onArchiveTask, onFocusTask, onToggleChecklistItem }: ColumnProps) => {
+export const Column = React.memo(({ 
+  id, 
+  title, 
+  tasks, 
+  isMinimal,
+  onToggleMinimal,
+  onCardClick, 
+  onMoveForward, 
+  onMoveBackward, 
+  onDeleteTask, 
+  onArchiveTask, 
+  onFocusTask, 
+  onToggleChecklistItem,
+  allTasks
+}: ColumnProps) => {
   const getColumnColor = () => {
     switch (id) {
       case 'todo':
@@ -45,8 +64,19 @@ export const Column = React.memo(({ id, title, tasks, onCardClick, onMoveForward
   return (
     <div className="flex flex-col min-w-[320px] max-w-[320px] h-full">
       <div className="mb-6 flex items-center justify-between px-2">
-        <div>
-          <h2 className="text-xl font-black text-foreground uppercase tracking-tight">{title}</h2>
+        <div className="flex-1">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-black text-foreground uppercase tracking-tight">{title}</h2>
+            <Button
+              onClick={onToggleMinimal}
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-muted/50 transition-all duration-200"
+              title={isMinimal ? "Expandir todos" : "Minimizar todos"}
+            >
+              {isMinimal ? <Maximize2 className="w-5 h-5" /> : <Minimize2 className="w-5 h-5" />}
+            </Button>
+          </div>
           <div className={cn("w-12 h-1.5 mt-1 rounded-full", getAccentColor())}></div>
         </div>
         <div className="px-3 py-1 rounded-full bg-foreground/5 text-muted-foreground text-xs font-black">
@@ -70,7 +100,9 @@ export const Column = React.memo(({ id, title, tasks, onCardClick, onMoveForward
                 <TaskCard
                   key={task.id}
                   task={task}
+                  allTasks={allTasks}
                   index={index}
+                  isMinimalOverride={isMinimal}
                   onCardClick={onCardClick}
                   onMoveForward={onMoveForward}
                     onMoveBackward={onMoveBackward}

@@ -152,6 +152,13 @@ const VerificationModal: React.FC = () => {
           <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest opacity-60">
             Acesso Restrito • Digite o PIN
           </p>
+          {!isVerified && (
+            <div className="mt-4 px-3 py-1.5 rounded-lg bg-primary/5 border border-primary/10">
+              <p className="text-[9px] text-primary font-black uppercase tracking-[0.2em]">
+                Premium: Temas Ilimitados e Backup em Nuvem
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="space-y-8">

@@ -1,4 +1,4 @@
-import { Calendar, ChevronRight, ChevronLeft, Trash2, CheckSquare, ListTodo, Archive, Ban, AlertCircle, PauseCircle, Maximize2, X } from 'lucide-react';
+import { Calendar, ChevronRight, ChevronLeft, Trash2, CheckSquare, ListTodo, Archive, Ban, AlertCircle, PauseCircle, Maximize2, X, Link2 } from 'lucide-react';
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 
@@ -30,8 +30,10 @@ const FlagIcon = ({ flag }: { flag?: TaskFlag }) => {
 
 interface TaskCardProps {
   task: Task;
+  allTasks?: Task[];
   index?: number;
   isFocusMode?: boolean;
+  isMinimalOverride?: boolean;
   onCardClick?: (task: Task) => void;
   onMoveForward?: (taskId: string) => void;
   onMoveBackward?: (taskId: string) => void;
@@ -44,8 +46,10 @@ interface TaskCardProps {
 
 export const TaskCard = React.memo(({ 
   task, 
+  allTasks = [],
   index = 0,
   isFocusMode = false,
+  isMinimalOverride,
   onCardClick = () => {}, 
   onMoveForward = () => {}, 
   onMoveBackward = () => {},
@@ -57,15 +61,26 @@ export const TaskCard = React.memo(({
 }: TaskCardProps) => {
   const completedItems = task.checklist?.filter(i => i.completed).length || 0;
   const totalItems = task.checklist?.length || 0;
+  const isDone = task.columnId === 'done';
+  const isMinimal = !isFocusMode && (isMinimalOverride ?? isDone);
+
+  const pendingDependencies = task.dependsOn?.filter(depId => {
+    const depTask = allTasks.find(t => t.id === depId);
+    return depTask && depTask.columnId !== 'done';
+  }) || [];
+
+  const isBlocked = pendingDependencies.length > 0 && !isDone;
 
   const CardContent = (
     <Card
       noPadding
       className={cn(
         "relative overflow-hidden transition-all duration-200",
-        isFocusMode ? "p-8 shadow-2xl border-2 border-primary/20 bg-card max-w-3xl w-full mx-auto" : "p-5",
-        !isFocusMode && "hover:scale-[1.02] hover:shadow-md",
-        task.columnId === 'done' && "opacity-80",
+        isFocusMode ? "p-8 shadow-2xl border-2 border-primary/20 bg-card max-w-3xl w-full mx-auto" : 
+        isMinimal ? "p-3 bg-muted/30 hover:bg-muted/50" : "p-5",
+        !isFocusMode && "hover:scale-[1.01] hover:shadow-md",
+        isDone && "opacity-60 grayscale-[0.2]",
+        isBlocked && "opacity-50 grayscale bg-muted/20 cursor-not-allowed",
         task.flag === 'blocked' && "bg-red-500/5",
         task.flag === 'impediment' && "bg-amber-500/5",
         task.flag === 'paused' && "bg-blue-500/5"
@@ -82,7 +97,7 @@ export const TaskCard = React.memo(({
         </Button>
       )}
 
-      {task.labels && task.labels.length > 0 && (
+      {task.labels && task.labels.length > 0 && !isMinimal && (
         <div className={cn("flex flex-wrap gap-1.5", isFocusMode ? "mb-6" : "mb-2.5")}>
           {task.labels.map(label => (
             <div
@@ -99,31 +114,50 @@ export const TaskCard = React.memo(({
         </div>
       )}
 
-      <div className={cn("flex items-start justify-between gap-3", isFocusMode ? "mb-8" : "mb-3")}>
-        <div className="flex-1 flex flex-col gap-1">
-          <FlagIcon flag={task.flag} />
-          <h3 className={cn(
-            "font-black text-foreground uppercase tracking-tight leading-tight",
-            isFocusMode ? "text-3xl" : "text-sm",
-            task.columnId === 'done' && "line-through decoration-2"
-          )}>
-            {task.title}
-          </h3>
+      <div className={cn("flex items-start justify-between gap-3", 
+        isFocusMode ? "mb-8" : isMinimal ? "mb-0" : "mb-3"
+      )}>
+        <div className="flex-1 flex flex-col gap-1 min-w-0">
+          {!isMinimal && (
+            <div className="flex flex-wrap gap-2 items-center">
+              <FlagIcon flag={task.flag} />
+              {isBlocked && (
+                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/10 text-red-500" title={`Depende de ${pendingDependencies.length} tarefa(s) pendente(s)`}>
+                  <Link2 className="w-3 h-3" />
+                  <span className="text-[8px] font-black uppercase tracking-tighter">Bloqueada</span>
+                </div>
+              )}
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            {isMinimal && <CheckSquare className="w-3.5 h-3.5 text-primary/60 shrink-0" />}
+            {isMinimal && isBlocked && <Link2 className="w-3 h-3 text-red-500 shrink-0" />}
+            <h3 className={cn(
+              "font-black text-foreground uppercase tracking-tight leading-tight",
+              isFocusMode ? "text-3xl" : "text-sm",
+              isMinimal && "truncate",
+              isDone && "line-through decoration-1 opacity-60"
+            )}>
+              {task.title}
+            </h3>
+          </div>
         </div>
         {!isFocusMode && (
-          <div className="flex gap-1 transition-opacity">
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                onFocus(task);
-              }}
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 p-0 text-primary hover:bg-primary/10"
-              title="Modo Foco"
-            >
-              <Maximize2 className="w-3.5 h-3.5" />
-            </Button>
+          <div className={cn("flex gap-0.5 transition-opacity", isMinimal ? "opacity-0 group-hover:opacity-100" : "")}>
+            {!isMinimal && (
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFocus(task);
+                }}
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 p-0 text-primary hover:bg-primary/10"
+                title="Modo Foco"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+              </Button>
+            )}
             <Button
               onClick={(e) => {
                 e.stopPropagation();
@@ -161,24 +195,26 @@ export const TaskCard = React.memo(({
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </Button>
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                onMoveForward(task.id);
-              }}
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-              title="Mover para frente"
-              disabled={task.columnId === 'done'}
-            >
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Button>
+            {!isMinimal && (
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveForward(task.id);
+                }}
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                title="Mover para frente"
+                disabled={task.columnId === 'done'}
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Button>
+            )}
           </div>
         )}
       </div>
       
-      {task.description && (
+      {task.description && !isMinimal && (
         <p className={cn(
           "text-muted-foreground font-medium",
           isFocusMode ? "text-base mb-10 leading-relaxed" : "text-xs mb-4 line-clamp-2"
@@ -187,7 +223,7 @@ export const TaskCard = React.memo(({
         </p>
       )}
 
-      {totalItems > 0 && (
+      {totalItems > 0 && !isMinimal && (
         <div className={cn(isFocusMode ? "space-y-8 mb-10" : "space-y-3 mb-4")}>
           <div className="flex items-center gap-2">
             <CheckSquare className={cn("text-primary", isFocusMode ? "w-6 h-6" : "w-3.5 h-3.5")} />
@@ -239,28 +275,30 @@ export const TaskCard = React.memo(({
         </div>
       )}
       
-      <div className={cn("flex items-center justify-between border-t border-border", isFocusMode ? "pt-8" : "pt-3")}>
-        <div className="flex items-center gap-2">
-          <div className={cn("rounded-full", 
-            isFocusMode ? "w-4 h-4" : "w-2 h-2",
-            task.priority === 'high' ? 'bg-destructive' : 
-            task.priority === 'medium' ? 'bg-amber-500' : 'bg-primary'
-          )} />
-          <span className={cn("font-black uppercase tracking-widest text-muted-foreground", isFocusMode ? "text-sm" : "text-[10px]")}>
-            {getPriorityLabel(task.priority)}
-          </span>
-        </div>
-        
-        {task.date && (
-          <div className={cn(
-            "flex items-center gap-1.5",
-            parseLocalDate(task.date.toString()) < getCurrentBrazilDate() && task.columnId !== 'done' ? "text-destructive" : "text-muted-foreground"
-          )}>
-            <Calendar className={cn(isFocusMode ? "w-5 h-5" : "w-3 h-3")} />
-            <span className={cn("font-black", isFocusMode ? "text-sm" : "text-[10px]")}>{formatDate(task.date.toString())}</span>
+      {!isMinimal && (
+        <div className={cn("flex items-center justify-between border-t border-border", isFocusMode ? "pt-8" : "pt-3")}>
+          <div className="flex items-center gap-2">
+            <div className={cn("rounded-full", 
+              isFocusMode ? "w-4 h-4" : "w-2 h-2",
+              task.priority === 'high' ? 'bg-destructive' : 
+              task.priority === 'medium' ? 'bg-amber-500' : 'bg-primary'
+            )} />
+            <span className={cn("font-black uppercase tracking-widest text-muted-foreground", isFocusMode ? "text-sm" : "text-[10px]")}>
+              {getPriorityLabel(task.priority)}
+            </span>
           </div>
-        )}
-      </div>
+          
+          {task.date && (
+            <div className={cn(
+              "flex items-center gap-1.5",
+              parseLocalDate(task.date.toString()) < getCurrentBrazilDate() && task.columnId !== 'done' ? "text-destructive" : "text-muted-foreground"
+            )}>
+              <Calendar className={cn(isFocusMode ? "w-5 h-5" : "w-3 h-3")} />
+              <span className={cn("font-black", isFocusMode ? "text-sm" : "text-[10px]")}>{formatDate(task.date.toString())}</span>
+            </div>
+          )}
+        </div>
+      )}
     </Card>
   );
 
