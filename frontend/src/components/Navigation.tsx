@@ -1,4 +1,4 @@
-import { Home, TrendingDown, TrendingUp, BarChart3, Target, Calendar, Settings, Menu, X, CheckSquare, PieChart, LogOut, HelpCircle, ShieldPlus, Construction, MessageSquareCode, MessageCircle } from 'lucide-react';
+import { Home, TrendingDown, TrendingUp, BarChart3, Target, Calendar, Settings, Menu, X, CheckSquare, PieChart, LogOut, HelpCircle, ShieldPlus, Construction, MessageSquareCode, MessageCircle, Lock } from 'lucide-react';
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -10,7 +10,7 @@ import { useTour } from '../hooks/useTour';
 const Navigation: React.FC = () => {
   const location = useLocation();
   const activeTab = location.pathname;
-  const { logout, isGuest } = useVerification();
+  const { logout, isGuest, setShowVerificationModal } = useVerification();
   const { startTour } = useTour();
   const [showComingSoon, setShowComingSoon] = useState(false);
 
@@ -29,7 +29,16 @@ const Navigation: React.FC = () => {
     setIsMenuOpen(prev => !prev);
   };
 
-  const handleLinkClick = () => {
+  const handleLinkClick = (e: React.MouseEvent, path: string) => {
+    if (path === '/settings' && isGuest) {
+      e.preventDefault();
+      setShowVerificationModal(true);
+      return;
+    }
+    setIsMenuOpen(false);
+  };
+
+  const handleSimpleLinkClick = () => {
     setIsMenuOpen(false);
   };
 
@@ -95,24 +104,55 @@ const Navigation: React.FC = () => {
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
+            const isSettingsLocked = tab.id === '/settings' && isGuest;
+
+            const content = (
+              <>
+                <div className="relative">
+                  <Icon className={cn(
+                    "w-5 h-5 transition-transform",
+                    isActive ? 'scale-110' : '',
+                  )} />
+                  {isSettingsLocked && (
+                    <div className="absolute -top-1.5 -right-1.5 bg-background rounded-full p-0.5 border border-border shadow-sm">
+                      <Lock className="w-2.5 h-2.5 text-primary animate-pulse" />
+                    </div>
+                  )}
+                </div>
+                <span className="text-sm font-semibold">
+                  {tab.label}
+                </span>
+              </>
+            );
+
+            const commonClasses = cn(
+              'flex flex-row items-center gap-3 py-2 px-4 rounded-lg w-full text-left transition-all',
+              {
+                'bg-primary text-primary-foreground': isActive,
+                'text-foreground/90 hover:bg-accent hover:text-accent-foreground': !isActive,
+                'text-muted-foreground/40 opacity-50 cursor-not-allowed grayscale-[0.5]': isSettingsLocked && !isActive
+              }
+            );
+
+            if (isSettingsLocked) {
+              return (
+                <div 
+                  key={tab.id} 
+                  className={cn(commonClasses, "pointer-events-none select-none")}
+                >
+                  {content}
+                </div>
+              );
+            }
 
             return (
               <Link
                 key={tab.id}
                 to={tab.id}
-                onClick={handleLinkClick}
-                className={cn(
-                  'flex flex-row items-center gap-3 py-2 px-4 rounded-lg w-full text-left transition-all',
-                  {
-                    'bg-primary text-primary-foreground': isActive,
-                    'text-foreground/90 hover:bg-accent hover:text-accent-foreground': !isActive,
-                  }
-                )}
+                onClick={(e) => handleLinkClick(e, tab.id)}
+                className={commonClasses}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'scale-110' : ''} transition-transform`} />
-                <span className="text-sm font-semibold">
-                  {tab.label}
-                </span>
+                {content}
               </Link>
             );
           })}
@@ -175,7 +215,7 @@ const Navigation: React.FC = () => {
 
               <button
                 onClick={() => {
-                  handleLinkClick();
+                  handleSimpleLinkClick();
                   startTour(true);
                 }}
                 className="flex flex-row items-center gap-3 py-2 px-4 rounded-lg w-full text-left transition-all text-primary hover:bg-primary/10 font-bold"
@@ -187,7 +227,7 @@ const Navigation: React.FC = () => {
           )}
           <button
             onClick={() => {
-              handleLinkClick();
+              handleSimpleLinkClick();
               logout();
             }}
             className="flex flex-row items-center gap-3 py-2 px-4 rounded-lg w-full text-left transition-all text-red-500 hover:bg-red-500/10 font-bold"

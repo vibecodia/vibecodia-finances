@@ -18,11 +18,14 @@ import {
    EyeOff,
    X,
    Clock,
-   Ghost
+   Ghost,
+   ShieldCheck,
+   Lock
    } from 'lucide-react';
    import React, { useState } from 'react';
    import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
+import { useVerification } from '../contexts/VerificationContext';
 import { useCategories } from '../hooks/useCategories';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
@@ -50,6 +53,7 @@ const Settings: React.FC<SettingsProps> = ({
 }) => {
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const { isGuest, setShowVerificationModal } = useVerification();
   const { expenseCategories, incomeCategories, addCategory, removeCategory, resetToDefaults: resetCategoriesToDefaults } = useCategories();
   const { paymentMethods, addPaymentMethod, removePaymentMethod, resetToDefaults: resetPaymentMethodsToDefaults } = usePaymentMethods();
   
@@ -296,7 +300,32 @@ const Settings: React.FC<SettingsProps> = ({
   const totalGoals = savingsGoals.length;
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto pb-12">
+    <div className="space-y-8 max-w-4xl mx-auto pb-12 relative min-h-[600px]">
+      {/* Guest Mode Overlay */}
+      {isGuest && (
+        <div className="absolute inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-background/60 backdrop-blur-md rounded-3xl" />
+          <Card className="relative z-[70] p-10 max-w-sm text-center border-primary/20 shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-primary/20 shadow-[0_0_30px_rgba(var(--primary),0.2)]">
+              <Lock className="w-8 h-8 text-primary" />
+            </div>
+            <h2 className="text-2xl font-black text-foreground uppercase tracking-tighter mb-4">
+              Acesso <span className="text-primary italic">Restrito</span>
+            </h2>
+            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-8 leading-relaxed opacity-60">
+              Para gerenciar categorias, pagamentos e dados, você precisa de um PIN.
+            </p>
+            <Button 
+              onClick={() => setShowVerificationModal(true)}
+              className="w-full py-6 text-sm font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-primary/20"
+            >
+              <ShieldCheck className="w-5 h-5" />
+              RECEBER PIN
+            </Button>
+          </Card>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-6 border-b" style={{ borderColor: theme.cardBorder }}>
         <div className="flex flex-col md:flex-row md:items-center gap-4">
           <div className="p-3 rounded-2xl bg-primary text-white shadow-lg shadow-primary/20">
