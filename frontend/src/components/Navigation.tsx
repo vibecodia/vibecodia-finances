@@ -1,15 +1,17 @@
-import { Home, TrendingDown, TrendingUp, BarChart3, Target, Calendar, Settings, Menu, X, CheckSquare, PieChart, LogOut } from 'lucide-react';
+import { Home, TrendingDown, TrendingUp, BarChart3, Target, Calendar, Settings, Menu, X, CheckSquare, PieChart, LogOut, HelpCircle } from 'lucide-react';
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 import { cn } from '../lib/utils';
 import { Button } from './ui/Button';
 import { useVerification } from '../contexts/VerificationContext';
+import { useTour } from '../hooks/useTour';
 
 const Navigation: React.FC = () => {
   const location = useLocation();
   const activeTab = location.pathname;
   const { logout, isGuest } = useVerification();
+  const { startTour } = useTour();
 
   // Rotas onde o menu começa fechado no desktop
   const routesWithoutDesktopMenu = ['/playground'];
@@ -67,6 +69,7 @@ const Navigation: React.FC = () => {
       )}
 
       <nav
+        id="tour-navigation"
         className={cn(
           'fixed top-0 lg:top-24 left-0 h-full lg:h-[calc(100vh-6rem)] p-2 flex flex-col justify-start pt-24 lg:pt-4 w-64',
           'transition-all duration-300 ease-in-out z-[145] lg:shadow-xl bg-card border-r-2 border-border',
@@ -109,8 +112,20 @@ const Navigation: React.FC = () => {
           })}
         </div>
 
-        {/* Botão de Sair no rodapé do menu */}
-        <div className="mt-auto pb-4 pt-4 border-t border-border w-full">
+        {/* Botões de Rodapé do Menu */}
+        <div className="mt-auto pb-4 pt-4 border-t border-border w-full space-y-1">
+          {isGuest && (
+            <button
+              onClick={() => {
+                handleLinkClick();
+                startTour(true);
+              }}
+              className="flex flex-row items-center gap-3 py-2 px-4 rounded-lg w-full text-left transition-all text-primary hover:bg-primary/10 font-bold"
+            >
+              <HelpCircle className="w-5 h-5" />
+              <span className="text-sm">Refazer Tour</span>
+            </button>
+          )}
           <button
             onClick={() => {
               handleLinkClick();

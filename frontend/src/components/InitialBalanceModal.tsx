@@ -44,7 +44,7 @@ const InitialBalanceModal: React.FC<InitialBalanceModalProps> = ({ isOpen, onCon
             <Sparkles className="w-12 h-12" />
           </div>
           <h2 className="text-3xl font-black text-foreground uppercase tracking-tighter mb-3">
-            Bem-vindo ao <span className="text-primary italic">Vibecodia</span>
+            <span className="text-primary italic">Vibecodia</span>
           </h2>
           <p className="text-sm text-muted-foreground font-bold uppercase tracking-widest leading-relaxed opacity-70">
             Vamos começar sua jornada financeira?

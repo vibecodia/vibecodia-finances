@@ -17,11 +17,15 @@ import { useTheme } from './contexts/ThemeContext';
 import { useVerification } from './contexts/VerificationContext';
 import ShoppingListModal from './components/ShoppingListModal';
 import GuestEntry from './components/GuestEntry';
+import { useTour } from './hooks/useTour';
 import { useFinancialData } from './hooks/useFinancialData';
 import { useShoppingList } from './hooks/useShoppingList';
 import { getBrazilDateString } from './utils/helpers';
 import TransactionForm from './components/TransactionForm';
 import { Transaction } from './types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './components/ui/dialog';
+import { Button } from './components/ui/Button';
+import { MapPin } from 'lucide-react';
 
 const HojeRedirect = () => {
   const navigate = useNavigate();
@@ -44,6 +48,7 @@ const ScrollToTop = () => {
 
 function App() {
   const { pin, isInitializing, isVerified, isGuest, isSettingsVerified, setShowVerificationModal } = useVerification();
+  const { startTour, showConfirm, setShowConfirm } = useTour();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -150,6 +155,17 @@ function App() {
       sessionStorage.setItem(`hasSeenInitialBalanceModal_${identifier}`, 'true');
     }
     setShowInitialBalanceModal(false);
+
+    // Se for convidado, inicia o tour após o saldo inicial
+    if (isGuest) {
+      const hasSkipped = localStorage.getItem('tour_skipped');
+      if (!hasSkipped) {
+        setTimeout(() => {
+          // O startTour(true) agora apenas abre o modal de confirmação no Dashboard
+          startTour(true);
+        }, 800);
+      }
+    }
   };
 
   const handleSkipInitialBalance = () => {
@@ -158,6 +174,16 @@ function App() {
       sessionStorage.setItem(`hasSeenInitialBalanceModal_${identifier}`, 'true');
     }
     setShowInitialBalanceModal(false);
+
+    // Se for convidado, inicia o tour mesmo pulando o saldo inicial
+    if (isGuest) {
+      const hasSkipped = localStorage.getItem('tour_skipped');
+      if (!hasSkipped) {
+        setTimeout(() => {
+          startTour(true);
+        }, 800);
+      }
+    }
   };
 
   return (
@@ -229,6 +255,50 @@ function App() {
           onConfirm={handleConfirmInitialBalance}
           onClose={handleSkipInitialBalance}
         />
+
+        {/* Modal de Confirmação do Tour - Estilizado como GuestEntry/InitialBalance */}
+        <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+          <DialogContent className="max-w-md p-10 border-white/10 bg-slate-900/95 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl overflow-hidden">
+            {/* Linha decorativa no topo similar ao InitialBalanceModal */}
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50" />
+            
+            <DialogHeader className="flex flex-col items-center text-center space-y-6">
+              <div className="p-6 rounded-full bg-primary/10 text-primary border border-primary/20 shadow-[0_0_30px_rgba(var(--primary),0.2)] animate-pulse">
+                <MapPin className="w-12 h-12" />
+              </div>
+              <div className="space-y-2">
+                <DialogTitle className="text-3xl font-black text-foreground uppercase tracking-tighter">
+                  EXPLORE A <span className="text-primary italic">VIBECODIA</span>
+                </DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground font-bold uppercase tracking-widest leading-relaxed opacity-70">
+                  Deseja fazer um tour rápido de 1 minuto para conhecer suas novas ferramentas?
+                </DialogDescription>
+              </div>
+            </DialogHeader>
+
+            <DialogFooter className="flex flex-col gap-4 mt-10">
+              <Button 
+                onClick={() => {
+                  setShowConfirm(false);
+                  startTour();
+                }}
+                className="w-full h-16 text-sm font-black uppercase tracking-[0.3em] rounded-2xl shadow-lg hover:shadow-primary/20 active:scale-95 transition-all"
+              >
+                Começar Agora
+              </Button>
+              
+              <button
+                onClick={() => {
+                  setShowConfirm(false);
+                  localStorage.setItem('tour_skipped', 'true');
+                }}
+                className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] opacity-60 hover:opacity-100 hover:text-primary transition-all active:scale-95 py-2"
+              >
+                Pular tour por enquanto
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
     </div>
   );
 }

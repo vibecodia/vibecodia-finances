@@ -26,7 +26,10 @@ const GuestEntry: React.FC = () => {
             <UserCircle className="w-12 h-12" />
           </div>
           <h2 className="text-3xl font-black text-foreground uppercase tracking-tighter mb-2">
-            Bem-vindo à <span className="text-primary italic">Vibecodia</span>
+            <span className="text-primary italic">Vibecodia</span>
+          </h2>          
+          <h2 className="text-3xl font-black text-foreground uppercase tracking-tighter mb-2">
+            Olá! 👋
           </h2>
           <p className="text-sm text-foreground/80 font-medium max-w-xs mx-auto">
             Escolha como deseja acessar suas finanças hoje.
