@@ -10,6 +10,7 @@ import PlansSection from './PlansSection';
 const GuestEntry: React.FC = () => {
   const navigate = useNavigate();
   const { enterGuestMode, setShowVerificationModal } = useVerification();
+  const appVersion = (import.meta as any).env.APP_VERSION;
 
   const handleEnterGuestMode = () => {
     enterGuestMode();
@@ -80,7 +81,7 @@ const GuestEntry: React.FC = () => {
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-30 flex items-center gap-4">
             Vibecodia Ecosystem 
             <span className="w-1 h-1 bg-muted-foreground rounded-full" />
-            v1.2.0
+            Vibecodia Ecosystem v{appVersion} 🚀
           </p>
         </div>
       </div>
