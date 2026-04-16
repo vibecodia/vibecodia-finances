@@ -104,7 +104,6 @@ const DEFAULT_LAYOUT: LayoutItem[] = [
   { id: 'contribution_table', label: 'Tabela de Aportes', collapsed: true, number: 5 },
   { id: 'savings_vs_income', label: 'Taxa de Poupança vs Receita', collapsed: true, number: 6 },
   { id: 'priority_matrix', label: 'Matriz de Prioridade', collapsed: true, number: 7 },
-  { id: 'goals_vs_expenses', label: 'Metas vs Despesas', collapsed: true, number: 8 },
 ];
 
 const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savingsGoals, transactions, onAddTransaction }) => {
@@ -2519,46 +2518,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                             )}
                           </tbody>
                         </table>
-                      </div>
-                    )}
-                  </Card>
-                );
-
-              case 'goals_vs_expenses':
-                return (
-                  <Card key={item.id} noPadding className="overflow-hidden shadow-md transition-all hover:shadow-lg">
-                    {renderCardHeader(item.id, item.label, <BarChart3 className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(goalsVsExpensesChartRef))}
-                    {!item.collapsed && (
-                      <div className="p-8 space-y-6">
-                        <div className="h-80">
-                          {transactions.some(t => t.type === 'expense') ? (
-                            <Pie
-                              ref={goalsVsExpensesChartRef}
-                              data={goalsVsExpensesData}
-                              options={{
-                                maintainAspectRatio: false,
-                                plugins: { legend: { labels: { color: theme.text } } },
-                              }}
-                            />
-                          ) : (
-                            <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
-                              <BarChart3 className="w-12 h-12 opacity-10" />
-                              <span>Nenhuma despesa registrada</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex justify-between items-end p-4 rounded-lg bg-muted/30">
-                          <div>
-                            <p className="text-xs opacity-70 mb-1">Total em Aportes</p>
-                            <p className="text-2xl font-black text-primary">{formatCurrency(goalsVsExpensesData.goalTotals)}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs opacity-70 mb-1">Total em Despesas (Top 8)</p>
-                            <p className="text-2xl font-black text-accent">
-                              {formatCurrency((Object.values(goalsVsExpensesData).filter(v => typeof v === 'number').reduce((sum: number, v: any) => sum + v, 0) as number) - goalsVsExpensesData.goalTotals)}
-                            </p>
-                          </div>
-                        </div>
                       </div>
                     )}
                   </Card>
