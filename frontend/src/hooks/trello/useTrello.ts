@@ -1,7 +1,8 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useLocalStorage } from './useLocalStorage';
+
 import { Task, BoardTheme, Column } from '../../types/trello/task';
 import { generateId } from '../../utils/trello/taskUtils';
+import { useLocalStorage } from './useLocalStorage';
 
 const DEFAULT_THEME: BoardTheme = { id: 'default', name: 'Geral' };
 
@@ -73,7 +74,7 @@ export function useTrello() {
 
     const migratedTasks = uniqueTasks.map(t => {
       let updated = false;
-      let newThemeId = t.themeId || DEFAULT_THEME.id;
+      const newThemeId = t.themeId || DEFAULT_THEME.id;
       let newColumnId = t.columnId;
 
       if (!t.themeId) {
