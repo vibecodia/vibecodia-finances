@@ -349,7 +349,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             }
           </style>
         </head>
-        <body>
+        <body style="color: #1e293b; background: white;">
           <button class="no-print-btn" onclick="window.print()">IMPRIMIR PDF</button>
           
           <div class="header">
@@ -1559,19 +1559,19 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
           )}
           {/* Summary Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="p-4">
+            <Card className="p-4 bg-card border-border">
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Total em Metas</p>
               <p className="text-2xl font-black text-primary">
                 {formatCurrency(activeGoals.reduce((sum, g) => sum + g.currentAmount, 0))}
               </p>
             </Card>
-            <Card className="p-4">
+            <Card className="p-4 bg-card border-border">
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Total Alvo</p>
               <p className="text-2xl font-black text-accent">
                 {formatCurrency(activeGoals.reduce((sum, g) => sum + g.targetAmount, 0))}
               </p>
             </Card>
-            <Card className="p-4">
+            <Card className="p-4 bg-card border-border">
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Qtd. de Metas</p>
               <p className="text-2xl font-black text-primary">
                 {activeGoals.length}
@@ -1654,11 +1654,11 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                 value={countdownSimGoalIdEffective || ''}
                                 onChange={(e) => handleCountdownSimGoalChange(e.target.value)}
                                 disabled={savingsGoals.length === 0}
-                                className="h-10 text-xs bg-background"
+                                className="h-10 text-xs bg-background border-border text-foreground"
                               >
-                                <option value="" disabled>Selecione a meta...</option>
+                                <option value="" disabled className="bg-card text-foreground">Selecione a meta...</option>
                                 {savingsGoals.map(g => (
-                                  <option key={g.id} value={g.id}>{g.name}</option>
+                                  <option key={g.id} value={g.id} className="bg-card text-foreground">{g.name}</option>
                                 ))}
                               </Select>
                               
@@ -1670,7 +1670,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                   onBlur={() => setIsSimInputFocused(false)}
                                   placeholder={!isSimInputFocused ? "Valor do aporte..." : "0"}
                                   className={cn(
-                                    "pl-10 text-right transition-all duration-300 h-11 text-lg font-black",
+                                    "pl-10 text-right transition-all duration-300 h-11 text-lg font-black bg-background text-foreground border-border",
                                     !isSimInputFocused && !countdownSimExtraValue && 'animate-pulse-border',
                                     countdownSimExtraValue > 0 && 'border-primary ring-2 ring-primary/10 bg-primary/[0.02]'
                                   )}
@@ -1813,7 +1813,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         title={`Cálculo:\nSaldo Anterior: ${formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}\nReceitas (+): ${formatCurrency(monthlyTotals.revenues)}\nDespesas (-): ${formatCurrency(monthlyTotals.expenses)}\nAportes Reais (-): ${formatCurrency(monthlyTotals.realContributions)}\nAporte Simulado (-): ${formatCurrency(countdownSimExtraValue)}\nGasto Extra (Catastrófico) (-): ${formatCurrency(catastrophicAmountValue)}\nTotal: ${formatCurrency(countdownSimAvailableEndOfMonth)}`}
                       >
                         <div className="mb-4">
-                          <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest mb-1 opacity-70">
+                          <p className="text-[9px] font-bold uppercase text-muted-foreground/80 tracking-widest mb-1">
                             Período de Análise
                           </p>
                           <p className="text-[10px] font-black text-foreground">
@@ -1821,32 +1821,32 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                           </p>
                         </div>
                         
-                        <div className={`flex flex-col gap-1 font-black ${countdownSimAvailableColorClass} p-4 rounded-xl bg-background/40 border border-border/50 mb-6`}>
+                        <div className={`flex flex-col gap-1 font-black \${countdownSimAvailableColorClass} p-4 rounded-xl bg-background/40 border border-border/50 mb-6`}>
                           <div className="flex items-center gap-1.5">
                             {countdownSimAvailableEndOfMonth < 0 ? <AlertCircle className="w-4 h-4" /> :
                               countdownSimAvailableEndOfMonth < 500 ? <Pin className="w-4 h-4" /> :
                               <CheckCircle2 className="w-4 h-4" />
                             }
-                            <span className="text-[10px] uppercase opacity-60 tracking-tight">Saldo Final Estimado</span>
+                            <span className="text-[10px] uppercase text-foreground/60 tracking-tight">Saldo Final Estimado</span>
                           </div>
                           <span className="text-3xl tracking-tighter"> {formatCurrency(countdownSimAvailableEndOfMonth)}</span>
                         </div>
 
-                        <div className="text-[11px] text-muted-foreground font-mono space-y-2.5">
+                        <div className="text-[11px] text-muted-foreground/90 font-mono space-y-2.5">
                           <div className="flex justify-between items-center border-b border-border/40 pb-1.5">
-                            <span className="opacity-70">Saldo Anterior:</span>
+                            <span className="opacity-80 text-foreground/70">Saldo Anterior:</span>
                             <span className="font-bold text-foreground">{formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}</span>
                           </div>
                           <div className="flex justify-between items-center border-b border-border/40 pb-1.5">
-                            <span className="text-primary font-bold opacity-90">+ Receitas:</span>
+                            <span className="text-primary font-bold opacity-100">+ Receitas:</span>
                             <span className="font-bold text-foreground">{formatCurrency(monthlyTotals.revenues)}</span>
                           </div>
                           <div className="flex justify-between items-center border-b border-border/40 pb-1.5">
-                            <span className="text-destructive font-bold opacity-90">- Despesas:</span>
+                            <span className="text-destructive font-bold opacity-100">- Despesas:</span>
                             <span className="font-bold text-foreground">{formatCurrency(monthlyTotals.expenses)}</span>
                           </div>
                           <div className="flex justify-between items-center border-b border-border/40 pb-1.5">
-                            <span className="text-destructive font-bold opacity-90">- Aportes Reais:</span>
+                            <span className="text-destructive font-bold opacity-100">- Aportes Reais:</span>
                             <span className="font-bold text-foreground">{formatCurrency(monthlyTotals.realContributions)}</span>
                           </div>
                           {countdownSimExtraValue > 0 && (
@@ -1879,7 +1879,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                     )}>
                       <div className="lg:flex lg:gap-8 h-full">
                         {/* Controles da Projeção */}
-                        <div className="lg:w-1/4 space-y-6">
+                          <div className="lg:w-1/4 space-y-6">
                           {/* Toggle de Visualização */}
                           <div className="flex gap-2 p-1.5 bg-muted rounded-xl border border-border">
                             <Button 
@@ -1932,7 +1932,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                           <div className="flex-1 overflow-x-auto min-h-[300px] max-h-[450px] scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
                             <table className="w-full text-left text-xs border-collapse">
                               <thead>
-                                <tr className="bg-muted bg-opacity-40" style={{ color: theme.text }}>
+                                <tr className="bg-muted/40" style={{ color: theme.text }}>
                                   <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Data</th>
                                   <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Saldo Inicial</th>
                                   <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Receitas</th>
@@ -1944,7 +1944,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                 {(projectionView === 'forward' ? nextDaysData.dailyBalances : currentPeriodDailyData.dailyBalances).map((day: any) => (
                                   <tr key={day.date} className={cn(
                                     "text-foreground hover:bg-primary/5 transition-colors group",
-                                    day.isNegative && "bg-destructive/5"
+                                    day.isNegative && "bg-destructive/10"
                                   )}>
                                     <td className="p-4 border-r font-mono text-xs" style={{ borderColor: theme.cardBorder }}>
                                       <div className="flex flex-col">
@@ -1994,7 +1994,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                               </div>
                               {(projectionView === 'forward' ? nextDaysData.negativeCount : currentPeriodDailyData.negativeCount) > 0 && (
                                 <div className="text-right">
-                                  <span className="bg-destructive text-destructive-foreground text-[10px] font-black px-3 py-2 rounded-xl animate-bounce inline-block uppercase tracking-widest shadow-lg">
+                                  <span className="bg-destructive text-destructive-foreground text-[10px] font-black px-3 py-2 rounded-xl animate-bounce inline-block uppercase tracking-widest shadow-lg border border-white/20">
                                     {projectionView === 'forward' ? nextDaysData.negativeCount : currentPeriodDailyData.negativeCount} DIAS NEGATIVOS DETECTADOS ⚠️
                                   </span>
                                 </div>
@@ -2048,12 +2048,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                       <div className="p-6 md:p-8 space-y-8">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                           <div className="space-y-6">
-                            <div className="flex gap-2 p-1 bg-muted/30 rounded-xl">
+                            <div className="flex gap-2 p-1 bg-muted/30 rounded-xl border border-border">
                               <Button 
                                 onClick={() => setSimMode('investment')}
                                 variant={simMode === 'investment' ? 'primary' : 'ghost'}
                                 size="sm"
-                                className="flex-1 text-[10px]"
+                                className="flex-1 text-[10px] font-bold h-8"
                               >
                                 Investimento Livre
                               </Button>
@@ -2061,7 +2061,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                 onClick={() => setSimMode('goal_reach')}
                                 variant={simMode === 'goal_reach' ? 'primary' : 'ghost'}
                                 size="sm"
-                                className="flex-1 text-[10px]"
+                                className="flex-1 text-[10px] font-bold h-8"
                               >
                                 Alcance de Meta
                               </Button>
@@ -2071,12 +2071,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                               <Input 
                                 {...simInitialAmountInputProps}
                                 label="Valor Inicial (R$)"
-                                className="font-bold"
+                                className="font-bold bg-background border-border text-foreground"
                               />
                               <Input 
                                 {...simMonthlyAmountInputProps}
                                 label="Aporte Mensal (R$)"
-                                className="font-bold"
+                                className="font-bold bg-background border-border text-foreground"
                               />
                               <Input 
                                 type="number" 
@@ -2084,14 +2084,14 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                 value={simInterestRate}
                                 onChange={(e) => setSimInterestRate(Number(e.target.value))}
                                 label="Juros Mensal (%)"
-                                className="font-bold"
+                                className="font-bold bg-background border-border text-foreground"
                               />
                               <Input 
                                 type="number" 
                                 value={simPeriod}
                                 onChange={(e) => setSimPeriod(Number(e.target.value))}
                                 label="Período (Meses)"
-                                className="font-bold"
+                                className="font-bold bg-background border-border text-foreground"
                               />
                             </div>
 
@@ -2099,6 +2099,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                               <Select 
                                 label="Vincular a Meta Existente"
                                 value={simTargetGoalId || ''}
+                                className="bg-background border-border text-foreground"
                                 onChange={(e) => {
                                   const goalId = e.target.value;
                                   setSimTargetGoalId(goalId);
@@ -2112,22 +2113,22 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                   }
                                 }}
                               >
-                                <option value="">Nenhuma Meta</option>
+                                <option value="" className="bg-card text-foreground">Nenhuma Meta</option>
                                 {activeGoals.map(g => (
-                                  <option key={g.id} value={g.id}>{g.name} ({formatCurrency(g.targetAmount)})</option>
+                                  <option key={g.id} value={g.id} className="bg-card text-foreground">{g.name} ({formatCurrency(g.targetAmount)})</option>
                                 ))}
                               </Select>
                             )}
 
                             <div className="p-5 rounded-2xl bg-primary/5 border border-primary/20 flex items-center justify-between">
                               <div>
-                                <p className="text-[10px] font-bold uppercase opacity-60">Total ao Final</p>
+                                <p className="text-[10px] font-bold uppercase text-foreground/60">Total ao Final</p>
                                 <p className="text-2xl font-black text-primary">
                                   {formatCurrency(simulationResults[simulationResults.length - 1].total)}
                                 </p>
                               </div>
                               <div className="text-right">
-                                <p className="text-[10px] font-bold uppercase opacity-60">Juros Ganhos</p>
+                                <p className="text-[10px] font-bold uppercase text-foreground/60">Juros Ganhos</p>
                                 <p className="text-xl font-black text-accent">
                                   {formatCurrency(simulationResults[simulationResults.length - 1].interest)}
                                 </p>
@@ -2141,10 +2142,10 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                               data={simChartData}
                               options={{
                                 maintainAspectRatio: false,
-                                plugins: { legend: { display: true, labels: { color: 'hsl(var(--foreground))' } } },
+                                plugins: { legend: { display: true, labels: { color: theme.text } } },
                                 scales: {
-                                  y: { ticks: { color: 'hsl(var(--foreground))', callback: (v) => formatCurrency(v as number) }, grid: { color: 'hsl(var(--border))' } },
-                                  x: { ticks: { color: 'hsl(var(--foreground))' }, grid: { color: 'hsl(var(--border))' } }
+                                  y: { ticks: { color: theme.text, callback: (v) => formatCurrency(v as number) }, grid: { color: theme.cardBorder } },
+                                  x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
                                 }
                               }}
                             />
@@ -2158,21 +2159,21 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                           </h4>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="p-4 rounded-xl border bg-muted/10 border-border">
-                              <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">Média Salarial Mensal</p>
+                              <p className="text-[10px] font-bold uppercase text-muted-foreground/80 mb-1">Média Salarial Mensal</p>
                               <p className="text-lg font-black text-foreground">{formatCurrency(salaryAnalysis.avgIncome)}</p>
-                              <p className="text-[10px] text-muted-foreground opacity-40 mt-1">Baseado em {salaryAnalysis.monthsCount} meses</p>
+                              <p className="text-[10px] text-muted-foreground/60 mt-1">Baseado em {salaryAnalysis.monthsCount} meses</p>
                             </div>
                             <div className="p-4 rounded-xl border bg-muted/10 border-border">
-                              <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">Média de Aportes</p>
+                              <p className="text-[10px] font-bold uppercase text-muted-foreground/80 mb-1">Média de Aportes</p>
                               <p className="text-lg font-black text-primary">{formatCurrency(salaryAnalysis.avgSavings)}</p>
-                              <p className="text-[10px] text-muted-foreground opacity-40 mt-1">({salaryAnalysis.avgRate.toFixed(1)}% do salário)</p>
+                              <p className="text-[10px] text-muted-foreground/60 mt-1">({salaryAnalysis.avgRate.toFixed(1)}% do salário)</p>
                             </div>
                             <div className="p-4 rounded-xl border bg-primary/10 border-primary/30">
-                              <p className="text-[10px] font-bold uppercase opacity-50 mb-1">Potencial em 1 Ano</p>
+                              <p className="text-[10px] font-bold uppercase text-primary/70 mb-1">Potencial em 1 Ano</p>
                               <p className="text-lg font-black text-primary">
                                 {formatCurrency((salaryAnalysis.avgSavings * 12) * (1 + (simInterestRate/100) * 6))} 
                               </p>
-                              <p className="text-[10px] opacity-40 mt-1">Se mantiver a média + juros</p>
+                              <p className="text-[10px] text-primary/50 mt-1">Se mantiver a média + juros</p>
                             </div>
                           </div>
                         </div>
@@ -2193,10 +2194,10 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                             data={timelineChartData}
                             options={{
                                 maintainAspectRatio: false,
-                                plugins: { legend: { labels: { color: 'hsl(var(--foreground))' } } },
+                                plugins: { legend: { labels: { color: theme.text } } },
                                 scales: {
-                                  y: { ticks: { color: 'hsl(var(--foreground))' }, grid: { color: 'hsl(var(--border))' } },
-                                  x: { ticks: { color: 'hsl(var(--foreground))' }, grid: { color: 'hsl(var(--border))' } }
+                                  y: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } },
+                                  x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
                                 }
                               }}
                           />
@@ -2221,7 +2222,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                           <Doughnut 
                               ref={distributionChartRef}
                               data={distributionChartData} 
-                              options={{ maintainAspectRatio: false, plugins: { legend: { labels: { color: 'hsl(var(--foreground))' } } } }} 
+                              options={{ maintainAspectRatio: false, plugins: { legend: { labels: { color: theme.text } } } }} 
                             />
                         ) : (
                           <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
