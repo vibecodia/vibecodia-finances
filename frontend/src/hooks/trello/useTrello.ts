@@ -1,26 +1,122 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useLocalStorage } from './useLocalStorage';
-import { Task, BoardTheme } from '../../types/trello/task';
+import { Task, BoardTheme, Column } from '../../types/trello/task';
+import { generateId } from '../../utils/trello/taskUtils';
 
 const DEFAULT_THEME: BoardTheme = { id: 'default', name: 'Geral' };
+
+const INITIAL_COLUMNS: Omit<Column, 'tasks'>[] = [
+  { id: 'todo', title: 'A Fazer', themeId: DEFAULT_THEME.id },
+  { id: 'inProgress', title: 'Em Andamento', themeId: DEFAULT_THEME.id },
+  { id: 'done', title: 'Concluído', themeId: DEFAULT_THEME.id },
+];
 
 export function useTrello() {
   const [themes, setThemes] = useLocalStorage<BoardTheme[]>('trello_themes', [DEFAULT_THEME]);
   const [currentThemeId, setCurrentThemeId] = useLocalStorage<string>('trello_current_theme_id', DEFAULT_THEME.id);
   const [tasks, setTasks] = useLocalStorage<Task[]>('tasks', []);
+  const [columns, setColumns] = useLocalStorage<Omit<Column, 'tasks'>[]>('trello_columns', INITIAL_COLUMNS);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Migração automática de tasks sem themeId
+  // Migração automática de tasks e colunas sem themeId
   useEffect(() => {
-    const tasksWithoutTheme = tasks.some(t => !t.themeId);
-    if (tasksWithoutTheme) {
-      setTasks(prev => prev.map(t => t.themeId ? t : { ...t, themeId: DEFAULT_THEME.id }));
+    let tasksChanged = false;
+    let columnsChanged = false;
+    let themesChanged = false;
+
+    // 0. Desduplicação de temas
+    const uniqueThemes = themes.filter((theme, index, self) =>
+      index === self.findIndex((t) => t.id === theme.id)
+    );
+    if (uniqueThemes.length !== themes.length) {
+      themesChanged = true;
     }
-  }, [tasks, setTasks]);
+
+    // 1. Migrar colunas sem themeId e desduplicar
+    const migratedColumns = columns.map(c => {
+      if (!c.themeId) {
+        columnsChanged = true;
+        return { ...c, themeId: DEFAULT_THEME.id };
+      }
+      return c;
+    });
+
+    const uniqueColumns = migratedColumns.filter((col, index, self) =>
+      index === self.findIndex((c) => c.id === col.id)
+    );
+    if (uniqueColumns.length !== columns.length) {
+      columnsChanged = true;
+    }
+
+    // 2. Criar colunas iniciais para temas que não possuem nenhuma
+    let nextColumns = [...uniqueColumns];
+    uniqueThemes.forEach(theme => {
+      const hasColumns = nextColumns.some(c => c.themeId === theme.id);
+      if (!hasColumns) {
+        columnsChanged = true;
+        const themeColumns = INITIAL_COLUMNS.map(c => ({
+          ...c,
+          id: theme.id === DEFAULT_THEME.id ? c.id : `${c.id}-${theme.id}`,
+          themeId: theme.id
+        }));
+        nextColumns = [...nextColumns, ...themeColumns];
+      }
+    });
+
+    // 3. Migrar tarefas: themeId, columnId e desduplicar
+    const uniqueTasks = tasks.filter((task, index, self) =>
+      index === self.findIndex((t) => t.id === task.id)
+    );
+    if (uniqueTasks.length !== tasks.length) {
+      tasksChanged = true;
+    }
+
+    const migratedTasks = uniqueTasks.map(t => {
+      let updated = false;
+      let newThemeId = t.themeId || DEFAULT_THEME.id;
+      let newColumnId = t.columnId;
+
+      if (!t.themeId) {
+        updated = true;
+      }
+
+      const legacyIds = ['todo', 'inProgress', 'done'];
+      if (legacyIds.includes(t.columnId)) {
+        const matchingColumn = nextColumns.find(c => c.themeId === newThemeId && c.id.startsWith(t.columnId));
+        if (matchingColumn && matchingColumn.id !== t.columnId) {
+          newColumnId = matchingColumn.id;
+          updated = true;
+        }
+      }
+
+      if (updated) {
+        tasksChanged = true;
+        return { ...t, themeId: newThemeId, columnId: newColumnId };
+      }
+      return t;
+    });
+
+    // Só atualizar se algo realmente mudou para evitar loops
+    if (themesChanged) {
+      setThemes(uniqueThemes);
+    }
+
+    if (columnsChanged) {
+      setColumns(nextColumns);
+    }
+
+    if (tasksChanged) {
+      setTasks(migratedTasks);
+    }
+  }, [tasks, columns, themes, setColumns, setTasks, setThemes]);
 
   const currentTheme = useMemo(() => 
     themes.find(t => t.id === currentThemeId) || themes[0] || DEFAULT_THEME
   , [themes, currentThemeId]);
+
+  const themeColumns = useMemo(() => 
+    columns.filter(c => c.themeId === currentThemeId)
+  , [columns, currentThemeId]);
 
   const filteredTasks = useMemo(() => {
     return tasks
@@ -44,13 +140,22 @@ export function useTrello() {
 
   const addTheme = useCallback((name: string, color?: string) => {
     const newTheme: BoardTheme = {
-      id: Date.now().toString(36),
+      id: generateId(),
       name,
       color
     };
     setThemes(prev => [...prev, newTheme]);
+    
+    // Criar colunas iniciais para o novo tema
+    const themeColumns = INITIAL_COLUMNS.map(c => ({
+      ...c,
+      id: `${c.id}-${newTheme.id}`,
+      themeId: newTheme.id
+    }));
+    setColumns(prev => [...prev, ...themeColumns]);
+
     return newTheme;
-  }, [setThemes]);
+  }, [setThemes, setColumns]);
 
   const addTask = useCallback((task: Task) => {
     setTasks(prev => [...prev, { 
@@ -69,7 +174,7 @@ export function useTrello() {
     setTasks(prev => prev.filter(t => t.id !== taskId));
   }, [setTasks]);
 
-  const moveTask = useCallback((taskId: string, toColumnId: Task['columnId']) => {
+  const moveTask = useCallback((taskId: string, toColumnId: string) => {
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, columnId: toColumnId, updatedAt: new Date().toISOString() } : t));
   }, [setTasks]);
 
@@ -88,26 +193,56 @@ export function useTrello() {
   const importFullData = useCallback((newTasks: Task[], newThemes?: BoardTheme[], newCurrentThemeId?: string) => {
     if (newThemes && newThemes.length > 0) {
       setThemes(newThemes);
+      
+      // Criar colunas iniciais para os temas importados se elas não existirem
+      setColumns(prev => {
+        let updatedColumns = [...prev];
+        newThemes.forEach(theme => {
+          const hasColumns = updatedColumns.some(c => c.themeId === theme.id);
+          if (!hasColumns) {
+            const themeColumns = INITIAL_COLUMNS.map(c => ({
+              ...c,
+              id: theme.id === DEFAULT_THEME.id ? c.id : `${c.id}-${theme.id}`,
+              themeId: theme.id
+            }));
+            updatedColumns = [...updatedColumns, ...themeColumns];
+          }
+        });
+        return updatedColumns;
+      });
     }
     
-    // Garantir que todas as tasks tenham themeId, mesmo que legado
-    const migratedTasks = newTasks.map(t => ({
-      ...t,
-      themeId: t.themeId || (newThemes?.[0]?.id || DEFAULT_THEME.id)
-    }));
-    
-    setTasks(migratedTasks);
+    // O useEffect de migração cuidará de mapear os columnIds legados das tarefas importadas
+    setTasks(newTasks);
     
     if (newCurrentThemeId) {
       setCurrentThemeId(newCurrentThemeId);
     } else if (newThemes && newThemes.length > 0) {
       setCurrentThemeId(newThemes[0].id);
     }
-  }, [setTasks, setThemes, setCurrentThemeId]);
+  }, [setTasks, setThemes, setColumns, setCurrentThemeId]);
 
   const updateTheme = useCallback((themeId: string, updates: Partial<BoardTheme>) => {
     setThemes(prev => prev.map(t => t.id === themeId ? { ...t, ...updates } : t));
   }, [setThemes]);
+
+  const addColumn = useCallback((title: string) => {
+    const newColumn: Omit<Column, 'tasks'> = {
+      id: `col-${generateId()}`,
+      title,
+      themeId: currentThemeId
+    };
+    setColumns(prev => [...prev, newColumn]);
+    return newColumn;
+  }, [setColumns, currentThemeId]);
+
+  const updateColumn = useCallback((columnId: string, updates: Partial<Omit<Column, 'tasks'>>) => {
+    setColumns(prev => prev.map(c => c.id === columnId ? { ...c, ...updates } : c));
+  }, [setColumns]);
+
+  const deleteColumn = useCallback((columnId: string) => {
+    setColumns(prev => prev.filter(c => c.id !== columnId));
+  }, [setColumns]);
 
   return {
     tasks,
@@ -116,6 +251,10 @@ export function useTrello() {
     setCurrentThemeId,
     addTheme,
     updateTheme,
+    columns: themeColumns,
+    addColumn,
+    updateColumn,
+    deleteColumn,
     filteredTasks,
     searchTerm,
     setSearchTerm,
