@@ -1,8 +1,8 @@
-import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Check, Archive, AlertCircle, PauseCircle, Ban, Tag, Link2, ArrowDownAz } from 'lucide-react';
+import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Check, Archive, AlertCircle, PauseCircle, Ban, Tag, Link2, ArrowDownAz, Columns } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
-import { Task, ChecklistItem, TaskFlag, TaskLabel } from '../../types/trello/task';
+import { Task, ChecklistItem, TaskFlag, TaskLabel, Column } from '../../types/trello/task';
 import { createTask } from '../../utils/trello/taskUtils';
 import { getBrazilDateString } from '../../utils/helpers';
 import { Button } from '../ui/Button';
@@ -19,10 +19,11 @@ interface TaskModalProps {
   onArchive?: (taskId: string) => void;
   task?: Task;
   allTasks?: Task[];
+  columns?: Omit<Column, 'tasks'>[];
   mode: 'create' | 'edit';
 }
 
-export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, allTasks = [], mode }: TaskModalProps) {
+export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, allTasks = [], columns = [], mode }: TaskModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
@@ -36,6 +37,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
   const [newLabelText, setNewLabelText] = useState('');
   const [newLabelColor, setNewLabelColor] = useState('#3b82f6'); // Default blue
   const [dependsOn, setDependsOn] = useState<string[]>([]);
+  const [columnId, setColumnId] = useState('');
 
   const labelColors = [
     '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'
@@ -44,7 +46,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
   const availableTasks = useMemo(() => {
     return allTasks.filter(t => 
       t.id !== task?.id && 
-      (t.columnId === 'todo' || t.columnId === 'inProgress')
+      t.columnId !== 'archived'
     );
   }, [allTasks, task]);
 
@@ -102,6 +104,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
       setFlag(task.flag || 'none');
       setLabels(task.labels || []);
       setDependsOn(task.dependsOn || []);
+      setColumnId(task.columnId);
     } else {
       setTitle('');
       setDescription('');
@@ -111,8 +114,9 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
       setFlag('none');
       setLabels([]);
       setDependsOn([]);
+      setColumnId(columns[0]?.id || '');
     }
-  }, [task, mode, isOpen]);
+  }, [task, mode, isOpen, columns]);
 
   const addLabel = () => {
     if (!newLabelText.trim()) return;
@@ -191,6 +195,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
         description: description.trim(),
         priority,
         date: date || undefined,
+        columnId,
         checklist,
         flag,
         labels,
@@ -198,7 +203,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
         updatedAt: new Date().toISOString()
       });
     } else {
-      const newTask = createTask(title.trim(), description.trim(), priority, task?.themeId || '', date || undefined);
+      const newTask = createTask(title.trim(), description.trim(), priority, task?.themeId || '', date || undefined, columnId);
       onSave({
         ...newTask,
         checklist,
@@ -248,6 +253,25 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
                 onFocus={(e) => e.target.select()}
                 required
               />
+
+              <div className="space-y-3">
+                <label className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                  <Columns className="w-4 h-4" />
+                  Coluna
+                </label>
+                <select
+                  value={columnId}
+                  onChange={(e) => setColumnId(e.target.value)}
+                  className="w-full bg-foreground/5 border-2 border-border rounded-xl px-4 py-2.5 text-sm font-bold focus:outline-none focus:border-primary transition-all appearance-none cursor-pointer"
+                >
+                  {columns.map(col => (
+                    <option key={col.id} value={col.id}>{col.title}</option>
+                  ))}
+                  {task?.columnId === 'archived' && (
+                    <option value="archived">Arquivados</option>
+                  )}
+                </select>
+              </div>
 
               <Textarea
                 label="Descrição"
@@ -330,7 +354,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
               <div className="space-y-3">
                 <label className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                   <Link2 className="w-4 h-4" />
-                  Depende de (Apenas A Fazer / Em Andamento)
+                  Depende de (Apenas Tarefas Ativas)
                 </label>
                 <div className="max-h-[150px] overflow-y-auto border-2 border-border rounded-xl p-3 space-y-2 bg-card/50">
                   {availableTasks.length > 0 ? (
@@ -356,7 +380,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[11px] font-black uppercase tracking-tight truncate">{t.title}</p>
-                          <span className="text-[9px] opacity-60 uppercase font-bold">{t.columnId === 'todo' ? 'A Fazer' : 'Em Andamento'}</span>
+                          <span className="text-[9px] opacity-60 uppercase font-bold">{columns.find(c => c.id === t.columnId)?.title || 'Status Desconhecido'}</span>
                         </div>
                       </label>
                     ))

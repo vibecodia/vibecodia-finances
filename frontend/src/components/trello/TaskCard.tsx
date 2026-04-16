@@ -69,7 +69,7 @@ export const TaskCard = React.memo(({
 }: TaskCardProps) => {
   const completedItems = task.checklist?.filter(i => i.completed).length || 0;
   const totalItems = task.checklist?.length || 0;
-  const isDone = task.columnId === 'done';
+  const isDone = task.columnId.includes('done');
   
   // Se houver busca e o item estiver em um dos campos pesquisados, forçamos a exibição expandida
   const hasSearchMatch = React.useMemo(() => {
@@ -88,7 +88,7 @@ export const TaskCard = React.memo(({
 
   const pendingDependencies = task.dependsOn?.filter(depId => {
     const depTask = allTasks.find(t => t.id === depId);
-    return depTask && depTask.columnId !== 'done';
+    return depTask && !depTask.columnId.includes('done');
   }) || [];
 
   const isBlocked = pendingDependencies.length > 0 && !isDone;
@@ -154,13 +154,16 @@ export const TaskCard = React.memo(({
           <div className="flex items-center gap-2">
             {isMinimal && <CheckSquare className="w-3.5 h-3.5 text-primary/60 shrink-0" />}
             {isMinimal && isBlocked && <Link2 className="w-3 h-3 text-red-500 shrink-0" />}
-            <h3 className={cn(
-              "font-black text-foreground uppercase tracking-tight leading-tight",
-              isFocusMode ? "text-3xl" : "text-sm",
-              isMinimal && "truncate",
-              isDone && "line-through decoration-1 opacity-60"
-            )}>
-              <Highlight text={task.title} searchTerm={searchTerm} />
+            <h3 
+              className={cn(
+                "font-black text-foreground uppercase tracking-tight leading-tight",
+                isFocusMode ? "text-3xl" : "text-sm",
+                isMinimal && "truncate",
+                isDone && "line-through decoration-1 opacity-60"
+              )}
+              translate="no"
+            >
+              <span><Highlight text={task.title} searchTerm={searchTerm} /></span>
             </h3>
           </div>
         </div>

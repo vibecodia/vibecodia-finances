@@ -24,7 +24,7 @@ export interface Task {
   description: string;
   priority: 'low' | 'medium' | 'high';
   date?: Date | string;
-  columnId: 'todo' | 'inProgress' | 'done' | 'archived';
+  columnId: string;
   createdAt: string;
   checklist?: ChecklistItem[];
   updatedAt?: string;
@@ -35,7 +35,8 @@ export interface Task {
 }
 
 export interface Column {
-  id: 'todo' | 'inProgress' | 'done' | 'archived';
+  id: string;
   title: string;
   tasks: Task[];
+  themeId: string;
 }

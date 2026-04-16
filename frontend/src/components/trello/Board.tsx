@@ -15,14 +15,9 @@ import { TaskCard } from './TaskCard';
 import { TaskModal } from './TaskModal';
 import { ThemeSelector } from './ThemeSelector';
 import ConfirmationModal from '../ConfirmationModal';
+import { InputModal } from '../InputModal';
 import { Button } from '../ui/Button';
 import { cn } from '../../lib/utils';
-
-const initialColumns: Omit<ColumnType, 'tasks'>[] = [
-  { id: 'todo', title: 'A Fazer' },
-  { id: 'inProgress', title: 'Em Andamento' },
-  { id: 'done', title: 'Concluído' },
-];
 
 export function Board() {
   const { 
@@ -32,6 +27,10 @@ export function Board() {
     setCurrentThemeId,
     addTheme,
     updateTheme,
+    columns: themeColumns,
+    addColumn,
+    updateColumn,
+    deleteColumn,
     filteredTasks, 
     searchTerm, 
     setSearchTerm, 
@@ -92,6 +91,28 @@ export function Board() {
     taskId: null
   });
 
+  const [columnDeleteConfirmation, setColumnDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    columnId: string | null;
+    hasTasks?: boolean;
+  }>({
+    isOpen: false,
+    columnId: null,
+    hasTasks: false
+  });
+
+  const [columnInputModal, setColumnInputModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    initialValue: string;
+    onSave: (value: string) => void;
+  }>({
+    isOpen: false,
+    title: '',
+    initialValue: '',
+    onSave: () => {}
+  });
+
   const [importData, setImportData] = useState<TrelloExportData | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -120,7 +141,7 @@ export function Board() {
   }, [filteredTasks, selectedFlagFilter, selectedLabelFilter]);
 
   const columns = useMemo(() => {
-    const cols = initialColumns.map(column => ({
+    const cols = themeColumns.map(column => ({
       ...column,
       tasks: finalFilteredTasks.filter(task => task.columnId === column.id)
     })) as ColumnType[];
@@ -129,16 +150,26 @@ export function Board() {
       cols.push({
         id: 'archived',
         title: 'Arquivados',
+        themeId: currentTheme.id,
         tasks: finalFilteredTasks.filter(task => task.columnId === 'archived')
       });
     }
 
     return cols;
-  }, [finalFilteredTasks, showArchived]);
+  }, [themeColumns, finalFilteredTasks, showArchived, currentTheme.id]);
 
   const handleAddTask = () => {
     setEditingTask(undefined);
     setIsModalOpen(true);
+  };
+
+  const handleAddColumn = () => {
+    setColumnInputModal({
+      isOpen: true,
+      title: 'Nova Coluna',
+      initialValue: '',
+      onSave: (title) => addColumn(title)
+    });
   };
 
   const handleEditTask = (task: Task) => {
@@ -221,10 +252,14 @@ export function Board() {
     const movedTask = newTasks[movedTaskIndex];
 
     // Validação de dependências ao mover para "done" via drag and drop
-    if (destination.droppableId === 'done' && movedTask.columnId !== 'done') {
+    // Nota: 'done' pode ter um ID dinâmico agora, mas mantemos a lógica se possível
+    const isMovingToDone = destination.droppableId.includes('done');
+    const wasInDone = movedTask.columnId.includes('done');
+
+    if (isMovingToDone && !wasInDone) {
       const pendingDependencies = movedTask.dependsOn?.filter(depId => {
         const depTask = tasks.find(t => t.id === depId);
-        return depTask && depTask.columnId !== 'done';
+        return depTask && !depTask.columnId.includes('done');
       });
 
       if (pendingDependencies && pendingDependencies.length > 0) {
@@ -236,7 +271,7 @@ export function Board() {
     newTasks.splice(movedTaskIndex, 1);
 
     // 2. Atualizar a coluna
-    movedTask.columnId = destination.droppableId as Task['columnId'];
+    movedTask.columnId = destination.droppableId;
     movedTask.updatedAt = new Date().toISOString();
 
     // 3. Encontrar a posição correta de inserção
@@ -274,14 +309,15 @@ export function Board() {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    let nextColumn: Task['columnId'] = task.columnId;
-    if (task.columnId === 'todo') nextColumn = 'inProgress';
-    else if (task.columnId === 'inProgress') nextColumn = 'done';
+    const currentColumnIndex = themeColumns.findIndex(c => c.id === task.columnId);
+    if (currentColumnIndex === -1 || currentColumnIndex === themeColumns.length - 1) return;
 
-    if (nextColumn === 'done') {
+    const nextColumn = themeColumns[currentColumnIndex + 1];
+
+    if (nextColumn.id.includes('done')) {
       const pendingDependencies = task.dependsOn?.filter(depId => {
         const depTask = tasks.find(t => t.id === depId);
-        return depTask && depTask.columnId !== 'done';
+        return depTask && !depTask.columnId.includes('done');
       });
 
       if (pendingDependencies && pendingDependencies.length > 0) {
@@ -290,36 +326,34 @@ export function Board() {
       }
     }
 
-    if (nextColumn !== task.columnId) {
-      moveTask(taskId, nextColumn);
-    }
-  }, [tasks, moveTask]);
+    moveTask(taskId, nextColumn.id);
+  }, [tasks, moveTask, themeColumns]);
 
   const handleMoveBackward = useCallback((taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
     
-    let prevColumn: Task['columnId'] = task.columnId;
-    if (task.columnId === 'done') prevColumn = 'inProgress';
-    else if (task.columnId === 'inProgress') prevColumn = 'todo';
+    const currentColumnIndex = themeColumns.findIndex(c => c.id === task.columnId);
+    if (currentColumnIndex <= 0) return;
+
+    const prevColumn = themeColumns[currentColumnIndex - 1];
     
-    if (prevColumn !== task.columnId) {
-      moveTask(taskId, prevColumn);
-    }
-  }, [tasks, moveTask]);
+    moveTask(taskId, prevColumn.id);
+  }, [tasks, moveTask, themeColumns]);
 
   const handleArchiveTask = useCallback((taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
     if (task.columnId === 'archived') {
-      // Unarchive directly back to 'todo'
-      moveTask(taskId, 'todo');
+      // Unarchive directly back to the first column
+      const firstColumnId = themeColumns[0]?.id || 'todo';
+      moveTask(taskId, firstColumnId);
     } else {
       // Ask for confirmation before archiving
       setArchiveConfirmation({ isOpen: true, taskId });
     }
-  }, [tasks, moveTask]);
+  }, [tasks, moveTask, themeColumns]);
 
   const handleToggleChecklistItem = useCallback((taskId: string, itemId: string) => {
     const task = tasks.find(t => t.id === taskId);
@@ -407,6 +441,7 @@ export function Board() {
                       setIsEditingThemeName(true);
                       setTempThemeName(currentTheme.name);
                     }}
+                    translate="no"
                   >
                     {currentTheme.name}
                   </h1>
@@ -562,36 +597,48 @@ export function Board() {
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {[
-          { label: 'Total', value: filteredTasks.length, color: 'bg-foreground/5' },
-          { label: 'A Fazer', value: filteredTasks.filter(t => t.columnId === 'todo').length, color: 'bg-blue-500/10 text-blue-500' },
-          { label: 'Em Andamento', value: filteredTasks.filter(t => t.columnId === 'inProgress').length, color: 'bg-amber-500/10 text-amber-500' },
-          { label: 'Concluídas', value: filteredTasks.filter(t => t.columnId === 'done').length, color: 'bg-green-500/10 text-green-500' },
-          { label: 'Arquivadas', value: filteredTasks.filter(t => t.columnId === 'archived').length, color: 'bg-gray-500/10 text-gray-500' },
-        ].map((stat) => (
-          <div key={stat.label} className={cn("p-4 rounded-2xl border border-border flex flex-col gap-1", stat.color)}>
-            <span className="text-[10px] font-black uppercase tracking-widest opacity-70">{stat.label}</span>
-            <span className="text-2xl font-black">{stat.value}</span>
-          </div>
-        ))}
+      <div className="flex flex-wrap gap-4 overflow-x-auto pb-2">
+        <div className="p-4 rounded-2xl border border-border flex flex-col gap-1 bg-foreground/5 min-w-[140px]">
+          <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Total</span>
+          <span className="text-2xl font-black">{filteredTasks.length}</span>
+        </div>
+        
+        {themeColumns.map((col) => {
+          const count = filteredTasks.filter(t => t.columnId === col.id).length;
+          let color = 'bg-primary/10 text-primary';
+          if (col.id.includes('todo')) color = 'bg-blue-500/10 text-blue-500';
+          else if (col.id.includes('inProgress')) color = 'bg-amber-500/10 text-amber-500';
+          else if (col.id.includes('done')) color = 'bg-green-500/10 text-green-500';
+
+          return (
+            <div key={col.id} className={cn("p-4 rounded-2xl border border-border flex flex-col gap-1 min-w-[140px]", color)}>
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-70">{col.title}</span>
+              <span className="text-2xl font-black">{count}</span>
+            </div>
+          );
+        })}
+
+        <div className="p-4 rounded-2xl border border-border flex flex-col gap-1 bg-gray-500/10 text-gray-500 min-w-[140px]">
+          <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Arquivadas</span>
+          <span className="text-2xl font-black">{filteredTasks.filter(t => t.columnId === 'archived').length}</span>
+        </div>
       </div>
 
       {/* Board Content */}
       {viewMode === 'kanban' ? (
         <DragDropContext onDragEnd={onDragEnd}>
           <div className="flex-1 overflow-x-auto pb-6">
-            <div className="flex gap-8 h-full min-h-[600px]">
+            <div className="flex gap-8 h-full min-h-[600px] items-start">
               {columns.map((column) => (
                 <Column
-                  key={column.id}
+                  key={`${currentTheme.id}-${column.id}`}
                   id={column.id}
                   title={column.title}
-              tasks={column.tasks}
-              allTasks={tasks}
-              isMinimal={!!currentThemeViewModes[column.id]}
-              searchTerm={searchTerm}
-              onToggleMinimal={() => toggleColumnMinimal(column.id)}
+                  tasks={column.tasks}
+                  allTasks={tasks}
+                  isMinimal={!!currentThemeViewModes[column.id]}
+                  searchTerm={searchTerm}
+                  onToggleMinimal={() => toggleColumnMinimal(column.id)}
                   onCardClick={handleEditTask}
                   onMoveForward={handleMoveForward}
                   onMoveBackward={handleMoveBackward}
@@ -599,8 +646,27 @@ export function Board() {
                   onArchiveTask={handleArchiveTask}
                   onFocusTask={handleFocusTask}
                   onToggleChecklistItem={handleToggleChecklistItem}
+                  onUpdateTitle={(title: string) => updateColumn(column.id, { title })}
+                  onDeleteColumn={() => {
+                    setColumnDeleteConfirmation({ 
+                      isOpen: true, 
+                      columnId: column.id,
+                      hasTasks: column.tasks.length > 0
+                    });
+                  }}
                 />
               ))}
+              
+              {/* Add Column Button */}
+              <button
+                onClick={handleAddColumn}
+                className="flex flex-col items-center justify-center min-w-[320px] h-[200px] rounded-[2rem] border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-all group"
+              >
+                <div className="w-12 h-12 rounded-full bg-foreground/5 flex items-center justify-center mb-4 group-hover:bg-primary/10 transition-all">
+                  <Plus className="w-6 h-6 text-muted-foreground group-hover:text-primary" />
+                </div>
+                <span className="text-xs font-black uppercase tracking-widest text-muted-foreground group-hover:text-primary">Nova Coluna</span>
+              </button>
             </div>
           </div>
         </DragDropContext>
@@ -651,6 +717,7 @@ export function Board() {
         onArchive={handleArchiveTask}
         task={editingTask}
         allTasks={tasks}
+        columns={themeColumns}
         mode={editingTask ? 'edit' : 'create'}
       />
 
@@ -680,6 +747,35 @@ export function Board() {
         title="Arquivar Tarefa"
         message="Deseja arquivar esta tarefa? Ela poderá ser visualizada na seção de arquivados."
         confirmText="Arquivar Tarefa"
+      />
+
+      <ConfirmationModal
+        isOpen={columnDeleteConfirmation.isOpen}
+        onClose={() => setColumnDeleteConfirmation({ isOpen: false, columnId: null, hasTasks: false })}
+        onConfirm={() => {
+          if (columnDeleteConfirmation.hasTasks) return;
+          if (columnDeleteConfirmation.columnId) {
+            deleteColumn(columnDeleteConfirmation.columnId);
+            setColumnDeleteConfirmation({ isOpen: false, columnId: null, hasTasks: false });
+          }
+        }}
+        title={columnDeleteConfirmation.hasTasks ? "Ação Bloqueada" : "Excluir Coluna"}
+        message={
+          columnDeleteConfirmation.hasTasks 
+            ? "Não é possível excluir esta coluna pois ela contém tarefas ativas. Mova as tarefas para outra coluna antes de excluir."
+            : "Tem certeza que deseja excluir esta coluna? Esta ação não pode ser desfeita."
+        }
+        confirmText={columnDeleteConfirmation.hasTasks ? "Entendido" : "Confirmar Exclusão"}
+      />
+
+      <InputModal
+        isOpen={columnInputModal.isOpen}
+        onClose={() => setColumnInputModal(prev => ({ ...prev, isOpen: false }))}
+        onSave={columnInputModal.onSave}
+        title={columnInputModal.title}
+        initialValue={columnInputModal.initialValue}
+        label="Nome da Coluna"
+        placeholder="Ex: Em Revisão"
       />
 
       <ConfirmationModal
