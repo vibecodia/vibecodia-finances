@@ -44,7 +44,7 @@ import React, {
   useMemo, 
   useRef 
 } from 'react';
-import { Doughnut, Line, Pie, Scatter } from 'react-chartjs-2';
+import { Doughnut, Line, Scatter } from 'react-chartjs-2';
 
 import { useTheme } from '../contexts/ThemeContext';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
@@ -515,7 +515,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const distributionChartRef = useRef<any>(null);
   const savingsVsIncomeChartRef = useRef<any>(null);
   const matrixChartRef = useRef<any>(null);
-  const goalsVsExpensesChartRef = useRef<any>(null);
 
   const toggleAll = (chartRef: React.MutableRefObject<any>) => {
     const chart = chartRef.current;
@@ -1292,10 +1291,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   // (Opcional, mas ajuda a manter a consistência)
 
   const countdownSimAvailableEndOfMonth = monthlyTotals.net - countdownSimExtraValue;
-  const countdownSimAvailableColorClass =
-    countdownSimAvailableEndOfMonth < 0 ? 'text-red-500' :
-    countdownSimAvailableEndOfMonth < 500 ? 'text-yellow-500' :
-    'text-green-500';
 
   const isSimExceedsTarget = useMemo(() => {
     if (!countdownSimGoal || !countdownSimExtraValue) return false;
@@ -1322,37 +1317,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       return { ...c, percentOfGoal };
     });
   }, [allContributions, startDate, endDate, selectedGoalId, savingsGoals]);
-
-  // Goals vs Expenses Analysis
-  const goalsVsExpensesData = useMemo(() => {
-    const expenseCategories: Record<string, number> = {};
-    transactions
-      .filter(t => t.type === 'expense' && t.isPaid)
-      .forEach(t => {
-        expenseCategories[t.category] = (expenseCategories[t.category] || 0) + t.amount;
-      });
-
-    const goalTotals = savingsGoals.reduce((sum, g) => sum + g.currentAmount, 0);
-
-    const categories = Object.keys(expenseCategories).slice(0, 8);
-    const expenseAmounts = categories.map(cat => expenseCategories[cat]);
-    const colors = [
-      '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
-      '#8BC34A', '#E91E63',
-    ];
-
-    return {
-      labels: categories,
-      datasets: [{
-        label: 'Despesas por Categoria',
-        data: expenseAmounts,
-        backgroundColor: colors.slice(0, categories.length),
-        borderColor: theme.cardBackground,
-        borderWidth: 2,
-      }],
-      goalTotals,
-    };
-  }, [transactions, savingsGoals, theme.cardBackground]);
 
   const renderCardHeader = (id: string, label: string, icon: React.ReactNode, index: number, isCollapsed: boolean, onToggleAll?: () => void) => (
     <div className="p-4 border-b font-semibold text-foreground flex items-center justify-between group bg-muted/30 border-border">
