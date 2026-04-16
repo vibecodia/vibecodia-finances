@@ -1,6 +1,6 @@
 import React from 'react';
 import { Droppable } from '@hello-pangea/dnd';
-import { Maximize2, Minimize2, Pencil, Trash2, X, Check } from 'lucide-react';
+import { Maximize2, Minimize2, Pencil, Trash2 } from 'lucide-react';
 import { Task } from '../../types/trello/task';
 
 import { TaskCard } from './TaskCard';
