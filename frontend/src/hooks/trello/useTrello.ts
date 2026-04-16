@@ -27,8 +27,10 @@ export function useTrello() {
       .filter(t => t.themeId === currentThemeId)
       .filter(task => {
         const lowerSearch = searchTerm.toLowerCase();
-        const matchesText = task.title.toLowerCase().includes(lowerSearch) ||
-          task.description.toLowerCase().includes(lowerSearch);
+        const matchesText = 
+          (task.title?.toLowerCase() || '').includes(lowerSearch) ||
+          (task.description?.toLowerCase() || '').includes(lowerSearch) ||
+          task.checklist?.some(item => item.text.toLowerCase().includes(lowerSearch));
         
         const matchesLabels = task.labels?.some(label => 
           label.text.toLowerCase().includes(lowerSearch)

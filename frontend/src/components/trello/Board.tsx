@@ -590,6 +590,7 @@ export function Board() {
               tasks={column.tasks}
               allTasks={tasks}
               isMinimal={!!currentThemeViewModes[column.id]}
+              searchTerm={searchTerm}
               onToggleMinimal={() => toggleColumnMinimal(column.id)}
                   onCardClick={handleEditTask}
                   onMoveForward={handleMoveForward}
@@ -626,6 +627,7 @@ export function Board() {
             <TaskCard 
               task={focusedTask} 
               isFocusMode 
+              searchTerm={searchTerm}
               onCloseFocus={() => setFocusedTask(null)}
               onToggleChecklistItem={handleToggleChecklistItem}
             />

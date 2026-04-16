@@ -13,6 +13,7 @@ interface ColumnProps {
   title: string;
   tasks: Task[];
   isMinimal: boolean;
+  searchTerm?: string;
   onToggleMinimal: () => void;
   onCardClick: (task: Task) => void;
   onMoveForward: (taskId: string) => void;
@@ -29,6 +30,7 @@ export const Column = React.memo(({
   title, 
   tasks, 
   isMinimal,
+  searchTerm = '',
   onToggleMinimal,
   onCardClick, 
   onMoveForward, 
@@ -103,6 +105,7 @@ export const Column = React.memo(({
                   allTasks={allTasks}
                   index={index}
                   isMinimalOverride={isMinimal}
+                  searchTerm={searchTerm}
                   onCardClick={onCardClick}
                   onMoveForward={onMoveForward}
                     onMoveBackward={onMoveBackward}

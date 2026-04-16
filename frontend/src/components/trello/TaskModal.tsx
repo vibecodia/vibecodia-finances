@@ -1,4 +1,4 @@
-import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Check, Archive, AlertCircle, PauseCircle, Ban, Tag, Link2 } from 'lucide-react';
+import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Check, Archive, AlertCircle, PauseCircle, Ban, Tag, Link2, ArrowDownAz } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
@@ -148,6 +148,14 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
 
   const removeChecklistItem = (id: string) => {
     setChecklist(checklist.filter(item => item.id !== id));
+  };
+
+  const reorganizeChecklist = () => {
+    setChecklist(prev => {
+      const uncompleted = prev.filter(item => !item.completed);
+      const completed = prev.filter(item => item.completed);
+      return [...uncompleted, ...completed];
+    });
   };
 
   const onDragEnd = (result: DropResult) => {
@@ -436,10 +444,25 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
               </div>
 
               <div className="space-y-3">
-                <label className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4" />
-                  Checklist
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Checklist
+                  </label>
+                  {checklist.length > 1 && (
+                    <Button
+                      type="button"
+                      onClick={reorganizeChecklist}
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-[9px] font-black uppercase tracking-widest text-primary hover:bg-primary/10 flex items-center gap-1.5"
+                      title="Reorganizar: Não concluídos para cima"
+                    >
+                      <ArrowDownAz className="w-3.5 h-3.5" />
+                      Reorganizar
+                    </Button>
+                  )}
+                </div>
                 
                 <div className="flex gap-2">
                   <Input
