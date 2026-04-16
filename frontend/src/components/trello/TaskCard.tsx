@@ -8,8 +8,9 @@ import { parseLocalDate, getCurrentBrazilDate } from '../../utils/helpers';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { cn } from '../../lib/utils';
+import { Highlight } from './Highlight';
 
-const FlagIcon = ({ flag }: { flag?: TaskFlag }) => {
+const FlagIcon = ({ flag, searchTerm }: { flag?: TaskFlag, searchTerm: string }) => {
   if (!flag || flag === 'none') return null;
 
   const config = {
@@ -23,7 +24,12 @@ const FlagIcon = ({ flag }: { flag?: TaskFlag }) => {
   return (
     <div className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded bg-foreground/5", color)} title={label}>
       <Icon className="w-3 h-3" />
-      <span className="text-[8px] font-black uppercase tracking-tighter">{label}</span>
+      <Highlight 
+        text={label} 
+        searchTerm={searchTerm} 
+        className="text-[8px] font-black uppercase tracking-tighter"
+        highlightClassName="bg-current/10"
+      />
     </div>
   );
 };
@@ -34,6 +40,7 @@ interface TaskCardProps {
   index?: number;
   isFocusMode?: boolean;
   isMinimalOverride?: boolean;
+  searchTerm?: string;
   onCardClick?: (task: Task) => void;
   onMoveForward?: (taskId: string) => void;
   onMoveBackward?: (taskId: string) => void;
@@ -50,6 +57,7 @@ export const TaskCard = React.memo(({
   index = 0,
   isFocusMode = false,
   isMinimalOverride,
+  searchTerm = '',
   onCardClick = () => {}, 
   onMoveForward = () => {}, 
   onMoveBackward = () => {},
@@ -62,7 +70,21 @@ export const TaskCard = React.memo(({
   const completedItems = task.checklist?.filter(i => i.completed).length || 0;
   const totalItems = task.checklist?.length || 0;
   const isDone = task.columnId === 'done';
-  const isMinimal = !isFocusMode && (isMinimalOverride ?? isDone);
+  
+  // Se houver busca e o item estiver em um dos campos pesquisados, forçamos a exibição expandida
+  const hasSearchMatch = React.useMemo(() => {
+    if (!searchTerm) return false;
+    const lowerSearch = searchTerm.toLowerCase();
+    return (
+      task.title.toLowerCase().includes(lowerSearch) ||
+      (task.description?.toLowerCase() || '').includes(lowerSearch) ||
+      task.checklist?.some(item => item.text.toLowerCase().includes(lowerSearch)) ||
+      task.labels?.some(l => l.text.toLowerCase().includes(lowerSearch)) ||
+      task.flag?.toLowerCase().includes(lowerSearch)
+    );
+  }, [task, searchTerm]);
+
+  const isMinimal = !isFocusMode && (isMinimalOverride ?? isDone) && !hasSearchMatch;
 
   const pendingDependencies = task.dependsOn?.filter(depId => {
     const depTask = allTasks.find(t => t.id === depId);
@@ -120,7 +142,7 @@ export const TaskCard = React.memo(({
         <div className="flex-1 flex flex-col gap-1 min-w-0">
           {!isMinimal && (
             <div className="flex flex-wrap gap-2 items-center">
-              <FlagIcon flag={task.flag} />
+              <FlagIcon flag={task.flag} searchTerm={searchTerm} />
               {isBlocked && (
                 <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/10 text-red-500" title={`Depende de ${pendingDependencies.length} tarefa(s) pendente(s)`}>
                   <Link2 className="w-3 h-3" />
@@ -138,7 +160,7 @@ export const TaskCard = React.memo(({
               isMinimal && "truncate",
               isDone && "line-through decoration-1 opacity-60"
             )}>
-              {task.title}
+              <Highlight text={task.title} searchTerm={searchTerm} />
             </h3>
           </div>
         </div>
@@ -215,12 +237,12 @@ export const TaskCard = React.memo(({
       </div>
       
       {task.description && !isMinimal && (
-        <p className={cn(
+        <div className={cn(
           "text-muted-foreground font-medium",
           isFocusMode ? "text-base mb-10 leading-relaxed" : "text-xs mb-4 line-clamp-2"
         )}>
-          {task.description}
-        </p>
+          <Highlight text={task.description} searchTerm={searchTerm} />
+        </div>
       )}
 
       {totalItems > 0 && !isMinimal && (
@@ -239,32 +261,40 @@ export const TaskCard = React.memo(({
           </div>
           
           <div className={cn("space-y-1.5", isFocusMode && "grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4 space-y-0")}>
-            {task.checklist?.slice(0, isFocusMode ? 100 : 20).map((item) => (
-              <div 
-                key={item.id} 
-                className="flex items-center gap-3 group/item cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleChecklistItem(task.id, item.id);
-                }}
-              >
-                {item.completed ? (
-                  <CheckSquare className={cn("text-primary group-hover/item:scale-110 transition-transform", isFocusMode ? "w-5 h-5" : "w-3 h-3")} />
-                ) : (
-                  <div className={cn(
-                    "rounded-sm border-2 border-muted-foreground/30 group-hover/item:border-primary transition-colors",
-                    isFocusMode ? "w-5 h-5" : "w-3 h-3"
-                  )} />
-                )}
-                <span className={cn(
-                  "font-bold truncate transition-colors",
-                  isFocusMode ? "text-sm" : "text-[10px]",
-                  item.completed ? "line-through opacity-50" : "group-hover/item:text-primary"
-                )}>
-                  {item.text}
-                </span>
-              </div>
-            ))}
+            {task.checklist?.slice(0, isFocusMode ? 100 : 20).map((item) => {
+              const itemMatches = searchTerm && item.text.toLowerCase().includes(searchTerm.toLowerCase());
+              return (
+                <div 
+                  key={item.id} 
+                  className={cn(
+                    "flex items-center gap-3 group/item cursor-pointer p-1 rounded transition-colors",
+                    itemMatches ? "bg-primary/5 ring-1 ring-primary/20" : ""
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleChecklistItem(task.id, item.id);
+                  }}
+                >
+                  {item.completed ? (
+                    <CheckSquare className={cn("text-primary group-hover/item:scale-110 transition-transform", isFocusMode ? "w-5 h-5" : "w-3 h-3")} />
+                  ) : (
+                    <div className={cn(
+                      "rounded-sm border-2 border-muted-foreground/30 group-hover/item:border-primary transition-colors",
+                      isFocusMode ? "w-5 h-5" : "w-3 h-3"
+                    )} />
+                  )}
+                  <Highlight 
+                    text={item.text} 
+                    searchTerm={searchTerm} 
+                    className={cn(
+                      "font-bold transition-colors",
+                      isFocusMode ? "text-sm" : "text-[10px]",
+                      item.completed ? "line-through opacity-50" : "group-hover/item:text-primary"
+                    )}
+                  />
+                </div>
+              );
+            })}
             {!isFocusMode && totalItems > 20 && (
               <div className="flex items-center gap-1.5 pl-4 text-[9px] font-black uppercase text-muted-foreground/50">
                 <ListTodo className="w-2.5 h-2.5" />
