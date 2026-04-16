@@ -2632,6 +2632,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                         {transactions.filter((t: any) => t.type === 'income').length > 0 ? (
                           incomeMode === 'range' ? (
                             <Line 
+                              ref={incomeChartRef}
                               data={incomeTimelineChartData} 
                               options={{ 
                                 maintainAspectRatio: false,
@@ -2650,6 +2651,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                             />
                           ) : (
                             <Bar 
+                              ref={incomeChartRef}
                               data={incomeTimelineChartData} 
                               options={{ 
                                 maintainAspectRatio: false,
