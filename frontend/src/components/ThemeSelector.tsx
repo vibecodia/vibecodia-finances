@@ -45,6 +45,7 @@ const ThemeSelector: React.FC = () => {
             e.preventDefault();
             e.stopPropagation();
             toggleTheme();
+            setIsExpanded(false);
           }}
           className={cn(
             "w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-300 flex-shrink-0",
@@ -68,6 +69,7 @@ const ThemeSelector: React.FC = () => {
                 e.preventDefault();
                 e.stopPropagation();
                 setPaletteType(p.id);
+                setIsExpanded(false);
               }}
               className={cn(
                 "relative w-5 h-5 rounded-full transition-all duration-300 flex items-center justify-center group overflow-hidden",
