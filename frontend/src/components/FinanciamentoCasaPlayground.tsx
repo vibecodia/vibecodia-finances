@@ -672,70 +672,77 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
                 ) : (
                   <>
                     {/* 1. Painel de Controle Estratégico */}
-                    <div className="bg-muted/30 p-5 rounded-2xl border border-dashed border-border space-y-4">
-                      <div className="flex items-center gap-2 mb-2">
+                    <div className="bg-muted/10 p-5 rounded-2xl border border-border space-y-4">
+                      <div className="flex items-center gap-2">
                         <div className="p-1.5 bg-primary/10 rounded-lg">
                           <Info className="w-4 h-4 text-primary" />
                         </div>
-                        <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground">Parâmetros de Simulação Estratégica</h4>
+                        <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Parâmetros de Simulação Estratégica</h4>
                       </div>
                       
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1">
-                            Taxa Adm (%) <Info className="w-2.5 h-2.5 opacity-40" />
+                      <div className="flex flex-wrap gap-4">
+                        <div className="flex-1 min-w-[140px] space-y-1.5">
+                          <label className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1.5 ml-1 h-4">
+                            Taxa Adm (%) <Info className="w-3 h-3 opacity-40" />
                           </label>
                           <Input 
                             type="number" 
                             value={consorcioTaxaAdm} 
                             onChange={(e) => setConsorcioTaxaAdm(Number(e.target.value))}
-                            className="h-9 text-sm font-bold"
+                            className="font-bold py-2.5"
                           />
                         </div>
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1">
-                            Gatilho Contemplação (%)
+                        <div className="flex-1 min-w-[140px] space-y-1.5">
+                          <label className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1.5 ml-1 h-4">
+                            Gatilho (%)
                           </label>
                           <Input 
                             type="number" 
                             value={consorcioMinContemplacao} 
                             onChange={(e) => setConsorcioMinContemplacao(Number(e.target.value))}
-                            className="h-9 text-sm font-bold"
+                            className="font-bold py-2.5"
                           />
                         </div>
-                        <div className="space-y-1.5">
+                        
+                        <div className="flex-1 min-w-[160px] space-y-1.5">
+                          <label className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1.5 ml-1 h-4">
+                            Fixar Data (Manual)
+                          </label>
+                          <Input
+                            type="date" 
+                            value={manualContemplacaoDate || ''} 
+                            onChange={(e) => setManualContemplacaoDate(e.target.value || null)}
+                            className="font-bold py-2.5"
+                          />
+                        </div>
+
+                        <div className="flex-1 min-w-[200px] space-y-1.5">
+                          <label className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1.5 ml-1 h-4">
+                            Modo de Utilização
+                          </label>
                           <Select
-                            label="Modo de Utilização"
                             value={consorcioModoUso}
                             onChange={(e) => setConsorcioModoUso(e.target.value as any)}
-                            className="h-9 text-sm font-bold"
+                            className="font-bold py-2.5"
                           >
                             <option value="total">Crédito Total (3 Cartas)</option>
                             <option value="uma">Faseado (1 Carta p/ vez)</option>
                           </Select>
                         </div>
+                        
                         {consorcioModoUso === 'uma' && (
-                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase text-muted-foreground">Intervalo (meses)</label>
+                          <div className="flex-1 min-w-[120px] space-y-1.5 animate-in fade-in slide-in-from-left-2 duration-300">
+                            <label className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1.5 ml-1 h-4">Intervalo</label>
                             <Input 
                               type="number" 
                               min="1" 
                               max="24"
                               value={consorcioIntervaloMeses} 
                               onChange={(e) => setConsorcioIntervaloMeses(Number(e.target.value))}
-                              className="h-9 text-sm font-bold"
+                              className="font-bold py-2.5"
                             />
                           </div>
                         )}
-                        <div className="space-y-1.5">
-                          <Input
-                            label="Fixar Data (Manual)"
-                            type="date" 
-                            value={manualContemplacaoDate || ''} 
-                            onChange={(e) => setManualContemplacaoDate(e.target.value || null)}
-                            className="h-9 text-sm font-bold"
-                          />
-                        </div>
                       </div>
                     </div>
 

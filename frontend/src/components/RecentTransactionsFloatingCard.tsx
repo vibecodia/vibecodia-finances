@@ -56,6 +56,26 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
     };
   }, [transactions, recentTransactionsEnabled, DURATION]); 
 
+  // Global click listener to hide card when any button is clicked (resetting timer)
+  useEffect(() => {
+    const handleGlobalClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      // Se clicar em qualquer botão ou elemento dentro de um botão, esconde o card
+      if (target.closest('button')) {
+        setIsVisible(false);
+        setTimerProgress(0);
+      }
+    };
+
+    if (isVisible) {
+      document.addEventListener('mousedown', handleGlobalClick, true); // Use capture phase to catch clicks before they might stop propagation
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleGlobalClick, true);
+    };
+  }, [isVisible]);
+
   if (!recentTransactionsEnabled || recentTransactions.length === 0) return null;
 
   const strokeDashoffset = circumference - (timerProgress / 100) * circumference;
