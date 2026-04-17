@@ -152,7 +152,7 @@ export const Column = React.memo(({
             {...provided.droppableProps}
             ref={provided.innerRef}
             className={cn(
-              "flex-1 rounded-[2rem] border-2 p-6 transition-all duration-300 min-h-[500px] bg-card/50 backdrop-blur-sm flex flex-col gap-4",
+              "flex-1 rounded-[2.5rem] border-2 p-6 transition-all duration-300 min-h-[500px] max-h-[70vh] overflow-y-auto custom-scrollbar bg-card/40 backdrop-blur-md flex flex-col gap-5",
               getColumnColor(),
               snapshot.isDraggingOver ? 'border-dashed border-primary shadow-xl bg-card' : 'border-transparent'
             )}

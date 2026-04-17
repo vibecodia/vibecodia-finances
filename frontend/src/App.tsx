@@ -242,7 +242,16 @@ function App() {
             <Route path="/income" element={<TransactionList type="income" transactions={transactions} savingsGoals={savingsGoals} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} />} />
             <Route path="/calendar" element={<Calendar transactions={transactions} onUpdatePaymentStatus={updatePaymentStatus} />} />
             <Route path="/reports" element={<Reports transactions={transactions} savingsGoals={savingsGoals} />} />
-            <Route path="/playground" element={<Playground transactions={transactions} savingsGoals={savingsGoals} onAddTransaction={addTransaction} />} />
+            <Route 
+              path="/playground" 
+              element={
+                isGuest ? (
+                  <Dashboard transactions={transactions} savingsGoals={savingsGoals} />
+                ) : (
+                  <Playground transactions={transactions} savingsGoals={savingsGoals} onAddTransaction={addTransaction} />
+                )
+              } 
+            />
             <Route path="/goals" element={<SavingsGoals goals={savingsGoals} onAdd={addSavingsGoal} onUpdate={updateSavingsGoal} onDelete={deleteSavingsGoal} onAddContribution={addSavingsContribution} onUpdateContribution={updateSavingsContribution} onDeleteContribution={deleteSavingsContribution} onUpdatePaymentStatus={updatePaymentStatus} />} />
             <Route 
               path="/settings" 

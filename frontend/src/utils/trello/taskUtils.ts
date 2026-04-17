@@ -50,3 +50,11 @@ export function getPriorityLabel(priority: 'low' | 'medium' | 'high'): string {
 export function formatDate(dateString: string): string {
   return formatBrazilDate(dateString);
 }
+
+export function calculateDaysInColumn(enteredAt?: string): number {
+  if (!enteredAt) return 0;
+  const start = new Date(enteredAt);
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - start.getTime());
+  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+}

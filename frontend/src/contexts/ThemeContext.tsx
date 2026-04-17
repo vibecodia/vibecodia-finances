@@ -17,8 +17,10 @@ interface ThemeContextType {
   theme: ColorPalette;
   isDarkMode: boolean;
   paletteType: ThemePaletteType;
+  themeTransitionEnabled: boolean;
   toggleTheme: () => void;
   setPaletteType: (palette: ThemePaletteType) => void;
+  setThemeTransitionEnabled: (enabled: boolean) => void;
 }
 
 const PALETTES: Record<ThemePaletteType, { primary: string; accent: string }> = {
@@ -38,6 +40,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [paletteType, setPaletteTypeState] = useState<ThemePaletteType>(() => {
     const savedPalette = localStorage.getItem('themePalette');
     return (savedPalette as ThemePaletteType) || 'emerald';
+  });
+
+  const [themeTransitionEnabled, setThemeTransitionEnabledState] = useState<boolean>(() => {
+    const saved = localStorage.getItem('themeTransitionEnabled');
+    return saved === 'true'; // Default to false
   });
 
   const theme = useMemo((): ColorPalette => {
@@ -75,15 +82,23 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     localStorage.setItem('themePalette', palette);
   };
 
+  const setThemeTransitionEnabled = (enabled: boolean) => {
+    setThemeTransitionEnabledState(enabled);
+    localStorage.setItem('themeTransitionEnabled', String(enabled));
+  };
+
   useEffect(() => {
     localStorage.setItem('isDarkMode', JSON.stringify(isDarkMode));
     applyThemeToCss(theme);
     updatePwaMetaTags(theme.primary);
-  }, [isDarkMode, theme]);
+  }, [isDarkMode, theme, themeTransitionEnabled]);
 
   const applyThemeToCss = (currentTheme: ColorPalette) => {
     const root = document.documentElement;
     
+    // Theme Transition Variable
+    root.style.setProperty('--theme-transition-duration', themeTransitionEnabled ? '500ms' : '0ms');
+
     // Custom App Variables
     root.style.setProperty('--color-primary', currentTheme.primary);
     root.style.setProperty('--color-secondary', currentTheme.secondary);
@@ -164,7 +179,15 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, isDarkMode, paletteType, toggleTheme, setPaletteType }}>
+    <ThemeContext.Provider value={{ 
+      theme, 
+      isDarkMode, 
+      paletteType, 
+      themeTransitionEnabled,
+      toggleTheme, 
+      setPaletteType,
+      setThemeTransitionEnabled
+    }}>
       {children}
     </ThemeContext.Provider>
   );

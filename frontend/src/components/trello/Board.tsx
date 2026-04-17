@@ -1,4 +1,4 @@
-import { Plus, Archive, Calendar as CalendarIcon, Kanban, Download, Upload, Filter, X as XIcon, ChevronDown, Tag, FolderKanban, Pencil } from 'lucide-react';
+import { Plus, Archive, Calendar as CalendarIcon, Kanban, Download, Upload, Filter, X as XIcon, ChevronDown, Tag, FolderKanban, Pencil, Clock } from 'lucide-react';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 
@@ -140,6 +140,13 @@ export function Board() {
     });
   }, [filteredTasks, selectedFlagFilter, selectedLabelFilter]);
 
+  const totalLoggedHours = useMemo(() => {
+    return finalFilteredTasks.reduce((acc, task) => {
+      const taskHours = task.timeLogs?.reduce((sum, log) => sum + log.hours, 0) || 0;
+      return acc + taskHours;
+    }, 0);
+  }, [finalFilteredTasks]);
+
   const columns = useMemo(() => {
     const cols = themeColumns.map(column => ({
       ...column,
@@ -271,8 +278,12 @@ export function Board() {
     newTasks.splice(movedTaskIndex, 1);
 
     // 2. Atualizar a coluna
+    const hasColumnChanged = movedTask.columnId !== destination.droppableId;
     movedTask.columnId = destination.droppableId;
     movedTask.updatedAt = new Date().toISOString();
+    if (hasColumnChanged) {
+      movedTask.columnEnteredAt = new Date().toISOString();
+    }
 
     // 3. Encontrar a posição correta de inserção
     // Pegamos as tarefas que seriam visíveis na coluna de destino (excluindo a própria se já estava lá)
@@ -465,7 +476,7 @@ export function Board() {
         <div className="flex flex-wrap items-center gap-3">
           <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
           
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-foreground/5 hover:bg-foreground/10 rounded-xl border border-border transition-all group/filter relative">
               <Filter className="w-3 h-3 text-muted-foreground group-hover/filter:text-primary transition-colors" />
               <div className="relative flex items-center">
@@ -503,19 +514,19 @@ export function Board() {
               </div>
             </div>
 
-            {(selectedFlagFilter !== 'all' || selectedLabelFilter !== 'all') && (
-              <Button
-                variant="ghost"
-                size="icon"
+            {(selectedFlagFilter !== 'all' || selectedLabelFilter !== 'all' || searchTerm !== '') && (
+              <button
                 onClick={() => {
                   setSelectedFlagFilter('all');
                   setSelectedLabelFilter('all');
+                  setSearchTerm('');
                 }}
-                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                className="flex items-center gap-2 px-3 py-1.5 bg-destructive/10 hover:bg-destructive/20 rounded-xl border border-destructive/20 transition-all text-destructive"
                 title="Limpar Filtros"
               >
-                <XIcon className="w-4 h-4" />
-              </Button>
+                <XIcon className="w-3.5 h-3.5" />
+                <span className="text-[11px] font-black uppercase tracking-widest">limpar</span>
+              </button>
             )}
           </div>
           
@@ -600,11 +611,19 @@ export function Board() {
       <div className="flex flex-wrap gap-4 overflow-x-auto pb-2">
         <div className="p-4 rounded-2xl border border-border flex flex-col gap-1 bg-foreground/5 min-w-[140px]">
           <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Total</span>
-          <span className="text-2xl font-black">{filteredTasks.length}</span>
+          <span className="text-2xl font-black">{finalFilteredTasks.length}</span>
+        </div>
+
+        <div className="p-4 rounded-2xl border border-border flex flex-col gap-1 bg-primary/5 text-primary min-w-[140px]">
+          <span className="text-[10px] font-black uppercase tracking-widest opacity-70 flex items-center gap-1">
+            <Clock className="w-2.5 h-2.5" />
+            Total Horas
+          </span>
+          <span className="text-2xl font-black tracking-tighter">{totalLoggedHours}h</span>
         </div>
         
         {themeColumns.map((col) => {
-          const count = filteredTasks.filter(t => t.columnId === col.id).length;
+          const count = finalFilteredTasks.filter(t => t.columnId === col.id).length;
           let color = 'bg-primary/10 text-primary';
           if (col.id.includes('todo')) color = 'bg-blue-500/10 text-blue-500';
           else if (col.id.includes('inProgress')) color = 'bg-amber-500/10 text-amber-500';
@@ -620,15 +639,15 @@ export function Board() {
 
         <div className="p-4 rounded-2xl border border-border flex flex-col gap-1 bg-gray-500/10 text-gray-500 min-w-[140px]">
           <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Arquivadas</span>
-          <span className="text-2xl font-black">{filteredTasks.filter(t => t.columnId === 'archived').length}</span>
+          <span className="text-2xl font-black">{finalFilteredTasks.filter(t => t.columnId === 'archived').length}</span>
         </div>
       </div>
 
       {/* Board Content */}
       {viewMode === 'kanban' ? (
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="flex-1 overflow-x-auto pb-6">
-            <div className="flex gap-8 h-full min-h-[600px] items-start">
+          <div className="flex-1 overflow-x-auto mt-8 pt-2 pb-8 custom-scrollbar [transform:rotateX(180deg)]">
+            <div className="flex gap-8 h-full min-h-[600px] items-start [transform:rotateX(180deg)]">
               {columns.map((column) => (
                 <Column
                   key={`${currentTheme.id}-${column.id}`}

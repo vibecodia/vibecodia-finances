@@ -404,11 +404,14 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
             required
           >
             <option value="">Selecione uma categoria</option>
-            {categories.map(category => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
+            {categories.map(category => {
+              const catName = typeof category === 'string' ? category : (category && (category as any).name) || 'Categoria';
+              return (
+                <option key={catName} value={catName}>
+                  {catName}
+                </option>
+              );
+            })}
           </Select>
 
           <div className="space-y-2">

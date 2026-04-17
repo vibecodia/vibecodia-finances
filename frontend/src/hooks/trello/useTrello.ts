@@ -159,16 +159,28 @@ export function useTrello() {
   }, [setThemes, setColumns]);
 
   const addTask = useCallback((task: Task) => {
+    const now = new Date().toISOString();
     setTasks(prev => [...prev, { 
       ...task, 
       themeId: currentThemeId, 
-      createdAt: new Date().toISOString(), 
-      updatedAt: new Date().toISOString() 
+      createdAt: now, 
+      updatedAt: now,
+      columnEnteredAt: now
     }]);
   }, [setTasks, currentThemeId]);
 
   const updateTask = useCallback((updatedTask: Task) => {
-    setTasks(prev => prev.map(t => t.id === updatedTask.id ? { ...updatedTask, updatedAt: new Date().toISOString() } : t));
+    setTasks(prev => prev.map(t => {
+      if (t.id === updatedTask.id) {
+        const hasColumnChanged = t.columnId !== updatedTask.columnId;
+        return { 
+          ...updatedTask, 
+          updatedAt: new Date().toISOString(),
+          columnEnteredAt: hasColumnChanged ? new Date().toISOString() : t.columnEnteredAt
+        };
+      }
+      return t;
+    }));
   }, [setTasks]);
 
   const deleteTask = useCallback((taskId: string) => {
@@ -176,7 +188,13 @@ export function useTrello() {
   }, [setTasks]);
 
   const moveTask = useCallback((taskId: string, toColumnId: string) => {
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, columnId: toColumnId, updatedAt: new Date().toISOString() } : t));
+    const now = new Date().toISOString();
+    setTasks(prev => prev.map(t => t.id === taskId ? { 
+      ...t, 
+      columnId: toColumnId, 
+      updatedAt: now,
+      columnEnteredAt: now
+    } : t));
   }, [setTasks]);
 
   const reorderTasks = useCallback((reorderedTasks: Task[]) => {

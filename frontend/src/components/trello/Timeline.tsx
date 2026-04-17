@@ -124,9 +124,17 @@ export const Timeline = ({ tasks, onTaskClick, onTaskFocus }: TimelineProps) => 
                         task.priority === 'high' ? 'bg-destructive' : 
                         task.priority === 'medium' ? 'bg-amber-500' : 'bg-primary'
                       )} />
-                      <span className="text-xs font-bold truncate group-hover/row:text-primary transition-colors">
-                        {task.title}
-                      </span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-bold truncate group-hover/row:text-primary transition-colors">
+                          {task.title}
+                        </span>
+                        {task.timeLogs && task.timeLogs.length > 0 && (
+                          <span className="text-[8px] font-black uppercase text-primary tracking-tighter flex items-center gap-0.5">
+                            <Clock className="w-2 h-2" />
+                            {task.timeLogs.reduce((acc, log) => acc + log.hours, 0)}h total
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <Button
                       onClick={(e) => {
@@ -144,16 +152,27 @@ export const Timeline = ({ tasks, onTaskClick, onTaskFocus }: TimelineProps) => 
                   
                   <div className="flex-1 flex relative h-14">
                     {/* Linhas de grade verticais */}
-                    {days.map((day) => (
-                      <div 
-                        key={day.toISOString()} 
-                        className={cn(
-                          "flex-1 border-r border-border/30",
-                          isToday(day) && "bg-primary/5",
-                          isWeekend(day) && "bg-muted/10"
-                        )}
-                      />
-                    ))}
+                    {days.map((day) => {
+                      const dayLogs = task.timeLogs?.filter(log => isSameDay(new Date(log.date + 'T12:00:00'), day)) || [];
+                      const dayHours = dayLogs.reduce((acc, log) => acc + log.hours, 0);
+
+                      return (
+                        <div 
+                          key={day.toISOString()} 
+                          className={cn(
+                            "flex-1 border-r border-border/30 flex items-center justify-center relative",
+                            isToday(day) && "bg-primary/5",
+                            isWeekend(day) && "bg-muted/10"
+                          )}
+                        >
+                          {dayHours > 0 && (
+                            <div className="px-1.5 py-0.5 rounded bg-primary text-white text-[9px] font-black animate-in fade-in zoom-in duration-300 shadow-sm z-20">
+                              {dayHours}h
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
 
                     {/* Barra da Tarefa */}
                     {days.some(day => isSameDay(day, task.parsedDate)) && (

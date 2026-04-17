@@ -1,9 +1,9 @@
-import { Calendar, ChevronRight, ChevronLeft, Trash2, CheckSquare, ListTodo, Archive, Ban, AlertCircle, PauseCircle, Maximize2, X, Link2 } from 'lucide-react';
+import { Calendar, ChevronRight, ChevronLeft, Trash2, CheckSquare, ListTodo, Archive, Ban, AlertCircle, PauseCircle, Maximize2, X, Link2, Clock, History } from 'lucide-react';
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 
 import { Task, TaskFlag } from '../../types/trello/task';
-import { getPriorityLabel, formatDate } from '../../utils/trello/taskUtils';
+import { getPriorityLabel, formatDate, calculateDaysInColumn } from '../../utils/trello/taskUtils';
 import { parseLocalDate, getCurrentBrazilDate } from '../../utils/helpers';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -71,6 +71,14 @@ export const TaskCard = React.memo(({
   const totalItems = task.checklist?.length || 0;
   const isDone = task.columnId.includes('done');
   
+  const totalLoggedHours = React.useMemo(() => 
+    task.timeLogs?.reduce((acc, log) => acc + log.hours, 0) || 0
+  , [task.timeLogs]);
+
+  const daysInColumn = React.useMemo(() => 
+    calculateDaysInColumn(task.columnEnteredAt)
+  , [task.columnEnteredAt]);
+
   // Se houver busca e o item estiver em um dos campos pesquisados, forçamos a exibição expandida
   const hasSearchMatch = React.useMemo(() => {
     if (!searchTerm) return false;
@@ -310,15 +318,35 @@ export const TaskCard = React.memo(({
       
       {!isMinimal && (
         <div className={cn("flex items-center justify-between border-t border-border", isFocusMode ? "pt-8" : "pt-3")}>
-          <div className="flex items-center gap-2">
-            <div className={cn("rounded-full", 
-              isFocusMode ? "w-4 h-4" : "w-2 h-2",
-              task.priority === 'high' ? 'bg-destructive' : 
-              task.priority === 'medium' ? 'bg-amber-500' : 'bg-primary'
-            )} />
-            <span className={cn("font-black uppercase tracking-widest text-muted-foreground", isFocusMode ? "text-sm" : "text-[10px]")}>
-              {getPriorityLabel(task.priority)}
-            </span>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className={cn("rounded-full", 
+                isFocusMode ? "w-4 h-4" : "w-2 h-2",
+                task.priority === 'high' ? 'bg-destructive' : 
+                task.priority === 'medium' ? 'bg-amber-500' : 'bg-primary'
+              )} />
+              <span className={cn("font-black uppercase tracking-widest text-muted-foreground", isFocusMode ? "text-sm" : "text-[10px]")}>
+                {getPriorityLabel(task.priority)}
+              </span>
+            </div>
+
+            {totalLoggedHours > 0 && (
+              <div className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/5 text-primary border border-primary/10", 
+                isFocusMode ? "text-sm" : "text-[10px]"
+              )}>
+                <Clock className={cn(isFocusMode ? "w-4 h-4" : "w-3 h-3")} />
+                <span className="font-black tracking-tighter">{totalLoggedHours}h</span>
+              </div>
+            )}
+
+            <div className={cn("flex items-center gap-1 text-muted-foreground opacity-60", 
+              isFocusMode ? "text-xs" : "text-[9px]"
+            )}>
+              <History className="w-2.5 h-2.5" />
+              <span className="font-bold uppercase">
+                {daysInColumn === 0 ? 'Hoje' : daysInColumn === 1 ? '1 dia' : `${daysInColumn} dias`}
+              </span>
+            </div>
           </div>
           
           {task.date && (

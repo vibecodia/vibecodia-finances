@@ -18,6 +18,13 @@ export interface BoardTheme {
   color?: string;
 }
 
+export interface TimeLog {
+  id: string;
+  date: string;
+  hours: number;
+  description?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -32,6 +39,8 @@ export interface Task {
   labels?: TaskLabel[];
   dependsOn?: string[];
   themeId: string;
+  timeLogs?: TimeLog[];
+  columnEnteredAt?: string;
 }
 
 export interface Column {
