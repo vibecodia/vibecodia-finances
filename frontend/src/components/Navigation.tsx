@@ -98,6 +98,7 @@ const Navigation: React.FC = () => {
         className={cn(
           'fixed top-0 lg:top-24 left-0 h-full lg:h-[calc(100vh-6rem)] p-2 flex flex-col justify-start pt-24 lg:pt-4 w-64',
           'transition-all duration-300 ease-in-out z-[145] lg:shadow-xl bg-card border-r-2 border-border',
+          'overflow-y-auto custom-scrollbar',
           {
             // Desktop behavior for normal routes: always visible (z-40)
             'lg:z-40 lg:translate-x-0 lg:opacity-100': !hideOnDesktop,
@@ -115,6 +116,8 @@ const Navigation: React.FC = () => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             const isSettingsLocked = tab.id === '/settings' && isGuest;
+            const isPlaygroundLocked = tab.id === '/playground' && isGuest;
+            const isLocked = isSettingsLocked || isPlaygroundLocked;
 
             const content = (
               <>
@@ -123,7 +126,7 @@ const Navigation: React.FC = () => {
                     "w-5 h-5 transition-transform",
                     isActive ? 'scale-110' : '',
                   )} />
-                  {isSettingsLocked && (
+                  {isLocked && (
                     <div className="absolute -top-1.5 -right-1.5 bg-background rounded-full p-0.5 border border-border shadow-sm">
                       <Lock className="w-2.5 h-2.5 text-primary animate-pulse" />
                     </div>
@@ -141,6 +144,11 @@ const Navigation: React.FC = () => {
                       v{appVersion}
                     </span>
                   )}
+                  {isPlaygroundLocked && (
+                    <span className="ml-2 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-500 text-[8px] font-black uppercase tracking-widest animate-pulse">
+                      Em breve
+                    </span>
+                  )}
                 </span>
               </>
             );
@@ -150,11 +158,11 @@ const Navigation: React.FC = () => {
               {
                 'bg-primary text-primary-foreground': isActive,
                 'text-foreground/90 hover:bg-accent hover:text-accent-foreground': !isActive,
-                'text-muted-foreground/40 opacity-50 cursor-not-allowed grayscale-[0.5]': isSettingsLocked && !isActive
+                'text-muted-foreground/40 opacity-50 cursor-not-allowed grayscale-[0.5]': isLocked && !isActive
               }
             );
 
-            if (isSettingsLocked) {
+            if (isLocked) {
               return (
                 <div 
                   key={tab.id} 

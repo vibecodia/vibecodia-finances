@@ -208,20 +208,20 @@
 
 /* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 16px;
-  height: 16px;
+  width: 8px;
+  height: 8px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  @apply bg-foreground/10 rounded-full;
+  @apply bg-foreground/5 rounded-full;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-primary/80 rounded-full transition-all duration-300;
+  @apply bg-muted-foreground/20 rounded-full transition-all duration-300;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  @apply bg-primary/100;
+  @apply bg-primary/40;
 }
 
 .custom-scrollbar::-webkit-scrollbar-corner {

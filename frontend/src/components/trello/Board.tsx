@@ -476,7 +476,7 @@ export function Board() {
         <div className="flex flex-wrap items-center gap-3">
           <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
           
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-foreground/5 hover:bg-foreground/10 rounded-xl border border-border transition-all group/filter relative">
               <Filter className="w-3 h-3 text-muted-foreground group-hover/filter:text-primary transition-colors" />
               <div className="relative flex items-center">
@@ -514,19 +514,19 @@ export function Board() {
               </div>
             </div>
 
-            {(selectedFlagFilter !== 'all' || selectedLabelFilter !== 'all') && (
-              <Button
-                variant="ghost"
-                size="icon"
+            {(selectedFlagFilter !== 'all' || selectedLabelFilter !== 'all' || searchTerm !== '') && (
+              <button
                 onClick={() => {
                   setSelectedFlagFilter('all');
                   setSelectedLabelFilter('all');
+                  setSearchTerm('');
                 }}
-                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                className="flex items-center gap-2 px-3 py-1.5 bg-destructive/10 hover:bg-destructive/20 rounded-xl border border-destructive/20 transition-all text-destructive"
                 title="Limpar Filtros"
               >
-                <XIcon className="w-4 h-4" />
-              </Button>
+                <XIcon className="w-3.5 h-3.5" />
+                <span className="text-[11px] font-black uppercase tracking-widest">limpar</span>
+              </button>
             )}
           </div>
           
