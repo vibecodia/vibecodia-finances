@@ -278,8 +278,12 @@ export function Board() {
     newTasks.splice(movedTaskIndex, 1);
 
     // 2. Atualizar a coluna
+    const hasColumnChanged = movedTask.columnId !== destination.droppableId;
     movedTask.columnId = destination.droppableId;
     movedTask.updatedAt = new Date().toISOString();
+    if (hasColumnChanged) {
+      movedTask.columnEnteredAt = new Date().toISOString();
+    }
 
     // 3. Encontrar a posição correta de inserção
     // Pegamos as tarefas que seriam visíveis na coluna de destino (excluindo a própria se já estava lá)

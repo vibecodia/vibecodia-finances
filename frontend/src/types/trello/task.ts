@@ -40,6 +40,7 @@ export interface Task {
   dependsOn?: string[];
   themeId: string;
   timeLogs?: TimeLog[];
+  columnEnteredAt?: string;
 }
 
 export interface Column {

@@ -1,9 +1,9 @@
-import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Check, Archive, AlertCircle, PauseCircle, Ban, Tag, Link2, ArrowDownAz, Columns, Clock, Calendar as CalendarIcon } from 'lucide-react';
+import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Check, Archive, AlertCircle, PauseCircle, Ban, Tag, Link2, ArrowDownAz, Columns, Clock, History, Calendar as CalendarIcon } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
 import { Task, ChecklistItem, TaskFlag, TaskLabel, Column, TimeLog } from '../../types/trello/task';
-import { createTask, generateId } from '../../utils/trello/taskUtils';
+import { createTask, generateId, calculateDaysInColumn } from '../../utils/trello/taskUtils';
 import { getBrazilDateString, formatCurrency } from '../../utils/helpers';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -277,10 +277,22 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
               />
 
               <div className="space-y-3">
-                <label className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                  <Columns className="w-4 h-4" />
-                  Coluna
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                    <Columns className="w-4 h-4" />
+                    Coluna
+                  </label>
+                  {mode === 'edit' && task?.columnEnteredAt && (
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-foreground/5 text-muted-foreground text-[10px] font-bold">
+                      <History className="w-3 h-3 opacity-50" />
+                      <span className="uppercase tracking-tighter">
+                        {calculateDaysInColumn(task.columnEnteredAt) === 0 
+                          ? 'Entrou hoje' 
+                          : `${calculateDaysInColumn(task.columnEnteredAt)} dias nesta coluna`}
+                      </span>
+                    </div>
+                  )}
+                </div>
                 <select
                   value={columnId}
                   onChange={(e) => setColumnId(e.target.value)}

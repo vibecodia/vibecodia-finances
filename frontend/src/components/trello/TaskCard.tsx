@@ -1,9 +1,9 @@
-import { Calendar, ChevronRight, ChevronLeft, Trash2, CheckSquare, ListTodo, Archive, Ban, AlertCircle, PauseCircle, Maximize2, X, Link2, Clock } from 'lucide-react';
+import { Calendar, ChevronRight, ChevronLeft, Trash2, CheckSquare, ListTodo, Archive, Ban, AlertCircle, PauseCircle, Maximize2, X, Link2, Clock, History } from 'lucide-react';
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 
 import { Task, TaskFlag } from '../../types/trello/task';
-import { getPriorityLabel, formatDate } from '../../utils/trello/taskUtils';
+import { getPriorityLabel, formatDate, calculateDaysInColumn } from '../../utils/trello/taskUtils';
 import { parseLocalDate, getCurrentBrazilDate } from '../../utils/helpers';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -74,6 +74,10 @@ export const TaskCard = React.memo(({
   const totalLoggedHours = React.useMemo(() => 
     task.timeLogs?.reduce((acc, log) => acc + log.hours, 0) || 0
   , [task.timeLogs]);
+
+  const daysInColumn = React.useMemo(() => 
+    calculateDaysInColumn(task.columnEnteredAt)
+  , [task.columnEnteredAt]);
 
   // Se houver busca e o item estiver em um dos campos pesquisados, forçamos a exibição expandida
   const hasSearchMatch = React.useMemo(() => {
@@ -334,6 +338,15 @@ export const TaskCard = React.memo(({
                 <span className="font-black tracking-tighter">{totalLoggedHours}h</span>
               </div>
             )}
+
+            <div className={cn("flex items-center gap-1 text-muted-foreground opacity-60", 
+              isFocusMode ? "text-xs" : "text-[9px]"
+            )}>
+              <History className="w-2.5 h-2.5" />
+              <span className="font-bold uppercase">
+                {daysInColumn === 0 ? 'Hoje' : daysInColumn === 1 ? '1 dia' : `${daysInColumn} dias`}
+              </span>
+            </div>
           </div>
           
           {task.date && (
