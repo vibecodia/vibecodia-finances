@@ -1,4 +1,4 @@
-import { Plus, Archive, Calendar as CalendarIcon, Kanban, Download, Upload, Filter, X as XIcon, ChevronDown, Tag, FolderKanban, Pencil } from 'lucide-react';
+import { Plus, Archive, Calendar as CalendarIcon, Kanban, Download, Upload, Filter, X as XIcon, ChevronDown, Tag, FolderKanban, Pencil, Clock } from 'lucide-react';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 
@@ -139,6 +139,13 @@ export function Board() {
       return flagMatch && labelMatch;
     });
   }, [filteredTasks, selectedFlagFilter, selectedLabelFilter]);
+
+  const totalLoggedHours = useMemo(() => {
+    return finalFilteredTasks.reduce((acc, task) => {
+      const taskHours = task.timeLogs?.reduce((sum, log) => sum + log.hours, 0) || 0;
+      return acc + taskHours;
+    }, 0);
+  }, [finalFilteredTasks]);
 
   const columns = useMemo(() => {
     const cols = themeColumns.map(column => ({
@@ -601,6 +608,14 @@ export function Board() {
         <div className="p-4 rounded-2xl border border-border flex flex-col gap-1 bg-foreground/5 min-w-[140px]">
           <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Total</span>
           <span className="text-2xl font-black">{finalFilteredTasks.length}</span>
+        </div>
+
+        <div className="p-4 rounded-2xl border border-border flex flex-col gap-1 bg-primary/5 text-primary min-w-[140px]">
+          <span className="text-[10px] font-black uppercase tracking-widest opacity-70 flex items-center gap-1">
+            <Clock className="w-2.5 h-2.5" />
+            Total Horas
+          </span>
+          <span className="text-2xl font-black tracking-tighter">{totalLoggedHours}h</span>
         </div>
         
         {themeColumns.map((col) => {

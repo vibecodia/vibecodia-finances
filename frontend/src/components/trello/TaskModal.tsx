@@ -1,10 +1,10 @@
-import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Check, Archive, AlertCircle, PauseCircle, Ban, Tag, Link2, ArrowDownAz, Columns } from 'lucide-react';
+import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Check, Archive, AlertCircle, PauseCircle, Ban, Tag, Link2, ArrowDownAz, Columns, Clock, Calendar as CalendarIcon } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
-import { Task, ChecklistItem, TaskFlag, TaskLabel, Column } from '../../types/trello/task';
-import { createTask } from '../../utils/trello/taskUtils';
-import { getBrazilDateString } from '../../utils/helpers';
+import { Task, ChecklistItem, TaskFlag, TaskLabel, Column, TimeLog } from '../../types/trello/task';
+import { createTask, generateId } from '../../utils/trello/taskUtils';
+import { getBrazilDateString, formatCurrency } from '../../utils/helpers';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -38,6 +38,12 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
   const [newLabelColor, setNewLabelColor] = useState('#3b82f6'); // Default blue
   const [dependsOn, setDependsOn] = useState<string[]>([]);
   const [columnId, setColumnId] = useState('');
+  
+  // Time Logging State
+  const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
+  const [newLogHours, setNewLogHours] = useState('');
+  const [newLogDate, setNewLogDate] = useState(getBrazilDateString());
+  const [newLogDescription, setNewLogDescription] = useState('');
 
   const labelColors = [
     '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'
@@ -105,6 +111,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
       setLabels(task.labels || []);
       setDependsOn(task.dependsOn || []);
       setColumnId(task.columnId);
+      setTimeLogs(task.timeLogs || []);
     } else {
       setTitle('');
       setDescription('');
@@ -115,13 +122,14 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
       setLabels([]);
       setDependsOn([]);
       setColumnId(columns[0]?.id || '');
+      setTimeLogs([]);
     }
   }, [task, mode, isOpen, columns]);
 
   const addLabel = () => {
     if (!newLabelText.trim()) return;
     const newLabel: TaskLabel = {
-      id: Date.now().toString(),
+      id: generateId(),
       text: newLabelText.trim(),
       color: newLabelColor
     };
@@ -136,7 +144,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
   const addChecklistItem = () => {
     if (!newChecklistItem.trim()) return;
     const newItem: ChecklistItem = {
-      id: Date.now().toString(),
+      id: generateId(),
       text: newChecklistItem.trim(),
       completed: false
     };
@@ -153,6 +161,30 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
   const removeChecklistItem = (id: string) => {
     setChecklist(checklist.filter(item => item.id !== id));
   };
+
+  const addTimeLog = () => {
+    const hours = parseFloat(newLogHours);
+    if (isNaN(hours) || hours <= 0) return;
+
+    const newLog: TimeLog = {
+      id: generateId(),
+      hours,
+      date: newLogDate,
+      description: newLogDescription.trim() || undefined
+    };
+
+    setTimeLogs([newLog, ...timeLogs]);
+    setNewLogHours('');
+    setNewLogDescription('');
+  };
+
+  const removeTimeLog = (id: string) => {
+    setTimeLogs(timeLogs.filter(log => log.id !== id));
+  };
+
+  const totalLoggedHours = useMemo(() => 
+    timeLogs.reduce((acc, log) => acc + log.hours, 0)
+  , [timeLogs]);
 
   const reorganizeChecklist = () => {
     setChecklist(prev => {
@@ -188,32 +220,22 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
     e.preventDefault();
     if (!title.trim()) return;
 
-    if (mode === 'edit' && task) {
-      onSave({
-        ...task,
-        title: title.trim(),
-        description: description.trim(),
-        priority,
-        date: date || undefined,
-        columnId,
-        checklist,
-        flag,
-        labels,
-        dependsOn,
-        updatedAt: new Date().toISOString()
-      });
-    } else {
-      const newTask = createTask(title.trim(), description.trim(), priority, task?.themeId || '', date || undefined, columnId);
-      onSave({
-        ...newTask,
-        checklist,
-        flag,
-        labels,
-        dependsOn,
-        updatedAt: new Date().toISOString()
-      });
-    }
+    const taskData: Task = {
+      ...(mode === 'edit' && task ? task : createTask(title.trim(), description.trim(), priority, task?.themeId || '', date || undefined, columnId)),
+      title: title.trim(),
+      description: description.trim(),
+      priority,
+      date: date || undefined,
+      columnId,
+      checklist,
+      flag,
+      labels,
+      dependsOn,
+      timeLogs,
+      updatedAt: new Date().toISOString()
+    };
 
+    onSave(taskData);
     onClose();
   };
 
@@ -513,7 +535,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
                       <div 
                         {...provided.droppableProps}
                         ref={provided.innerRef}
-                        className="space-y-2 mt-4 max-h-[350px] overflow-y-auto pr-2"
+                        className="space-y-2 mt-4 max-h-[250px] overflow-y-auto pr-2"
                       >
                         {checklist.map((item, index) => (
                           <Draggable key={item.id} draggableId={item.id} index={index}>
@@ -604,6 +626,87 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
                     )}
                   </Droppable>
                 </DragDropContext>
+              </div>
+
+              <div className="space-y-4 pt-6 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-primary" />
+                    Lançamento de Horas
+                  </label>
+                  {totalLoggedHours > 0 && (
+                    <div className="px-2 py-1 rounded-md bg-primary/10 text-primary text-[10px] font-black uppercase tracking-tighter">
+                      Total: {totalLoggedHours}h
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    value={newLogHours}
+                    onChange={(e) => setNewLogHours(e.target.value)}
+                    placeholder="Horas (Ex: 1.5)"
+                    className="h-10"
+                  />
+                  <Input
+                    type="date"
+                    value={newLogDate}
+                    onChange={(e) => setNewLogDate(e.target.value)}
+                    className="h-10"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    value={newLogDescription}
+                    onChange={(e) => setNewLogDescription(e.target.value)}
+                    placeholder="Opcional: O que foi feito?"
+                    className="flex-1 h-10"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addTimeLog();
+                      }
+                    }}
+                  />
+                  <Button type="button" onClick={addTimeLog} size="icon" className="h-10 w-10 shrink-0">
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                <div className="space-y-2 mt-4 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                  {timeLogs.map((log) => (
+                    <div key={log.id} className="flex items-center justify-between p-3 rounded-xl bg-foreground/5 group hover:bg-foreground/10 transition-all border border-transparent hover:border-primary/10">
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black text-primary">{log.hours}h</span>
+                          <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
+                            <CalendarIcon className="w-2.5 h-2.5" />
+                            {new Date(log.date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                        {log.description && (
+                          <p className="text-[10px] text-muted-foreground italic font-medium">{log.description}</p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeTimeLog(log.id)}
+                        className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-destructive/10 rounded-lg"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                  {timeLogs.length === 0 && (
+                    <div className="text-center py-6 text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 italic border-2 border-dashed border-border rounded-xl">
+                      Nenhum lançamento
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
