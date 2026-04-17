@@ -600,11 +600,11 @@ export function Board() {
       <div className="flex flex-wrap gap-4 overflow-x-auto pb-2">
         <div className="p-4 rounded-2xl border border-border flex flex-col gap-1 bg-foreground/5 min-w-[140px]">
           <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Total</span>
-          <span className="text-2xl font-black">{filteredTasks.length}</span>
+          <span className="text-2xl font-black">{finalFilteredTasks.length}</span>
         </div>
         
         {themeColumns.map((col) => {
-          const count = filteredTasks.filter(t => t.columnId === col.id).length;
+          const count = finalFilteredTasks.filter(t => t.columnId === col.id).length;
           let color = 'bg-primary/10 text-primary';
           if (col.id.includes('todo')) color = 'bg-blue-500/10 text-blue-500';
           else if (col.id.includes('inProgress')) color = 'bg-amber-500/10 text-amber-500';
@@ -620,15 +620,15 @@ export function Board() {
 
         <div className="p-4 rounded-2xl border border-border flex flex-col gap-1 bg-gray-500/10 text-gray-500 min-w-[140px]">
           <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Arquivadas</span>
-          <span className="text-2xl font-black">{filteredTasks.filter(t => t.columnId === 'archived').length}</span>
+          <span className="text-2xl font-black">{finalFilteredTasks.filter(t => t.columnId === 'archived').length}</span>
         </div>
       </div>
 
       {/* Board Content */}
       {viewMode === 'kanban' ? (
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="flex-1 overflow-x-auto pb-6">
-            <div className="flex gap-8 h-full min-h-[600px] items-start">
+          <div className="flex-1 overflow-x-auto mt-8 pt-2 pb-8 custom-scrollbar [transform:rotateX(180deg)]">
+            <div className="flex gap-8 h-full min-h-[600px] items-start [transform:rotateX(180deg)]">
               {columns.map((column) => (
                 <Column
                   key={`${currentTheme.id}-${column.id}`}

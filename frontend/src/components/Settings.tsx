@@ -51,7 +51,7 @@ const Settings: React.FC<SettingsProps> = ({
   onImportData, 
   onClearAllData 
 }) => {
-  const { theme } = useTheme();
+  const { theme, themeTransitionEnabled, setThemeTransitionEnabled } = useTheme();
   const navigate = useNavigate();
   const { isGuest, setShowVerificationModal } = useVerification();
   const { expenseCategories, incomeCategories, addCategory, removeCategory, resetToDefaults: resetCategoriesToDefaults } = useCategories();
@@ -434,22 +434,26 @@ const Settings: React.FC<SettingsProps> = ({
                   Categorias de Despesas ({expenseCategories.length})
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {expenseCategories.map((cat) => (
-                    <div 
-                      key={cat} 
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 font-bold text-xs group hover:border-accent transition-all shadow-sm"
-                      style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
-                    >
-                      <span style={{ color: theme.text }}>{cat}</span>
-                      <button 
-                        onClick={() => handleRemoveCategory('expense', cat)}
-                        className="opacity-0 group-hover:opacity-100 text-accent hover:scale-125 transition-all"
+                  {expenseCategories.map((cat, idx) => {
+                    const catName = typeof cat === 'string' ? cat : (cat && (cat as any).name) || 'Categoria';
+                    return (
+                      <div 
+                        key={`${catName}-${idx}`} 
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 font-bold text-xs group hover:border-accent transition-all shadow-sm"
+                        style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
                       >
-
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                        <span style={{ color: theme.text }}>
+                          {catName}
+                        </span>
+                        <button 
+                          onClick={() => handleRemoveCategory('expense', catName)}
+                          className="opacity-0 group-hover:opacity-100 text-accent hover:scale-125 transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -459,22 +463,26 @@ const Settings: React.FC<SettingsProps> = ({
                   Categorias de Receitas ({incomeCategories.length})
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {incomeCategories.map((cat) => (
-                    <div 
-                      key={cat} 
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 font-bold text-xs group hover:border-primary transition-all shadow-sm"
-                      style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
-                    >
-                      <span style={{ color: theme.text }}>{cat}</span>
-                      <button 
-                        onClick={() => handleRemoveCategory('income', cat)}
-                        className="opacity-0 group-hover:opacity-100 text-accent hover:scale-125 transition-all"
+                  {incomeCategories.map((cat, idx) => {
+                    const catName = typeof cat === 'string' ? cat : (cat && (cat as any).name) || 'Categoria';
+                    return (
+                      <div 
+                        key={`${catName}-${idx}`} 
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 font-bold text-xs group hover:border-primary transition-all shadow-sm"
+                        style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
                       >
-
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                        <span style={{ color: theme.text }}>
+                          {catName}
+                        </span>
+                        <button 
+                          onClick={() => handleRemoveCategory('income', catName)}
+                          className="opacity-0 group-hover:opacity-100 text-accent hover:scale-125 transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -762,6 +770,30 @@ const Settings: React.FC<SettingsProps> = ({
                   Experiência
                 </h2>
                 <p className="text-xs text-muted-foreground font-bold uppercase">Gamificação</p>
+              </div>
+            </div>
+
+            <div 
+              className={cn(
+                "flex items-center justify-between p-5 rounded-2xl border-2 transition-all cursor-pointer group mb-4",
+                themeTransitionEnabled ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+              )}
+              onClick={() => setThemeTransitionEnabled(!themeTransitionEnabled)}
+            >
+              <div className="flex-1">
+                <p className="text-sm font-black text-foreground uppercase tracking-tight">
+                  Transição Suave
+                </p>
+                <p className="text-[10px] text-foreground opacity-40 font-bold uppercase">Proteger os olhos ao trocar tema</p>
+              </div>
+              <div className={cn(
+                "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative",
+                themeTransitionEnabled ? 'bg-primary' : 'bg-muted'
+              )}>
+                <div className={cn(
+                  "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
+                  themeTransitionEnabled ? 'translate-x-6' : 'translate-x-0'
+                )} />
               </div>
             </div>
 

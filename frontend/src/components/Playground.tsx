@@ -2362,30 +2362,32 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                 <label className="block text-xs font-medium text-muted-foreground mb-2">Categorias</label>
                 <div className="flex flex-wrap gap-1 p-0.5">
                   {categories.map((cat, idx) => {
+                    const catName = typeof cat === 'string' ? cat : (cat && (cat as any).name) || 'Categoria';
                     const isFirstIncomeCategory = incomeCategories.includes(cat) && (idx === 0 || !incomeCategories.includes(categories[idx - 1]));
-                    
+
                     return (
-                      <React.Fragment key={cat}>
+                      <React.Fragment key={catName}>
                         {isFirstIncomeCategory && idx > 0 && (
                           <div className="w-full h-px bg-muted/40 my-3" />
                         )}
                         <button
                           onClick={() => toggleCategory(cat)}
                           className={`px-2.5 py-1.5 rounded-md text-[10px] transition-all border font-medium ${
-                            selectedCategories.includes(cat) 
-                              ? 'bg-primary text-white border-primary shadow-sm scale-105' 
+                            selectedCategories.includes(cat)
+                              ? 'bg-primary text-white border-primary shadow-sm scale-105'
                               : 'bg-transparent text-muted-foreground border-border'
                           }`}
-                          style={{ 
+                          style={{
                             backgroundColor: selectedCategories.includes(cat) ? theme.primary : 'transparent',
-                            color: selectedCategories.includes(cat) ? '#fff' : theme.text 
+                            color: selectedCategories.includes(cat) ? '#fff' : theme.text
                           }}
                         >
-                          {cat}
+                          {catName}
                         </button>
                       </React.Fragment>
                     );
                   })}
+
                 </div>
               </div>
 

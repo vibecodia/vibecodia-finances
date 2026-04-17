@@ -1,4 +1,4 @@
-import { Home, TrendingDown, TrendingUp, BarChart3, Target, Calendar, Settings, Menu, X, CheckSquare, PieChart, LogOut, HelpCircle, Construction, MessageSquareCode, MessageCircle, Lock } from 'lucide-react';
+import { Home, TrendingDown, TrendingUp, BarChart3, Target, Calendar, Settings, Menu, X, CheckSquare, PieChart, LogOut, HelpCircle, Construction, MessageSquareCode, MessageCircle, Lock, RefreshCw } from 'lucide-react';
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -8,15 +8,25 @@ import { useVerification } from '../contexts/VerificationContext';
 import { useTour } from '../hooks/useTour';
 
 const Navigation: React.FC = () => {
+  const appVersion = (import.meta as any).env.APP_VERSION;
   const location = useLocation();
   const activeTab = location.pathname;
   const { logout, isGuest, setShowVerificationModal } = useVerification();
   const { startTour } = useTour();
   const [showComingSoon, setShowComingSoon] = useState(false);
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
 
   const handleComingSoon = () => {
     setShowComingSoon(true);
     setTimeout(() => setShowComingSoon(false), 2000);
+  };
+
+  const handleCheckUpdates = () => {
+    setIsCheckingUpdates(true);
+    setTimeout(() => {
+      setIsCheckingUpdates(false);
+      // Aqui poderíamos mostrar um aviso de que está na última versão
+    }, 2000);
   };
 
   // Rotas onde o menu começa fechado no desktop
@@ -119,8 +129,18 @@ const Navigation: React.FC = () => {
                     </div>
                   )}
                 </div>
-                <span className="text-sm font-semibold">
+                <span className="text-sm font-semibold flex items-center justify-between w-full">
                   {tab.label}
+                  {tab.id === '/tasks' && (
+                    <span className={cn(
+                      "ml-2 px-1.5 py-0.5 rounded-md text-[9px] font-black tracking-tighter uppercase transition-all",
+                      isActive 
+                        ? "bg-primary-foreground/20 text-primary-foreground opacity-90" 
+                        : "bg-foreground/10 text-muted-foreground opacity-60 group-hover:opacity-100"
+                    )}>
+                      v{appVersion}
+                    </span>
+                  )}
                 </span>
               </>
             );
@@ -225,6 +245,22 @@ const Navigation: React.FC = () => {
               </button>
             </>
           )}
+          
+          <button
+            onClick={handleCheckUpdates}
+            disabled={isCheckingUpdates}
+            className={cn(
+              "flex flex-row items-center gap-3 py-2 px-4 rounded-lg w-full text-left transition-all font-bold",
+              "text-muted-foreground hover:bg-muted hover:text-foreground",
+              isCheckingUpdates && "opacity-70 cursor-not-allowed"
+            )}
+          >
+            <RefreshCw className={cn("w-5 h-5", isCheckingUpdates && "animate-spin")} />
+            <span className="text-sm">
+              {isCheckingUpdates ? 'Verificando...' : 'Verificar Atualizações'}
+            </span>
+          </button>
+
           <button
             onClick={() => {
               handleSimpleLinkClick();

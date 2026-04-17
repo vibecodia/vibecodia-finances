@@ -69,6 +69,9 @@
 @layer base {
   * {
     @apply border-border;
+    transition: background-color var(--theme-transition-duration, 0ms) ease-in-out,
+                color var(--theme-transition-duration, 0ms) ease-in-out,
+                border-color var(--theme-transition-duration, 0ms) ease-in-out;
   }
   body {
     @apply bg-background text-foreground;
@@ -201,4 +204,41 @@
 /* The focused table container */
 .shortcut-focus-mode .focus-target {
   @apply border-none shadow-none rounded-none w-full min-h-screen bg-background;
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-foreground/10 rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-primary/80 rounded-full transition-all duration-300;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary/100;
+}
+
+.custom-scrollbar::-webkit-scrollbar-corner {
+  @apply bg-transparent;
+}
+
+/* For Firefox */
+.custom-scrollbar {
+  scrollbar-width: auto;
+  scrollbar-color: hsl(var(--primary) / 0.8) hsl(var(--foreground) / 0.1);
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
