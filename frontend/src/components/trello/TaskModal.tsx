@@ -4,7 +4,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 
 import { Task, ChecklistItem, TaskFlag, TaskLabel, Column, TimeLog } from '../../types/trello/task';
 import { createTask, generateId, calculateDaysInColumn } from '../../utils/trello/taskUtils';
-import { getBrazilDateString, formatCurrency } from '../../utils/helpers';
+import { getBrazilDateString } from '../../utils/helpers';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
