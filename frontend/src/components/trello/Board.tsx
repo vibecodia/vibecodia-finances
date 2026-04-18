@@ -1,4 +1,4 @@
-import { Plus, Archive, Calendar as CalendarIcon, Kanban, Download, Upload, Filter, X as XIcon, ChevronDown, Tag, FolderKanban, Pencil, Clock } from 'lucide-react';
+import { Plus, Archive, Calendar as CalendarIcon, Kanban, Download, Upload, Filter, X as XIcon, ChevronDown, Tag, FolderKanban, Pencil, Clock, CheckSquare } from 'lucide-react';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 
@@ -76,6 +76,7 @@ export function Board() {
   const [viewMode, setViewMode] = useState<'kanban' | 'timeline'>('kanban');
   const [selectedFlagFilter, setSelectedFlagFilter] = useState<TaskFlag | 'all'>('all');
   const [selectedLabelFilter, setSelectedLabelFilter] = useState<string | 'all'>('all');
+  const [showPendingChecklistOnly, setShowPendingChecklistOnly] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
     taskId: string | null;
@@ -136,9 +137,12 @@ export function Board() {
       const labelMatch = selectedLabelFilter === 'all' || 
         task.labels?.some(l => l.text === selectedLabelFilter);
       
-      return flagMatch && labelMatch;
+      const hasPendingChecklist = !showPendingChecklistOnly || 
+        (task.checklist?.some(item => !item.completed) ?? false);
+      
+      return flagMatch && labelMatch && hasPendingChecklist;
     });
-  }, [filteredTasks, selectedFlagFilter, selectedLabelFilter]);
+  }, [filteredTasks, selectedFlagFilter, selectedLabelFilter, showPendingChecklistOnly]);
 
   const totalLoggedHours = useMemo(() => {
     return finalFilteredTasks.reduce((acc, task) => {
@@ -514,12 +518,27 @@ export function Board() {
               </div>
             </div>
 
-            {(selectedFlagFilter !== 'all' || selectedLabelFilter !== 'all' || searchTerm !== '') && (
+            <button
+              onClick={() => setShowPendingChecklistOnly(!showPendingChecklistOnly)}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all z-20",
+                showPendingChecklistOnly 
+                  ? "bg-primary text-white border-primary shadow-lg shadow-primary/20" 
+                  : "bg-foreground/5 hover:bg-foreground/10 border-border text-muted-foreground hover:text-foreground"
+              )}
+              title={showPendingChecklistOnly ? "Mostrando apenas pendentes" : "Mostrar apenas pendentes"}
+            >
+              <CheckSquare className="w-3.5 h-3.5" />
+              <span className="text-[11px] font-black uppercase tracking-widest">Com Checklist Pendentes</span>
+            </button>
+
+            {(selectedFlagFilter !== 'all' || selectedLabelFilter !== 'all' || searchTerm !== '' || showPendingChecklistOnly) && (
               <button
                 onClick={() => {
                   setSelectedFlagFilter('all');
                   setSelectedLabelFilter('all');
                   setSearchTerm('');
+                  setShowPendingChecklistOnly(false);
                 }}
                 className="flex items-center gap-2 px-3 py-1.5 bg-destructive/10 hover:bg-destructive/20 rounded-xl border border-destructive/20 transition-all text-destructive"
                 title="Limpar Filtros"
