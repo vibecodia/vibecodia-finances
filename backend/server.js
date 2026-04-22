@@ -113,6 +113,7 @@ const shoppingItemSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   purchased: { type: Boolean, default: false },
   isPriority: { type: Boolean, default: false },
+  type: { type: String, enum: ['compras', 'afazeres'], default: 'compras' },
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 // ---------- Cron Job ----------
