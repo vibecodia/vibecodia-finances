@@ -2,11 +2,12 @@ import { useState, useEffect, useMemo } from 'react';
 
 import { useVerification } from '../contexts/VerificationContext';
 
-interface ShoppingItem {
+export interface ShoppingItem {
   id: string;
   name: string;
   purchased: boolean;
   isPriority: boolean;
+  type: 'compras' | 'afazeres';
   createdAt: string;
 }
 

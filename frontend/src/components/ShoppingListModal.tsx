@@ -7,15 +7,7 @@ import { Input } from './ui/Input';
 import { cn } from '../lib/utils';
 
 import { ColorPalette } from '../contexts/ThemeContext';
-
-interface ShoppingItem {
-  id: string;
-  name: string;
-  purchased: boolean;
-  isPriority: boolean;
-  type: 'compras' | 'afazeres';
-  createdAt: string;
-}
+import { ShoppingItem } from '../hooks/useShoppingList';
 
 interface ShoppingListModalProps {
   isOpen: boolean;
