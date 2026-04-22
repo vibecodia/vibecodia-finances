@@ -2,11 +2,12 @@ import { useState, useEffect, useMemo } from 'react';
 
 import { useVerification } from '../contexts/VerificationContext';
 
-interface ShoppingItem {
+export interface ShoppingItem {
   id: string;
   name: string;
   purchased: boolean;
   isPriority: boolean;
+  type: 'compras' | 'afazeres';
   createdAt: string;
 }
 
@@ -47,7 +48,7 @@ export const useShoppingList = () => {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
-  const addItem = async (name: string) => {
+  const addItem = async (name: string, type: 'compras' | 'afazeres' = 'compras') => {
     if (name.trim() === '' || (!pin && !isGuest)) return;
 
     if (isGuest) {
@@ -56,6 +57,7 @@ export const useShoppingList = () => {
         name: name.trim(),
         purchased: false,
         isPriority: false,
+        type,
         createdAt: new Date().toISOString(),
       };
       const updatedList = [newItem, ...shoppingList];
@@ -68,7 +70,7 @@ export const useShoppingList = () => {
       const response = await fetch(`${API_BASE_URL}/shopping-list`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ name: name.trim(), isPriority: false, createdAt: new Date().toISOString() }),
+        body: JSON.stringify({ name: name.trim(), isPriority: false, type, createdAt: new Date().toISOString() }),
       });
       if (!response.ok) throw new Error('Failed to add item');
       const newItem = await response.json();
