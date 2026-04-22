@@ -847,6 +847,7 @@ app.post('/api/shopping-list', dbMiddleware, async (req, res) => {
   const item = new ShoppingItem({
     name: req.body.name,
     isPriority: req.body.isPriority || false,
+    type: req.body.type || 'compras',
   });
   try {
     const newItem = await item.save();
@@ -1106,4 +1107,6 @@ app.use((req, res) => {
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
+});
+`Server running on port ${port}`);
 });

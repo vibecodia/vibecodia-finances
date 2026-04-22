@@ -13,6 +13,7 @@ interface ShoppingItem {
   name: string;
   purchased: boolean;
   isPriority: boolean;
+  type: 'compras' | 'afazeres';
   createdAt: string;
 }
 
@@ -20,7 +21,7 @@ interface ShoppingListModalProps {
   isOpen: boolean;
   onClose: () => void;
   shoppingList: ShoppingItem[];
-  addItem: (name: string) => void;
+  addItem: (name: string, type: 'compras' | 'afazeres') => void;
   togglePurchased: (id: string) => void;
   removeItem: (id: string) => void;
   clearPurchased: () => void;
@@ -40,7 +41,14 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
   theme,
 }) => {
   const [newItemName, setNewItemName] = useState('');
+  const [activeTab, setActiveTab] = useState<'compras' | 'afazeres'>('compras');
   const itemRefs = useRef(new Map<string, React.RefObject<HTMLLIElement>>());
+
+  const filteredList = (shoppingList || []).filter(item => {
+    // Para retrocompatibilidade se o item não tiver type, assume 'compras'
+    const itemType = item.type || 'compras';
+    return itemType === activeTab;
+  });
 
   useEffect(() => {
     // Clean up refs for items that are no longer in the shopping list
@@ -60,7 +68,7 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
 
   const handleAddItem = () => {
     if (!newItemName.trim()) return;
-    addItem(newItemName.trim());
+    addItem(newItemName.trim(), activeTab);
     setNewItemName('');
   };
 
@@ -74,7 +82,7 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
             color: theme.text 
           }}
         >
-          <DialogHeader className="mb-6">
+          <DialogHeader className="mb-4">
             <div className="flex items-center justify-center gap-3 mb-2">
               <div 
                 className="p-2 rounded-xl"
@@ -86,7 +94,7 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
                 className="text-2xl font-black tracking-tight uppercase italic"
                 style={{ color: theme.text }}
               >
-                Lista de Compras
+                Lista
               </DialogTitle>
               <DialogDescription className="sr-only">
                 Gerencie seus itens e afazeres
@@ -97,12 +105,46 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
             </p>
           </DialogHeader>
 
+          {/* Tabs Navigation */}
+          <div className="flex gap-2 mb-6 p-1 rounded-2xl" style={{ backgroundColor: `${theme.text}08` }}>
+            <button
+              onClick={() => setActiveTab('compras')}
+              className={cn(
+                "flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300",
+                activeTab === 'compras' 
+                  ? "shadow-lg scale-[1.02]" 
+                  : "opacity-40 hover:opacity-60"
+              )}
+              style={{
+                backgroundColor: activeTab === 'compras' ? theme.primary : 'transparent',
+                color: activeTab === 'compras' ? '#fff' : theme.text,
+              }}
+            >
+              Compras
+            </button>
+            <button
+              onClick={() => setActiveTab('afazeres')}
+              className={cn(
+                "flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300",
+                activeTab === 'afazeres' 
+                  ? "shadow-lg scale-[1.02]" 
+                  : "opacity-40 hover:opacity-60"
+              )}
+              style={{
+                backgroundColor: activeTab === 'afazeres' ? theme.primary : 'transparent',
+                color: activeTab === 'afazeres' ? '#fff' : theme.text,
+              }}
+            >
+              Afazeres
+            </button>
+          </div>
+
           <div className="flex gap-2 mb-6">
             <Input
               value={newItemName}
               onChange={(e) => setNewItemName(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleAddItem()}
-              placeholder="O que você precisa comprar?"
+              placeholder={activeTab === 'compras' ? "O que você precisa comprar?" : "O que você precisa fazer?"}
               className="flex-grow transition-all"
               style={{ 
                 backgroundColor: theme.background,
@@ -123,9 +165,13 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
           </div>
 
           <div className="space-y-4">
-            {Array.isArray(shoppingList) && shoppingList.length > 0 ? (
-              <TransitionGroup component="ul" className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                {shoppingList.map((item) => {
+            {Array.isArray(filteredList) && filteredList.length > 0 ? (
+              <TransitionGroup 
+                key={activeTab}
+                component="ul" 
+                className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar"
+              >
+                {filteredList.map((item) => {
                   const nodeRef = itemRefs.current.get(item.id);
                   return (
                     <CSSTransition
@@ -214,12 +260,14 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
             ) : (
               <div className="py-12 flex flex-col items-center justify-center text-center opacity-40">
                 <ShoppingBasket className="w-12 h-12 mb-3" />
-                <p className="font-medium uppercase tracking-widest text-[10px]">Sua lista está vazia</p>
+                <p className="font-medium uppercase tracking-widest text-[10px]">
+                  {activeTab === 'compras' ? 'Sua lista de compras está vazia' : 'Sua lista de afazeres está vazia'}
+                </p>
               </div>
             )}
           </div>
 
-          {shoppingList.some(item => item.purchased) && (
+          {filteredList.some(item => item.purchased) && (
             <Button
               variant="outline"
               onClick={clearPurchased}
@@ -229,7 +277,7 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
                 color: theme.text
               }}
             >
-              Limpar Itens Concluídos
+              Limpar {activeTab === 'compras' ? 'Itens' : 'Afazeres'} Concluídos
             </Button>
           )}
         </div>
