@@ -10,6 +10,7 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/usr/share/nginx/html/.well-known/acme-challenge:ro
     depends_on:
       backend:
         condition: service_healthy
