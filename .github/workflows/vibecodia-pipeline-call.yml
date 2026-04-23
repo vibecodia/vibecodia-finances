@@ -34,7 +34,8 @@ jobs:
               const { data: pr } = await github.rest.pulls.get({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                pull_number: context.payload.pull_request.number
+                pull_number: context.payload.pull_request.number,
+                deploy_target: context.repo.repo
               });
 
               mergeable = pr.mergeable;
@@ -213,7 +214,8 @@ jobs:
               ref: 'develop',
               inputs: {
                 version: '${{ needs.release.outputs.version }}',
-                pr_branch: '${{ github.head_ref }}'
+                pr_branch: '${{ github.head_ref }}',
+                deploy_target: context.repo.repo
               }
             })
 
@@ -272,7 +274,8 @@ jobs:
               inputs: {
                 pr_number: context.payload.pull_request.number.toString(),
                 pr_branch: context.payload.pull_request.head.ref,
-                version: '${{ needs.release.outputs.version }}'
+                version: '${{ needs.release.outputs.version }}',
+                deploy_target: context.repo.repo
               }
             });
 
