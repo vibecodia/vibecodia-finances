@@ -214,8 +214,7 @@ jobs:
               ref: 'develop',
               inputs: {
                 version: '${{ needs.release.outputs.version }}',
-                pr_branch: '${{ github.head_ref }}',
-                deploy_target: context.repo.repo
+                pr_branch: '${{ github.head_ref }}'
               }
             })
 
