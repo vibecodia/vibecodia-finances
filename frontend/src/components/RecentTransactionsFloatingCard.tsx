@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { format, isToday, differenceInMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { X, Clock, RefreshCw, Plus, Sparkles, Trash2, Maximize2, Minimize2 } from 'lucide-react';
@@ -20,7 +20,6 @@ const RecentTransactionsFloatingCard: React.FC<RecentTransactionsFloatingCardPro
   const [timerProgress, setTimerProgress] = useState(0);
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const location = useLocation();
 
   // Settings from LocalStorage
   const [recentTransactionsDuration] = useLocalStorage('recent_transactions_duration', 15);

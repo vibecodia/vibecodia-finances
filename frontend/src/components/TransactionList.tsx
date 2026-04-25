@@ -1,6 +1,6 @@
 import { startOfMonth, endOfMonth, isSameDay } from 'date-fns';
 import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, Wallet, ChevronDown, ChevronUp, RefreshCw, Search } from 'lucide-react';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useTheme } from '../contexts/ThemeContext';
@@ -149,7 +149,6 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const { paymentMethods } = usePaymentMethods();
   const location = useLocation();
   const navigate = useNavigate();
-  const listRef = useRef<HTMLDivElement>(null);
 
   // Handle highlighting from URL parameters
   useEffect(() => {
