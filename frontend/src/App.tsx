@@ -25,7 +25,8 @@ import TransactionForm from './components/TransactionForm';
 import { Transaction } from './types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './components/ui/dialog';
 import { Button } from './components/ui/Button';
-import { MapPin, X } from 'lucide-react';
+import { MapPin, X, Keyboard } from 'lucide-react';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 const HojeRedirect = () => {
   const navigate = useNavigate();
@@ -88,7 +89,10 @@ function App() {
 
   const { theme } = useTheme();
   const [isShoppingListOpen, setIsShoppingListOpen] = useState(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [showInitialBalanceModal, setShowInitialBalanceModal] = useState(false);
+
+  useKeyboardShortcuts(() => setShowShortcutsModal(true));
   const { shoppingList, addItem, togglePurchased, removeItem, clearPurchased, togglePriority } = useShoppingList();
   const [animateCombined, setAnimateCombined] = useState(false);
 
@@ -97,7 +101,7 @@ function App() {
     new URLSearchParams(location.search).get('view') === 'focus' || 
     location.pathname === '/hoje';
 
-  const routesWithoutDesktopMenu = ['/playground'];
+  const routesWithoutDesktopMenu = ['/playground', '/tasks'];
   const hideMenuOnDesktop = routesWithoutDesktopMenu.includes(location.pathname);
   const isGuestRoute = location.pathname === '/guest';
 
@@ -240,6 +244,19 @@ function App() {
               } 
             />
             <Route path="/income" element={<TransactionList type="income" transactions={transactions} savingsGoals={savingsGoals} onAdd={addTransaction} onUpdate={updateTransaction} onDelete={deleteTransaction} onUpdatePaymentStatus={updatePaymentStatus} />} />
+            <Route 
+              path="/income/new" 
+              element={
+                <TransactionForm 
+                  type="income" 
+                  savingsGoals={savingsGoals}
+                  onSubmit={async (data: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
+                    await addTransaction(data);
+                  }} 
+                  onClose={() => navigate('/income')} 
+                />
+              } 
+            />
             <Route path="/calendar" element={<Calendar transactions={transactions} onUpdatePaymentStatus={updatePaymentStatus} />} />
             <Route path="/reports" element={<Reports transactions={transactions} savingsGoals={savingsGoals} />} />
             <Route 
@@ -323,6 +340,51 @@ function App() {
               >
                 Pular tour por enquanto
               </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Keyboard Shortcuts Modal */}
+        <Dialog open={showShortcutsModal} onOpenChange={setShowShortcutsModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Keyboard className="w-5 h-5 text-primary" />
+                Atalhos do Teclado
+              </DialogTitle>
+              <DialogDescription>
+                Aumente sua produtividade com comandos rápidos de qualquer lugar.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid grid-cols-1 gap-3 py-4">
+              {[
+                { key: 'D', label: 'Resumo', description: 'Volta para o dashboard inicial' },
+                { key: 'K', label: 'Novo Gasto', description: 'Vai para criação de despesa' },
+                { key: 'I', label: 'Nova Receita', description: 'Vai para criação de receita' },
+                { key: 'T', label: 'Tarefas', description: 'Abre o quadro de tarefas' },
+                { key: 'C', label: 'Agenda', description: 'Abre o calendário' },
+                { key: 'R', label: 'Relatórios', description: 'Ver estatísticas detalhadas' },
+                { key: 'G', label: 'Metas', description: 'Ver suas metas de economia' },
+                { key: 'P', label: 'Playground', description: 'Simulações e projeções' },
+                { key: '?', label: 'Ajuda', description: 'Mostra esta lista de atalhos' },
+              ].map((shortcut) => (
+                <div key={shortcut.key} className="flex items-center justify-between p-3 rounded-xl bg-foreground/5 border border-border/50 group hover:bg-primary/5 hover:border-primary/20 transition-all">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-black uppercase tracking-tight text-foreground">{shortcut.label}</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{shortcut.description}</span>
+                  </div>
+                  <div className="px-3 py-1.5 rounded-lg bg-background border-2 border-border shadow-sm font-mono text-sm font-black text-primary group-hover:border-primary/30">
+                    {shortcut.key}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <DialogFooter>
+              <Button onClick={() => setShowShortcutsModal(false)} className="w-full">
+                Entendido
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

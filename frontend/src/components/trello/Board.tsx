@@ -27,6 +27,7 @@ export function Board() {
     setCurrentThemeId,
     addTheme,
     updateTheme,
+    deleteTheme,
     columns: themeColumns,
     addColumn,
     updateColumn,
@@ -37,6 +38,7 @@ export function Board() {
     addTask, 
     updateTask, 
     deleteTask, 
+    togglePinTask,
     moveTask,
     reorderTasks,
     importFullData
@@ -397,12 +399,14 @@ export function Board() {
           setShowThemeSelector(false);
         }}
         onAddTheme={(name) => {
-          const theme = addTheme(name);
-          setCurrentThemeId(theme.id);
-          setShowThemeSelector(false);
-        }}
-      />
-    );
+            const theme = addTheme(name);
+            setCurrentThemeId(theme.id);
+            setShowThemeSelector(false);
+          }}
+          onUpdateTheme={updateTheme}
+          onDeleteTheme={deleteTheme}
+        />
+      );
   }
 
   return (
@@ -684,6 +688,7 @@ export function Board() {
                   onArchiveTask={handleArchiveTask}
                   onFocusTask={handleFocusTask}
                   onToggleChecklistItem={handleToggleChecklistItem}
+                  onTogglePinTask={togglePinTask}
                   onUpdateTitle={(title: string) => updateColumn(column.id, { title })}
                   onDeleteColumn={() => {
                     setColumnDeleteConfirmation({ 
@@ -747,6 +752,9 @@ export function Board() {
           if (editingTask) updateTask(task);
           else addTask(task);
           setIsModalOpen(false);
+        }}
+        onAutoSave={(task) => {
+          if (editingTask) updateTask(task);
         }}
         onDelete={(taskId) => {
           setDeleteConfirmation({ isOpen: true, taskId });

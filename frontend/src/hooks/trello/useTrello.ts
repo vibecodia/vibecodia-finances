@@ -136,6 +136,17 @@ export function useTrello() {
         const matchesFlag = task.flag?.toLowerCase().includes(lowerSearch) || false;
 
         return matchesText || matchesLabels || matchesFlag;
+      })
+      .sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        if (a.isPinned && b.isPinned) {
+          // Se ambas estão fixadas, a mais recente (pinnedAt) vai para o topo
+          const dateA = new Date(a.pinnedAt || 0).getTime();
+          const dateB = new Date(b.pinnedAt || 0).getTime();
+          return dateB - dateA;
+        }
+        return 0;
       });
   }, [tasks, currentThemeId, searchTerm]);
 
@@ -185,6 +196,18 @@ export function useTrello() {
 
   const deleteTask = useCallback((taskId: string) => {
     setTasks(prev => prev.filter(t => t.id !== taskId));
+  }, [setTasks]);
+
+  const togglePinTask = useCallback((taskId: string) => {
+    const now = new Date().toISOString();
+    setTasks(prev => prev.map(t => 
+      t.id === taskId ? { 
+        ...t, 
+        isPinned: !t.isPinned, 
+        pinnedAt: !t.isPinned ? now : undefined,
+        updatedAt: now 
+      } : t
+    ));
   }, [setTasks]);
 
   const moveTask = useCallback((taskId: string, toColumnId: string) => {
@@ -245,6 +268,30 @@ export function useTrello() {
     setThemes(prev => prev.map(t => t.id === themeId ? { ...t, ...updates } : t));
   }, [setThemes]);
 
+  const deleteTheme = useCallback((themeId: string) => {
+    if (themes.length <= 1) {
+      alert('Não é possível excluir o único tema restante.');
+      return;
+    }
+    
+    // Remover o tema
+    setThemes(prev => prev.filter(t => t.id !== themeId));
+    
+    // Remover todas as colunas do tema
+    setColumns(prev => prev.filter(c => c.themeId !== themeId));
+    
+    // Remover todas as tarefas do tema
+    setTasks(prev => prev.filter(t => t.themeId !== themeId));
+
+    // Se o tema excluído era o atual, mudar para o primeiro disponível
+    if (currentThemeId === themeId) {
+      const remainingThemes = themes.filter(t => t.id !== themeId);
+      if (remainingThemes.length > 0) {
+        setCurrentThemeId(remainingThemes[0].id);
+      }
+    }
+  }, [themes, currentThemeId, setCurrentThemeId, setThemes, setColumns, setTasks]);
+
   const addColumn = useCallback((title: string) => {
     const newColumn: Omit<Column, 'tasks'> = {
       id: `col-${generateId()}`,
@@ -270,6 +317,7 @@ export function useTrello() {
     setCurrentThemeId,
     addTheme,
     updateTheme,
+    deleteTheme,
     columns: themeColumns,
     addColumn,
     updateColumn,
@@ -280,6 +328,7 @@ export function useTrello() {
     addTask,
     updateTask,
     deleteTask,
+    togglePinTask,
     moveTask,
     reorderTasks,
     importTasks,

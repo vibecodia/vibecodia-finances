@@ -1,6 +1,7 @@
 import { startOfMonth, endOfMonth, isSameDay } from 'date-fns';
 import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, Wallet, ChevronDown, ChevronUp, RefreshCw, Search } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useTheme } from '../contexts/ThemeContext';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
@@ -146,6 +147,41 @@ const TransactionList: React.FC<TransactionListProps> = ({
   };
   const { theme } = useTheme();
   const { paymentMethods } = usePaymentMethods();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Handle highlighting from URL parameters
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const highlightId = params.get('highlight');
+    
+    if (highlightId) {
+      const transaction = transactions.find(t => t.id === highlightId || t._id === highlightId);
+      if (transaction) {
+        // Set month to transaction month if it's different
+        const transactionDate = parseLocalDate(transaction.date);
+        if (!isSameDay(startOfMonth(currentMonth), startOfMonth(transactionDate))) {
+          setCurrentMonth(transactionDate);
+        }
+
+        // Trigger animation
+        setAnimatedTransactionId(highlightId);
+        
+        // Clear highlight param from URL
+        params.delete('highlight');
+        const newSearch = params.toString();
+        navigate(`${location.pathname}${newSearch ? `?${newSearch}` : ''}`, { replace: true });
+
+        // Scroll to element after a short delay to allow for month change and render
+        setTimeout(() => {
+          const element = document.getElementById(`transaction-${highlightId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 500);
+      }
+    }
+  }, [location.search, transactions]);
 
   useEffect(() => {
     setCategoryFilter(['all']);
@@ -598,6 +634,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
             return (
               <Card
                 key={`${transaction.id}-${index}`}
+                id={`transaction-${transaction.id || transaction._id}`}
                 className={cn(
                   "relative p-5 group no-select border-2 transition-all active:scale-[0.98]",
                   animatedTransactionId === transaction.id && 'animate-pulse-once',
