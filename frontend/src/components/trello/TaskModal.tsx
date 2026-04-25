@@ -137,6 +137,15 @@ export function TaskModal({ isOpen, onClose, onSave, onAutoSave, onDelete, onArc
       setIsPinned(false);
       setTimeLogs([]);
     }
+
+    // Reset temporary input fields when task changes or modal opens
+    setNewChecklistItem('');
+    setNewLabelText('');
+    setNewLogHours('');
+    setNewLogDescription('');
+    setEditingItemId(null);
+    setTempItemText('');
+    setNewLogDate(getBrazilDateString());
   }, [task, mode, isOpen, columns]);
 
   const addLabel = () => {
