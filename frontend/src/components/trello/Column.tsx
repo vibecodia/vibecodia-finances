@@ -21,6 +21,7 @@ interface ColumnProps {
   onArchiveTask: (taskId: string) => void;
   onFocusTask: (task: Task) => void;
   onToggleChecklistItem: (taskId: string, itemId: string) => void;
+  onTogglePinTask: (taskId: string) => void;
   onUpdateTitle: (title: string) => void;
   onDeleteColumn: () => void;
   allTasks: Task[];
@@ -40,6 +41,7 @@ export const Column = React.memo(({
   onArchiveTask, 
   onFocusTask, 
   onToggleChecklistItem,
+  onTogglePinTask,
   onUpdateTitle,
   onDeleteColumn,
   allTasks
@@ -173,6 +175,7 @@ export const Column = React.memo(({
                     onArchive={onArchiveTask}
                     onFocus={onFocusTask}
                     onToggleChecklistItem={onToggleChecklistItem}
+                    onTogglePin={onTogglePinTask}
                     />              ))
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground/20 border-2 border-dashed border-border rounded-3xl">

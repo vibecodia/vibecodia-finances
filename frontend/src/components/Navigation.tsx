@@ -30,7 +30,7 @@ const Navigation: React.FC = () => {
   };
 
   // Rotas onde o menu começa fechado no desktop
-  const routesWithoutDesktopMenu = ['/playground'];
+  const routesWithoutDesktopMenu = ['/playground', '/tasks'];
   const hideOnDesktop = routesWithoutDesktopMenu.includes(location.pathname);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);

@@ -1,4 +1,4 @@
-import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Check, Archive, AlertCircle, PauseCircle, Ban, Tag, Link2, ArrowDownAz, Columns, Clock, History, Calendar as CalendarIcon } from 'lucide-react';
+import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Check, Archive, AlertCircle, PauseCircle, Ban, Tag, Link2, ArrowDownAz, Columns, Clock, History, Calendar as CalendarIcon, Pin } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
@@ -15,6 +15,7 @@ interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (task: Task) => void;
+  onAutoSave?: (task: Task) => void;
   onDelete?: (taskId: string) => void;
   onArchive?: (taskId: string) => void;
   task?: Task;
@@ -23,7 +24,7 @@ interface TaskModalProps {
   mode: 'create' | 'edit';
 }
 
-export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, allTasks = [], columns = [], mode }: TaskModalProps) {
+export function TaskModal({ isOpen, onClose, onSave, onAutoSave, onDelete, onArchive, task, allTasks = [], columns = [], mode }: TaskModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
@@ -38,6 +39,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
   const [newLabelColor, setNewLabelColor] = useState('#3b82f6'); // Default blue
   const [dependsOn, setDependsOn] = useState<string[]>([]);
   const [columnId, setColumnId] = useState('');
+  const [isPinned, setIsPinned] = useState(false);
   
   // Time Logging State
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
@@ -111,6 +113,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
       setLabels(task.labels || []);
       setDependsOn(task.dependsOn || []);
       setColumnId(task.columnId);
+      setIsPinned(task.isPinned || false);
       setTimeLogs(task.timeLogs || []);
     } else {
       setTitle('');
@@ -122,6 +125,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
       setLabels([]);
       setDependsOn([]);
       setColumnId(columns[0]?.id || '');
+      setIsPinned(false);
       setTimeLogs([]);
     }
   }, [task, mode, isOpen, columns]);
@@ -141,6 +145,26 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
     setLabels(labels.filter(label => label.id !== id));
   };
 
+  const triggerAutoSave = (updatedChecklist: ChecklistItem[]) => {
+    if (mode === 'edit' && task && onAutoSave && title.trim()) {
+      onAutoSave({
+        ...task,
+        title: title.trim(),
+        description: description.trim(),
+        priority,
+        date: date || undefined,
+        columnId,
+        checklist: updatedChecklist,
+        flag,
+        labels,
+        dependsOn,
+        timeLogs,
+        isPinned,
+        updatedAt: new Date().toISOString()
+      });
+    }
+  };
+
   const addChecklistItem = () => {
     if (!newChecklistItem.trim()) return;
     const newItem: ChecklistItem = {
@@ -148,18 +172,24 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
       text: newChecklistItem.trim(),
       completed: false
     };
-    setChecklist([...checklist, newItem]);
+    const updated = [...checklist, newItem];
+    setChecklist(updated);
     setNewChecklistItem('');
+    triggerAutoSave(updated);
   };
 
   const toggleChecklistItem = (id: string) => {
-    setChecklist(checklist.map(item => 
+    const updated = checklist.map(item => 
       item.id === id ? { ...item, completed: !item.completed } : item
-    ));
+    );
+    setChecklist(updated);
+    triggerAutoSave(updated);
   };
 
   const removeChecklistItem = (id: string) => {
-    setChecklist(checklist.filter(item => item.id !== id));
+    const updated = checklist.filter(item => item.id !== id);
+    setChecklist(updated);
+    triggerAutoSave(updated);
   };
 
   const addTimeLog = () => {
@@ -187,11 +217,11 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
   , [timeLogs]);
 
   const reorganizeChecklist = () => {
-    setChecklist(prev => {
-      const uncompleted = prev.filter(item => !item.completed);
-      const completed = prev.filter(item => item.completed);
-      return [...uncompleted, ...completed];
-    });
+    const uncompleted = checklist.filter(item => !item.completed);
+    const completed = checklist.filter(item => item.completed);
+    const updated = [...uncompleted, ...completed];
+    setChecklist(updated);
+    triggerAutoSave(updated);
   };
 
   const onDragEnd = (result: DropResult) => {
@@ -200,6 +230,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
     setChecklist(items);
+    triggerAutoSave(items);
   };
 
   const startEditing = (item: ChecklistItem) => {
@@ -209,9 +240,11 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
 
   const saveEditing = () => {
     if (editingItemId && tempItemText.trim()) {
-      setChecklist(checklist.map(item => 
+      const updated = checklist.map(item => 
         item.id === editingItemId ? { ...item, text: tempItemText.trim() } : item
-      ));
+      );
+      setChecklist(updated);
+      triggerAutoSave(updated);
     }
     setEditingItemId(null);
   };
@@ -231,6 +264,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
       flag,
       labels,
       dependsOn,
+      isPinned,
       timeLogs,
       updatedAt: new Date().toISOString()
     };
@@ -376,6 +410,44 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, onArchive, task, 
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                  <Pin className="w-4 h-4" />
+                  Fixar no Topo
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsPinned(!isPinned)}
+                  className={cn(
+                    "w-full p-4 rounded-xl border-2 transition-all flex items-center justify-between group",
+                    isPinned
+                      ? 'border-primary bg-primary/5 text-primary'
+                      : 'border-border text-muted-foreground hover:border-primary/30'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "p-2 rounded-lg transition-colors",
+                      isPinned ? "bg-primary text-white" : "bg-foreground/5 text-muted-foreground group-hover:text-primary"
+                    )}>
+                      <Pin className={cn("w-4 h-4", isPinned && "fill-current")} />
+                    </div>
+                    <span className={cn("text-xs font-black uppercase tracking-widest", isPinned ? "text-primary" : "text-muted-foreground")}>
+                      {isPinned ? 'Tarefa Fixada no Topo' : 'Manter no Topo da Coluna'}
+                    </span>
+                  </div>
+                  <div className={cn(
+                    "w-10 h-5 rounded-full relative transition-colors",
+                    isPinned ? "bg-primary" : "bg-foreground/10"
+                  )}>
+                    <div className={cn(
+                      "absolute top-1 w-3 h-3 rounded-full bg-white transition-all",
+                      isPinned ? "right-1" : "left-1"
+                    )} />
+                  </div>
+                </button>
               </div>
 
               <Input

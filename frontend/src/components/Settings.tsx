@@ -66,6 +66,7 @@ const Settings: React.FC<SettingsProps> = ({
   const [recentTransactionsDuration, setRecentTransactionsDuration] = useLocalStorage('recent_transactions_duration', 15);
   const [recentTransactionsEnabled, setRecentTransactionsEnabled] = useLocalStorage('recent_transactions_enabled', true);
   const [recentTransactionsOpacity, setRecentTransactionsOpacity] = useLocalStorage('recent_transactions_opacity', 80);
+  const [recentTransactionsCount, setRecentTransactionsCount] = useLocalStorage('recent_transactions_count', 3);
 
   const { inputProps: flexAmountProps, numericValue: flexAmountValue } = useCurrencyInput(flashFlexAmount);
   const [tempName, setTempName] = useState(cardHolderName);
@@ -748,6 +749,26 @@ const Settings: React.FC<SettingsProps> = ({
                         step="5"
                         value={recentTransactionsOpacity}
                         onChange={(e) => setRecentTransactionsOpacity(Number(e.target.value))}
+                        className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                      />
+                    </div>
+
+                    {/* Count Slider */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <PlusCircle className="w-3.5 h-3.5 opacity-60" />
+                          <p className="text-[10px] font-black text-foreground uppercase tracking-tight">Itens Visíveis: {recentTransactionsCount}</p>
+                        </div>
+                        <p className="text-[8px] text-muted-foreground font-bold uppercase">1 - 5 itens</p>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="1" 
+                        max="5" 
+                        step="1"
+                        value={recentTransactionsCount}
+                        onChange={(e) => setRecentTransactionsCount(Number(e.target.value))}
                         className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
                       />
                     </div>

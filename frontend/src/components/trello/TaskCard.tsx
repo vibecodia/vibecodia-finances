@@ -1,4 +1,4 @@
-import { Calendar, ChevronRight, ChevronLeft, Trash2, CheckSquare, ListTodo, Archive, Ban, AlertCircle, PauseCircle, Maximize2, X, Link2, Clock, History } from 'lucide-react';
+import { Calendar, ChevronRight, ChevronLeft, Trash2, CheckSquare, ListTodo, Archive, Ban, AlertCircle, PauseCircle, Maximize2, X, Link2, Clock, History, Pin } from 'lucide-react';
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 
@@ -49,6 +49,7 @@ interface TaskCardProps {
   onFocus?: (task: Task) => void;
   onCloseFocus?: () => void;
   onToggleChecklistItem?: (taskId: string, itemId: string) => void;
+  onTogglePin?: (taskId: string) => void;
 }
 
 export const TaskCard = React.memo(({ 
@@ -65,7 +66,8 @@ export const TaskCard = React.memo(({
   onArchive = () => {},
   onFocus = () => {},
   onCloseFocus = () => {},
-  onToggleChecklistItem = () => {}
+  onToggleChecklistItem = () => {},
+  onTogglePin = () => {}
 }: TaskCardProps) => {
   const completedItems = task.checklist?.filter(i => i.completed).length || 0;
   const totalItems = task.checklist?.length || 0;
@@ -111,6 +113,7 @@ export const TaskCard = React.memo(({
         !isFocusMode && "hover:scale-[1.01] hover:shadow-md",
         isDone && "opacity-60 grayscale-[0.2]",
         isBlocked && "opacity-50 grayscale bg-muted/20 cursor-not-allowed",
+        task.isPinned && "border-primary/40 shadow-lg shadow-primary/5",
         task.flag === 'blocked' && "bg-red-500/5",
         task.flag === 'impediment' && "bg-amber-500/5",
         task.flag === 'paused' && "bg-blue-500/5"
@@ -144,39 +147,44 @@ export const TaskCard = React.memo(({
         </div>
       )}
 
-      <div className={cn("flex items-start justify-between gap-3", 
-        isFocusMode ? "mb-8" : isMinimal ? "mb-0" : "mb-3"
-      )}>
-        <div className="flex-1 flex flex-col gap-1 min-w-0">
-          {!isMinimal && (
-            <div className="flex flex-wrap gap-2 items-center">
-              <FlagIcon flag={task.flag} searchTerm={searchTerm} />
-              {isBlocked && (
-                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/10 text-red-500" title={`Depende de ${pendingDependencies.length} tarefa(s) pendente(s)`}>
-                  <Link2 className="w-3 h-3" />
-                  <span className="text-[8px] font-black uppercase tracking-tighter">Bloqueada</span>
-                </div>
-              )}
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            {isMinimal && <CheckSquare className="w-3.5 h-3.5 text-primary/60 shrink-0" />}
-            {isMinimal && isBlocked && <Link2 className="w-3 h-3 text-red-500 shrink-0" />}
-            <h3 
-              className={cn(
-                "font-black text-foreground uppercase tracking-tight leading-tight",
-                isFocusMode ? "text-3xl" : "text-sm",
-                isMinimal && "truncate",
-                isDone && "line-through decoration-1 opacity-60"
-              )}
-              translate="no"
-            >
-              <span><Highlight text={task.title} searchTerm={searchTerm} /></span>
-            </h3>
+      {/* Top Row: Action Buttons and Flags */}
+      {!isFocusMode && (
+        <div className={cn(
+          "flex items-center justify-between mb-2 gap-2 transition-opacity",
+          isMinimal ? "opacity-0 group-hover:opacity-100" : ""
+        )}>
+          <div className="flex flex-wrap gap-2 items-center">
+            {!isMinimal && <FlagIcon flag={task.flag} searchTerm={searchTerm} />}
+            {isBlocked && (
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/10 text-red-500" title={`Depende de ${pendingDependencies.length} tarefa(s) pendente(s)`}>
+                <Link2 className="w-3 h-3" />
+                <span className="text-[8px] font-black uppercase tracking-tighter">Bloqueada</span>
+              </div>
+            )}
+            {task.isPinned && (
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                <Pin className="w-2.5 h-2.5 fill-current" />
+                <span className="text-[8px] font-black uppercase tracking-tighter">Fixada</span>
+              </div>
+            )}
           </div>
-        </div>
-        {!isFocusMode && (
-          <div className={cn("flex gap-0.5 transition-opacity", isMinimal ? "opacity-0 group-hover:opacity-100" : "")}>
+
+          <div className="flex items-center gap-0.5 shrink-0">
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                onTogglePin(task.id);
+              }}
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "h-6 w-6 p-0 transition-all",
+                task.isPinned ? "text-primary bg-primary/10" : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
+              )}
+              title={task.isPinned ? "Desafixar do Topo" : "Fixar no Topo"}
+            >
+              <Pin className={cn("w-3.5 h-3.5", task.isPinned && "fill-current")} />
+            </Button>
             {!isMinimal && (
               <Button
                 onClick={(e) => {
@@ -244,7 +252,27 @@ export const TaskCard = React.memo(({
               </Button>
             )}
           </div>
-        )}
+        </div>
+      )}
+
+      {/* Title Row */}
+      <div className={cn(
+        "w-full flex items-start gap-2",
+        isFocusMode ? "mb-8" : isMinimal ? "mb-0" : "mb-3"
+      )}>
+        {isMinimal && <CheckSquare className="w-3.5 h-3.5 text-primary/60 shrink-0 mt-0.5" />}
+        {isMinimal && isBlocked && <Link2 className="w-3 h-3 text-red-500 shrink-0 mt-1" />}
+        <h3 
+          className={cn(
+            "font-black text-foreground uppercase tracking-tight leading-tight w-full",
+            isFocusMode ? "text-3xl" : "text-sm",
+            isMinimal ? "truncate" : "whitespace-normal break-words",
+            isDone && "line-through decoration-1 opacity-60"
+          )}
+          translate="no"
+        >
+          <span><Highlight text={task.title} searchTerm={searchTerm} /></span>
+        </h3>
       </div>
       
       {task.description && !isMinimal && (

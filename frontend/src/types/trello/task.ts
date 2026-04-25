@@ -16,6 +16,7 @@ export interface BoardTheme {
   id: string;
   name: string;
   color?: string;
+  backgroundImage?: string;
 }
 
 export interface TimeLog {
@@ -41,6 +42,8 @@ export interface Task {
   themeId: string;
   timeLogs?: TimeLog[];
   columnEnteredAt?: string;
+  isPinned?: boolean;
+  pinnedAt?: string;
 }
 
 export interface Column {

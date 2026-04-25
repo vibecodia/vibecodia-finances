@@ -1,6 +1,6 @@
 import { format, getDate, getDaysInMonth, isBefore, startOfMonth, endOfMonth } from 'date-fns';
-import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil, Wifi, Check, X, Sword, Camera, RotateCcw } from 'lucide-react';
-import React, { useState, useRef } from 'react';
+import { Target, AlertTriangle, CreditCard, Eye, EyeOff, Scissors, Sparkles, Trash2, Pencil, Wifi, Check, X, Sword, Camera, RotateCcw, Keyboard } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Confetti from 'react-confetti';
 
 import { useTheme } from '../contexts/ThemeContext';
@@ -343,6 +343,27 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   const [tempName, setTempName] = useState(cardHolderName);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const [isUINinjaActive, setIsUINinjaActive] = useState(false);
+  const [currentShortcutIndex, setCurrentShortcutIndex] = useState(0);
+
+  const shortcuts = useMemo(() => [
+    { key: 'D', label: 'resumo' },
+    { key: 'K', label: 'novo gasto' },
+    { key: 'I', label: 'nova receita' },
+    { key: 'T', label: 'tarefas' },
+    { key: 'C', label: 'agenda' },
+    { key: 'R', label: 'relatórios' },
+    { key: 'G', label: 'metas' },
+     { key: 'P', label: 'playground' },
+     { key: '?', label: 'ajuda' },
+  ], []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentShortcutIndex(prev => (prev + 1) % shortcuts.length);
+    }, 5000); // Troca a cada 5 segundos
+    return () => clearInterval(interval);
+  }, [shortcuts.length]);
+
   const [customBg, setCustomBg] = useLocalStorage('dashboard_background_image', '');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { theme } = useTheme();
@@ -524,6 +545,25 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
                 <Sword className="w-5 h-5 group-hover:rotate-12 transition-transform" />
               </Button>
             )}
+          </div>
+        </div>
+
+        {/* Subtle Shortcut Hint - Desktop Only */}
+        <div className="hidden lg:flex justify-end pr-4 -mt-2 mb-2">
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-foreground/5 border border-border/50 animate-in fade-in slide-in-from-top-1 duration-1000 min-w-[180px] justify-center">
+            <Keyboard className="w-3 h-3 text-muted-foreground/60" />
+            <div className="key-rotation-container overflow-hidden h-3 flex items-center">
+              <span 
+                key={currentShortcutIndex}
+                className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 animate-in fade-in slide-in-from-bottom-1 duration-500"
+              >
+                Atalho: <span className="text-primary/60">[{shortcuts[currentShortcutIndex].key}]</span> {shortcuts[currentShortcutIndex].label}
+              </span>
+            </div>
+            <span className="text-[9px] font-black text-muted-foreground/20 mx-1">•</span>
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/40">
+              <span className="text-primary/60">[?]</span> ajuda
+            </span>
           </div>
         </div>
 
