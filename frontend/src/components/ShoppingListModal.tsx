@@ -86,7 +86,7 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
                 className="text-2xl font-black tracking-tight uppercase italic"
                 style={{ color: theme.text }}
               >
-                Lista
+                Lista Rápida
               </DialogTitle>
               <DialogDescription className="sr-only">
                 Gerencie seus itens e afazeres

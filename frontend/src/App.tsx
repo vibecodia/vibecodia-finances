@@ -353,7 +353,7 @@ function App() {
                 Atalhos do Teclado
               </DialogTitle>
               <DialogDescription>
-                Aumente sua produtividade com comandos rápidos de qualquer lugar.
+                Aumente sua produtividade com comandos rápidos (Apenas Desktop).
               </DialogDescription>
             </DialogHeader>
 
