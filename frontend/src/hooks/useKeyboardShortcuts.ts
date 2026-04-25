@@ -14,7 +14,7 @@ export function useKeyboardShortcuts(onOpenHelp?: () => void) {
         return;
       }
 
-      // Don't trigger if user is typing in an input or textarea
+      // Não disparar se o usuário estiver digitando em um input ou textarea
       if (
         document.activeElement?.tagName === 'INPUT' ||
         document.activeElement?.tagName === 'TEXTAREA' ||
