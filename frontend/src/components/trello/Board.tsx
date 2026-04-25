@@ -749,9 +749,12 @@ export function Board() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={(task) => {
-          if (editingTask) updateTask(task);
-          else addTask(task);
-          setIsModalOpen(false);
+          if (editingTask) {
+            updateTask(task);
+          } else {
+            addTask(task);
+            setEditingTask(task);
+          }
         }}
         onAutoSave={(task) => {
           if (editingTask) updateTask(task);

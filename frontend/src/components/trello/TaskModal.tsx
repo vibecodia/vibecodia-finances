@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
 import { Task, ChecklistItem, TaskFlag, TaskLabel, Column, TimeLog } from '../../types/trello/task';
-import { createTask, generateId, calculateDaysInColumn } from '../../utils/trello/taskUtils';
+import { createTask, generateId, formatTimeElapsed } from '../../utils/trello/taskUtils';
 import { getBrazilDateString } from '../../utils/helpers';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -41,6 +41,8 @@ export function TaskModal({ isOpen, onClose, onSave, onAutoSave, onDelete, onArc
   const [columnId, setColumnId] = useState('');
   const [isPinned, setIsPinned] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
   
   // Time Logging State
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
@@ -256,9 +258,11 @@ export function TaskModal({ isOpen, onClose, onSave, onAutoSave, onDelete, onArc
     setEditingItemId(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e: React.FormEvent, shouldClose: boolean = true) => {
+    if (e) e.preventDefault();
     if (!title.trim()) return;
+
+    setIsSaving(true);
 
     const taskData: Task = {
       ...(mode === 'edit' && task ? task : createTask(title.trim(), description.trim(), priority, task?.themeId || '', date || undefined, columnId)),
@@ -277,7 +281,15 @@ export function TaskModal({ isOpen, onClose, onSave, onAutoSave, onDelete, onArc
     };
 
     onSave(taskData);
-    onClose();
+
+    if (shouldClose) {
+      onClose();
+    } else {
+      setShowSaveSuccess(true);
+      setTimeout(() => setShowSaveSuccess(false), 2000);
+    }
+    
+    setIsSaving(false);
   };
 
   if (!isOpen) return null;
@@ -298,9 +310,16 @@ export function TaskModal({ isOpen, onClose, onSave, onAutoSave, onDelete, onArc
             <div className="p-2 rounded-xl bg-primary/10 text-primary">
               <Target className="w-5 h-5" />
             </div>
-            <h2 className="text-xl font-black text-foreground uppercase tracking-tight">
-              {mode === 'edit' ? 'Editar Tarefa' : 'Nova Tarefa'}
-            </h2>
+            <div className="flex flex-col">
+              <h2 className="text-xl font-black text-foreground uppercase tracking-tight">
+                {mode === 'edit' ? 'Editar Tarefa' : 'Nova Tarefa'}
+              </h2>
+              {showSaveSuccess && (
+                <span className="text-[10px] font-black uppercase text-green-500 animate-in fade-in slide-in-from-top-1 duration-300">
+                  Alterações salvas com sucesso!
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {/* Botão de Fullscreen apenas para Desktop */}
@@ -352,14 +371,24 @@ export function TaskModal({ isOpen, onClose, onSave, onAutoSave, onDelete, onArc
                     <Columns className="w-4 h-4" />
                     Coluna
                   </label>
-                  {mode === 'edit' && task?.columnEnteredAt && (
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-foreground/5 text-muted-foreground text-[10px] font-bold">
-                      <History className="w-3 h-3 opacity-50" />
-                      <span className="uppercase tracking-tighter">
-                        {calculateDaysInColumn(task.columnEnteredAt) === 0 
-                          ? 'Entrou hoje' 
-                          : `${calculateDaysInColumn(task.columnEnteredAt)} dias nesta coluna`}
-                      </span>
+                  {mode === 'edit' && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {task?.columnEnteredAt && (
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-foreground/5 text-muted-foreground text-[10px] font-bold" title="Tempo nesta coluna">
+                          <History className="w-3 h-3 opacity-50" />
+                          <span className="uppercase tracking-tighter">
+                            {formatTimeElapsed(task.columnEnteredAt)} na coluna
+                          </span>
+                        </div>
+                      )}
+                      {task?.createdAt && (
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-primary/5 text-primary text-[10px] font-bold" title="Tempo total desde a criação">
+                          <Clock className="w-3 h-3 opacity-50" />
+                          <span className="uppercase tracking-tighter">
+                            Criada há {formatTimeElapsed(task.createdAt)}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -866,17 +895,33 @@ export function TaskModal({ isOpen, onClose, onSave, onAutoSave, onDelete, onArc
                 type="button"
                 onClick={onClose}
                 variant="outline"
-                className="flex-1 sm:flex-none"
+                className="flex-1 sm:flex-none h-11"
               >
                 Cancelar
               </Button>
-              <Button
-                type="submit"
-                disabled={!title.trim()}
-                className="flex-1 sm:flex-none"
-              >
-                {mode === 'edit' ? 'Salvar Alterações' : 'Criar Tarefa'}
-              </Button>
+              
+              <div className="flex items-center gap-2 flex-1 sm:flex-none">
+                <Button
+                  type="button"
+                  onClick={(e) => handleSubmit(e, false)}
+                  disabled={!title.trim() || isSaving}
+                  variant="outline"
+                  className={cn(
+                    "flex-1 sm:flex-none h-11 border-primary/20 text-primary hover:bg-primary/5 font-black uppercase tracking-widest text-[10px]",
+                    showSaveSuccess && "border-green-500 text-green-500 bg-green-500/5"
+                  )}
+                >
+                  {isSaving ? 'Salvando...' : showSaveSuccess ? 'Salvo!' : 'Salvar e Ficar'}
+                </Button>
+                
+                <Button
+                  type="submit"
+                  disabled={!title.trim() || isSaving}
+                  className="flex-1 sm:flex-none h-11 shadow-lg shadow-primary/20 font-black uppercase tracking-widest text-[10px]"
+                >
+                  {mode === 'edit' ? 'Salvar e Sair' : 'Criar e Sair'}
+                </Button>
+              </div>
             </div>
           </div>
         </form>

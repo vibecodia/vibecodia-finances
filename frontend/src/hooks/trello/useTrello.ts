@@ -76,8 +76,19 @@ export function useTrello() {
       let updated = false;
       const newThemeId = t.themeId || DEFAULT_THEME.id;
       let newColumnId = t.columnId;
+      const now = new Date().toISOString();
 
       if (!t.themeId) {
+        updated = true;
+      }
+
+      if (!t.createdAt) {
+        t.createdAt = now;
+        updated = true;
+      }
+
+      if (!t.columnEnteredAt) {
+        t.columnEnteredAt = now;
         updated = true;
       }
 
