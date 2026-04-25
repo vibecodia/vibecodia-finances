@@ -77,18 +77,20 @@ export function useTrello() {
       const newThemeId = t.themeId || DEFAULT_THEME.id;
       let newColumnId = t.columnId;
       const now = new Date().toISOString();
+      let createdAt = t.createdAt;
+      let columnEnteredAt = t.columnEnteredAt;
 
       if (!t.themeId) {
         updated = true;
       }
 
       if (!t.createdAt) {
-        t.createdAt = now;
+        createdAt = now;
         updated = true;
       }
 
       if (!t.columnEnteredAt) {
-        t.columnEnteredAt = now;
+        columnEnteredAt = now;
         updated = true;
       }
 
@@ -103,7 +105,7 @@ export function useTrello() {
 
       if (updated) {
         tasksChanged = true;
-        return { ...t, themeId: newThemeId, columnId: newColumnId };
+        return { ...t, themeId: newThemeId, columnId: newColumnId, createdAt, columnEnteredAt };
       }
       return t;
     });
