@@ -58,3 +58,20 @@ export function calculateDaysInColumn(enteredAt?: string): number {
   const diffTime = Math.abs(now.getTime() - start.getTime());
   return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 }
+
+export function formatTimeElapsed(dateString?: string): string {
+  if (!dateString) return 'N/A';
+  const start = new Date(dateString);
+  const now = new Date();
+  const diffMs = Math.abs(now.getTime() - start.getTime());
+  
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMins < 1) return 'Agora';
+  if (diffMins < 60) return `${diffMins}m`;
+  if (diffHours < 24) return `${diffHours}h`;
+  if (diffDays === 1) return '1 dia';
+  return `${diffDays} dias`;
+}

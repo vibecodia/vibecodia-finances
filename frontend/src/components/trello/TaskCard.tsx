@@ -3,7 +3,7 @@ import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 
 import { Task, TaskFlag } from '../../types/trello/task';
-import { getPriorityLabel, formatDate, calculateDaysInColumn } from '../../utils/trello/taskUtils';
+import { getPriorityLabel, formatDate, formatTimeElapsed } from '../../utils/trello/taskUtils';
 import { parseLocalDate, getCurrentBrazilDate } from '../../utils/helpers';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -77,9 +77,13 @@ export const TaskCard = React.memo(({
     task.timeLogs?.reduce((acc, log) => acc + log.hours, 0) || 0
   , [task.timeLogs]);
 
-  const daysInColumn = React.useMemo(() => 
-    calculateDaysInColumn(task.columnEnteredAt)
+  const timeInColumn = React.useMemo(() => 
+    formatTimeElapsed(task.columnEnteredAt)
   , [task.columnEnteredAt]);
+
+  const timeSinceCreation = React.useMemo(() => 
+    formatTimeElapsed(task.createdAt)
+  , [task.createdAt]);
 
   // Se houver busca e o item estiver em um dos campos pesquisados, forçamos a exibição expandida
   const hasSearchMatch = React.useMemo(() => {
@@ -367,13 +371,17 @@ export const TaskCard = React.memo(({
               </div>
             )}
 
-            <div className={cn("flex items-center gap-1 text-muted-foreground opacity-60", 
+            <div className={cn("flex flex-wrap items-center gap-3 text-muted-foreground opacity-60", 
               isFocusMode ? "text-xs" : "text-[9px]"
             )}>
-              <History className="w-2.5 h-2.5" />
-              <span className="font-bold uppercase">
-                {daysInColumn === 0 ? 'Hoje' : daysInColumn === 1 ? '1 dia' : `${daysInColumn} dias`}
-              </span>
+              <div className="flex items-center gap-1" title="Tempo nesta coluna">
+                <History className="w-2.5 h-2.5" />
+                <span className="font-bold uppercase">{timeInColumn}</span>
+              </div>
+              <div className="flex items-center gap-1 border-l border-border pl-3" title="Tempo total desde a criação">
+                <Clock className="w-2.5 h-2.5 opacity-50" />
+                <span className="font-bold uppercase">{timeSinceCreation}</span>
+              </div>
             </div>
           </div>
           
