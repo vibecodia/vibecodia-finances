@@ -1,4 +1,4 @@
-import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Check, Archive, AlertCircle, PauseCircle, Ban, Tag, Link2, ArrowDownAz, Columns, Clock, History, Calendar as CalendarIcon, Pin } from 'lucide-react';
+import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Check, Archive, AlertCircle, PauseCircle, Ban, Tag, Link2, ArrowDownAz, Columns, Clock, History, Calendar as CalendarIcon, Pin, Maximize2, Minimize2 } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
@@ -40,6 +40,7 @@ export function TaskModal({ isOpen, onClose, onSave, onAutoSave, onDelete, onArc
   const [dependsOn, setDependsOn] = useState<string[]>([]);
   const [columnId, setColumnId] = useState('');
   const [isPinned, setIsPinned] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   
   // Time Logging State
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
@@ -101,6 +102,12 @@ export function TaskModal({ isOpen, onClose, onSave, onAutoSave, onDelete, onArc
       onClose();
     }
   };
+
+  useEffect(() => {
+    if (!isOpen) {
+      setIsFullscreen(false);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (task && mode === 'edit') {
@@ -276,8 +283,16 @@ export function TaskModal({ isOpen, onClose, onSave, onAutoSave, onDelete, onArc
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-300">
-      <Card className="w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200 p-0 overflow-hidden max-h-[90vh] flex flex-col">
+    <div className={cn(
+      "fixed inset-0 bg-black/60 flex items-center justify-center z-[200] backdrop-blur-sm animate-in fade-in duration-300",
+      isFullscreen ? "p-0" : "p-4"
+    )}>
+      <Card className={cn(
+        "w-full shadow-2xl animate-in zoom-in-95 duration-200 p-0 overflow-hidden flex flex-col transition-all duration-300",
+        isFullscreen 
+          ? "max-w-none h-screen rounded-none" 
+          : "max-w-2xl max-h-[90vh] rounded-[2rem]"
+      )}>
         <div className="flex items-center justify-between p-6 border-b border-border bg-card">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-primary/10 text-primary">
@@ -287,18 +302,38 @@ export function TaskModal({ isOpen, onClose, onSave, onAutoSave, onDelete, onArc
               {mode === 'edit' ? 'Editar Tarefa' : 'Nova Tarefa'}
             </h2>
           </div>
-          <Button
-            onClick={onClose}
-            variant="ghost"
-            size="icon"
-          >
-            <X className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Botão de Fullscreen apenas para Desktop */}
+            <Button
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              variant="ghost"
+              size="icon"
+              className="hidden lg:flex h-10 w-10 rounded-xl hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all"
+              title={isFullscreen ? "Sair da Tela Cheia" : "Modo Tela Cheia"}
+            >
+              {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+            </Button>
+            
+            <Button
+              onClick={onClose}
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 rounded-xl hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+            >
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6 overflow-y-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-6">
+        <form onSubmit={handleSubmit} className="flex-1 p-8 space-y-6 overflow-y-auto custom-scrollbar">
+          <div className={cn(
+            "grid grid-cols-1 gap-8",
+            isFullscreen ? "md:grid-cols-12" : "md:grid-cols-2"
+          )}>
+            <div className={cn(
+              "space-y-6",
+              isFullscreen ? "md:col-span-8" : ""
+            )}>
               <Input
                 label="Título *"
                 type="text"
@@ -308,6 +343,7 @@ export function TaskModal({ isOpen, onClose, onSave, onAutoSave, onDelete, onArc
                 autoFocus
                 onFocus={(e) => e.target.select()}
                 required
+                className={isFullscreen ? "text-2xl font-black" : ""}
               />
 
               <div className="space-y-3">
@@ -499,7 +535,10 @@ export function TaskModal({ isOpen, onClose, onSave, onAutoSave, onDelete, onArc
               </div>
             </div>
 
-            <div className="space-y-6">
+            <div className={cn(
+              "space-y-6",
+              isFullscreen ? "md:col-span-4" : ""
+            )}>
               <div className="space-y-3">
                 <label className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                   <Tag className="w-4 h-4" />

@@ -6,6 +6,14 @@ export function useKeyboardShortcuts(onOpenHelp?: () => void) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Atalhos apenas para desktop (largura > 1024px)
+      if (window.innerWidth <= 1024) return;
+
+      // Ignorar se teclas modificadoras estiverem pressionadas (exceto Shift que pode ser necessário para '?')
+      if (e.ctrlKey || e.altKey || e.metaKey) {
+        return;
+      }
+
       // Don't trigger if user is typing in an input or textarea
       if (
         document.activeElement?.tagName === 'INPUT' ||
