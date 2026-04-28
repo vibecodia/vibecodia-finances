@@ -14,9 +14,7 @@ export const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
-// FIXED: Get current date in Brazil timezone (America/Sao_Paulo) - DEFINITIVE SOLUTION
 export const getCurrentBrazilDate = (): Date => {
-  // Use Intl.DateTimeFormat to get the exact time in São Paulo timezone
   const now = new Date();
   const brazilTime = new Intl.DateTimeFormat('pt-BR', {
     timeZone: 'America/Sao_Paulo',
@@ -29,9 +27,8 @@ export const getCurrentBrazilDate = (): Date => {
     hour12: false
   }).formatToParts(now);
 
-  // Extract parts and create a proper Date object
   const year = parseInt(brazilTime.find(part => part.type === 'year')?.value || '0');
-  const month = parseInt(brazilTime.find(part => part.type === 'month')?.value || '0') - 1; // Month is 0-indexed
+  const month = parseInt(brazilTime.find(part => part.type === 'month')?.value || '0') - 1;
   const day = parseInt(brazilTime.find(part => part.type === 'day')?.value || '0');
   const hour = parseInt(brazilTime.find(part => part.type === 'hour')?.value || '0');
   const minute = parseInt(brazilTime.find(part => part.type === 'minute')?.value || '0');
@@ -73,23 +70,16 @@ export const formatBrazilDate = (date: Date | string, formatStr: string = 'dd/MM
   return format(dateObj, formatStr, { locale: ptBR });
 };
 
-// FIXED: Get date string in Brazil timezone (YYYY-MM-DD format) - DEFINITIVE SOLUTION
 export const getBrazilDateString = (date?: Date): string => {
-  const dateObj = date || getCurrentBrazilDate();
+  // Se não passar data, usa 'now' real para evitar double-shift de getCurrentBrazilDate
+  const dateObj = date || new Date();
   
-  // Use Intl.DateTimeFormat to ensure we get the correct date in São Paulo timezone
-  const brazilDateParts = new Intl.DateTimeFormat('pt-BR', {
+  return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Sao_Paulo',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
-  }).formatToParts(dateObj);
-
-  const year = brazilDateParts.find(part => part.type === 'year')?.value || '';
-  const month = brazilDateParts.find(part => part.type === 'month')?.value || '';
-  const day = brazilDateParts.find(part => part.type === 'day')?.value || '';
-
-  return `${year}-${month}-${day}`;
+  }).format(dateObj);
 };
 
 // FIXED: Convert date string to proper Date object - DEFINITIVE SOLUTION
