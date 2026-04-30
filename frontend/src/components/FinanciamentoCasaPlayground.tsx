@@ -94,6 +94,16 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
   const [layout, setLayout] = useLocalStorage<LayoutItem[]>('financiamento_playground_layout_v4', DEFAULT_LAYOUT);
   const [maximizedId, setMaximizedId] = useState<string | null>(null);
   
+  const today = useMemo(() => new Date(), []);
+
+  const getStatusByDate = (date: Date): 'Paga' | 'Aberta' | 'Projetada' => {
+    if (date <= today) return 'Paga';
+    if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) {
+      return 'Aberta';
+    }
+    return 'Projetada';
+  };
+
   // Manual inputs for simulation
    const [overrideTotalParcelas, setOverrideTotalParcelas] = useState<number | null>(419);
    const [taxaJurosMensal] = useState<number>(0.010303871);
@@ -109,6 +119,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
     
     // 1. Iniciar com o histórico real do Itaú
     ITAU_HISTORY.forEach((item: HistoryItem) => {
+      const date = parseISO(item.vencimento);
       results.push({
         parcela: item.parcela,
         vencimento: item.vencimento,
@@ -119,8 +130,8 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
         fgtsMensal: item.fgtsMensal,
         total: item.total,
         saldoDevedor: item.saldoDevedor,
-        date: parseISO(item.vencimento),
-        situacao: item.situacao,
+        date: date,
+        situacao: getStatusByDate(date),
         operacao: item.operacao
       });
     });
@@ -156,7 +167,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
         total: Math.max(amortizacaoBase + juros + seguros - fgtsSubsidy, 0),
         saldoDevedor: currentSaldo,
         date: currentMonth,
-        situacao: 'Projetada'
+        situacao: getStatusByDate(currentMonth)
       });
 
       if (currentSaldo <= 0) break;
@@ -170,7 +181,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
 
   // Derived stats dependent on adjustedSacData
   const paidInstallments = useMemo(() => {
-    return adjustedSacData.filter((d: any) => d.date < new Date());
+    return adjustedSacData.filter((d: any) => d.situacao === 'Paga');
   }, [adjustedSacData]);
 
   const lastParcelaPaga = paidInstallments.length > 0 ? Math.max(...paidInstallments.map((d: any) => d.parcela)) : 0;
@@ -205,7 +216,6 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
     const valorTotalContratoTotal = valorTotalContratoPerCarta * 3;
     
     // 3. Calcular o Total Pago (Fluxo de Caixa e progresso)
-    const today = new Date();
     const start = CONSORCIO_CONFIG.dataInicio;
     const monthsSinceStart = (today.getFullYear() - start.getFullYear()) * 12 + today.getMonth() - start.getMonth();
     
@@ -249,7 +259,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
         parcela: 928.28
       }
     };
-  }, [transactions]);
+  }, [transactions, today]);
 
   // Itau x Consorcio Relation State
   const [consorcioTaxaAdm, setConsorcioTaxaAdm] = useState(12);
@@ -269,7 +279,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
     const amountToTarget = remainingPercentToTarget * consorcioData.valorTotalContrato;
     const monthsToContemplacao = Math.ceil(amountToTarget / consorcioData.avgInstallment);
     
-    const projectedContemplacaoDate = manualContemplacaoDate ? parseISO(manualContemplacaoDate) : addMonths(new Date(), monthsToContemplacao);
+    const projectedContemplacaoDate = manualContemplacaoDate ? parseISO(manualContemplacaoDate) : addMonths(today, monthsToContemplacao);
     
     // Parcela do Itaú na data da contemplação
     const itauParcelaAtContemplacao = adjustedSacData.find(d => {
@@ -326,12 +336,12 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
       novaDataQuitacao,
       economiaJuros,
       percentAtualConsorcio: consorcioData.percentPaidEstimated,
-      mesesAteContemplacao: Math.max(0, differenceInMonths(projectedContemplacaoDate, new Date())),
+      mesesAteContemplacao: Math.max(0, differenceInMonths(projectedContemplacaoDate, today)),
       consorcioRestante: consorcioRestanteNaQuitacao,
       consorcioRestanteValor: consorcioRestanteNaQuitacao * consorcioData.avgInstallment,
       sobraCredito
     };
-  }, [consorcioData, adjustedSacData, lastParcelaPaga, consorcioMinContemplacao, consorcioTaxaAdm, manualContemplacaoDate, taxaJurosMensal, totalParcelas, consorcioModoUso, consorcioIntervaloMeses]);
+  }, [consorcioData, adjustedSacData, lastParcelaPaga, consorcioMinContemplacao, consorcioTaxaAdm, manualContemplacaoDate, taxaJurosMensal, totalParcelas, consorcioModoUso, consorcioIntervaloMeses, today]);
 
   // Consortium Installments Table Data
   const consorcioInstallmentsData = useMemo(() => {
@@ -349,8 +359,6 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
 
     for (let i = 1; i <= 200; i++) {
       const vencimento = addMonths(startDate, i - 1);
-      const isPaid = i <= count;
-      const isCurrentMonth = i === count + 1;
       
       let valorMensal = CONSORCIO_CONFIG.valorParcelaAtualTotal;
       if (i === 1) valorMensal = CONSORCIO_CONFIG.valorPrimeiraParcelaTotal;
@@ -372,7 +380,7 @@ const FinanciamentoCasaPlayground: React.FC<FinanciamentoCasaPlaygroundProps> = 
         vencimento: format(vencimento, 'yyyy-MM-dd'),
         valor: valorMensal,
         faltaParaCredito: faltaParaCredito,
-        situacao: isPaid ? 'Paga' : (isCurrentMonth ? 'Aberta' : 'Projetada'),
+        situacao: getStatusByDate(vencimento),
         date: vencimento
       });
     }
