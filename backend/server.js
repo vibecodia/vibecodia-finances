@@ -990,7 +990,7 @@ app.get('/api/fetch-receipt-data', async (req, res) => {
     }
 
     // 4.1 Extrair Descontos (se houver)
-    const discountMatch = html.match(/Descontos R\$:[\s\S]*?totalNumb[^>]*>([\s\S]*?)<\/span>/i);
+    const discountMatch = html.match(/(?:Descontos R\$:|Você economizou nessa compra R\$)[\s\S]*?totalNumb[^>]*>([\s\S]*?)<\/span>/i);
     if (discountMatch) {
       const discountVal = parseFloat(cleanText(discountMatch[1]).replace(/\./g, '').replace(',', '.')) || 0;
       if (discountVal > 0) {
