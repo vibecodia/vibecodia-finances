@@ -345,6 +345,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
   const [isUINinjaActive, setIsUINinjaActive] = useState(false);
   const [currentShortcutIndex, setCurrentShortcutIndex] = useState(0);
 
+  // Dashboard Layout Settings
+  const [showIncomeExpenseBar] = useLocalStorage('dashboard_show_income_expense_bar', true);
+  const [showBenefitsCard] = useLocalStorage('dashboard_show_benefits_card', true);
+  const [showSavingsGoalsCard] = useLocalStorage('dashboard_show_savings_goals_card', true);
+  const [recentTransactionsEnabled] = useLocalStorage('recent_transactions_enabled', true);
+
   const shortcuts = useMemo(() => [
     { key: 'D', label: 'resumo' },
     { key: 'K', label: 'novo gasto' },
@@ -816,159 +822,163 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
       </div>
 
       {/* Barra receitas vs despesas */}
-      <Card className="relative p-6 shadow-[2px_2px_10px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker" id="tour-income-expense-bar">
-        {/* Adesivo Band-Aid Central */}
-        <BandaidEasterEgg type="slugs" className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
-          <div className="w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] flex items-center justify-center group-hover/sticker:-translate-y-1 transition-transform overflow-hidden">
-            <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
-              {[...Array(12)].map((_, i) => <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />)}
+      {showIncomeExpenseBar && (
+        <Card className="relative p-6 shadow-[2px_2px_10px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker" id="tour-income-expense-bar">
+          {/* Adesivo Band-Aid Central */}
+          <BandaidEasterEgg type="slugs" className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
+            <div className="w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] flex items-center justify-center group-hover/sticker:-translate-y-1 transition-transform overflow-hidden">
+              <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
+                {[...Array(12)].map((_, i) => <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />)}
+              </div>
+              <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
             </div>
-            <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
-          </div>
-        </BandaidEasterEgg>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-green-400 rounded-full" />
-            <span className="text-foreground font-medium">Receitas</span>
-          </div>
-          <div className="flex items-center gap-4">
+          </BandaidEasterEgg>
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-red-600 rounded-full" />
-              <span className="text-foreground text-sm">Gastos Pagos</span>
+              <div className="w-3 h-3 bg-green-400 rounded-full" />
+              <span className="text-foreground font-medium">Receitas</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-red-400 rounded-full" />
-              <span className="text-foreground text-sm">Não Pagos</span>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-600 rounded-full" />
+                <span className="text-foreground text-sm">Gastos Pagos</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-400 rounded-full" />
+                <span className="text-foreground text-sm">Não Pagos</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="w-full bg-muted rounded-full h-5 relative overflow-hidden shadow-inner">
-          <div
-            className="bg-green-400 h-5 transition-all duration-700 absolute left-0 shadow-lg"
-            style={{ width: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%` }}
-          />
-          <div
-            className="bg-red-600 h-5 transition-all duration-700 absolute shadow-lg"
-            style={{
-              left: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
-              width: `${expensesPaid > 0 ? (expensesPaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
-            }}
-          />
-          <div
-            className="bg-red-400 h-5 transition-all duration-700 absolute shadow-lg"
-            style={{
-              left: `${(currentIncome + expensesPaid) > 0 ? ((currentIncome + expensesPaid) / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
-              width: `${expensesUnpaid > 0 ? (expensesUnpaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
-            }}
-          />
-        </div>
+          <div className="w-full bg-muted rounded-full h-5 relative overflow-hidden shadow-inner">
+            <div
+              className="bg-green-400 h-5 transition-all duration-700 absolute left-0 shadow-lg"
+              style={{ width: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%` }}
+            />
+            <div
+              className="bg-red-600 h-5 transition-all duration-700 absolute shadow-lg"
+              style={{
+                left: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
+                width: `${expensesPaid > 0 ? (expensesPaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
+              }}
+            />
+            <div
+              className="bg-red-400 h-5 transition-all duration-700 absolute shadow-lg"
+              style={{
+                left: `${(currentIncome + expensesPaid) > 0 ? ((currentIncome + expensesPaid) / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
+                width: `${expensesUnpaid > 0 ? (expensesUnpaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
+              }}
+            />
+          </div>
 
-        <div className="grid grid-cols-3 gap-4 mt-4">
-          <div className="text-center">
-            <div className="text-lg font-bold text-green-600 dark:text-green-400">
-              {currentIncome > 0 ? ((currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
+          <div className="grid grid-cols-3 gap-4 mt-4">
+            <div className="text-center">
+              <div className="text-lg font-bold text-green-600 dark:text-green-400">
+                {currentIncome > 0 ? ((currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
+              </div>
+              <div className="text-xs text-muted-foreground">Receitas</div>
+              <div className="text-xs text-muted-foreground font-medium">{formatCurrency(currentIncome)}</div>
             </div>
-            <div className="text-xs text-muted-foreground">Receitas</div>
-            <div className="text-xs text-muted-foreground font-medium">{formatCurrency(currentIncome)}</div>
-          </div>
-          <div className="text-center">
-            <div className="text-lg font-bold text-red-600 dark:text-red-400">
-              {expensesPaid > 0 ? ((expensesPaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
+            <div className="text-center">
+              <div className="text-lg font-bold text-red-600 dark:text-red-400">
+                {expensesPaid > 0 ? ((expensesPaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
+              </div>
+              <div className="text-xs text-muted-foreground">Pagos</div>
+              <div className="text-xs text-muted-foreground font-medium">{formatCurrency(expensesPaid)}</div>
             </div>
-            <div className="text-xs text-muted-foreground">Pagos</div>
-            <div className="text-xs text-muted-foreground font-medium">{formatCurrency(expensesPaid)}</div>
-          </div>
-          <div className="text-center">
-            <div className="text-lg font-bold text-red-400 dark:text-red-300">
-              {expensesUnpaid > 0 ? ((expensesUnpaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
+            <div className="text-center">
+              <div className="text-lg font-bold text-red-400 dark:text-red-300">
+                {expensesUnpaid > 0 ? ((expensesUnpaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100).toFixed(1) : '0'}%
+              </div>
+              <div className="text-xs text-muted-foreground">Não Pagos</div>
+              <div className="text-xs text-muted-foreground font-medium">{formatCurrency(expensesUnpaid)}</div>
             </div>
-            <div className="text-xs text-muted-foreground">Não Pagos</div>
-            <div className="text-xs text-muted-foreground font-medium">{formatCurrency(expensesUnpaid)}</div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
 
       {/* Benefícios — Flash / Vero Card */}
-      <Card
-        className="relative p-6 space-y-6 shadow-[2px_2px_12px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker"
-      >
-        {/* Adesivo Band-Aid Lateral */}
-        <BandaidEasterEgg type="coins" className="absolute -top-4 -right-2 z-20">
-          <div className="w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] rotate-[30deg] flex items-center justify-center group-hover/sticker:rotate-[25deg] transition-transform overflow-hidden">
-            <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
-              {[...Array(12)].map((_, i) => <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />)}
+      {showBenefitsCard && (
+        <Card
+          className="relative p-6 space-y-6 shadow-[2px_2px_12px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker"
+        >
+          {/* Adesivo Band-Aid Lateral */}
+          <BandaidEasterEgg type="coins" className="absolute -top-4 -right-2 z-20">
+            <div className="w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] rotate-[30deg] flex items-center justify-center group-hover/sticker:rotate-[25deg] transition-transform overflow-hidden">
+              <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
+                {[...Array(12)].map((_, i) => <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />)}
+              </div>
+              <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
             </div>
-            <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
+          </BandaidEasterEgg>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5 text-primary" />
+              <span className="text-foreground font-bold">Saldo Benefícios</span>
+            </div>
           </div>
-        </BandaidEasterEgg>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-primary" />
-            <span className="text-foreground font-bold">Saldo Benefícios</span>
-          </div>
-        </div>
 
-        <div className="space-y-4">
+          <div className="space-y-4">
+            <AccountSlider
+              label="Flash"
+              income={flashIncome}
+              spent={flashSpent}
+              formatCurrency={formatCurrency}
+              daysPassed={daysPassed}
+              totalDays={totalDays}
+              splitValue={isFlashSplit ? flashFlexAmount : 0}
+              splitLabel="Flex"
+            />
+
+            <div className="flex justify-end items-center gap-4 px-1">
+              {isFlashSplit && (
+                <Button
+                  onClick={() => setIsSplitModalOpen(true)}
+                  variant="ghost"
+                  size="sm"
+                  className="text-[10px] font-black uppercase tracking-widest text-foreground/40"
+                  title="Ajustar Split"
+                >
+                  <Pencil className="w-3 h-3 mr-1.5" />
+                  Ajustar
+                </Button>
+              )}
+              <Button
+                onClick={() => {
+                  if (isFlashSplit) {
+                    setFlashFlexAmount(0);
+                    setIsFlashSplit(false);
+                  } else {
+                    setIsSplitModalOpen(true);
+                  }
+                }}
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "text-[10px] font-black uppercase tracking-widest transition-colors",
+                  isFlashSplit
+                    ? 'text-red-500/60 hover:text-red-600'
+                    : 'text-foreground/40 hover:text-primary'
+                )}
+              >
+                {isFlashSplit ? <Trash2 className="w-3 h-3 mr-1.5" /> : <Scissors className="w-3 h-3 mr-1.5" />}
+                {isFlashSplit ? 'Remover Split' : 'Split Flex'}
+              </Button>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-200 dark:border-slate-700" />
+
           <AccountSlider
-            label="Flash"
-            income={flashIncome}
-            spent={flashSpent}
+            label="Vero Card"
+            income={veroIncome}
+            spent={veroSpent}
             formatCurrency={formatCurrency}
             daysPassed={daysPassed}
             totalDays={totalDays}
-            splitValue={isFlashSplit ? flashFlexAmount : 0}
-            splitLabel="Flex"
           />
-
-          <div className="flex justify-end items-center gap-4 px-1">
-            {isFlashSplit && (
-              <Button
-                onClick={() => setIsSplitModalOpen(true)}
-                variant="ghost"
-                size="sm"
-                className="text-[10px] font-black uppercase tracking-widest text-foreground/40"
-                title="Ajustar Split"
-              >
-                <Pencil className="w-3 h-3 mr-1.5" />
-                Ajustar
-              </Button>
-            )}
-            <Button
-              onClick={() => {
-                if (isFlashSplit) {
-                  setFlashFlexAmount(0);
-                  setIsFlashSplit(false);
-                } else {
-                  setIsSplitModalOpen(true);
-                }
-              }}
-              variant="ghost"
-              size="sm"
-              className={cn(
-                "text-[10px] font-black uppercase tracking-widest transition-colors",
-                isFlashSplit
-                  ? 'text-red-500/60 hover:text-red-600'
-                  : 'text-foreground/40 hover:text-primary'
-              )}
-            >
-              {isFlashSplit ? <Trash2 className="w-3 h-3 mr-1.5" /> : <Scissors className="w-3 h-3 mr-1.5" />}
-              {isFlashSplit ? 'Remover Split' : 'Split Flex'}
-            </Button>
-          </div>
-        </div>
-
-        <div className="border-t border-slate-200 dark:border-slate-700" />
-
-        <AccountSlider
-          label="Vero Card"
-          income={veroIncome}
-          spent={veroSpent}
-          formatCurrency={formatCurrency}
-          daysPassed={daysPassed}
-          totalDays={totalDays}
-        />
-      </Card>
+        </Card>
+      )}
 
       {/* Modal de Split do Flash */}
       <FlashSplitModal
@@ -989,7 +999,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
       />
 
       {/* Progresso das Metas */}
-      {savingsGoals.length > 0 && (
+      {showSavingsGoalsCard && savingsGoals.length > 0 && (
         <Card
           className="relative cursor-default shadow-[2px_2px_15px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker"
         >
@@ -1029,7 +1039,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, savingsGoals }) => 
         </Card>
       )}
 
-      <RecentTransactionsFloatingCard transactions={transactions} />
+      {recentTransactionsEnabled && <RecentTransactionsFloatingCard transactions={transactions} />}
     </div>
   );
 };
