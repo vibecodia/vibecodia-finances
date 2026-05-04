@@ -68,6 +68,11 @@ const Settings: React.FC<SettingsProps> = ({
   const [recentTransactionsOpacity, setRecentTransactionsOpacity] = useLocalStorage('recent_transactions_opacity', 80);
   const [recentTransactionsCount, setRecentTransactionsCount] = useLocalStorage('recent_transactions_count', 3);
 
+  // Dashboard Layout Settings
+  const [showIncomeExpenseBar, setShowIncomeExpenseBar] = useLocalStorage('dashboard_show_income_expense_bar', true);
+  const [showBenefitsCard, setShowBenefitsCard] = useLocalStorage('dashboard_show_benefits_card', true);
+  const [showSavingsGoalsCard, setShowSavingsGoalsCard] = useLocalStorage('dashboard_show_savings_goals_card', true);
+
   const { inputProps: flexAmountProps, numericValue: flexAmountValue } = useCurrencyInput(flashFlexAmount);
   const [tempName, setTempName] = useState(cardHolderName);
 
@@ -694,29 +699,90 @@ const Settings: React.FC<SettingsProps> = ({
 
               <div className="h-px bg-muted my-4"></div>
 
-              {/* Recents Settings */}
+              {/* Dashboard Layout Section */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-1 flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    Recentes Flutuante
-                  </label>
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-1 flex items-center gap-2">
+                  <Layers className="w-4 h-4" />
+                  Layout do Dashboard
+                </label>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div 
                     className={cn(
-                      "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative cursor-pointer",
-                      recentTransactionsEnabled ? 'bg-primary' : 'bg-muted'
+                      "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
+                      showIncomeExpenseBar ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                    )}
+                    onClick={() => setShowIncomeExpenseBar(!showIncomeExpenseBar)}
+                  >
+                    <div className="flex-1">
+                      <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
+                        Barra Receitas vs Despesas
+                      </p>
+                      <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">Gráfico de proporção</p>
+                    </div>
+                    {showIncomeExpenseBar ? <CheckCircle className="w-5 h-5 text-primary" /> : <PlusCircle className="w-5 h-5 opacity-40" />}
+                  </div>
+
+                  <div 
+                    className={cn(
+                      "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
+                      showBenefitsCard ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                    )}
+                    onClick={() => setShowBenefitsCard(!showBenefitsCard)}
+                  >
+                    <div className="flex-1">
+                      <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
+                        Cartões de Benefícios
+                      </p>
+                      <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">Flash e Vero Card</p>
+                    </div>
+                    {showBenefitsCard ? <CheckCircle className="w-5 h-5 text-primary" /> : <PlusCircle className="w-5 h-5 opacity-40" />}
+                  </div>
+
+                  <div 
+                    className={cn(
+                      "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
+                      showSavingsGoalsCard ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                    )}
+                    onClick={() => setShowSavingsGoalsCard(!showSavingsGoalsCard)}
+                  >
+                    <div className="flex-1">
+                      <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
+                        Progresso das Metas
+                      </p>
+                      <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">Resumo de economia</p>
+                    </div>
+                    {showSavingsGoalsCard ? <CheckCircle className="w-5 h-5 text-primary" /> : <PlusCircle className="w-5 h-5 opacity-40" />}
+                  </div>
+
+                  <div 
+                    className={cn(
+                      "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
+                      recentTransactionsEnabled ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
                     )}
                     onClick={() => setRecentTransactionsEnabled(!recentTransactionsEnabled)}
                   >
-                    <div className={cn(
-                      "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
-                      recentTransactionsEnabled ? 'translate-x-6' : 'translate-x-0'
-                    )} />
+                    <div className="flex-1">
+                      <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
+                        Transações Recentes
+                      </p>
+                      <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">Card flutuante temporário</p>
+                    </div>
+                    {recentTransactionsEnabled ? <CheckCircle className="w-5 h-5 text-primary" /> : <PlusCircle className="w-5 h-5 opacity-40" />}
                   </div>
                 </div>
+              </div>
 
+              <div className="h-px bg-muted my-4"></div>
+
+              {/* Recents Settings */}
+              <div className="space-y-4">
                 {recentTransactionsEnabled && (
                   <div className="space-y-6 animate-in slide-in-from-top-2 duration-200 p-4 rounded-2xl bg-muted/20 border-2 border-dashed border-muted">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Ajustes de Transações Recentes</p>
+                    </div>
                     {/* Duration Slider */}
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">

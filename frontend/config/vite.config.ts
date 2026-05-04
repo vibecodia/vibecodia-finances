@@ -55,7 +55,12 @@ export default defineConfig(({ mode }) => {
         manifest: false,
         injectRegister: 'auto',
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
+          globPatterns: ['**/*.{js,css,ico,png,svg,webp,woff2}'],
+          runtimeCaching: [{
+            urlPattern: /\.html$/,
+            handler: 'NetworkFirst',
+            options: { cacheName: 'html-cache' }
+          }]
         },
       }),
     ],
