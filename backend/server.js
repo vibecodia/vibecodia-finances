@@ -10,11 +10,28 @@ import express from 'express';
 import mongoose from 'mongoose';
 import multer from 'multer';
 import cron from 'node-cron';
+import webpush from 'web-push';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config();
+
+// Configuração Web Push
+const vapidKeys = {
+  publicKey: process.env.VAPID_PUBLIC_KEY,
+  privateKey: process.env.VAPID_PRIVATE_KEY
+};
+
+if (!vapidKeys.publicKey || !vapidKeys.privateKey) {
+  console.error('❌ ERRO: VAPID_PUBLIC_KEY e VAPID_PRIVATE_KEY devem estar no .env');
+}
+
+webpush.setVapidDetails(
+  'mailto:contato@vibecodia.com.br',
+  vapidKeys.publicKey,
+  vapidKeys.privateKey
+);
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -116,7 +133,80 @@ const shoppingItemSchema = new mongoose.Schema({
   type: { type: String, enum: ['compras', 'afazeres'], default: 'compras' },
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
+const pushSubscriptionSchema = new mongoose.Schema({
+  subscription: { type: Object, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
 // ---------- Cron Job ----------
+
+const sendReminders = async (pin) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const conn = getDbConnection(pin);
+    const Transaction = conn.model('Transaction', transactionSchema);
+    const PushSubscription = conn.model('PushSubscription', pushSubscriptionSchema);
+
+    // Buscar contas que vencem hoje e não estão pagas
+    const accountsDueToday = await Transaction.find({
+      type: 'expense',
+      isPaid: false,
+      status: 'active',
+      dueDate: { $gte: today, $lt: tomorrow }
+    });
+
+    if (accountsDueToday.length === 0) return;
+
+    const subscriptions = await PushSubscription.find();
+    if (subscriptions.length === 0) return;
+
+    // Lógica de Agrupamento (Stacking)
+    const notifications = [];
+    if (accountsDueToday.length <= 3) {
+      // Notificações individuais
+      accountsDueToday.forEach(acc => {
+        notifications.push({
+          title: 'Conta a vencer hoje',
+          body: `${acc.description}: R$ ${acc.amount.toFixed(2)}`,
+          tag: acc._id.toString(), // ID da conta como tag
+          data: { url: '/hoje' }
+        });
+      });
+    } else {
+      // Notificação agrupada
+      notifications.push({
+        title: 'Lembrete de Contas',
+        body: `Você tem ${accountsDueToday.length} contas que vencem hoje.`,
+        tag: 'contas-agrupadas', // Tag fixa para agrupamento
+        data: { url: '/hoje' }
+      });
+    }
+
+    // Disparar notificações
+    for (const sub of subscriptions) {
+      for (const note of notifications) {
+        try {
+          await webpush.sendNotification(sub.subscription, JSON.stringify(note));
+        } catch (err) {
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            // Inscrição expirada ou inválida
+            await PushSubscription.deleteOne({ _id: sub._id });
+          } else {
+            console.error(`Erro ao enviar push para PIN ${pin}:`, err);
+          }
+        }
+      }
+    }
+
+    console.log(`Push reminders [PIN ${pin}]: Enviadas ${notifications.length} notificações para ${subscriptions.length} dispositivos.`);
+  } catch (error) {
+    console.error(`Push reminders erro [PIN ${pin}]:`, error);
+  }
+};
 
 const markIncomeAsPaid = async (pin) => {
   try {
@@ -138,27 +228,20 @@ const markIncomeAsPaid = async (pin) => {
 
 // Executa cron job para cada PIN diariamente às 2h
 cron.schedule('0 2 * * *', () => {
-  console.log('Rodando cron job diário...');
+  console.log('Rodando cron job diário (Pagar Receitas)...');
   Object.keys(DB_CONN_MAP).forEach(pin => markIncomeAsPaid(pin));
+}, { timezone: "America/Sao_Paulo" });
+
+// Executa cron job para lembretes de contas às 9h
+cron.schedule('0 9 * * *', () => {
+  console.log('Rodando cron job diário (Lembretes Push)...');
+  Object.keys(DB_CONN_MAP).forEach(pin => sendReminders(pin));
 }, { timezone: "America/Sao_Paulo" });
 
 // ---------- Rotas API ----------
 
-app.post('/api/verify-pin', (req, res) => {
-  const { pin } = req.body;
-  if (!pin) {
-    return res.status(400).json({ success: false, message: 'PIN não fornecido.' });
-  }
-
-  if (Object.prototype.hasOwnProperty.call(DB_CONN_MAP, pin)) {
-    res.json({ success: true });
-  } else {
-    res.status(401).json({ success: false, message: 'PIN inválido.' });
-  }
-});
-
 // Middleware para pegar conexão pelo PIN passado no header ou query
-const dbMiddleware = (req, res, next) => {
+function dbMiddleware(req, res, next) {
   const pin = req.header('x-pin') || req.query.pin;
   if (!pin) return res.status(400).json({ error: 'PIN obrigatório no header ou query' });
   try {
@@ -167,7 +250,55 @@ const dbMiddleware = (req, res, next) => {
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
-};
+}
+
+app.post('/api/verify-pin', (req, res) => {
+  const { pin } = req.body;
+  if (!pin) {
+    return res.status(400).json({ success: false, message: 'PIN não fornecido.' });
+  }
+
+  if (Object.prototype.hasOwnProperty.call(DB_CONN_MAP, pin)) {
+    res.json({ success: true, vapidPublicKey: vapidKeys.publicKey });
+  } else {
+    res.status(401).json({ success: false, message: 'PIN inválido.' });
+  }
+});
+
+// Rota para salvar inscrição de Push
+app.post('/api/notifications/subscribe', dbMiddleware, async (req, res) => {
+  const PushSubscription = req.conn.model('PushSubscription', pushSubscriptionSchema);
+  const { subscription } = req.body;
+
+  if (!subscription) {
+    return res.status(400).json({ error: 'Subscription is required' });
+  }
+
+  try {
+    // Evitar duplicatas
+    const existing = await PushSubscription.findOne({ 'subscription.endpoint': subscription.endpoint });
+    if (existing) {
+      return res.status(200).json({ message: 'Subscription already exists' });
+    }
+
+    const newSub = new PushSubscription({ subscription });
+    await newSub.save();
+    res.status(201).json({ message: 'Subscription saved' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Rota para disparar lembretes manualmente (sob demanda)
+app.post('/api/notifications/trigger-reminders', dbMiddleware, async (req, res) => {
+  const pin = req.header('x-pin') || req.query.pin;
+  try {
+    await sendReminders(pin);
+    res.json({ success: true, message: 'Reminders triggered' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 ////////////
 app.get('/api/admin/migrate-status', dbMiddleware, async (req, res) => {
