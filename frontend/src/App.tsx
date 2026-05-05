@@ -20,6 +20,7 @@ import GuestEntry from './components/GuestEntry';
 import { useTour } from './hooks/useTour';
 import { useFinancialData } from './hooks/useFinancialData';
 import { useShoppingList } from './hooks/useShoppingList';
+import { usePushNotifications } from './hooks/usePushNotifications';
 import { getBrazilDateString } from './utils/helpers';
 import TransactionForm from './components/TransactionForm';
 import { Transaction } from './types';
@@ -50,6 +51,10 @@ const ScrollToTop = () => {
 function App() {
   const { pin, isInitializing, isVerified, isGuest, isSettingsVerified, setShowVerificationModal } = useVerification();
   const { startTour, showConfirm, setShowConfirm } = useTour();
+  
+  // Registrar Push Notifications
+  usePushNotifications(pin, isVerified);
+
   const navigate = useNavigate();
   const location = useLocation();
 

@@ -51,11 +51,18 @@ export default defineConfig(({ mode }) => {
       react(),
       processManifestPlugin(),
       VitePWA({
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.js',
         registerType: 'autoUpdate',
         manifest: false,
         injectRegister: 'auto',
         workbox: {
           globPatterns: ['**/*.{js,css,ico,png,svg,webp,woff2}'],
+        },
+        devOptions: {
+          enabled: true,
+          type: 'module',
         },
       }),
     ],
