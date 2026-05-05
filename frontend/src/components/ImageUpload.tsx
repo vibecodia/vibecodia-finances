@@ -46,8 +46,8 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
     return false;
   };
 
-  const handleManualSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleManualSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!manualUrl) return;
 
     setStatus('idle');
@@ -221,18 +221,30 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
           Colar link da nota fiscal (URL)
         </Button>
       ) : (
-        <form onSubmit={handleManualSubmit} className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+        <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
           <Input
             ref={inputRef}
             type="url"
             value={manualUrl}
             onChange={(e) => setManualUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleManualSubmit();
+              }
+            }}
             placeholder="Cole o link da nota aqui..."
             className="text-xs py-2"
             autoFocus
           />
           <div className="flex gap-2">
-            <Button type="submit" size="sm" className="flex-1" disabled={isProcessing || !manualUrl}>
+            <Button 
+              type="button" 
+              onClick={() => handleManualSubmit()}
+              size="sm" 
+              className="flex-1" 
+              disabled={isProcessing || !manualUrl}
+            >
               {isProcessing ? 'Buscando...' : 'Buscar Nota'}
             </Button>
             <Button 
@@ -248,7 +260,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
               Cancelar
             </Button>
           </div>
-        </form>
+        </div>
       )}
 
       {status === 'success' && (
