@@ -35,9 +35,10 @@ add_banner() {
     *)      SECONDS_TO_WAIT=86400  ;;
   esac
 
+  # Injeção simples sem scripts complexos via sed para evitar erros de shell
   docker exec financial-app-frontend sh -c "
     sed -i 's|<div id=\"deploy-banner\"[^>]*>[^<]*</div>||g' /usr/share/nginx/html/index.html
-    sed -i 's|<body>|<body><div id=\"deploy-banner\" style=\"position:fixed;top:40px;left:50%;transform:translateX(-50%);width:65%;max-width:350px;background:rgba(245,158,11,0.9);backdrop-filter:blur(5px);color:white;text-align:center;padding:12px;z-index:9999;font-weight:bold;border-radius:8px;box-shadow:0 4px 15px rgba(0,0,0,0.2);font-family:sans-serif\">$MESSAGE</div>|' /usr/share/nginx/html/index.html
+    sed -i 's|<body>|<body><div id=\"deploy-banner\" onclick=\"this.remove()\" style=\"position:fixed;top:40px;left:50%;transform:translateX(-50%);width:65%;max-width:350px;background:rgba(245,158,11,0.9);backdrop-filter:blur(5px);color:white;text-align:center;padding:12px;z-index:9999;font-weight:bold;border-radius:8px;box-shadow:0 4px 15px rgba(0,0,0,0.2);font-family:sans-serif;cursor:pointer\" title=\"Clique para fechar\">$MESSAGE</div>|' /usr/share/nginx/html/index.html
   "
 
   echo "✅ Banner exibido: $MESSAGE"
@@ -112,7 +113,8 @@ add_audio() {
   // Estado global — sobrevive a recriações pelo React
   var S = window.__apState || (window.__apState = {
     closed: false, playing: false, time: 0,
-    vol: 80, full: false, track: 0, showPL: false
+    vol: 80, full: false, track: 0, showPL: false,
+    x: null, y: null
   });
 
   // Garante índice válido
@@ -147,12 +149,12 @@ add_audio() {
     var el = document.createElement('style');
     el.id  = CSS_ID;
     el.textContent = [
-      '#ap-widget{position:fixed!important;bottom:24px!important;right:24px!important;',
+      '#ap-widget{position:fixed!important;bottom:24px;right:24px;',
       'width:280px!important;background:#1a1a1a!important;',
       'border:2px solid #111!important;border-top-color:#777!important;border-left-color:#777!important;',
       'box-shadow:4px 4px 0 #000,inset 0 1px 0 #555!important;',
       'z-index:2147483647!important;font-family:"Arial Narrow",Arial,sans-serif!important;',
-      'user-select:none!important;}',
+      'user-select:none!important;touch-action:none;}',
 
       '#ap-widget.ap-fs{position:fixed!important;inset:0!important;width:100%!important;',
       'height:100%!important;border:none!important;display:flex!important;',
@@ -162,7 +164,7 @@ add_audio() {
 
       '#ap-titlebar{background:linear-gradient(180deg,#2266bb 0%,#0d3d7a 50%,#2266bb 100%)!important;',
       'padding:3px 4px!important;display:flex!important;align-items:center!important;',
-      'justify-content:space-between!important;gap:6px!important;}',
+      'justify-content:space-between!important;gap:6px!important;cursor:move!important;}',
       '#ap-titlebar .ap-logo{color:#fff!important;font-size:9px!important;font-weight:bold!important;',
       'letter-spacing:2px!important;text-shadow:1px 1px 0 #000!important;flex:1!important;}',
       '#ap-tbbtns{display:flex!important;gap:2px!important;}',
@@ -320,6 +322,49 @@ add_audio() {
     }, { passive: false });
   }
 
+  function makeDraggableWidget(el, handle) {
+    var startX, startY, initialX, initialY;
+    function move(e) {
+      sp(e);
+      var cx = (e.touches ? e.touches[0] : e).clientX;
+      var cy = (e.touches ? e.touches[0] : e).clientY;
+      S.x = initialX + (cx - startX);
+      S.y = initialY + (cy - startY);
+      el.style.left = S.x + 'px';
+      el.style.top  = S.y + 'px';
+      el.style.bottom = 'auto';
+      el.style.right  = 'auto';
+    }
+    function up() {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+      document.removeEventListener('touchmove', move);
+      document.removeEventListener('touchend', up);
+    }
+    handle.addEventListener('mousedown', function (e) {
+       if (e.target.closest('button') || e.target.closest('.ap-slider') || e.target.closest('#ap-seek') || e.target.closest('.ap-pl-item')) return;
+       sp(e);
+       var rect = el.getBoundingClientRect();
+       initialX = rect.left;
+       initialY = rect.top;
+       startX = e.clientX;
+       startY = e.clientY;
+       document.addEventListener('mousemove', move);
+       document.addEventListener('mouseup', up);
+     });
+     handle.addEventListener('touchstart', function (e) {
+       if (e.target.closest('button') || e.target.closest('.ap-slider') || e.target.closest('#ap-seek') || e.target.closest('.ap-pl-item')) return;
+       sp(e);
+       var rect = el.getBoundingClientRect();
+       initialX = rect.left;
+       initialY = rect.top;
+       startX = e.touches[0].clientX;
+       startY = e.touches[0].clientY;
+       document.addEventListener('touchmove', move);
+       document.addEventListener('touchend', up);
+     }, { passive: false });
+  }
+
   /* ── load track ───────────────────────────────────────────── */
   function loadTrack(idx, autoplay) {
     if (!PL.length) return;
@@ -416,6 +461,12 @@ add_audio() {
     var w    = document.createElement('div');
     w.id     = WID;
     if (S.full) w.classList.add('ap-fs');
+    if (S.x !== null && S.y !== null) {
+      w.style.left = S.x + 'px';
+      w.style.top  = S.y + 'px';
+      w.style.bottom = 'auto';
+      w.style.right  = 'auto';
+    }
     w.innerHTML = buildHTML();
     document.documentElement.appendChild(w);  // fora do alcance do React
 
@@ -478,6 +529,9 @@ add_audio() {
       }
     };
     audio.addEventListener('ended', audio.__apEnded);
+
+    /* widget drag */
+     makeDraggableWidget(w, w);
 
     /* seek drag */
     makeDraggable(document.getElementById('ap-seek'), function (pct) {
