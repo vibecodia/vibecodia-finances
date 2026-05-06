@@ -12,7 +12,7 @@ graph TD
     C -- Standard (Padrão) --> D[AI Planner: OpenCode big-pickle]
     C -- Fast (ai-fast) --> E[Pular Planejamento]
     C -- Zen (ai-zen) --> E
-    C -- No-Timeout (ai-no-timeout) --> E
+    C -- Timeless (ai-timeless) --> E
     
     D --> F[RTK + Aider: big-pickle]
     E --> F
@@ -30,9 +30,9 @@ graph TD
 ## Modos de Operação
 
 - **Standard**: Planejamento detalhado + Execução (Timeout: 4 min).
-- **Fast (`ai-fast`)**: Sem planejamento, execução rápida (Timeout: 2 min).
-- **Zen (`ai-zen`)**: Sem planejamento, focado em tarefas complexas (Timeout: 20 min).
-- **No-Timeout (`ai-no-timeout`)**: Desativa limites curtos (Limite máximo: 6h - restrição do GitHub).
+- **Fast (`ai-fast`)**: Sem planejamento, execução rápida (Timeout: 2 min). Pode ser ativado por label ou checkbox no template.
+- **Zen (`ai-zen`)**: Sem planejamento, focado em tarefas complexas (Timeout: 20 min). Pode ser ativado por label ou checkbox no template.
+- **Timeless (`ai-timeless`)**: Desativa limites curtos (Limite máximo: 6h). **Ativado exclusivamente via label `ai-timeless` no GitHub.**
 
 ## Componentes e Otimização
 

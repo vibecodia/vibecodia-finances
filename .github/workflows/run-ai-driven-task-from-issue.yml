@@ -75,22 +75,22 @@ jobs:
           echo "task_file=$TASK_FILE" >> $GITHUB_OUTPUT
 
           FAST_MODE=false
-          if echo "$ISSUE_LABELS" | grep -q "ai-fast"; then
+          if echo "$ISSUE_LABELS" | grep -q "ai-fast" || echo "$ISSUE_BODY" | grep -q "\[x\] Modo Fast (ai-fast)"; then
             FAST_MODE=true
           fi
           echo "fast_mode=$FAST_MODE" >> $GITHUB_OUTPUT
 
           ZEN_MODE=false
-          if echo "$ISSUE_LABELS" | grep -q "ai-zen"; then
+          if echo "$ISSUE_LABELS" | grep -q "ai-zen" || echo "$ISSUE_BODY" | grep -q "\[x\] Modo Zen (ai-zen)"; then
             ZEN_MODE=true
           fi
           echo "zen_mode=$ZEN_MODE" >> $GITHUB_OUTPUT
 
-          NO_TIMEOUT=false
-          if echo "$ISSUE_LABELS" | grep -q "ai-no-timeout"; then
-            NO_TIMEOUT=true
+          TIMELESS=false
+          if echo "$ISSUE_LABELS" | grep -q "ai-timeless"; then
+            TIMELESS=true
           fi
-          echo "no_timeout=$NO_TIMEOUT" >> $GITHUB_OUTPUT
+          echo "timeless=$TIMELESS" >> $GITHUB_OUTPUT
 
           {
             echo "# Task — Issue #${ISSUE_NUMBER}"
@@ -170,7 +170,7 @@ jobs:
 
       - name: "🔁 Aider"
         id: aider_run
-        timeout-minutes: ${{ (contains(github.event.issue.labels.*.name, 'ai-no-timeout') && 360) || (contains(github.event.issue.labels.*.name, 'ai-zen') && 20) || (contains(github.event.issue.labels.*.name, 'ai-fast') && 2) || 4 }}
+        timeout-minutes: ${{ contains(github.event.issue.labels.*.name, 'ai-timeless') && 360 || (contains(github.event.issue.labels.*.name, 'ai-zen') || contains(github.event.issue.body, '[x] Modo Zen (ai-zen)')) && 20 || (contains(github.event.issue.labels.*.name, 'ai-fast') || contains(github.event.issue.body, '[x] Modo Fast (ai-fast)')) && 2 || 4 }}
         env:
           OPENAI_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           OPENAI_API_BASE: https://opencode.ai/zen/v1
@@ -356,7 +356,7 @@ jobs:
           PR_URL: ${{ steps.create_pr.outputs.pr_url }}
           FAST_MODE: ${{ steps.prepare.outputs.fast_mode }}
           ZEN_MODE: ${{ steps.prepare.outputs.zen_mode }}
-          NO_TIMEOUT: ${{ steps.prepare.outputs.no_timeout }}
+          TIMELESS: ${{ steps.prepare.outputs.timeless }}
           RTK_GAIN: ${{ steps.aider_run.outputs.rtk_gain }}
         run: |
           echo "## 🤖 AI-Driven Workflow Summary" >> $GITHUB_STEP_SUMMARY
@@ -368,8 +368,8 @@ jobs:
             echo "| ⚡ | Mode | Fast mode (2min timeout) |" >> $GITHUB_STEP_SUMMARY
           elif [ "$ZEN_MODE" = "true" ]; then
             echo "| 🧘 | Mode | Zen mode (20min timeout) |" >> $GITHUB_STEP_SUMMARY
-          elif [ "$NO_TIMEOUT" = "true" ]; then
-            echo "| 🚀 | Mode | No timeout mode (6h limit) |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$TIMELESS" = "true" ]; then
+            echo "| 🚀 | Mode | Timeless mode (6h limit) |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| 🧠 | Mode | Standard mode with AI Planner |" >> $GITHUB_STEP_SUMMARY
           fi
@@ -445,10 +445,10 @@ jobs:
           PR_URL: ${{ steps.create_pr.outputs.pr_url }}
           FAST_MODE: ${{ steps.prepare.outputs.fast_mode }}
           ZEN_MODE: ${{ steps.prepare.outputs.zen_mode }}
-          NO_TIMEOUT: ${{ steps.prepare.outputs.no_timeout }}
+          TIMELESS: ${{ steps.prepare.outputs.timeless }}
         with:
           script: |
-            const { AIDER_OUTCOME, CHANGES_DETECTED, LINT_ERRORS, BUILD_OUTCOME, BRANCH_NAME, AI_SUMMARY, PR_URL, FAST_MODE, ZEN_MODE, NO_TIMEOUT } = process.env;
+            const { AIDER_OUTCOME, CHANGES_DETECTED, LINT_ERRORS, BUILD_OUTCOME, BRANCH_NAME, AI_SUMMARY, PR_URL, FAST_MODE, ZEN_MODE, TIMELESS } = process.env;
             const repoUrl    = context.payload.repository.html_url;
             const hasChanges = CHANGES_DETECTED === 'true';
             const success    = AIDER_OUTCOME === 'success';
@@ -456,12 +456,12 @@ jobs:
             const lintErrors = parseInt(LINT_ERRORS || '0');
             const fastMode   = FAST_MODE === 'true';
             const zenMode    = ZEN_MODE === 'true';
-            const noTimeout  = NO_TIMEOUT === 'true';
+            const timeless   = TIMELESS === 'true';
 
             const footer = `\n\n---\n*Triaged automatically by **vibecodia** · This is an automated implementation, not a human review.*`;
 
             let body = `### 🤖 IA Workflow Results\n\n`;
-            body += `**Mode:** ${fastMode ? '⚡ Fast (2min)' : zenMode ? '🧘 Zen (20min)' : noTimeout ? '🚀 No Timeout (6h)' : '🧠 Full with AI Planner'}\n\n`;
+            body += `**Mode:** ${fastMode ? '⚡ Fast (2min)' : zenMode ? '🧘 Zen (20min)' : timeless ? '🚀 Timeless (6h)' : '🧠 Full with AI Planner'}\n\n`;
 
             if (success && hasChanges && buildOk) {
               body += `✅ **Success!** Changes implemented via **gpt-5-mini + aider**.\n\n`;
