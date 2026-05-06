@@ -168,7 +168,7 @@ jobs:
 
       - name: "🔁 Aider"
         id: aider_run
-        timeout-minutes: ${{ (steps.prepare.outputs.no_timeout == 'true' && 360) || (steps.prepare.outputs.zen_mode == 'true' && 20) || (steps.prepare.outputs.fast_mode == 'true' && 2) || 4 }}
+        timeout-minutes: ${{ (contains(github.event.issue.labels.*.name, 'ai-no-timeout') && 360) || (contains(github.event.issue.labels.*.name, 'ai-zen') && 20) || (contains(github.event.issue.labels.*.name, 'ai-fast') && 2) || 4 }}
         env:
           OPENAI_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           OPENAI_API_BASE: https://opencode.ai/zen/v1
