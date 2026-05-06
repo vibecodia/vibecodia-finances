@@ -1,6 +1,6 @@
 # Fluxo de Desenvolvimento Dirigido por IA (AI-Driven)
 
-Este workflow automatiza a resolução de Issues no GitHub usando a API do **OpenCode (Zen)** com o modelo **big-pickle** e a ferramenta Aider.
+Este workflow automatiza a resolução de Issues no GitHub usando a API do **OpenCode (Zen)** com o modelo **big-pickle**, otimizado pelo **RTK** e executado via **Aider**.
 
 ## Fluxo de Execução
 
@@ -12,8 +12,9 @@ graph TD
     C -- Standard (Padrão) --> D[AI Planner: OpenCode big-pickle]
     C -- Fast (ai-fast) --> E[Pular Planejamento]
     C -- Zen (ai-zen) --> E
+    C -- No-Timeout (ai-no-timeout) --> E
     
-    D --> F[Aider: OpenCode big-pickle]
+    D --> F[RTK + Aider: big-pickle]
     E --> F
     
     F --> G[Instalação e Validação]
@@ -28,17 +29,18 @@ graph TD
 
 ## Modos de Operação
 
-- **Standard**: Usa o endpoint do OpenCode com o modelo `big-pickle` para criar um plano de implementação detalhado antes das mudanças.
-- **Fast (`ai-fast`)**: Pula etapa de planejamento para rapidez. Timeout curto (2 min).
-- **Zen (`ai-zen`)**: Pula planejamento. Timeout longo (20 min) para tarefas complexas.
+- **Standard**: Planejamento detalhado + Execução (Timeout: 4 min).
+- **Fast (`ai-fast`)**: Sem planejamento, execução rápida (Timeout: 2 min).
+- **Zen (`ai-zen`)**: Sem planejamento, focado em tarefas complexas (Timeout: 20 min).
+- **No-Timeout (`ai-no-timeout`)**: Desativa limites curtos (Limite máximo: 6h - restrição do GitHub).
 
-## Detalhes Técnicos e Autenticação
+## Componentes e Otimização
 
-- **Aider**: Configurado via variáveis de ambiente globais para garantir compatibilidade:
-  - `OPENAI_API_KEY`: Recebe o valor de `secrets.OPENCODE_API_KEY`.
-  - `OPENAI_API_BASE`: Definido como `https://opencode.ai/zen/v1`.
-- **Modelos**: 
-  - `openai/big-pickle`: Modelo usado no Aider (prefixo necessário para forçar o adapter da OpenAI).
-  - `big-pickle`: Modelo usado no Planner via curl.
-- **Segredos**: Requer `OPENCODE_API_KEY` configurado nos Secrets do repositório.
-- **Validação**: O workflow agora verifica se o plano do Planner foi gerado corretamente antes de prosseguir para o Aider.
+- **RTK (Token Optimizer)**: Proxy que filtra e comprime saídas de comandos (git, ls, cat) para economizar contexto e melhorar a precisão da IA.
+- **Aider**: Configurado com `OPENAI_API_BASE=https://opencode.ai/zen/v1` e prefixo `openai/big-pickle`.
+- **Relatórios**: O workflow gera um resumo de "Token Savings" (RTK Gain) no final de cada execução.
+
+## Autenticação
+
+- Requer `OPENCODE_API_KEY` nos Secrets do repositório.
+- Internamente mapeado para `OPENAI_API_KEY` para compatibilidade com Aider/RTK.

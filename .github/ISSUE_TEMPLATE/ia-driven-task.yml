@@ -1,7 +1,7 @@
 name: "🤖 Tarefa Guiada por IA"
 description: "Inicia um fluxo de trabalho de desenvolvimento orientado por IA."
-title: "[IA-Driven] - "
-labels: ["ia-driven", "automation"]
+title: "[AI-Driven] - "
+labels: ["ai-driven", "automation"]
 body:
   - type: markdown
     attributes:
@@ -20,6 +20,7 @@ body:
       options:
         - label: "Modo Fast (ai-fast): Execução rápida, sem plano detalhado (2 min)"
         - label: "Modo Zen (ai-zen): Tempo estendido para tarefas complexas (20 min)"
+        - label: "Sem Timeout (ai-no-timeout): Desativa o limite de tempo (Cuidado!)"
 
   - type: textarea
     id: task_description

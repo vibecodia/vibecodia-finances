@@ -37,13 +37,17 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: "📥 Install aider"
-        run: pip install aider-chat --quiet
+      - name: "📥 Install aider and rtk"
+        run: |
+          pip install aider-chat --quiet
+          curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: "🔧 Configure Git"
+      - name: "🔧 Configure Git and RTK"
         run: |
           git config user.name "IA Bot"
           git config user.email "github-actions-bot@users.noreply.github.com"
+          $HOME/.local/bin/rtk init -g --codex
 
       - name: "🔑 Validate secrets"
         run: |
@@ -81,6 +85,12 @@ jobs:
             ZEN_MODE=true
           fi
           echo "zen_mode=$ZEN_MODE" >> $GITHUB_OUTPUT
+
+          NO_TIMEOUT=false
+          if echo "$ISSUE_LABELS" | grep -q "ai-no-timeout"; then
+            NO_TIMEOUT=true
+          fi
+          echo "no_timeout=$NO_TIMEOUT" >> $GITHUB_OUTPUT
 
           {
             echo "# Task — Issue #${ISSUE_NUMBER}"
@@ -141,7 +151,7 @@ jobs:
 
       - name: "🔁 Aider"
         id: aider_run
-        timeout-minutes: ${{ steps.prepare.outputs.fast_mode == 'true' && 2 || 4 || steps.prepare.outputs.zen_mode == 'true' && 20 || 4 }}
+        timeout-minutes: ${{ (steps.prepare.outputs.no_timeout == 'true' && 360) || (steps.prepare.outputs.zen_mode == 'true' && 20) || (steps.prepare.outputs.fast_mode == 'true' && 2) || 4 }}
         env:
           OPENAI_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           OPENAI_API_BASE: https://opencode.ai/zen/v1
@@ -177,6 +187,14 @@ jobs:
             git diff --name-only HEAD | sed 's/^/- /'
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
+
+          if command -v rtk >/dev/null 2>&1; then
+            {
+              echo "rtk_gain<<EOF"
+              rtk gain
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
 
           echo "::endgroup::"
 
@@ -319,6 +337,8 @@ jobs:
           PR_URL: ${{ steps.create_pr.outputs.pr_url }}
           FAST_MODE: ${{ steps.prepare.outputs.fast_mode }}
           ZEN_MODE: ${{ steps.prepare.outputs.zen_mode }}
+          NO_TIMEOUT: ${{ steps.prepare.outputs.no_timeout }}
+          RTK_GAIN: ${{ steps.aider_run.outputs.rtk_gain }}
         run: |
           echo "## 🤖 AI-Driven Workflow Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -328,28 +348,34 @@ jobs:
           if [ "$FAST_MODE" = "true" ]; then
             echo "| ⚡ | Mode | Fast mode (2min timeout) |" >> $GITHUB_STEP_SUMMARY
           elif [ "$ZEN_MODE" = "true" ]; then
-            echo "| 🧘 | Mode | Zen mode (20min timeout, no planner) |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🧘 | Mode | Zen mode (20min timeout) |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$NO_TIMEOUT" = "true" ]; then
+            echo "| 🚀 | Mode | No timeout mode (6h limit) |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| 🧠 | Mode | Standard mode with AI Planner |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -n "$RTK_GAIN" ]; then
+            echo "| 📉 | RTK Savings | Token optimization active |" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ "$PLANNER_OUTCOME" = "success" ]; then
             echo "| ✅ | AI Planner | Plan generated |" >> $GITHUB_STEP_SUMMARY
           elif [ "$PLANNER_OUTCOME" = "skipped" ]; then
-            echo "| ⏭️ | AI Planner | Skipped (fast mode) |" >> $GITHUB_STEP_SUMMARY
+            echo "| ⏭️ | AI Planner | Skipped |" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ "$AIDER_OUTCOME" = "success" ]; then
             echo "| ✅ | Aider | Success |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| ❌ | Aider | Timeout reached (${FAST_MODE} == true ? 2min : 4min) |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ | Aider | Failed or Timeout |" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ "$LINT_OUTCOME" = "success" ]; then
             if [ "${LINT_ERRORS}" = "0" ]; then
               echo "| ✅ | Lint | No errors |" >> $GITHUB_STEP_SUMMARY
             else
-              echo "| ⚠️ | Lint | Errors found — review before merging |" >> $GITHUB_STEP_SUMMARY
+              echo "| ⚠️ | Lint | Errors found |" >> $GITHUB_STEP_SUMMARY
             fi
           elif [ "$LINT_OUTCOME" = "skipped" ]; then
             echo "| ⏭️ | Lint | Skipped |" >> $GITHUB_STEP_SUMMARY
@@ -358,7 +384,7 @@ jobs:
           if [ "$BUILD_OUTCOME" = "success" ]; then
             echo "| ✅ | Build | Passed |" >> $GITHUB_STEP_SUMMARY
           elif [ "$BUILD_OUTCOME" = "failure" ]; then
-            echo "| ❌ | Build | Failed — commit blocked |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ | Build | Failed |" >> $GITHUB_STEP_SUMMARY
           elif [ "$BUILD_OUTCOME" = "skipped" ]; then
             echo "| ⏭️ | Build | Skipped |" >> $GITHUB_STEP_SUMMARY
           fi
@@ -371,6 +397,14 @@ jobs:
 
           if [ -n "$PR_URL" ]; then
             echo "| ✅ | PR | [View Pull Request]($PR_URL) |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -n "$RTK_GAIN" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📉 RTK Token Optimization" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "$RTK_GAIN" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ -n "$AI_SUMMARY" ]; then
@@ -392,9 +426,10 @@ jobs:
           PR_URL: ${{ steps.create_pr.outputs.pr_url }}
           FAST_MODE: ${{ steps.prepare.outputs.fast_mode }}
           ZEN_MODE: ${{ steps.prepare.outputs.zen_mode }}
+          NO_TIMEOUT: ${{ steps.prepare.outputs.no_timeout }}
         with:
           script: |
-            const { AIDER_OUTCOME, CHANGES_DETECTED, LINT_ERRORS, BUILD_OUTCOME, BRANCH_NAME, AI_SUMMARY, PR_URL, FAST_MODE, ZEN_MODE } = process.env;
+            const { AIDER_OUTCOME, CHANGES_DETECTED, LINT_ERRORS, BUILD_OUTCOME, BRANCH_NAME, AI_SUMMARY, PR_URL, FAST_MODE, ZEN_MODE, NO_TIMEOUT } = process.env;
             const repoUrl    = context.payload.repository.html_url;
             const hasChanges = CHANGES_DETECTED === 'true';
             const success    = AIDER_OUTCOME === 'success';
@@ -402,9 +437,10 @@ jobs:
             const lintErrors = parseInt(LINT_ERRORS || '0');
             const fastMode   = FAST_MODE === 'true';
             const zenMode    = ZEN_MODE === 'true';
+            const noTimeout  = NO_TIMEOUT === 'true';
 
             let body = `### 🤖 IA Workflow Results\n\n`;
-            body += `**Mode:** ${fastMode ? '⚡ Fast (2min)' : zenMode ? '🧘 Zen (20min)' : '🧠 Full with AI Planner'}\n\n`;
+            body += `**Mode:** ${fastMode ? '⚡ Fast (2min)' : zenMode ? '🧘 Zen (20min)' : noTimeout ? '🚀 No Timeout (6h)' : '🧠 Full with AI Planner'}\n\n`;
 
             if (success && hasChanges && buildOk) {
               body += `✅ **Success!** Changes implemented via **gpt-5-mini + aider**.\n\n`;
