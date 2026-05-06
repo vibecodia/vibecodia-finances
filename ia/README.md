@@ -32,11 +32,13 @@ graph TD
 - **Fast (`ai-fast`)**: Pula etapa de planejamento para rapidez. Timeout curto (2 min).
 - **Zen (`ai-zen`)**: Pula planejamento. Timeout longo (20 min) para tarefas complexas.
 
-## Componentes Principais
+## Detalhes Técnicos e Autenticação
 
-- **Aider**: Configurado para usar o provider compatível da OpenAI via prefixo `openai/big-pickle` e base em `https://opencode.ai/zen/v1`.
+- **Aider**: Configurado via variáveis de ambiente globais para garantir compatibilidade:
+  - `OPENAI_API_KEY`: Recebe o valor de `secrets.OPENCODE_API_KEY`.
+  - `OPENAI_API_BASE`: Definido como `https://opencode.ai/zen/v1`.
 - **Modelos**: 
-  - `openai/big-pickle`: Modelo usado no Aider (prefixo necessário para compatibilidade).
+  - `openai/big-pickle`: Modelo usado no Aider (prefixo necessário para forçar o adapter da OpenAI).
   - `big-pickle`: Modelo usado no Planner via curl.
 - **Segredos**: Requer `OPENCODE_API_KEY` configurado nos Secrets do repositório.
-- **Validação**: Executa `npm install`, `lint` e `build` antes de permitir o push.
+- **Validação**: O workflow agora verifica se o plano do Planner foi gerado corretamente antes de prosseguir para o Aider.
