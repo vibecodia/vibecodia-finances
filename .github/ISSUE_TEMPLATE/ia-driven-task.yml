@@ -6,11 +6,20 @@ body:
   - type: markdown
     attributes:
       value: |
-        **Atenção:** Ao criar esta issue, você acionará uma automação que irá:
+        **Atenção:** Ao criar esta issue, você acionará uma automação baseada em **Aider + OpenCode Zen (big-pickle)** que irá:
         1. Criar uma nova branch `ia/task-<issue-number>-<timestamp>`.
-        2. Gerar um arquivo de plano de ação em `ia/plans/` usando a descrição abaixo.
-        3. Executar o `gemini-cli` com base nesse plano para modificar o código.
-        4. Fazer o commit das alterações na nova branch e abrir um Pull Request em modo draft.
+        2. Gerar um plano de implementação em `ia/tasks/`.
+        3. Executar o **Aider** para modificar o código automaticamente.
+        4. Validar as alterações (Lint/Build).
+        5. Fazer o push e abrir um Pull Request.
+
+  - type: checkboxes
+    id: workflow_options
+    attributes:
+      label: "⚡ Opções do Workflow"
+      options:
+        - label: "Modo Fast (ai-fast): Execução rápida, sem plano detalhado (2 min)"
+        - label: "Modo Zen (ai-zen): Tempo estendido para tarefas complexas (20 min)"
 
   - type: textarea
     id: task_description
