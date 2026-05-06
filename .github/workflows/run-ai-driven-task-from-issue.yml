@@ -117,9 +117,11 @@ jobs:
           script: |
             const repoUrl = context.payload.repository.html_url;
             const runId = context.runId;
+            const footer = `\n\n---\n*Triaged automatically by **vibecodia** · This is an automated implementation, not a human review.*`;
             const body = `### 🤖 IA Workflow Iniciado!\n\n` +
                          `Issue recebida com sucesso. A automação **Aider + OpenCode Zen** já está trabalhando nesta tarefa.\n\n` +
-                         `🚀 **Acompanhe a pipeline aqui:** [GitHub Action Run](${repoUrl}/actions/runs/${runId})`;
+                         `🚀 **Acompanhe a pipeline aqui:** [GitHub Action Run](${repoUrl}/actions/runs/${runId})` +
+                         footer;
             
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -456,6 +458,8 @@ jobs:
             const zenMode    = ZEN_MODE === 'true';
             const noTimeout  = NO_TIMEOUT === 'true';
 
+            const footer = `\n\n---\n*Triaged automatically by **vibecodia** · This is an automated implementation, not a human review.*`;
+
             let body = `### 🤖 IA Workflow Results\n\n`;
             body += `**Mode:** ${fastMode ? '⚡ Fast (2min)' : zenMode ? '🧘 Zen (20min)' : noTimeout ? '🚀 No Timeout (6h)' : '🧠 Full with AI Planner'}\n\n`;
 
@@ -480,13 +484,15 @@ jobs:
               body += `Try adding more detail to the issue description.`;
             } else if (AIDER_OUTCOME === 'failure' || AIDER_OUTCOME === 'cancelled') {
               body += `❌ **Workflow failed due to timeout.**\n\n`;
-              body += `The experimental AI-driven workflow has reached its **${fastMode ? '2' : '4'}-minute limit**.\n`;
+              body += `The experimental AI-driven workflow has reached its limit.\n`;
               body += `Check the [Action logs](${repoUrl}/actions/runs/${context.runId}) for details.`;
             } else {
               body += `❌ **Workflow failed.**\n\n`;
               body += `Check the [Action logs](${repoUrl}/actions/runs/${context.runId}) for details.\n\n`;
               body += `Common causes: token limit exceeded, API quota, or task description too vague.`;
             }
+
+            body += footer;
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
