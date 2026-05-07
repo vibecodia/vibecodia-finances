@@ -63,6 +63,7 @@ import {
 
 import SavingsGoalsPlayground from './SavingsGoalsPlayground';
 import FinanciamentoCasaPlayground from './FinanciamentoCasaPlayground';
+import DateRangePicker from './DateRangePicker';
 
 ChartJS.register(
   CategoryScale, 
@@ -2317,26 +2318,16 @@ INSTRUÇÕES PARA SUA RESPOSTA:
                     </button>
                   ))}
                 </div>
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="date" 
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="flex-1 p-2.5 rounded-lg border text-sm"
-                      style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                      title="Data inicial"
-                    />
-                    
-                  </div>
-                  <input 
-                    type="date" 
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full p-2.5 rounded-lg border text-sm"
-                    style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                    title="Data final"
-                  />
-                </div>
+                <DateRangePicker
+                  startDate={startDate}
+                  endDate={endDate}
+                  onChange={(start, end) => {
+                    setStartDate(start);
+                    setEndDate(end);
+                  }}
+                  theme={theme}
+                />
+              </div>
               </div>
 
               <div>
