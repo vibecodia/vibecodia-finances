@@ -199,7 +199,7 @@ jobs:
             --map-tokens 1024 \
             --no-auto-commits \
             --message "$MESSAGE" \
-            $RELEVANT_FILES
+            $RELEVANT_FILES >/dev/null 2>&1
 
           {
             echo "ai_summary<<EOF"
