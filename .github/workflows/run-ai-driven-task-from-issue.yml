@@ -118,7 +118,7 @@ jobs:
           script: |
             const repoUrl = context.payload.repository.html_url;
             const runId = context.runId;
-            const footer = `\n\n---\n> | *Triaged automatically by **vibecodia** · This is an automated implementation, not a human review.*`;
+            const footer = `\n\n---\n> | Triaged automatically by **vibecodia** · This is an automated implementation, not a human review.`;
             const body = `### 🤖 IA Workflow Iniciado!\n\n` +
                          `Issue recebida com sucesso. A automação **Aider + OpenCode Zen** já está trabalhando nesta tarefa.\n\n` +
                          `🚀 **Acompanhe a pipeline aqui:** [GitHub Action Run](${repoUrl}/actions/runs/${runId})` +
@@ -459,7 +459,7 @@ jobs:
             const zenMode    = ZEN_MODE === 'true';
             const timeless   = TIMELESS === 'true';
 
-            const footer = `\n\n---\n> | *Triaged automatically by **vibecodia** · This is an automated implementation, not a human review.*`;
+            const footer = `\n\n---\n> | Triaged automatically by **vibecodia** · This is an automated implementation, not a human review.`;
 
             let body = `### 🤖 IA Workflow Results\n\n`;
             body += `**Mode:** ${fastMode ? '⚡ Fast (2min)' : zenMode ? '🧘 Zen (20min)' : timeless ? '🚀 Timeless (6h)' : '🧠 Full with AI Planner'}\n\n`;
