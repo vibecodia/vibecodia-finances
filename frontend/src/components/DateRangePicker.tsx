@@ -179,10 +179,12 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
       case 'last7':
         s = subDays(today, 6);
         e = today;
+        setCurrentMonth(startOfMonth(s));
         break;
       case 'last30':
         s = subDays(today, 29);
         e = today;
+        setCurrentMonth(startOfMonth(s));
         break;
     }
     onChange(format(s, 'yyyy-MM-dd'), format(e, 'yyyy-MM-dd'));
