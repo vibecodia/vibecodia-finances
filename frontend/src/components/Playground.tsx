@@ -580,33 +580,32 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals, onA
 
     const expenseRatio = totalIncome > 0 ? (totalExpense / totalIncome) * 100 : 0;
 
-    let prompt = `Você é um Analista Financeiro Sênior e Mentor. 
-CONTEXTO ATUAL:
-- Período Analisado: ${startDate} até ${endDate}
+    let prompt = `Você é um Analista Financeiro Sênior. 
+CONTEXTO:
+- Período: ${startDate} até ${endDate}
 - ${filterContext}
 
-DADOS DO PERÍODO:
-- 💰 RECEITA TOTAL: ${formatCurrency(totalIncome)}
-- 💸 DESPESA TOTAL: ${formatCurrency(totalExpense)}
-- ⚖️ SALDO NO PERÍODO: ${formatCurrency(balance)} ${totalIncome > 0 ? `(${expenseRatio.toFixed(1)}% da renda comprometida)` : ''}
+DADOS:
+- RECEITA: ${formatCurrency(totalIncome)}
+- DESPESA: ${formatCurrency(totalExpense)}
+- SALDO: ${formatCurrency(balance)} ${totalIncome > 0 ? `(${expenseRatio.toFixed(1)}% comprometido)` : ''}
 
-📊 DISTRIBUIÇÃO POR CATEGORIA:
+CATEGORIAS:
 ${categories.join('\n')}
 
-💳 MÉTODOS DE PAGAMENTO:
+PAGAMENTOS:
 ${payments.join('\n')}
 
-🔍 DETALHES DOS MAIORES GASTOS:
+MAIORES GASTOS:
 ${topExpenses.join('\n')}
 
-INSTRUÇÕES PARA SUA RESPOSTA:
-1. Analise os dados exatamente como foram fornecidos. Se houver filtros ativos, identifique qual categoria ou padrão domina o volume financeiro e foque sua análise nisso.
-2. Identifique o "Padrão Real": Olhe para a distribuição de categorias e os maiores gastos. Aponte o que é mais significativo em termos de volume e impacto para o período de ${startDate} a ${endDate}.
-3. Não use clichês. Se os dados mostram um alto volume em uma categoria específica (seja investimentos, lazer ou moradia), analise a relevância disso dentro do contexto visível.
-4. Formate a resposta obrigatoriamente assim:
-   - 📌 **DIAGNÓSTICO DO PERÍODO** (Resumo real e específico das datas e dados informados)
-   - 🕵️ **ANÁLISE DE PADRÃO** (O que os dados revelam sobre o comportamento ou foco financeiro neste intervalo)
-   - 🚀 **RECOMENDAÇÃO ESTRATÉGICA** (Sugestões práticas baseadas estritamente no que foi visto nos dados).`;
+INSTRUÇÕES:
+1. Analise os dados fornecidos. Se houver filtros, foque no que está visível.
+2. Identifique o padrão de consumo no período.
+3. Formate a resposta exatamente assim:
+   - 📌 **DIAGNÓSTICO DO PERÍODO** (Resumo específico)
+   - 🕵️ **ANÁLISE DE PADRÃO** (O que os dados revelam)
+   - 🚀 **RECOMENDAÇÃO ESTRATÉGICA** (Sugestões práticas).`;
 
     if (aiObservation.trim()) {
       prompt += `\n\n⚠️ **OBSERVAÇÃO DO USUÁRIO:**\n${aiObservation.trim()}\n(Leve esta observação em conta na sua análise).`;
@@ -623,7 +622,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
         body: JSON.stringify({
           persona: "finances",
           message: prompt,
-          max_tokens: 4000
+          max_tokens: 2000
         })
       });
 
@@ -637,14 +636,32 @@ INSTRUÇÕES PARA SUA RESPOSTA:
         setAiStats(data.token_stats);
       }
       
-      // Mapeamento prioritário para 'assistant_reply' conforme exemplo do usuário
-      const responseText = 
-        data.assistant_reply || 
-        data.response || 
-        data.message || 
-        data.text || 
-        (data.choices && data.choices[0]?.message?.content) ||
-        (typeof data === 'string' ? data : "Análise concluída, mas o formato da resposta é desconhecido.");
+      // Mapeamento resiliente para a resposta da IA
+      let responseText = "";
+      
+      if (typeof data === 'string') {
+        responseText = data;
+      } else if (data) {
+        // Tenta encontrar o texto em diversos campos possíveis
+        responseText = 
+          data.assistant_reply || 
+          data.content || 
+          data.response || 
+          data.message || 
+          data.text || 
+          data.analysis ||
+          (data.choices && data.choices[0]?.message?.content) ||
+          (data.data && (data.data.assistant_reply || data.data.content)) || 
+          "";
+      }
+
+      // Se ainda estiver vazio mas o objeto parece válido, pode ser um erro de geração
+      if (!responseText && data && (data.assistant_reply === "" || data.content === "")) {
+        responseText = "A IA processou a requisição, mas retornou uma resposta vazia. Tente ajustar os filtros ou a observação.";
+      } else if (!responseText) {
+        responseText = "Análise concluída, mas o formato da resposta é desconhecido.";
+        console.warn('⚠️ Resposta da IA com formato não mapeado:', data);
+      }
         
       setAiAnalysis(responseText);
     } catch (error) {

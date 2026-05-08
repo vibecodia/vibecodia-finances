@@ -60,8 +60,6 @@ function getDbConnection(pin) {
 
   if (!connections[pin]) {
     connections[pin] = mongoose.createConnection(uri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
       serverSelectionTimeoutMS: 5000,
     });
 
@@ -1194,7 +1192,7 @@ app.post('/api/ai-proxy', async (req, res) => {
         'accept': 'application/json',
         'Content-Type': 'application/json'
       },
-      timeout: 45000,
+      timeout: 60000,
       httpsAgent: new https.Agent({ rejectUnauthorized: false }) // Ignora erro de certificado expirado
     });
 
