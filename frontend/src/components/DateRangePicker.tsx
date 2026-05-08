@@ -167,11 +167,13 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
       case 'thisMonth':
         s = startOfMonth(today);
         e = endOfMonth(today);
+        setCurrentMonth(startOfMonth(today));
         break;
       case 'nextMonth': {
         const next = addMonths(today, 1);
         s = startOfMonth(next);
         e = endOfMonth(next);
+        setCurrentMonth(startOfMonth(next));
         break;
       }
       case 'last7':
