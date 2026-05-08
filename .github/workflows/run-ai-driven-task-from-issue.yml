@@ -52,8 +52,13 @@ jobs:
           # Criar shims para o RTK interceptar comandos de ferramentas como o Aider
           mkdir -p $HOME/.rtk/shims
           for cmd in git ls grep rg; do
+            REAL_PATH=$(which -a $cmd | grep -v "$HOME/.rtk/shims" | head -n 1)
             echo "#!/bin/bash" > $HOME/.rtk/shims/$cmd
-            echo "rtk $cmd \"\$@\"" >> $HOME/.rtk/shims/$cmd
+            echo "if [[ \"\$RTK_INSIDE\" == \"1\" ]]; then" >> $HOME/.rtk/shims/$cmd
+            echo "  $REAL_PATH \"\$@\"" >> $HOME/.rtk/shims/$cmd
+            echo "else" >> $HOME/.rtk/shims/$cmd
+            echo "  RTK_INSIDE=1 rtk $cmd \"\$@\"" >> $HOME/.rtk/shims/$cmd
+            echo "fi" >> $HOME/.rtk/shims/$cmd
             chmod +x $HOME/.rtk/shims/$cmd
           done
           echo "$HOME/.rtk/shims" >> $GITHUB_PATH
