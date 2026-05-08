@@ -623,7 +623,7 @@ INSTRUÇÕES PARA SUA RESPOSTA:
         body: JSON.stringify({
           persona: "finances",
           message: prompt,
-          max_tokens: null
+          max_tokens: 4000
         })
       });
 
