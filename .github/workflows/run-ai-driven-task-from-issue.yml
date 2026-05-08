@@ -44,10 +44,22 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: "🔧 Configure Git"
+      - name: "🔧 Configure Git and RTK Shims"
         run: |
           git config user.name "IA Bot"
           git config user.email "github-actions-bot@users.noreply.github.com"
+          
+          # Criar shims para o RTK interceptar comandos de ferramentas como o Aider
+          mkdir -p $HOME/.rtk/shims
+          for cmd in git ls grep rg; do
+            echo "#!/bin/bash" > $HOME/.rtk/shims/$cmd
+            echo "rtk $cmd \"\$@\"" >> $HOME/.rtk/shims/$cmd
+            chmod +x $HOME/.rtk/shims/$cmd
+          done
+          echo "$HOME/.rtk/shims" >> $GITHUB_PATH
+          
+          # Inicializar RTK
+          rtk init -g --opencode
 
       - name: "🔑 Validate secrets"
         run: |
@@ -139,12 +151,9 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
           echo "::group::AI Planner"
-          $HOME/.local/bin/rtk init -g --opencode
-          [ -f "$HOME/.rtk/rtk-rewrite.sh" ] && source "$HOME/.rtk/rtk-rewrite.sh"
-          
           PLAN_FILE="ia/tasks/plan-${ISSUE_NUMBER}.md"
 
-          rtk curl https://opencode.ai/zen/v1/chat/completions \
+          curl https://opencode.ai/zen/v1/chat/completions \
             -s \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $OPENAI_API_KEY" \
@@ -207,10 +216,8 @@ jobs:
           FAST_MODE: ${{ steps.prepare.outputs.fast_mode }}
         run: |
           echo "::group::Aider"
-          $HOME/.local/bin/rtk init -g --opencode
-          [ -f "$HOME/.rtk/rtk-rewrite.sh" ] && source "$HOME/.rtk/rtk-rewrite.sh"
 
-          RELEVANT_FILES=$(rtk git ls-files 'frontend/src' 'backend' | grep -E '\.(tsx|ts|js)$' | head -n 80 | tr '\n' ' ')
+          RELEVANT_FILES=$(git ls-files 'frontend/src' 'backend' | grep -E '\.(tsx|ts|js)$' | head -n 80 | tr '\n' ' ')
           echo "📄 Files: $RELEVANT_FILES"
 
           if [ "$FAST_MODE" = "true" ]; then
@@ -222,7 +229,7 @@ jobs:
           $(cat "$PLAN_FILE")"
           fi
 
-          rtk aider \
+          aider \
             --yes-always \
             --no-pretty \
             --model openai/big-pickle \
