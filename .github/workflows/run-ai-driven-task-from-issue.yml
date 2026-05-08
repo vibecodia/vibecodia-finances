@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: ai-driven-${{ github.event.issue.number }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   ia_driven_task:
