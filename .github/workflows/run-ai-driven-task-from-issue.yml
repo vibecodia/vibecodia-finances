@@ -1,4 +1,4 @@
-name: "AI-Driven Development Workflow"
+name: "AI-Driven Development Workflow v2"
 
 on:
   issues:
@@ -10,15 +10,20 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: ai-driven-${{ github.event.issue.number }}
+  group: ai-driven-v2-${{ github.event.issue.number }}
   cancel-in-progress: false
 
 jobs:
-  ia_driven_task:
-    name: "🧠 AI-Driven Task (#${{ github.event.issue.number }})"
+  initialize:
+    name: "1️⃣ Initialize Task (#${{ github.event.issue.number }})"
     runs-on: ubuntu-latest
     if: contains(github.event.issue.labels.*.name, 'ai-driven')
-
+    outputs:
+      branch_name: ${{ steps.prepare.outputs.branch_name }}
+      task_file: ${{ steps.prepare.outputs.task_file }}
+      fast_mode: ${{ steps.prepare.outputs.fast_mode }}
+      zen_mode: ${{ steps.prepare.outputs.zen_mode }}
+      timeless: ${{ steps.prepare.outputs.timeless }}
     steps:
       - name: "🔄 Checkout repository"
         uses: actions/checkout@v4
@@ -27,54 +32,24 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.MY_PAT }}
 
-      - name: "📦 Setup Node.js 22"
-        uses: actions/setup-node@v4
+      - name: "🗣️ Initial comment"
+        uses: actions/github-script@v7
         with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: "🐍 Setup Python"
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: "📥 Install aider and rtk"
-        run: |
-          pip install aider-chat --quiet
-          curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: "🔧 Configure Git and RTK Shims"
-        run: |
-          git config user.name "IA Bot"
-          git config user.email "github-actions-bot@users.noreply.github.com"
-          
-          # Criar shims para o RTK interceptar comandos de ferramentas como o Aider
-          mkdir -p $HOME/.rtk/shims
-          for cmd in git ls grep rg; do
-            REAL_PATH=$(which -a $cmd | grep -v "$HOME/.rtk/shims" | head -n 1)
-            echo "#!/bin/bash" > $HOME/.rtk/shims/$cmd
-            echo "if [[ \"\$RTK_INSIDE\" == \"1\" ]]; then" >> $HOME/.rtk/shims/$cmd
-            echo "  $REAL_PATH \"\$@\"" >> $HOME/.rtk/shims/$cmd
-            echo "else" >> $HOME/.rtk/shims/$cmd
-            echo "  RTK_INSIDE=1 rtk $cmd \"\$@\"" >> $HOME/.rtk/shims/$cmd
-            echo "fi" >> $HOME/.rtk/shims/$cmd
-            chmod +x $HOME/.rtk/shims/$cmd
-          done
-          echo "$HOME/.rtk/shims" >> $GITHUB_PATH
-          
-          # Inicializar RTK
-          rtk init -g --opencode
-
-      - name: "🔑 Validate secrets"
-        run: |
-          if [ -z "$OPENCODE_API_KEY" ]; then
-            echo "::error::OPENCODE_API_KEY não configurado"
-            exit 1
-          fi
-          echo "✅ Secrets OK"
-        env:
-          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          script: |
+            const repoUrl = context.payload.repository.html_url;
+            const runId = context.runId;
+            const footer = `\n\n---\n> *Triaged automatically by **vibecodia v2** · This is an automated implementation, not a human review.*`;
+            const body = `### 🤖 IA Workflow v2 Iniciado!\n\n` +
+                         `Issue recebida com sucesso. A automação **Aider + OpenCode Zen (v2)** já está trabalhando nesta tarefa.\n\n` +
+                         `🚀 **Acompanhe a pipeline aqui:** [GitHub Action Run](${repoUrl}/actions/runs/${runId})` +
+                         footer;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
 
       - name: "📁 Prepare task and branch"
         id: prepare
@@ -128,31 +103,31 @@ jobs:
 
           git checkout -b "$BRANCH_NAME"
 
-      - name: "🗣️ Initial comment"
-        uses: actions/github-script@v7
+  planner:
+    name: "2️⃣ AI Planner"
+    runs-on: ubuntu-latest
+    needs: initialize
+    if: needs.initialize.outputs.fast_mode == 'false'
+    outputs:
+      plan_file: ${{ steps.planner.outputs.plan_file }}
+    steps:
+      - name: "🔄 Checkout repository"
+        uses: actions/checkout@v4
         with:
-          script: |
-            const repoUrl = context.payload.repository.html_url;
-            const runId = context.runId;
-            const footer = `\n\n---\n> *Triaged automatically by **vibecodia** · This is an automated implementation, not a human review.*`;
-            const body = `### 🤖 IA Workflow Iniciado!\n\n` +
-                         `Issue recebida com sucesso. A automação **Aider + OpenCode Zen** já está trabalhando nesta tarefa.\n\n` +
-                         `🚀 **Acompanhe a pipeline aqui:** [GitHub Action Run](${repoUrl}/actions/runs/${runId})` +
-                         footer;
-            
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
+          ref: 'develop'
+          fetch-depth: 0
+          token: ${{ secrets.MY_PAT }}
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
       - name: "🧠 AI Planner"
         id: planner
-        if: steps.prepare.outputs.fast_mode == 'false'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
-          TASK_FILE: ${{ steps.prepare.outputs.task_file }}
+          TASK_FILE: ${{ needs.initialize.outputs.task_file }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
           echo "::group::AI Planner"
@@ -185,20 +160,19 @@ jobs:
           echo "::endgroup::"
 
       - name: "🗣️ Planner comment"
-        if: steps.planner.outcome == 'success'
         uses: actions/github-script@v7
         env:
           PLAN_FILE: ${{ steps.planner.outputs.plan_file }}
-          BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
+          BRANCH_NAME: ${{ needs.initialize.outputs.branch_name }}
         with:
           script: |
             const fs = require('fs');
             const repoUrl = context.payload.repository.html_url;
             const planContent = fs.readFileSync(process.env.PLAN_FILE, 'utf8');
-            const footer = `\n\n---\n> *Triaged automatically by **vibecodia** · This is an automated implementation, not a human review.*`;
+            const footer = `\n\n---\n> *Triaged automatically by **vibecodia v2** · This is an automated implementation, not a human review.*`;
             
             const body = `### 🧠 Plano de Implementação Gerado!\n\n` +
-                         `O **AI Planner** analisou a tarefa e traçou o seguinte roteiro:\n\n` +
+                         `O **AI Planner (v2)** analisou a tarefa e traçou o seguinte roteiro:\n\n` +
                          `\`\`\`markdown\n${planContent}\n\`\`\`\n\n` +
                          `🛠️ **Próximo passo:** O **Aider** iniciará a codificação na branch [**${process.env.BRANCH_NAME}**](${repoUrl}/tree/${process.env.BRANCH_NAME}).` +
                          footer;
@@ -210,15 +184,83 @@ jobs:
               body,
             });
 
+  code:
+    name: "3️⃣ AI Coding (${{ matrix.mode }})"
+    runs-on: ubuntu-latest
+    needs: [initialize, planner]
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: ["aider"]
+    timeout-minutes: ${{ contains(github.event.issue.labels.*.name, 'ai-timeless') && 360 || (contains(github.event.issue.labels.*.name, 'ai-zen') || contains(github.event.issue.body, '[x] Modo Zen (ai-zen)')) && 20 || (contains(github.event.issue.labels.*.name, 'ai-fast') || contains(github.event.issue.body, '[x] Modo Fast (ai-fast)')) && 2 || 4 }}
+    outputs:
+      ai_summary: ${{ steps.aider_run.outputs.ai_summary }}
+    steps:
+      - name: "🔄 Checkout repository"
+        uses: actions/checkout@v4
+        with:
+          ref: 'develop'
+          fetch-depth: 0
+          token: ${{ secrets.MY_PAT }}
+
+      - name: "📦 Setup Node.js 22"
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: "📥 Install aider and rtk"
+        run: |
+          pip install aider-chat --quiet
+          curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: "🔧 Configure Git and RTK Shims"
+        run: |
+          git config user.name "IA Bot"
+          git config user.email "github-actions-bot@users.noreply.github.com"
+          
+          mkdir -p $HOME/.rtk/shims
+          for cmd in git ls grep rg; do
+            REAL_PATH=$(which -a $cmd | grep -v "$HOME/.rtk/shims" | head -n 1)
+            echo "#!/bin/bash" > $HOME/.rtk/shims/$cmd
+            echo "if [[ \"\$RTK_INSIDE\" == \"1\" ]]; then" >> $HOME/.rtk/shims/$cmd
+            echo "  $REAL_PATH \"\$@\"" >> $HOME/.rtk/shims/$cmd
+            echo "else" >> $HOME/.rtk/shims/$cmd
+            echo "  RTK_INSIDE=1 rtk $cmd \"\$@\"" >> $HOME/.rtk/shims/$cmd
+            echo "fi" >> $HOME/.rtk/shims/$cmd
+            chmod +x $HOME/.rtk/shims/$cmd
+          done
+          echo "$HOME/.rtk/shims" >> $GITHUB_PATH
+          
+          rtk init -g --opencode
+
+      - name: "🔑 Validate secrets"
+        run: |
+          if [ -z "$OPENCODE_API_KEY" ]; then
+            echo "::error::OPENCODE_API_KEY não configurado"
+            exit 1
+          fi
+          echo "✅ Secrets OK"
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+
+      - name: "🔁 Checkout task branch"
+        run: git checkout ${{ needs.initialize.outputs.branch_name }}
+
       - name: "🔁 Aider"
         id: aider_run
-        timeout-minutes: ${{ contains(github.event.issue.labels.*.name, 'ai-timeless') && 360 || (contains(github.event.issue.labels.*.name, 'ai-zen') || contains(github.event.issue.body, '[x] Modo Zen (ai-zen)')) && 20 || (contains(github.event.issue.labels.*.name, 'ai-fast') || contains(github.event.issue.body, '[x] Modo Fast (ai-fast)')) && 2 || 4 }}
         env:
           OPENAI_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           OPENAI_API_BASE: https://opencode.ai/zen/v1
-          TASK_FILE: ${{ steps.prepare.outputs.task_file }}
-          PLAN_FILE: ${{ steps.planner.outputs.plan_file }}
-          FAST_MODE: ${{ steps.prepare.outputs.fast_mode }}
+          TASK_FILE: ${{ needs.initialize.outputs.task_file }}
+          PLAN_FILE: ${{ needs.planner.outputs.plan_file }}
+          FAST_MODE: ${{ needs.initialize.outputs.fast_mode }}
         run: |
           echo "::group::Aider"
 
@@ -251,68 +293,102 @@ jobs:
 
           echo "::endgroup::"
 
-      - name: "🔍 Validate: install dependencies"
+  validate:
+    name: "4️⃣ Validate (${{ matrix.target }})"
+    runs-on: ubuntu-latest
+    needs: [initialize, code]
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ["frontend", "backend"]
+    outputs:
+      lint_errors_frontend: ${{ steps.lint_frontend.outputs.lint_errors }}
+      lint_errors_backend: ${{ steps.lint_backend.outputs.lint_errors }}
+      build_failed: ${{ steps.build.outputs.build_failed }}
+    steps:
+      - name: "🔄 Checkout repository"
+        uses: actions/checkout@v4
+        with:
+          ref: 'develop'
+          fetch-depth: 0
+          token: ${{ secrets.MY_PAT }}
+
+      - name: "📦 Setup Node.js 22"
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: "🔁 Checkout task branch"
+        run: git checkout ${{ needs.initialize.outputs.branch_name }}
+
+      - name: "🔍 Install dependencies (${{ matrix.target }})"
         id: install
-        if: steps.aider_run.outcome == 'success'
         run: |
-          echo "::group::Installing dependencies"
-          cd frontend && npm ci --prefer-offline 2>&1 | tail -5
-          cd ../backend && npm ci --prefer-offline 2>&1 | tail -5
+          echo "::group::Installing ${{ matrix.target }} dependencies"
+          cd ${{ matrix.target }} && npm ci --prefer-offline 2>&1 | tail -5
           echo "::endgroup::"
 
-      - name: "🔍 Validate: lint"
+      - name: "🔍 Lint (${{ matrix.target }})"
         id: lint
-        if: steps.install.outcome == 'success'
         continue-on-error: true
         run: |
-          echo "::group::Lint"
+          echo "::group::Lint ${{ matrix.target }}"
           LINT_ERRORS=0
-
-          cd frontend
-          echo "--- Frontend lint ---"
-          npm run lint 2>&1 || LINT_ERRORS=$((LINT_ERRORS + 1))
-          cd ..
-
-          cd backend
-          echo "--- Backend lint ---"
-          npm run lint 2>&1 || LINT_ERRORS=$((LINT_ERRORS + 1))
-          cd ..
-
+          cd ${{ matrix.target }}
+          npm run lint 2>&1 || LINT_ERRORS=1
           echo "lint_errors=$LINT_ERRORS" >> $GITHUB_OUTPUT
           echo "::endgroup::"
-
           if [ $LINT_ERRORS -gt 0 ]; then
-            echo "::warning::Lint encontrou erros — revise antes de fazer merge"
+            echo "::warning::Lint encontrou erros em ${{ matrix.target }} — revise antes de fazer merge"
           fi
 
-      - name: "🔍 Validate: build"
+      - name: "🔍 Build (frontend only)"
         id: build
-        if: steps.install.outcome == 'success'
+        if: matrix.target == 'frontend'
         run: |
-          echo "::group::Build"
+          echo "::group::Build frontend"
           BUILD_FAILED=0
-
           cd frontend
-          echo "--- Frontend build ---"
           npm run build 2>&1 || BUILD_FAILED=1
-          cd ..
-
           echo "build_failed=$BUILD_FAILED" >> $GITHUB_OUTPUT
           echo "::endgroup::"
-
           if [ $BUILD_FAILED -eq 1 ]; then
             echo "::error::Build do frontend falhou — as alterações da IA quebraram o projeto"
             exit 1
           fi
+
+  deliver:
+    name: "5️⃣ Deliver"
+    runs-on: ubuntu-latest
+    needs: [initialize, code, validate]
+    outputs:
+      changes_detected: ${{ steps.push_changes.outputs.changes_detected }}
+      push_success: ${{ steps.push_changes.outputs.push_success }}
+      pr_url: ${{ steps.create_pr.outputs.pr_url }}
+    steps:
+      - name: "🔄 Checkout repository"
+        uses: actions/checkout@v4
+        with:
+          ref: 'develop'
+          fetch-depth: 0
+          token: ${{ secrets.MY_PAT }}
+
+      - name: "🔁 Checkout task branch"
+        run: git checkout ${{ needs.initialize.outputs.branch_name }}
 
       - name: "💾 Commit and push changes"
         id: push_changes
         env:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_URL: ${{ github.event.issue.html_url }}
-          BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
-          LINT_ERRORS: ${{ steps.lint.outputs.lint_errors }}
+          BRANCH_NAME: ${{ needs.initialize.outputs.branch_name }}
+          LINT_ERRORS_FRONTEND: ${{ needs.validate.outputs.lint_errors_frontend }}
+          LINT_ERRORS_BACKEND: ${{ needs.validate.outputs.lint_errors_backend }}
         run: |
+          git config user.name "IA Bot"
+          git config user.email "github-actions-bot@users.noreply.github.com"
+          
           git reset HEAD .aider.chat.history.md .aider.input.history 2>/dev/null || true
           git add frontend backend
 
@@ -323,11 +399,11 @@ jobs:
             echo "changes_detected=true" >> $GITHUB_OUTPUT
 
             LINT_NOTE=""
-            [ "${LINT_ERRORS}" != "0" ] && LINT_NOTE=" [lint warnings]"
+            [ "${LINT_ERRORS_FRONTEND}" != "0" ] || [ "${LINT_ERRORS_BACKEND}" != "0" ] && LINT_NOTE=" [lint warnings]"
 
             git commit \
               -m "feat(ia): implement solution for #${ISSUE_NUMBER}" \
-              -m "Generated by gpt-4o-mini + aider.${LINT_NOTE}" \
+              -m "Generated by gpt-4o-mini + aider (v2).${LINT_NOTE}" \
               -m "Issue: ${ISSUE_URL}"
 
             git push origin "$BRANCH_NAME"
@@ -339,10 +415,10 @@ jobs:
         if: steps.push_changes.outputs.changes_detected == 'true'
         env:
           GH_TOKEN: ${{ secrets.MY_PAT }}
-          BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
+          BRANCH_NAME: ${{ needs.initialize.outputs.branch_name }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
-          AI_SUMMARY: ${{ steps.aider_run.outputs.ai_summary }}
-          PLAN_FILE: ${{ steps.planner.outputs.plan_file }}
+          AI_SUMMARY: ${{ needs.code.outputs.ai_summary }}
+          PLAN_FILE: ${{ needs.planner.outputs.plan_file }}
         run: |
           PR_EXISTS=$(gh pr list --head "$BRANCH_NAME" --base develop --json number --jq '.[0].number')
 
@@ -354,7 +430,7 @@ jobs:
 
             BODY="Closes #${ISSUE_NUMBER}
 
-            ### 🤖 AI Implementation
+            ### 🤖 AI Implementation (v2)
 
             $([ -n "$PLAN_CONTENT" ] && echo "**Implementation Plan:**
             \`\`\`
@@ -364,12 +440,12 @@ jobs:
             $([ -n "$AI_SUMMARY" ] && echo "**Files modified:**
             ${AI_SUMMARY}")
 
-            > Generated by gpt-4o-mini + aider. Review before merging."
+            > Generated by gpt-4o-mini + aider (v2). Review before merging."
 
             PR_URL=$(gh pr create \
               --base develop \
               --head "$BRANCH_NAME" \
-              --title "feat(ia): solution for #${ISSUE_NUMBER}" \
+              --title "feat(ia): solution for #${ISSUE_NUMBER} (v2)" \
               --body "$BODY")
 
             echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
@@ -377,37 +453,35 @@ jobs:
             echo "pr_url=$(gh pr view "$PR_EXISTS" --json url --jq '.url')" >> $GITHUB_OUTPUT
           fi
 
-      - name: "� Capture RTK savings"
+  report:
+    name: "6️⃣ Report"
+    runs-on: ubuntu-latest
+    needs: [initialize, planner, code, validate, deliver]
+    if: always()
+    steps:
+      - name: "📉 Capture RTK savings"
         id: rtk_capture
-        if: always()
         run: |
-          if command -v rtk >/dev/null 2>&1; then
-            {
-              echo "rtk_gain<<EOF"
-              rtk gain
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
-          fi
+          echo "rtk_gain=" >> $GITHUB_OUTPUT
 
-      - name: "� Generate step summary"
-        if: always()
+      - name: "📊 Generate step summary"
         env:
-          CHANGES_DETECTED: ${{ steps.push_changes.outputs.changes_detected }}
-          PUSH_SUCCESS: ${{ steps.push_changes.outputs.push_success }}
-          AIDER_OUTCOME: ${{ steps.aider_run.outcome }}
-          PLANNER_OUTCOME: ${{ steps.planner.outcome }}
-          LINT_OUTCOME: ${{ steps.lint.outcome }}
-          LINT_ERRORS: ${{ steps.lint.outputs.lint_errors }}
-          BUILD_OUTCOME: ${{ steps.build.outcome }}
-          AI_SUMMARY: ${{ steps.aider_run.outputs.ai_summary }}
-          BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
-          PR_URL: ${{ steps.create_pr.outputs.pr_url }}
-          FAST_MODE: ${{ steps.prepare.outputs.fast_mode }}
-          ZEN_MODE: ${{ steps.prepare.outputs.zen_mode }}
-          TIMELESS: ${{ steps.prepare.outputs.timeless }}
+          CHANGES_DETECTED: ${{ needs.deliver.outputs.changes_detected }}
+          PUSH_SUCCESS: ${{ needs.deliver.outputs.push_success }}
+          AIDER_OUTCOME: ${{ needs.code.result }}
+          PLANNER_OUTCOME: ${{ needs.planner.result }}
+          LINT_ERRORS_FRONTEND: ${{ needs.validate.outputs.lint_errors_frontend }}
+          LINT_ERRORS_BACKEND: ${{ needs.validate.outputs.lint_errors_backend }}
+          BUILD_OUTCOME: ${{ needs.validate.result }}
+          AI_SUMMARY: ${{ needs.code.outputs.ai_summary }}
+          BRANCH_NAME: ${{ needs.initialize.outputs.branch_name }}
+          PR_URL: ${{ needs.deliver.outputs.pr_url }}
+          FAST_MODE: ${{ needs.initialize.outputs.fast_mode }}
+          ZEN_MODE: ${{ needs.initialize.outputs.zen_mode }}
+          TIMELESS: ${{ needs.initialize.outputs.timeless }}
           RTK_GAIN: ${{ steps.rtk_capture.outputs.rtk_gain }}
         run: |
-          echo "## 🤖 AI-Driven Workflow Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🤖 AI-Driven Workflow v2 Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Status | Step | Details |" >> $GITHUB_STEP_SUMMARY
           echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
@@ -438,17 +512,13 @@ jobs:
             echo "| ❌ | Aider | Failed or Timeout |" >> $GITHUB_STEP_SUMMARY
           fi
 
-          if [ "$LINT_OUTCOME" = "success" ]; then
-            if [ "${LINT_ERRORS}" = "0" ]; then
+          TOTAL_LINT_ERRORS=$(( ${LINT_ERRORS_FRONTEND:-0} + ${LINT_ERRORS_BACKEND:-0} ))
+          if [ "$BUILD_OUTCOME" = "success" ]; then
+            if [ "$TOTAL_LINT_ERRORS" = "0" ]; then
               echo "| ✅ | Lint | No errors |" >> $GITHUB_STEP_SUMMARY
             else
               echo "| ⚠️ | Lint | Errors found |" >> $GITHUB_STEP_SUMMARY
             fi
-          elif [ "$LINT_OUTCOME" = "skipped" ]; then
-            echo "| ⏭️ | Lint | Skipped |" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          if [ "$BUILD_OUTCOME" = "success" ]; then
             echo "| ✅ | Build | Passed |" >> $GITHUB_STEP_SUMMARY
           elif [ "$BUILD_OUTCOME" = "failure" ]; then
             echo "| ❌ | Build | Failed |" >> $GITHUB_STEP_SUMMARY
@@ -466,14 +536,6 @@ jobs:
             echo "| ✅ | PR | [View Pull Request]($PR_URL) |" >> $GITHUB_STEP_SUMMARY
           fi
 
-          if [ -n "$RTK_GAIN" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### 📉 RTK Token Optimization" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            echo "$RTK_GAIN" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          fi
-
           if [ -n "$AI_SUMMARY" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Files modified" >> $GITHUB_STEP_SUMMARY
@@ -482,46 +544,48 @@ jobs:
 
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
-          echo "> *Triaged automatically by **vibecodia** · This is an automated implementation, not a human review.*" >> $GITHUB_STEP_SUMMARY
+          echo "> *Triaged automatically by **vibecodia v2** · This is an automated implementation, not a human review.*" >> $GITHUB_STEP_SUMMARY
 
       - name: "🗣️ Comment on issue"
-        if: always()
         uses: actions/github-script@v7
         env:
-          AIDER_OUTCOME: ${{ steps.aider_run.outcome }}
-          CHANGES_DETECTED: ${{ steps.push_changes.outputs.changes_detected }}
-          PUSH_SUCCESS: ${{ steps.push_changes.outputs.push_success }}
-          LINT_ERRORS: ${{ steps.lint.outputs.lint_errors }}
-          BUILD_OUTCOME: ${{ steps.build.outcome }}
-          BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
-          AI_SUMMARY: ${{ steps.aider_run.outputs.ai_summary }}
-          PR_URL: ${{ steps.create_pr.outputs.pr_url }}
-          FAST_MODE: ${{ steps.prepare.outputs.fast_mode }}
-          ZEN_MODE: ${{ steps.prepare.outputs.zen_mode }}
-          TIMELESS: ${{ steps.prepare.outputs.timeless }}
+          AIDER_OUTCOME: ${{ needs.code.result }}
+          CHANGES_DETECTED: ${{ needs.deliver.outputs.changes_detected }}
+          PUSH_SUCCESS: ${{ needs.deliver.outputs.push_success }}
+          LINT_ERRORS_FRONTEND: ${{ needs.validate.outputs.lint_errors_frontend }}
+          LINT_ERRORS_BACKEND: ${{ needs.validate.outputs.lint_errors_backend }}
+          BUILD_OUTCOME: ${{ needs.validate.result }}
+          BRANCH_NAME: ${{ needs.initialize.outputs.branch_name }}
+          AI_SUMMARY: ${{ needs.code.outputs.ai_summary }}
+          PR_URL: ${{ needs.deliver.outputs.pr_url }}
+          FAST_MODE: ${{ needs.initialize.outputs.fast_mode }}
+          ZEN_MODE: ${{ needs.initialize.outputs.zen_mode }}
+          TIMELESS: ${{ needs.initialize.outputs.timeless }}
         with:
           script: |
-            const { AIDER_OUTCOME, CHANGES_DETECTED, PUSH_SUCCESS, LINT_ERRORS, BUILD_OUTCOME, BRANCH_NAME, AI_SUMMARY, PR_URL, FAST_MODE, ZEN_MODE, TIMELESS } = process.env;
+            const { AIDER_OUTCOME, CHANGES_DETECTED, PUSH_SUCCESS, LINT_ERRORS_FRONTEND, LINT_ERRORS_BACKEND, BUILD_OUTCOME, BRANCH_NAME, AI_SUMMARY, PR_URL, FAST_MODE, ZEN_MODE, TIMELESS } = process.env;
             const repoUrl    = context.payload.repository.html_url;
             const hasChanges = CHANGES_DETECTED === 'true';
             const pushOk     = PUSH_SUCCESS === 'true';
             const success    = AIDER_OUTCOME === 'success';
             const buildOk    = BUILD_OUTCOME === 'success';
-            const lintErrors = parseInt(LINT_ERRORS || '0');
+            const lintErrorsFrontend = parseInt(LINT_ERRORS_FRONTEND || '0');
+            const lintErrorsBackend = parseInt(LINT_ERRORS_BACKEND || '0');
+            const totalLintErrors = lintErrorsFrontend + lintErrorsBackend;
             const fastMode   = FAST_MODE === 'true';
             const zenMode    = ZEN_MODE === 'true';
             const timeless   = TIMELESS === 'true';
 
-            const footer = `\n\n---\n> *Triaged automatically by **vibecodia** · This is an automated implementation, not a human review.*`;
+            const footer = `\n\n---\n> *Triaged automatically by **vibecodia v2** · This is an automated implementation, not a human review.*`;
 
-            let body = `### 🤖 IA Workflow Results\n\n`;
+            let body = `### 🤖 IA Workflow v2 Results\n\n`;
             body += `**Mode:** ${fastMode ? '⚡ Fast (2min)' : zenMode ? '🧘 Zen (20min)' : timeless ? '🚀 Timeless (6h)' : '🧠 Full with AI Planner'}\n\n`;
 
             if (success && hasChanges && buildOk && pushOk) {
-              body += `✅ **Success!** Changes implemented via **gpt-4o-mini + aider**.\n\n`;
+              body += `✅ **Success!** Changes implemented via **gpt-4o-mini + aider (v2)**.\n\n`;
               body += `- **Branch**: [**${BRANCH_NAME}**](${repoUrl}/tree/${BRANCH_NAME})\n`;
               body += `- **Build**: ✅ passed\n`;
-              body += `- **Lint**: ${lintErrors === 0 ? '✅ no errors' : `⚠️ ${lintErrors} error(s) — review before merging`}\n`;
+              body += `- **Lint**: ${totalLintErrors === 0 ? '✅ no errors' : `⚠️ ${totalLintErrors} error(s) — review before merging`}\n`;
               if (PR_URL) {
                 body += `- **PR**: [View Pull Request](${PR_URL})\n`;
               }
