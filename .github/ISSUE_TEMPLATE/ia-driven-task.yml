@@ -1,7 +1,7 @@
 name: "🤖 Tarefa Guiada por IA"
 description: "Inicia um fluxo de trabalho de desenvolvimento orientado por IA."
 title: "[IA-Driven] - "
-labels: ["ia-driven", "automation"]
+labels: ["ai-driven", "automation"]
 body:
   - type: markdown
     attributes:
