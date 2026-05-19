@@ -267,12 +267,7 @@ jobs:
       fail-fast: false
       matrix:
         mode: ["aider"]
-    timeout-minutes: ${{ 
-      contains(github.event.issue.labels.*.name, 'ai-timeless') && 360 
-      || contains(github.event.issue.labels.*.name, 'ai-zen') && 20 
-      || contains(github.event.issue.labels.*.name, 'ai-fast') && 2 
-      || 4 
-    }}
+    timeout-minutes: ${{ contains(github.event.issue.labels.*.name, 'ai-timeless') && 360 || contains(github.event.issue.labels.*.name, 'ai-zen') && 20 || contains(github.event.issue.labels.*.name, 'ai-fast') && 2 || 4 }}
     outputs:
       ai_summary: ${{ steps.aider_run.outputs.ai_summary }}
     steps:
