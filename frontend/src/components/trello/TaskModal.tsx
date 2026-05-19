@@ -2,7 +2,7 @@ import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Chec
 import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
-import { Task, ChecklistItem, TaskFlag, TaskLabel, Column, TimeLog, HistoryEntry } from '../../types/trello/task';
+import { Task, ChecklistItem, TaskFlag, TaskLabel, Column, TimeLog } from '../../types/trello/task';
 import { createTask, generateId, formatTimeElapsed } from '../../utils/trello/taskUtils';
 import { getBrazilDateString } from '../../utils/helpers';
 import { Button } from '../ui/Button';

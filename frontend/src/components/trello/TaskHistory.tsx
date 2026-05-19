@@ -8,7 +8,6 @@ import {
   Archive,
   RotateCcw,
   Pin,
-  Unpin,
   CheckSquare,
   Clock,
 } from 'lucide-react';
@@ -26,7 +25,7 @@ const actionConfig: Record<HistoryEntry['action'], { icon: React.ElementType; la
   archive: { icon: Archive, label: 'Arquivamento', color: 'text-gray-500 bg-gray-500/10' },
   unarchive: { icon: RotateCcw, label: 'Desarquivamento', color: 'text-purple-500 bg-purple-500/10' },
   pin: { icon: Pin, label: 'Fixação', color: 'text-primary bg-primary/10' },
-  unpin: { icon: Unpin, label: 'Desafixação', color: 'text-muted-foreground bg-muted/20' },
+  unpin: { icon: RotateCcw, label: 'Desafixação', color: 'text-muted-foreground bg-muted/20' },
   checklist_toggle: { icon: CheckSquare, label: 'Checklist', color: 'text-cyan-500 bg-cyan-500/10' },
   timelog_add: { icon: Clock, label: 'Horas', color: 'text-violet-500 bg-violet-500/10' },
 };
@@ -49,7 +48,6 @@ const TaskHistory: React.FC<TaskHistoryProps> = ({ history }) => {
       <div className="space-y-3">
         {history.map((entry) => {
           const config = actionConfig[entry.action] || actionConfig.update;
-          const Icon = config.icon;
 
           return (
             <div key={entry.id} className="relative flex items-start gap-4 group">
