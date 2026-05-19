@@ -1,0 +1,31 @@
+name: "🤖 Tarefa Guiada por IA"
+description: "Inicia fluxo de desenvolvimento orientado por IA."
+title: "[AI-Driven] - "
+labels: ["ai-driven", "automation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Atenção:** Ao criar esta issue, você acionará automação baseada em **Aider + OpenCode Zen (big-pickle)** que irá:
+        1. Criar nova branch `ia/task-<issue-number>-<timestamp>`.
+        2. Gerar plano de implementação em `ia/tasks/`.
+        3. Executar **Aider** para modificar código automaticamente.
+        4. Validar alterações (Lint/Build).
+        5. Fazer push e abrir Pull Request.
+
+  - type: checkboxes
+    id: workflow_options
+    attributes:
+      label: "⚡ Opções do Workflow"
+      options:
+        - label: "Modo Fast (ai-fast): Execução rápida, sem plano detalhado (2 min)"
+        - label: "Modo Zen (ai-zen): Tempo estendido para tarefas complexas (20 min)"
+
+  - type: textarea
+    id: task_description
+    attributes:
+      label: "🎯 Descrição da Tarefa"
+      description: "Descreva claramente que precisa ser feito. Texto vira prompt principal da IA."
+      placeholder: "Ex: Alterar frontend/src/hooks/trello/useTrello.ts para retornar count de matches e exibir total ao lado da SearchBar em frontend/src/components/trello/Board.tsx."
+    validations:
+      required: true
