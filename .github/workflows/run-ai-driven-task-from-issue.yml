@@ -84,11 +84,15 @@ jobs:
           fi
           echo "timeless=$TIMELESS" >> $GITHUB_OUTPUT
 
+          # Extract task description from GitHub Forms issue body
+          # Find the section after "### 🎯 Descrição da Tarefa"
+          TASK_DESCRIPTION=$(echo "$ISSUE_BODY" | awk '/### 🎯 Descrição da Tarefa/,0' | tail -n +2)
+
           {
             echo "# Task — Issue #${ISSUE_NUMBER}"
             echo ""
             echo "## What needs to be done"
-            echo "$ISSUE_BODY"
+            echo "$TASK_DESCRIPTION"
             echo ""
             echo "## Rules"
             echo "- Follow existing code patterns, file structure and naming conventions"
