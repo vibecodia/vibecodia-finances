@@ -33,6 +33,7 @@ export function Board() {
     updateColumn,
     deleteColumn,
     filteredTasks, 
+    matchCount,
     searchTerm, 
     setSearchTerm, 
     addTask, 
@@ -483,6 +484,9 @@ export function Board() {
         
         <div className="flex flex-wrap items-center gap-3">
           <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
+          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+            {matchCount} resultado{matchCount !== 1 ? 's' : ''}
+          </span>
           
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-foreground/5 hover:bg-foreground/10 rounded-xl border border-border transition-all group/filter relative">

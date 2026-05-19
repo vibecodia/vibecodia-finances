@@ -163,6 +163,8 @@ export function useTrello() {
       });
   }, [tasks, currentThemeId, searchTerm]);
 
+  const matchCount = filteredTasks.length;
+
   const addTheme = useCallback((name: string, color?: string) => {
     const newTheme: BoardTheme = {
       id: generateId(),
@@ -336,6 +338,7 @@ export function useTrello() {
     updateColumn,
     deleteColumn,
     filteredTasks,
+    matchCount,
     searchTerm,
     setSearchTerm,
     addTask,
