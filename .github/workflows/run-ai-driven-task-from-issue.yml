@@ -262,7 +262,7 @@ jobs:
   code:
     name: "AI Coding (${{ matrix.mode }})"
     runs-on: ubuntu-latest
-    needs: [initialize, planner]
+    needs: [initialize]
     strategy:
       fail-fast: false
       matrix:
@@ -331,7 +331,6 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           OPENAI_API_BASE: https://opencode.ai/zen/v1
           TASK_FILE: ${{ needs.initialize.outputs.task_file }}
-          PLAN_CONTENT: ${{ needs.planner.outputs.plan_content }}
           FAST_MODE: ${{ needs.initialize.outputs.fast_mode }}
         run: |
           echo "::group::Aider"
@@ -341,13 +340,18 @@ jobs:
 
           if [ "$FAST_MODE" = "true" ]; then
             MESSAGE="$(cat "$TASK_FILE")"
-          elif [ -n "$PLAN_CONTENT" ]; then
-            MESSAGE="$(cat "$TASK_FILE")
+          else
+            # Try to read plan file if it exists
+            PLAN_FILE="ia/tasks/plan-${{ github.event.issue.number }}.md"
+            if [ -f "$PLAN_FILE" ]; then
+              PLAN_CONTENT=$(cat "$PLAN_FILE")
+              MESSAGE="$(cat "$TASK_FILE")
 
           Implementation Plan:
           $PLAN_CONTENT"
-          else
-            MESSAGE="$(cat "$TASK_FILE")"
+            else
+              MESSAGE="$(cat "$TASK_FILE")"
+            fi
           fi
 
           aider \
@@ -440,7 +444,7 @@ jobs:
   deliver:
     name: "Deliver"
     runs-on: ubuntu-latest
-    needs: [initialize, code, validate, planner]
+    needs: [initialize, code, validate]
     outputs:
       changes_detected: ${{ steps.push_changes.outputs.changes_detected }}
       push_success: ${{ steps.push_changes.outputs.push_success }}
@@ -551,9 +555,15 @@ jobs:
           BRANCH_NAME: ${{ needs.initialize.outputs.branch_name }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           AI_SUMMARY: ${{ needs.code.outputs.ai_summary }}
-          PLAN_CONTENT: ${{ needs.planner.outputs.plan_content }}
         run: |
           PR_EXISTS=$(gh pr list --head "$BRANCH_NAME" --base develop --json number --jq '.[0].number')
+
+          # Try to read plan file if it exists
+          PLAN_FILE="ia/tasks/plan-${ISSUE_NUMBER}.md"
+          PLAN_CONTENT=""
+          if [ -f "$PLAN_FILE" ]; then
+            PLAN_CONTENT=$(cat "$PLAN_FILE")
+          fi
 
           if [ -z "$PR_EXISTS" ]; then
             BODY="Closes #${ISSUE_NUMBER}
@@ -584,7 +594,7 @@ jobs:
   report:
     name: "Report"
     runs-on: ubuntu-latest
-    needs: [initialize, planner, code, validate, deliver]
+    needs: [initialize, code, validate, deliver]
     if: always()
     steps:
       - name: "📉 Capture RTK savings"
@@ -597,7 +607,6 @@ jobs:
           CHANGES_DETECTED: ${{ needs.deliver.outputs.changes_detected }}
           PUSH_SUCCESS: ${{ needs.deliver.outputs.push_success }}
           AIDER_OUTCOME: ${{ needs.code.result }}
-          PLANNER_OUTCOME: ${{ needs.planner.result }}
           LINT_ERRORS_FRONTEND: ${{ needs.validate.outputs.lint_errors_frontend }}
           LINT_ERRORS_BACKEND: ${{ needs.validate.outputs.lint_errors_backend }}
           BUILD_OUTCOME: ${{ needs.validate.result }}
@@ -628,9 +637,11 @@ jobs:
             echo "| 📉 | RTK Savings | Token optimization active |" >> $GITHUB_STEP_SUMMARY
           fi
 
-          if [ "$PLANNER_OUTCOME" = "success" ]; then
+          # Check if plan file exists to determine planner status
+          PLAN_FILE="ia/tasks/plan-${{ github.event.issue.number }}.md"
+          if [ "$FAST_MODE" = "false" ] && [ -f "$PLAN_FILE" ]; then
             echo "| ✅ | AI Planner | Plan generated |" >> $GITHUB_STEP_SUMMARY
-          elif [ "$PLANNER_OUTCOME" = "skipped" ]; then
+          elif [ "$FAST_MODE" = "true" ]; then
             echo "| ⏭️ | AI Planner | Skipped |" >> $GITHUB_STEP_SUMMARY
           fi
 
