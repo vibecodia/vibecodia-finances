@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 
 import { Task, BoardTheme, Column, HistoryEntry } from '../../types/trello/task';
+
 import { generateId } from '../../utils/trello/taskUtils';
 import { useLocalStorage } from './useLocalStorage';
 
@@ -22,8 +23,8 @@ function recordHistory(task: Task, entry: HistoryEntry): Task {
 function createHistoryEntry(
   action: HistoryEntry['action'],
   details: string,
-  previousValue?: any,
-  newValue?: any,
+  previousValue?: unknown,
+  newValue?: unknown,
 ): HistoryEntry {
   return {
     id: generateId(),
@@ -37,7 +38,7 @@ function createHistoryEntry(
 
 function compareAndRecordUpdates(oldTask: Task, newTask: Task): { task: Task; entries: HistoryEntry[] } {
   const entries: HistoryEntry[] = [];
-  let updated = { ...newTask, history: oldTask.history ? [...oldTask.history] : [] };
+  const updated = { ...newTask, history: oldTask.history ? [...oldTask.history] : [] };
 
   if (oldTask.title !== newTask.title) {
     entries.push(createHistoryEntry('update', `Título alterado de "${oldTask.title}" para "${newTask.title}"`, oldTask.title, newTask.title));
