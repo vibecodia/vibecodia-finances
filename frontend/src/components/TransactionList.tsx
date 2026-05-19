@@ -60,6 +60,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [showDeleted, setShowDeleted] = useState(false);
   const [apporteMessage, setApporteMessage] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(true);
 
   // Filter and split transactions early so useEffect and body can use them
   const allMonthTransactions = filterTransactionsByMonth(
@@ -475,6 +476,16 @@ const TransactionList: React.FC<TransactionListProps> = ({
                 <ChevronDown className={cn("w-3 h-3 ml-1 transition-transform", showDeleted && "rotate-180")} />
               </Button>
             )}
+            <Button 
+              onClick={() => setShowFilters(!showFilters)}
+              variant={showFilters ? 'primary' : 'ghost'}
+              size="sm"
+              className="h-6 text-[10px] px-2 py-0"
+            >
+              <Filter className="w-3 h-3 mr-1" />
+              Filtros
+              {showFilters ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />}
+            </Button>
           </div>
         </div>
         <Button
@@ -490,124 +501,126 @@ const TransactionList: React.FC<TransactionListProps> = ({
       </div>
 
       {/* Filters */}
-      <div className="space-y-4 relative z-30">
-        {/* Category Filter */}
-        {categories.length > 0 && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            <Filter className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            <Button
-              onClick={() => handleCategoryFilterChange('all')}
-              variant={categoryFilter.includes('all') ? 'primary' : 'outline'}
-              size="sm"
-              className="rounded-full text-[10px] uppercase h-8 px-4"
-            >
-              Todas
-            </Button>
-            {categories.map(category => (
+      {showFilters && (
+        <div className="space-y-4 relative z-30 animate-in fade-in duration-300">
+          {/* Category Filter */}
+          {categories.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              <Filter className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <Button
-                key={category}
-                onClick={() => handleCategoryFilterChange(category)}
-                variant={categoryFilter.includes(category) && !categoryFilter.includes('all') ? 'primary' : 'outline'}
+                onClick={() => handleCategoryFilterChange('all')}
+                variant={categoryFilter.includes('all') ? 'primary' : 'outline'}
                 size="sm"
                 className="rounded-full text-[10px] uppercase h-8 px-4"
               >
-                {category}
+                Todas
               </Button>
-            ))}
-          </div>
-        )}
+              {categories.map(category => (
+                <Button
+                  key={category}
+                  onClick={() => handleCategoryFilterChange(category)}
+                  variant={categoryFilter.includes(category) && !categoryFilter.includes('all') ? 'primary' : 'outline'}
+                  size="sm"
+                  className="rounded-full text-[10px] uppercase h-8 px-4"
+                >
+                  {category}
+                </Button>
+              ))}
+            </div>
+          )}
 
-        {/* Payment Status Filter (only for expenses) */}
-        {type === 'expense' && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            <CreditCard className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            <Button
-              onClick={() => setPaymentFilter('all')}
-              variant={paymentFilter === 'all' ? 'primary' : 'outline'}
-              size="sm"
-              className="rounded-full text-[10px] uppercase h-8 px-4"
-            >
-              Todos
-            </Button>
-            <Button
-              onClick={() => setPaymentFilter(prev => prev === 'paid' ? 'all' : 'paid')}
-              variant={paymentFilter === 'paid' ? 'primary' : 'outline'}
-              size="sm"
-              className="rounded-full text-[10px] uppercase h-8 px-4"
-            >
-              Pagos
-            </Button>
-            <Button
-              onClick={() => setPaymentFilter(prev => prev === 'pending' ? 'all' : 'pending')}
-              variant={paymentFilter === 'pending' ? 'accent' : 'outline'}
-              size="sm"
-              className="rounded-full text-[10px] uppercase h-8 px-4"
-            >
-              Pendentes
-            </Button>
-          </div>
-        )}
-
-        {/* Payment Method Filter (only for expenses) */}
-        {type === 'expense' && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            <Wallet className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            <Button
-              onClick={() => handlePaymentMethodFilterChange('all')}
-              variant={paymentMethodFilter.includes('all') ? 'primary' : 'outline'}
-              size="sm"
-              className="rounded-full text-[10px] uppercase h-8 px-4"
-            >
-              Todos
-            </Button>
-            {paymentMethods.map(method => (
+          {/* Payment Status Filter (only for expenses) */}
+          {type === 'expense' && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              <CreditCard className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <Button
-                key={method}
-                onClick={() => handlePaymentMethodFilterChange(method)}
-                variant={paymentMethodFilter.includes(method) && !paymentMethodFilter.includes('all') ? 'primary' : 'outline'}
+                onClick={() => setPaymentFilter('all')}
+                variant={paymentFilter === 'all' ? 'primary' : 'outline'}
                 size="sm"
                 className="rounded-full text-[10px] uppercase h-8 px-4"
               >
-                {method}
+                Todos
               </Button>
-            ))}
-          </div>
-        )}
+              <Button
+                onClick={() => setPaymentFilter(prev => prev === 'paid' ? 'all' : 'paid')}
+                variant={paymentFilter === 'paid' ? 'primary' : 'outline'}
+                size="sm"
+                className="rounded-full text-[10px] uppercase h-8 px-4"
+              >
+                Pagos
+              </Button>
+              <Button
+                onClick={() => setPaymentFilter(prev => prev === 'pending' ? 'all' : 'pending')}
+                variant={paymentFilter === 'pending' ? 'accent' : 'outline'}
+                size="sm"
+                className="rounded-full text-[10px] uppercase h-8 px-4"
+              >
+                Pendentes
+              </Button>
+            </div>
+          )}
 
-        {/* Search Input */}
-        <div className="relative flex items-center w-full group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors z-10" />
-          <Input
-            type="text"
-            placeholder={type === 'expense' ? "Buscar despesas..." : "Buscar receitas..."}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-12"
-          />
-        </div>
+          {/* Payment Method Filter (only for expenses) */}
+          {type === 'expense' && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              <Wallet className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <Button
+                onClick={() => handlePaymentMethodFilterChange('all')}
+                variant={paymentMethodFilter.includes('all') ? 'primary' : 'outline'}
+                size="sm"
+                className="rounded-full text-[10px] uppercase h-8 px-4"
+              >
+                Todos
+              </Button>
+              {paymentMethods.map(method => (
+                <Button
+                  key={method}
+                  onClick={() => handlePaymentMethodFilterChange(method)}
+                  variant={paymentMethodFilter.includes(method) && !paymentMethodFilter.includes('all') ? 'primary' : 'outline'}
+                  size="sm"
+                  className="rounded-full text-[10px] uppercase h-8 px-4"
+                >
+                  {method}
+                </Button>
+              ))}
+            </div>
+          )}
 
-        {/* Daily Filter for Income/Expense */}
-        {startDateFilter && endDateFilter && (
-          <div className="flex items-center gap-3 pb-2">
-            <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            <DailyDateSlider
-              currentMonth={currentMonth}
-              startDate={startDateFilter}
-              endDate={endDateFilter}
-              onChange={handleDailyFilterChange}
+          {/* Search Input */}
+          <div className="relative flex items-center w-full group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors z-10" />
+            <Input
+              type="text"
+              placeholder={type === 'expense' ? "Buscar despesas..." : "Buscar receitas..."}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-12"
             />
-            <Button
-              onClick={handleClearDailyFilter}
-              variant="secondary"
-              size="sm"
-              className={cn("h-8 text-[10px] uppercase rounded-full", !isDailyFilterActive && "opacity-30")}
-              disabled={!isDailyFilterActive}
-            >
-              Limpar
-            </Button>
           </div>
-        )}
-      </div>
+
+          {/* Daily Filter for Income/Expense */}
+          {startDateFilter && endDateFilter && (
+            <div className="flex items-center gap-3 pb-2">
+              <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <DailyDateSlider
+                currentMonth={currentMonth}
+                startDate={startDateFilter}
+                endDate={endDateFilter}
+                onChange={handleDailyFilterChange}
+              />
+              <Button
+                onClick={handleClearDailyFilter}
+                variant="secondary"
+                size="sm"
+                className={cn("h-8 text-[10px] uppercase rounded-full", !isDailyFilterActive && "opacity-30")}
+                disabled={!isDailyFilterActive}
+              >
+                Limpar
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Transaction List */}
       <div className={cn("space-y-4 transition-opacity duration-300", isSearching ? 'opacity-0' : 'opacity-100')}>
