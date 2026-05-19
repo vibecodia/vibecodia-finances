@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   initialize:
-    name: "1️⃣ Initialize Task (#${{ github.event.issue.number }})"
+    name: "Initialize Task (#${{ github.event.issue.number }})"
     runs-on: ubuntu-latest
     if: contains(github.event.issue.labels.*.name, 'ai-driven')
     outputs:
@@ -25,7 +25,7 @@ jobs:
       zen_mode: ${{ steps.prepare.outputs.zen_mode }}
       timeless: ${{ steps.prepare.outputs.timeless }}
     steps:
-      - name: "🔄 Checkout repository"
+      - name: "Checkout repository"
         uses: actions/checkout@v4
         with:
           ref: 'develop'
@@ -85,8 +85,8 @@ jobs:
           echo "timeless=$TIMELESS" >> $GITHUB_OUTPUT
 
           # Extract task description from GitHub Forms issue body
-          # Find the section after "### 🎯 Descrição da Tarefa"
-          TASK_DESCRIPTION=$(echo "$ISSUE_BODY" | awk '/### 🎯 Descrição da Tarefa/,0' | tail -n +2)
+          # Find everything after "### 🎯 Descrição da Tarefa" and before "---"
+          TASK_DESCRIPTION=$(echo "$ISSUE_BODY" | awk '/### 🎯 Descrição da Tarefa/{f=1; next} /^---/{f=0} f')
 
           {
             echo "# Task — Issue #${ISSUE_NUMBER}"
@@ -108,14 +108,14 @@ jobs:
           git checkout -b "$BRANCH_NAME"
 
   planner:
-    name: "2️⃣ AI Planner"
+    name: "AI Planner"
     runs-on: ubuntu-latest
     needs: initialize
     if: needs.initialize.outputs.fast_mode == 'false'
     outputs:
       plan_file: ${{ steps.planner.outputs.plan_file }}
     steps:
-      - name: "🔄 Checkout repository"
+      - name: "Checkout repository"
         uses: actions/checkout@v4
         with:
           ref: 'develop'
@@ -189,7 +189,7 @@ jobs:
             });
 
   code:
-    name: "3️⃣ AI Coding (${{ matrix.mode }})"
+    name: "AI Coding (${{ matrix.mode }})"
     runs-on: ubuntu-latest
     needs: [initialize, planner]
     strategy:
@@ -298,7 +298,7 @@ jobs:
           echo "::endgroup::"
 
   validate:
-    name: "4️⃣ Validate (${{ matrix.target }})"
+    name: "Validate (${{ matrix.target }})"
     runs-on: ubuntu-latest
     needs: [initialize, code]
     strategy:
@@ -310,7 +310,7 @@ jobs:
       lint_errors_backend: ${{ steps.lint_backend.outputs.lint_errors }}
       build_failed: ${{ steps.build.outputs.build_failed }}
     steps:
-      - name: "🔄 Checkout repository"
+      - name: "Checkout repository"
         uses: actions/checkout@v4
         with:
           ref: 'develop'
@@ -363,7 +363,7 @@ jobs:
           fi
 
   deliver:
-    name: "5️⃣ Deliver"
+    name: "Deliver"
     runs-on: ubuntu-latest
     needs: [initialize, code, validate]
     outputs:
@@ -371,7 +371,7 @@ jobs:
       push_success: ${{ steps.push_changes.outputs.push_success }}
       pr_url: ${{ steps.create_pr.outputs.pr_url }}
     steps:
-      - name: "🔄 Checkout repository"
+      - name: "Checkout repository"
         uses: actions/checkout@v4
         with:
           ref: 'develop'
@@ -458,7 +458,7 @@ jobs:
           fi
 
   report:
-    name: "6️⃣ Report"
+    name: "Report"
     runs-on: ubuntu-latest
     needs: [initialize, planner, code, validate, deliver]
     if: always()
