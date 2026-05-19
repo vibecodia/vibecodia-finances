@@ -17,7 +17,7 @@ jobs:
   initialize:
     name: "1️⃣ Initialize Task (#${{ github.event.issue.number }})"
     runs-on: ubuntu-latest
-    if: contains(github.event.issue.labels.*.name, 'ai-driven')
+    if: contains(github.event.issue.labels.*.name, 'ia-driven')
     outputs:
       branch_name: ${{ steps.prepare.outputs.branch_name }}
       task_file: ${{ steps.prepare.outputs.task_file }}
