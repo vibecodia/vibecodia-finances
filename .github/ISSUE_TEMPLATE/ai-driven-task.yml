@@ -6,26 +6,63 @@ body:
   - type: markdown
     attributes:
       value: |
-        **Atenção:** Ao criar esta issue, você acionará automação baseada em **Aider + OpenCode Zen (big-pickle)** que irá:
-        1. Criar nova branch `ia/task-<issue-number>-<timestamp>`.
-        2. Gerar plano de implementação em `ia/tasks/`.
-        3. Executar **Aider** para modificar código automaticamente.
-        4. Validar alterações (Lint/Build).
-        5. Fazer push e abrir Pull Request.
+        ## 🤖 Fluxo de Desenvolvimento Orientado por IA
 
-  - type: checkboxes
-    id: workflow_options
-    attributes:
-      label: "⚡ Opções do Workflow"
-      options:
-        - label: "Modo Fast (ai-fast): Execução rápida, sem plano detalhado (2 min)"
-        - label: "Modo Zen (ai-zen): Tempo estendido para tarefas complexas (20 min)"
+        Ao criar esta issue, a automação **Aider + OpenCode Zen (v2)** irá:
+
+        1. Criar uma branch `ia/task-<issue-number>-<timestamp>`
+        2. Gerar um plano de implementação em `ia/tasks/`
+        3. Executar o **Aider** para modificar o código
+        4. Validar as alterações (Lint/Build)
+        5. Abrir um Pull Request automaticamente
+
+        ---
+
+        ### 🏷️ Controle via Labels
+
+        Adicione **labels** para controlar o comportamento:
+
+        | Label | Efeito | Timeout |
+        |-------|--------|---------|
+        | `ai-driven` | **Obrigatória** para iniciar o workflow | - |
+        | `ai-fast` | ⚡ Execução rápida (sem plano detalhado) | 2 min |
+        | `ai-zen` | 🧘 Tempo estendido para tarefas complexas | 20 min |
+        | `ai-timeless` | 🚀 Para grandes refatorações (uso raro) | 6 horas |
+
+        > **Sem labels adicionais** = modo padrão com AI Planner (4 min timeout)
+
+        ---
 
   - type: textarea
     id: task_description
     attributes:
       label: "🎯 Descrição da Tarefa"
-      description: "Descreva claramente que precisa ser feito. Texto vira prompt principal da IA."
-      placeholder: "Ex: Alterar frontend/src/hooks/trello/useTrello.ts para retornar count de matches e exibir total ao lado da SearchBar em frontend/src/components/trello/Board.tsx."
+      description: "Descreva claramente o que precisa ser feito. O texto será usado como prompt principal da IA."
+      placeholder: |
+        Exemplo:
+        - Alterar `frontend/src/hooks/trello/useTrello.ts` para retornar count de matches
+        - Exibir total ao lado da SearchBar em `frontend/src/components/trello/Board.tsx`
+        - Validar que a contagem atualiza em tempo real
+      value: |
+        ## O que precisa ser feito
+
+        (Descreva aqui sua tarefa em detalhes)
+
+        ## Comportamento esperado
+
+        (Explique como o resultado final deve se comportar)
+
+        ## Arquivos relacionados (opcional)
+
+        - `caminho/para/arquivo1.ts`
+        - `caminho/para/arquivo2.tsx`
     validations:
       required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        > ⚠️ **Importante**: Esta issue será processada automaticamente. Acompanhe o progresso nos comentários abaixo e no [Actions]({{ actions_url }}).
+        > 
+        > *Sistema vibecodia v2 · Implementação automatizada, não revisada por humanos.*
