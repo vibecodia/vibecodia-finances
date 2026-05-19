@@ -293,7 +293,7 @@ jobs:
             --map-tokens 1024 \
             --no-auto-commits \
             --message "$MESSAGE" \
-            $RELEVANT_FILES >/dev/null 2>&1
+            $RELEVANT_FILES
 
           {
             echo "ai_summary<<EOF"
@@ -398,7 +398,7 @@ jobs:
 
           if git diff --staged --quiet; then
             echo "changes_detected=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ No code changes detected."
+            echo "No code changes detected."
           else
             echo "changes_detected=true" >> $GITHUB_OUTPUT
 
