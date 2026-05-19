@@ -117,6 +117,8 @@ jobs:
     outputs:
       plan_file: ${{ steps.planner.outputs.plan_file }}
       plan_content: ${{ steps.planner.outputs.plan_content }}
+      is_minimal: ${{ steps.analyze_plan.outputs.is_minimal }}
+      is_safe: ${{ steps.analyze_plan.outputs.is_safe }}
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@v4
@@ -170,23 +172,85 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "::endgroup::"
 
+      - name: "🔍 Analyze plan for minimal/safe change"
+        id: analyze_plan
+        env:
+          PLAN_FILE: ${{ steps.planner.outputs.plan_file }}
+        run: |
+          PLAN_CONTENT=$(cat "$PLAN_FILE")
+          IS_MINIMAL=false
+          IS_SAFE=false
+          
+          if echo "$PLAN_CONTENT" | grep -q -i "minimal\|only.*file\|few lines\|small change"; then
+            IS_MINIMAL=true
+          fi
+          
+          if echo "$PLAN_CONTENT" | grep -q -i "safe\|no refactoring\|no config changes\|no breaking"; then
+            IS_SAFE=true
+          fi
+          
+          echo "is_minimal=$IS_MINIMAL" >> $GITHUB_OUTPUT
+          echo "is_safe=$IS_SAFE" >> $GITHUB_OUTPUT
+
+      - name: "🏷️ Apply labels to issue"
+        uses: actions/github-script@v7
+        env:
+          IS_MINIMAL: ${{ steps.analyze_plan.outputs.is_minimal }}
+          IS_SAFE: ${{ steps.analyze_plan.outputs.is_safe }}
+        with:
+          script: |
+            const { IS_MINIMAL, IS_SAFE } = process.env;
+            const labels = [];
+            
+            if (IS_MINIMAL === 'true') {
+              labels.push('minimal-change');
+            }
+            if (IS_SAFE === 'true') {
+              labels.push('safe-change');
+            }
+            if (IS_MINIMAL === 'true' && IS_SAFE === 'true') {
+              labels.push('triage-ok');
+            }
+            
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels
+              });
+            }
+
       - name: "🗣️ Planner comment"
         uses: actions/github-script@v7
         env:
           PLAN_FILE: ${{ steps.planner.outputs.plan_file }}
           BRANCH_NAME: ${{ needs.initialize.outputs.branch_name }}
+          IS_MINIMAL: ${{ steps.analyze_plan.outputs.is_minimal }}
+          IS_SAFE: ${{ steps.analyze_plan.outputs.is_safe }}
         with:
           script: |
             const fs = require('fs');
             const repoUrl = context.payload.repository.html_url;
             const planContent = fs.readFileSync(process.env.PLAN_FILE, 'utf8');
+            const { IS_MINIMAL, IS_SAFE } = process.env;
             const footer = `\n\n---\n> *Triaged automatically by **vibecodia v2** · This is an automated implementation, not a human review.*`;
             
-            const body = `### 🧠 Plano de Implementação Gerado!\n\n` +
-                         `O **AI Planner (v2)** analisou a tarefa e traçou o seguinte roteiro:\n\n` +
-                         `\`\`\`markdown\n${planContent}\n\`\`\`\n\n` +
-                         `🛠️ **Próximo passo:** O **Aider** iniciará a codificação na branch [**${process.env.BRANCH_NAME}**](${repoUrl}/tree/${process.env.BRANCH_NAME}).` +
-                         footer;
+            let body = `### 🧠 Plano de Implementação Gerado!\n\n`;
+            body += `O **AI Planner (v2)** analisou a tarefa e traçou o seguinte roteiro:\n\n`;
+            body += `\`\`\`markdown\n${planContent}\n\`\`\`\n\n`;
+            
+            const labelsApplied = [];
+            if (IS_MINIMAL === 'true') labelsApplied.push('`minimal-change`');
+            if (IS_SAFE === 'true') labelsApplied.push('`safe-change`');
+            if (IS_MINIMAL === 'true' && IS_SAFE === 'true') labelsApplied.push('`triage-ok`');
+            
+            if (labelsApplied.length > 0) {
+              body += `🏷️ **Labels aplicados:** ${labelsApplied.join(', ')}\n\n`;
+            }
+            
+            body += `🛠️ **Próximo passo:** O **Aider** iniciará a codificação na branch [**${process.env.BRANCH_NAME}**](${repoUrl}/tree/${process.env.BRANCH_NAME}).`;
+            body += footer;
             
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -381,11 +445,13 @@ jobs:
   deliver:
     name: "Deliver"
     runs-on: ubuntu-latest
-    needs: [initialize, code, validate]
+    needs: [initialize, code, validate, planner]
     outputs:
       changes_detected: ${{ steps.push_changes.outputs.changes_detected }}
       push_success: ${{ steps.push_changes.outputs.push_success }}
       pr_url: ${{ steps.create_pr.outputs.pr_url }}
+      final_is_minimal: ${{ steps.analyze_changes.outputs.is_minimal }}
+      final_is_safe: ${{ steps.analyze_changes.outputs.is_safe }}
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@v4
@@ -408,6 +474,79 @@ jobs:
             echo "changes_detected=false" >> $GITHUB_OUTPUT
             echo "No code changes detected."
           fi
+
+      - name: "🔍 Analyze actual code changes"
+        id: analyze_changes
+        if: steps.push_changes.outputs.changes_detected == 'true'
+        run: |
+          # Get list of modified files
+          MODIFIED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
+          FILE_COUNT=$(echo "$MODIFIED_FILES" | grep -c .)
+          
+          # Check if only a few files were modified
+          IS_MINIMAL=false
+          if [ "$FILE_COUNT" -le 3 ]; then
+            IS_MINIMAL=true
+          fi
+          
+          # Check if no config/package files were modified
+          IS_SAFE=true
+          if echo "$MODIFIED_FILES" | grep -q -E "(package\.json|package-lock\.json|\.env|config|schema)"; then
+            IS_SAFE=false
+          fi
+          
+          echo "is_minimal=$IS_MINIMAL" >> $GITHUB_OUTPUT
+          echo "is_safe=$IS_SAFE" >> $GITHUB_OUTPUT
+
+      - name: "🏷️ Update labels based on actual changes"
+        uses: actions/github-script@v7
+        if: steps.push_changes.outputs.changes_detected == 'true'
+        env:
+          FINAL_IS_MINIMAL: ${{ steps.analyze_changes.outputs.is_minimal }}
+          FINAL_IS_SAFE: ${{ steps.analyze_changes.outputs.is_safe }}
+        with:
+          script: |
+            const { FINAL_IS_MINIMAL, FINAL_IS_SAFE } = process.env;
+            
+            // Get current labels first
+            const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            
+            const currentLabelNames = currentLabels.map(l => l.name);
+            const newLabels = [...currentLabelNames];
+            
+            // Add or remove labels based on actual changes
+            if (FINAL_IS_MINIMAL === 'true' && !newLabels.includes('minimal-change')) {
+              newLabels.push('minimal-change');
+            } else if (FINAL_IS_MINIMAL === 'false') {
+              const idx = newLabels.indexOf('minimal-change');
+              if (idx !== -1) newLabels.splice(idx, 1);
+            }
+            
+            if (FINAL_IS_SAFE === 'true' && !newLabels.includes('safe-change')) {
+              newLabels.push('safe-change');
+            } else if (FINAL_IS_SAFE === 'false') {
+              const idx = newLabels.indexOf('safe-change');
+              if (idx !== -1) newLabels.splice(idx, 1);
+            }
+            
+            if (FINAL_IS_MINIMAL === 'true' && FINAL_IS_SAFE === 'true' && !newLabels.includes('triage-ok')) {
+              newLabels.push('triage-ok');
+            } else {
+              const idx = newLabels.indexOf('triage-ok');
+              if (idx !== -1) newLabels.splice(idx, 1);
+            }
+            
+            // Update labels
+            await github.rest.issues.setLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: newLabels
+            });
 
       - name: "🔀 Create Pull Request"
         id: create_pr
