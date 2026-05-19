@@ -175,19 +175,29 @@ jobs:
       - name: "🔍 Analyze plan for minimal/safe change"
         id: analyze_plan
         env:
+          OPENAI_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           PLAN_FILE: ${{ steps.planner.outputs.plan_file }}
         run: |
           PLAN_CONTENT=$(cat "$PLAN_FILE")
-          IS_MINIMAL=false
-          IS_SAFE=false
-          
-          if echo "$PLAN_CONTENT" | grep -q -i "minimal\|only.*file\|few lines\|small change"; then
-            IS_MINIMAL=true
-          fi
-          
-          if echo "$PLAN_CONTENT" | grep -q -i "safe\|no refactoring\|no config changes\|no breaking"; then
-            IS_SAFE=true
-          fi
+          PAYLOAD=$(jq -n \
+            --arg system "You are a code change classifier. Respond ONLY with valid JSON, no markdown, no extra text." \
+            --arg user "Classify this implementation plan. Respond with JSON: {\"is_minimal\": true/false, \"is_safe\": true/false}\n\nCriteria:\n- is_minimal: ≤3 files modified, small scope, focused change\n- is_safe: no config/package changes, no refactoring, no breaking changes, no auth/db schema changes\n\nPlan:\n$PLAN_CONTENT" \
+            '{
+              model: "big-pickle",
+              messages: [
+                { role: "system", content: $system },
+                { role: "user", content: $user }
+              ]
+            }')
+
+          CLASSIFICATION=$(curl https://opencode.ai/zen/v1/chat/completions \
+            -s \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -d "$PAYLOAD" | jq -r '.choices[0].message.content')
+
+          IS_MINIMAL=$(echo "$CLASSIFICATION" | jq -r '.is_minimal')
+          IS_SAFE=$(echo "$CLASSIFICATION" | jq -r '.is_safe')
           
           echo "is_minimal=$IS_MINIMAL" >> $GITHUB_OUTPUT
           echo "is_safe=$IS_SAFE" >> $GITHUB_OUTPUT
