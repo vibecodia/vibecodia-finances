@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 
-import { Task, BoardTheme, Column } from '../../types/trello/task';
+import { Task, BoardTheme, Column, HistoryEntry } from '../../types/trello/task';
+
 import { generateId } from '../../utils/trello/taskUtils';
 import { useLocalStorage } from './useLocalStorage';
 
@@ -11,6 +12,58 @@ const INITIAL_COLUMNS: Omit<Column, 'tasks'>[] = [
   { id: 'inProgress', title: 'Em Andamento', themeId: DEFAULT_THEME.id },
   { id: 'done', title: 'Concluído', themeId: DEFAULT_THEME.id },
 ];
+
+function recordHistory(task: Task, entry: HistoryEntry): Task {
+  return {
+    ...task,
+    history: [...(task.history || []), entry],
+  };
+}
+
+function createHistoryEntry(
+  action: HistoryEntry['action'],
+  details: string,
+  previousValue?: unknown,
+  newValue?: unknown,
+): HistoryEntry {
+  return {
+    id: generateId(),
+    action,
+    details,
+    date: new Date().toISOString(),
+    previousValue,
+    newValue,
+  };
+}
+
+function compareAndRecordUpdates(oldTask: Task, newTask: Task): { task: Task; entries: HistoryEntry[] } {
+  const entries: HistoryEntry[] = [];
+  const updated = { ...newTask, history: oldTask.history ? [...oldTask.history] : [] };
+
+  if (oldTask.title !== newTask.title) {
+    entries.push(createHistoryEntry('update', `Título alterado de "${oldTask.title}" para "${newTask.title}"`, oldTask.title, newTask.title));
+  }
+  if (oldTask.priority !== newTask.priority) {
+    const priorityMap: Record<string, string> = { low: 'Baixa', medium: 'Média', high: 'Alta' };
+    entries.push(createHistoryEntry('update', `Prioridade alterada de "${priorityMap[oldTask.priority]}" para "${priorityMap[newTask.priority]}"`, oldTask.priority, newTask.priority));
+  }
+  if (oldTask.description !== newTask.description) {
+    entries.push(createHistoryEntry('update', 'Descrição atualizada', oldTask.description, newTask.description));
+  }
+  if (oldTask.flag !== newTask.flag) {
+    const flagMap: Record<string, string> = { none: 'Nenhuma', blocked: 'Bloqueado', impediment: 'Impedimento', paused: 'Pausa' };
+    entries.push(createHistoryEntry('update', `Status alterado de "${flagMap[oldTask.flag || 'none']}" para "${flagMap[newTask.flag || 'none']}"`, oldTask.flag, newTask.flag));
+  }
+  if (oldTask.date !== newTask.date) {
+    entries.push(createHistoryEntry('update', 'Data de entrega alterada', oldTask.date, newTask.date));
+  }
+  if (JSON.stringify(oldTask.labels) !== JSON.stringify(newTask.labels)) {
+    entries.push(createHistoryEntry('update', 'Labels atualizadas', oldTask.labels, newTask.labels));
+  }
+
+  updated.history = [...(updated.history || []), ...entries];
+  return { task: updated, entries };
+}
 
 export function useTrello() {
   const [themes, setThemes] = useLocalStorage<BoardTheme[]>('trello_themes', [DEFAULT_THEME]);
@@ -186,24 +239,32 @@ export function useTrello() {
 
   const addTask = useCallback((task: Task) => {
     const now = new Date().toISOString();
-    setTasks(prev => [...prev, { 
+    const historyEntry = createHistoryEntry('create', 'Tarefa criada');
+    const taskWithHistory: Task = {
       ...task, 
       themeId: currentThemeId, 
       createdAt: now, 
       updatedAt: now,
-      columnEnteredAt: now
-    }]);
+      columnEnteredAt: now,
+      history: [historyEntry],
+    };
+    setTasks(prev => [...prev, taskWithHistory]);
   }, [setTasks, currentThemeId]);
 
   const updateTask = useCallback((updatedTask: Task) => {
     setTasks(prev => prev.map(t => {
       if (t.id === updatedTask.id) {
         const hasColumnChanged = t.columnId !== updatedTask.columnId;
-        return { 
+        const now = new Date().toISOString();
+        const baseTask = {
           ...updatedTask, 
-          updatedAt: new Date().toISOString(),
-          columnEnteredAt: hasColumnChanged ? new Date().toISOString() : t.columnEnteredAt
+          updatedAt: now,
+          columnEnteredAt: hasColumnChanged ? now : t.columnEnteredAt,
         };
+
+        // Record history for important changes
+        const { task: taskWithHistory } = compareAndRecordUpdates(t, baseTask);
+        return taskWithHistory;
       }
       return t;
     }));
@@ -216,24 +277,45 @@ export function useTrello() {
   const togglePinTask = useCallback((taskId: string) => {
     const now = new Date().toISOString();
     setTasks(prev => prev.map(t => 
-      t.id === taskId ? { 
-        ...t, 
-        isPinned: !t.isPinned, 
-        pinnedAt: !t.isPinned ? now : undefined,
-        updatedAt: now 
-      } : t
+      t.id === taskId ? 
+        recordHistory(
+          { 
+            ...t, 
+            isPinned: !t.isPinned, 
+            pinnedAt: !t.isPinned ? now : undefined,
+            updatedAt: now 
+          },
+          createHistoryEntry(
+            t.isPinned ? 'unpin' : 'pin',
+            t.isPinned ? 'Tarefa desafixada' : 'Tarefa fixada no topo'
+          )
+        ) 
+      : t
     ));
   }, [setTasks]);
 
   const moveTask = useCallback((taskId: string, toColumnId: string) => {
     const now = new Date().toISOString();
-    setTasks(prev => prev.map(t => t.id === taskId ? { 
-      ...t, 
-      columnId: toColumnId, 
-      updatedAt: now,
-      columnEnteredAt: now
-    } : t));
-  }, [setTasks]);
+    setTasks(prev => prev.map(t => {
+      if (t.id === taskId) {
+        const fromColumn = themeColumns.find(c => c.id === t.columnId);
+        const toColumn = themeColumns.find(c => c.id === toColumnId);
+        const details = fromColumn && toColumn
+          ? `Movido de "${fromColumn.title}" para "${toColumn.title}"`
+          : `Movido para nova coluna`;
+        return recordHistory(
+          { 
+            ...t, 
+            columnId: toColumnId, 
+            updatedAt: now,
+            columnEnteredAt: now 
+          },
+          createHistoryEntry('move', details, t.columnId, toColumnId)
+        );
+      }
+      return t;
+    }));
+  }, [setTasks, themeColumns]);
 
   const reorderTasks = useCallback((reorderedTasks: Task[]) => {
     // Reordenar apenas tasks do tema atual mantendo as outras
