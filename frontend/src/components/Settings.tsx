@@ -1,11 +1,42 @@
-import { Settings as SettingsIcon, Download, Upload, Trash2, AlertTriangle, CheckCircle, PlusCircle, Tag, Info, Layers, X, Wallet } from 'lucide-react';
-import React, { useState } from 'react';
-
+import { 
+  Settings as SettingsIcon, 
+  Download, 
+  Upload, 
+  Trash2, 
+  AlertTriangle, 
+  CheckCircle, 
+  PlusCircle, 
+  Tag, 
+  Info, 
+  Layers, 
+  Wallet, 
+   Gamepad,
+   CreditCard,
+   Scissors,
+   Check,
+   Eye,
+   EyeOff,
+   X,
+   Clock,
+   Ghost,
+   ShieldCheck,
+   Lock
+   } from 'lucide-react';
+   import React, { useState } from 'react';
+   import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
+import { useVerification } from '../contexts/VerificationContext';
 import { useCategories } from '../hooks/useCategories';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
+import { useLocalStorage } from '../hooks/trello/useLocalStorage';
+import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import { Transaction, SavingsGoal } from '../types';
 import { exportFinancialData, validateImportData, getCurrentBrazilDate, formatBrazilDate } from '../utils/helpers';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { Card } from './ui/Card';
+import { Textarea } from './ui/Textarea';
+import { cn } from '../lib/utils';
 
 interface SettingsProps {
   transactions: Transaction[];
@@ -20,10 +51,31 @@ const Settings: React.FC<SettingsProps> = ({
   onImportData, 
   onClearAllData 
 }) => {
-  const { theme } = useTheme();
+  const { theme, themeTransitionEnabled, setThemeTransitionEnabled } = useTheme();
+  const navigate = useNavigate();
+  const { isGuest, setShowVerificationModal } = useVerification();
   const { expenseCategories, incomeCategories, addCategory, removeCategory, resetToDefaults: resetCategoriesToDefaults } = useCategories();
   const { paymentMethods, addPaymentMethod, removePaymentMethod, resetToDefaults: resetPaymentMethodsToDefaults } = usePaymentMethods();
   
+  // Dashboard Editable Info
+  const [cardHolderName, setCardHolderName] = useLocalStorage('dashboard_card_holder_name', 'alterar aqui');
+  const [flashFlexAmount, setFlashFlexAmount] = useLocalStorage('dashboard_flash_flex_amount', 0);
+  const [isFlashSplit, setIsFlashSplit] = useLocalStorage('dashboard_flash_is_split', false);
+  const [showBalance, setShowBalance] = useLocalStorage('dashboard_show_balance', true);
+  const [includeBenefits, setIncludeBenefits] = useLocalStorage('dashboard_include_benefits', true);
+  const [recentTransactionsDuration, setRecentTransactionsDuration] = useLocalStorage('recent_transactions_duration', 15);
+  const [recentTransactionsEnabled, setRecentTransactionsEnabled] = useLocalStorage('recent_transactions_enabled', true);
+  const [recentTransactionsOpacity, setRecentTransactionsOpacity] = useLocalStorage('recent_transactions_opacity', 80);
+  const [recentTransactionsCount, setRecentTransactionsCount] = useLocalStorage('recent_transactions_count', 3);
+
+  // Dashboard Layout Settings
+  const [showIncomeExpenseBar, setShowIncomeExpenseBar] = useLocalStorage('dashboard_show_income_expense_bar', true);
+  const [showBenefitsCard, setShowBenefitsCard] = useLocalStorage('dashboard_show_benefits_card', true);
+  const [showSavingsGoalsCard, setShowSavingsGoalsCard] = useLocalStorage('dashboard_show_savings_goals_card', true);
+
+  const { inputProps: flexAmountProps, numericValue: flexAmountValue } = useCurrencyInput(flashFlexAmount);
+  const [tempName, setTempName] = useState(cardHolderName);
+
   const [importText, setImportText] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
@@ -38,6 +90,39 @@ const Settings: React.FC<SettingsProps> = ({
   // Payment Method State
   const [newPaymentMethodName, setNewPaymentMethodName] = useState('');
   const [paymentMethodMessage, setPaymentMethodMessage] = useState({ text: '', type: 'idle' as 'idle' | 'success' | 'error' });
+
+  // Ninja Game State
+  const [ninjaGameEnabled, setNinjaGameEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('ninjaGameEnabled');
+    return saved === 'true'; // Default to false
+  });
+
+  const [uiNinjaEnabled, setUiNinjaEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('uiNinjaEnabled');
+    return saved === 'true'; // Default to false
+  });
+
+  const [ninjaGameMode, setNinjaGameMode] = useState<'10s' | '15s' | 'zen'>(() => {
+    const saved = localStorage.getItem('ninjaGameMode');
+    return (saved as any) || '10s'; // Default to 10s
+  });
+
+  const handleToggleNinjaGame = () => {
+    const newValue = !ninjaGameEnabled;
+    setNinjaGameEnabled(newValue);
+    localStorage.setItem('ninjaGameEnabled', String(newValue));
+  };
+
+  const handleToggleUiNinja = () => {
+    const newValue = !uiNinjaEnabled;
+    setUiNinjaEnabled(newValue);
+    localStorage.setItem('uiNinjaEnabled', String(newValue));
+  };
+
+  const handleSetNinjaGameMode = (mode: '10s' | '15s' | 'zen') => {
+    setNinjaGameMode(mode);
+    localStorage.setItem('ninjaGameMode', mode);
+  };
 
   // New Confirmation States
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
@@ -221,50 +306,89 @@ const Settings: React.FC<SettingsProps> = ({
   const totalGoals = savingsGoals.length;
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto pb-12">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-6 border-b" style={{ borderColor: theme.cardBorder }}>
-        <div>
-          <h1 className="text-3xl lg:text-5xl font-black text-text mb-2 tracking-tight">
-            Configurações
-          </h1>
-          <p className="text-text opacity-70 text-lg font-medium">
-            Personalize sua experiência e gerencie seus dados locais
-          </p>
+    <div className="space-y-8 max-w-4xl mx-auto pb-12 relative min-h-[600px]">
+      {/* Guest Mode Overlay */}
+      {isGuest && (
+        <div className="absolute inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-background/60 backdrop-blur-md rounded-3xl" />
+          <Card className="relative z-[70] p-10 max-w-sm text-center border-primary/20 shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-primary/20 shadow-[0_0_30px_rgba(var(--primary),0.2)]">
+              <Lock className="w-8 h-8 text-primary" />
+            </div>
+            <h2 className="text-2xl font-black text-foreground uppercase tracking-tighter mb-4">
+              Acesso <span className="text-primary italic">Restrito</span>
+            </h2>
+            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-8 leading-relaxed opacity-60">
+              Para gerenciar categorias, pagamentos e dados, você precisa de um PIN.
+            </p>
+            <Button 
+              onClick={() => setShowVerificationModal(true)}
+              className="w-full py-6 text-sm font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-primary/20"
+            >
+              <ShieldCheck className="w-5 h-5" />
+              RECEBER PIN
+            </Button>
+          </Card>
         </div>
-        <div className="p-3 rounded-2xl bg-primary/10 border-2 border-primary/20 animate-pulse hidden md:block">
-          <SettingsIcon className="w-8 h-8 text-primary" />
+      )}
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-6 border-b" style={{ borderColor: theme.cardBorder }}>
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <div className="p-3 rounded-2xl bg-primary text-white shadow-lg shadow-primary/20">
+            <SettingsIcon className="w-8 h-8" />
+          </div>
+          <div>
+            <h1 className="text-3xl lg:text-5xl font-black text-foreground mb-1 tracking-tight">
+              Configurações
+            </h1>
+            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">
+              Gerencie categorias, pagamentos e dados
+            </p>
+          </div>
         </div>
+
+        <Button
+          onClick={() => navigate('/')}
+          variant="outline"
+          className="group flex items-center gap-2 h-12 px-6 rounded-2xl border-2 hover:bg-destructive/5 hover:border-destructive hover:text-destructive transition-all"
+        >
+          <X className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+          <span className="font-black uppercase text-xs tracking-widest">Sair</span>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-8">
           {/* Categories Section */}
-          <div className="rounded-3xl border-2 p-6 shadow-xl transition-all hover:shadow-2xl" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <Card className="p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-primary text-white shadow-lg">
                   <Tag className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-text uppercase tracking-wider">
+                  <h2 className="text-xl font-black text-foreground uppercase tracking-wider">
                     Categorias
                   </h2>
-                  <p className="text-xs text-text opacity-60 font-bold uppercase">Gerencie suas classificações</p>
+                  <p className="text-xs text-muted-foreground font-bold uppercase">Gerencie suas classificações</p>
                 </div>
               </div>
-              <button 
+              <Button 
                 onClick={handleResetCategories}
-                className="text-[10px] font-black text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg border-2 border-primary/20 transition-all uppercase"
+                variant="outline"
+                size="sm"
+                className="text-[10px] uppercase"
                 title="Restaurar categorias padrão"
               >
                 Resetar Padrão
-              </button>
+              </Button>
             </div>
 
             {categoryMessage.type !== 'idle' && (
-              <div className={`mb-6 p-4 rounded-2xl border-2 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300 ${
+              <div className={cn(
+                "mb-6 p-4 rounded-2xl border-2 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300",
                 categoryMessage.type === 'success' ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-accent/10 border-accent/20 text-accent'
-              }`}>
+              )}>
                 {categoryMessage.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
                 <p className="text-xs font-bold uppercase tracking-tight">{categoryMessage.text}</p>
               </div>
@@ -272,46 +396,40 @@ const Settings: React.FC<SettingsProps> = ({
 
             <form onSubmit={handleAddCategory} className="space-y-4 mb-8">
               <div className="flex gap-2 p-1 border-2 rounded-2xl" style={{ borderColor: theme.cardBorder }}>
-                <button
+                <Button
                   type="button"
                   onClick={() => setCategoryType('expense')}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${
-                    categoryType === 'expense'
-                      ? 'bg-accent text-white shadow-md'
-                      : 'bg-transparent text-text opacity-50 hover:opacity-100'
-                  }`}
+                  variant={categoryType === 'expense' ? 'accent' : 'ghost'}
+                  size="sm"
+                  className="flex-1 text-[10px]"
                 >
                   DESPESAS
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={() => setCategoryType('income')}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${
-                    categoryType === 'income'
-                      ? 'bg-primary text-white shadow-md'
-                      : 'bg-transparent text-text opacity-50 hover:opacity-100'
-                  }`}
+                  variant={categoryType === 'income' ? 'primary' : 'ghost'}
+                  size="sm"
+                  className="flex-1 text-[10px]"
                 >
                   RECEITAS
-                </button>
+                </Button>
               </div>
 
               <div className="flex gap-2">
-                <input
+                <Input
                   type="text"
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   placeholder={`Nova categoria de ${categoryType === 'expense' ? 'despesa' : 'receita'}...`}
-                  className="flex-1 px-4 py-3 rounded-2xl border-2 focus:ring-4 focus:ring-primary/20 outline-none transition-all font-bold text-sm"
-                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
                 />
-                <button
+                <Button
                   type="submit"
                   disabled={!newCategoryName.trim()}
-                  className="p-3 bg-primary text-white rounded-2xl shadow-lg hover:opacity-90 transition-all disabled:opacity-50"
+                  size="icon"
                 >
                   <PlusCircle className="w-6 h-6" />
-                </button>
+                </Button>
               </div>
             </form>
 
@@ -322,22 +440,26 @@ const Settings: React.FC<SettingsProps> = ({
                   Categorias de Despesas ({expenseCategories.length})
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {expenseCategories.map((cat) => (
-                    <div 
-                      key={cat} 
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 font-bold text-xs group hover:border-accent transition-all shadow-sm"
-                      style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
-                    >
-                      <span style={{ color: theme.text }}>{cat}</span>
-                      <button 
-                        onClick={() => handleRemoveCategory('expense', cat)}
-                        className="opacity-0 group-hover:opacity-100 text-accent hover:scale-125 transition-all"
+                  {expenseCategories.map((cat, idx) => {
+                    const catName = typeof cat === 'string' ? cat : (cat && (cat as any).name) || 'Categoria';
+                    return (
+                      <div 
+                        key={`${catName}-${idx}`} 
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 font-bold text-xs group hover:border-accent transition-all shadow-sm"
+                        style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
                       >
-
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                        <span style={{ color: theme.text }}>
+                          {catName}
+                        </span>
+                        <button 
+                          onClick={() => handleRemoveCategory('expense', catName)}
+                          className="opacity-0 group-hover:opacity-100 text-accent hover:scale-125 transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -347,54 +469,61 @@ const Settings: React.FC<SettingsProps> = ({
                   Categorias de Receitas ({incomeCategories.length})
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {incomeCategories.map((cat) => (
-                    <div 
-                      key={cat} 
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 font-bold text-xs group hover:border-primary transition-all shadow-sm"
-                      style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
-                    >
-                      <span style={{ color: theme.text }}>{cat}</span>
-                      <button 
-                        onClick={() => handleRemoveCategory('income', cat)}
-                        className="opacity-0 group-hover:opacity-100 text-accent hover:scale-125 transition-all"
+                  {incomeCategories.map((cat, idx) => {
+                    const catName = typeof cat === 'string' ? cat : (cat && (cat as any).name) || 'Categoria';
+                    return (
+                      <div 
+                        key={`${catName}-${idx}`} 
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 font-bold text-xs group hover:border-primary transition-all shadow-sm"
+                        style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
                       >
-
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                        <span style={{ color: theme.text }}>
+                          {catName}
+                        </span>
+                        <button 
+                          onClick={() => handleRemoveCategory('income', catName)}
+                          className="opacity-0 group-hover:opacity-100 text-accent hover:scale-125 transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
 
           {/* Payment Methods Section */}
-          <div className="rounded-3xl border-2 p-6 shadow-xl transition-all hover:shadow-2xl" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <Card className="p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-primary text-white shadow-lg">
                   <Wallet className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-text uppercase tracking-wider">
+                  <h2 className="text-xl font-black text-foreground uppercase tracking-wider">
                     Pagamento
                   </h2>
-                  <p className="text-xs text-text opacity-60 font-bold uppercase">Meios de Pagamento</p>
+                  <p className="text-xs text-muted-foreground font-bold uppercase">Meios de Pagamento</p>
                 </div>
               </div>
-              <button 
+              <Button 
                 onClick={handleResetPaymentMethods}
-                className="text-[10px] font-black text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg border-2 border-primary/20 transition-all uppercase"
+                variant="outline"
+                size="sm"
+                className="text-[10px] uppercase"
                 title="Restaurar meios de pagamento padrão"
               >
                 Resetar Padrão
-              </button>
+              </Button>
             </div>
 
             {paymentMethodMessage.type !== 'idle' && (
-              <div className={`mb-6 p-4 rounded-2xl border-2 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300 ${
+              <div className={cn(
+                "mb-6 p-4 rounded-2xl border-2 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300",
                 paymentMethodMessage.type === 'success' ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-accent/10 border-accent/20 text-accent'
-              }`}>
+              )}>
                 {paymentMethodMessage.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
                 <p className="text-xs font-bold uppercase tracking-tight">{paymentMethodMessage.text}</p>
               </div>
@@ -402,27 +531,25 @@ const Settings: React.FC<SettingsProps> = ({
 
             <form onSubmit={handleAddPaymentMethod} className="space-y-4 mb-8">
               <div className="flex gap-2">
-                <input
+                <Input
                   type="text"
                   value={newPaymentMethodName}
                   onChange={(e) => setNewPaymentMethodName(e.target.value)}
                   placeholder="Novo meio de pagamento (ex: Inter)..."
-                  className="flex-1 px-4 py-3 rounded-2xl border-2 focus:ring-4 focus:ring-primary/20 outline-none transition-all font-bold text-sm"
-                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
                 />
-                <button
+                <Button
                   type="submit"
                   disabled={!newPaymentMethodName.trim()}
-                  className="p-3 bg-primary text-white rounded-2xl shadow-lg hover:opacity-90 transition-all disabled:opacity-50"
+                  size="icon"
                 >
                   <PlusCircle className="w-6 h-6" />
-                </button>
+                </Button>
               </div>
             </form>
 
             <div className="space-y-6">
               <div>
-                <h3 className="text-xs font-black text-text opacity-60 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-primary"></div>
                   Meios Disponíveis ({paymentMethods.length})
                 </h3>
@@ -445,19 +572,404 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
+
+          {/* Dashboard Info Section */}
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2.5 rounded-xl bg-primary text-white shadow-lg">
+                <CreditCard className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-foreground uppercase tracking-wider">
+                  Dashboard
+                </h2>
+                <p className="text-xs text-muted-foreground font-bold uppercase">Personalização Visual</p>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {/* Visibility & Benefits Toggles */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div 
+                  className={cn(
+                    "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
+                    showBalance ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                  )}
+                  onClick={() => setShowBalance(!showBalance)}
+                >
+                  <div className="flex-1">
+                    <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
+                      Mostrar Saldo
+                    </p>
+                    <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">Privacidade no Dashboard</p>
+                  </div>
+                  {showBalance ? <Eye className="w-5 h-5 text-primary" /> : <EyeOff className="w-5 h-5 opacity-40" />}
+                </div>
+
+                <div 
+                  className={cn(
+                    "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
+                    includeBenefits ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                  )}
+                  onClick={() => setIncludeBenefits(!includeBenefits)}
+                >
+                  <div className="flex-1">
+                    <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
+                      Incluir Benefícios
+                    </p>
+                    <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">Somar Flash/Vero no total</p>
+                  </div>
+                  <Wallet className={cn("w-5 h-5 transition-colors", includeBenefits ? 'text-primary' : 'opacity-40')} />
+                </div>
+              </div>
+
+              <div className="h-px bg-muted my-2"></div>
+
+              {/* Card Holder Name */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-1">
+                  Titular do Cartão
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    value={tempName}
+                    onChange={(e) => setTempName(e.target.value)}
+                    placeholder="Nome no cartão..."
+                  />
+                  <Button
+                    onClick={() => setCardHolderName(tempName)}
+                    size="icon"
+                    disabled={tempName === cardHolderName}
+                    title="Salvar Nome"
+                  >
+                    <Check className="w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="h-px bg-muted my-4"></div>
+
+              {/* Flash Split */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-1 flex items-center gap-2">
+                    <Scissors className="w-4 h-4" />
+                    Split Flash (Flex)
+                  </label>
+                  <div 
+                    className={cn(
+                      "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative cursor-pointer",
+                      isFlashSplit ? 'bg-primary' : 'bg-muted'
+                    )}
+                    onClick={() => setIsFlashSplit(!isFlashSplit)}
+                  >
+                    <div className={cn(
+                      "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
+                      isFlashSplit ? 'translate-x-6' : 'translate-x-0'
+                    )} />
+                  </div>
+                </div>
+
+                {isFlashSplit && (
+                  <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+                    <div className="flex gap-2">
+                      <Input
+                        {...flexAmountProps}
+                        label="Saldo Flex (R$)"
+                        className="font-bold"
+                      />
+                      <Button
+                        onClick={() => setFlashFlexAmount(flexAmountValue)}
+                        size="icon"
+                        className="mt-auto h-12 w-12"
+                        disabled={flexAmountValue === flashFlexAmount}
+                        title="Salvar Saldo Flex"
+                      >
+                        <Check className="w-5 h-5" />
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground font-bold italic ml-1">
+                      * Este valor será reservado do saldo total Flash para gastos Flex.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="h-px bg-muted my-4"></div>
+
+              {/* Dashboard Layout Section */}
+              <div className="space-y-4">
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-1 flex items-center gap-2">
+                  <Layers className="w-4 h-4" />
+                  Layout do Dashboard
+                </label>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div 
+                    className={cn(
+                      "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
+                      showIncomeExpenseBar ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                    )}
+                    onClick={() => setShowIncomeExpenseBar(!showIncomeExpenseBar)}
+                  >
+                    <div className="flex-1">
+                      <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
+                        Barra Receitas vs Despesas
+                      </p>
+                      <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">Gráfico de proporção</p>
+                    </div>
+                    {showIncomeExpenseBar ? <CheckCircle className="w-5 h-5 text-primary" /> : <PlusCircle className="w-5 h-5 opacity-40" />}
+                  </div>
+
+                  <div 
+                    className={cn(
+                      "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
+                      showBenefitsCard ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                    )}
+                    onClick={() => setShowBenefitsCard(!showBenefitsCard)}
+                  >
+                    <div className="flex-1">
+                      <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
+                        Cartões de Benefícios
+                      </p>
+                      <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">Flash e Vero Card</p>
+                    </div>
+                    {showBenefitsCard ? <CheckCircle className="w-5 h-5 text-primary" /> : <PlusCircle className="w-5 h-5 opacity-40" />}
+                  </div>
+
+                  <div 
+                    className={cn(
+                      "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
+                      showSavingsGoalsCard ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                    )}
+                    onClick={() => setShowSavingsGoalsCard(!showSavingsGoalsCard)}
+                  >
+                    <div className="flex-1">
+                      <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
+                        Progresso das Metas
+                      </p>
+                      <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">Resumo de economia</p>
+                    </div>
+                    {showSavingsGoalsCard ? <CheckCircle className="w-5 h-5 text-primary" /> : <PlusCircle className="w-5 h-5 opacity-40" />}
+                  </div>
+
+                  <div 
+                    className={cn(
+                      "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
+                      recentTransactionsEnabled ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                    )}
+                    onClick={() => setRecentTransactionsEnabled(!recentTransactionsEnabled)}
+                  >
+                    <div className="flex-1">
+                      <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
+                        Transações Recentes
+                      </p>
+                      <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">Card flutuante temporário</p>
+                    </div>
+                    {recentTransactionsEnabled ? <CheckCircle className="w-5 h-5 text-primary" /> : <PlusCircle className="w-5 h-5 opacity-40" />}
+                  </div>
+                </div>
+              </div>
+
+              <div className="h-px bg-muted my-4"></div>
+
+              {/* Recents Settings */}
+              <div className="space-y-4">
+                {recentTransactionsEnabled && (
+                  <div className="space-y-6 animate-in slide-in-from-top-2 duration-200 p-4 rounded-2xl bg-muted/20 border-2 border-dashed border-muted">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Ajustes de Transações Recentes</p>
+                    </div>
+                    {/* Duration Slider */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <p className="text-[10px] font-black text-foreground uppercase tracking-tight">Duração: {recentTransactionsDuration}s</p>
+                        <p className="text-[8px] text-muted-foreground font-bold uppercase">3s - 15s</p>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="3" 
+                        max="15" 
+                        step="1"
+                        value={recentTransactionsDuration}
+                        onChange={(e) => setRecentTransactionsDuration(Number(e.target.value))}
+                        className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                      />
+                    </div>
+
+                    {/* Opacity Slider */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <Ghost className="w-3.5 h-3.5 opacity-60" />
+                          <p className="text-[10px] font-black text-foreground uppercase tracking-tight">Transparência: {recentTransactionsOpacity}%</p>
+                        </div>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="10" 
+                        max="100" 
+                        step="5"
+                        value={recentTransactionsOpacity}
+                        onChange={(e) => setRecentTransactionsOpacity(Number(e.target.value))}
+                        className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                      />
+                    </div>
+
+                    {/* Count Slider */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <PlusCircle className="w-3.5 h-3.5 opacity-60" />
+                          <p className="text-[10px] font-black text-foreground uppercase tracking-tight">Itens Visíveis: {recentTransactionsCount}</p>
+                        </div>
+                        <p className="text-[8px] text-muted-foreground font-bold uppercase">1 - 5 itens</p>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="1" 
+                        max="5" 
+                        step="1"
+                        value={recentTransactionsCount}
+                        onChange={(e) => setRecentTransactionsCount(Number(e.target.value))}
+                        className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
         </div>
 
         <div className="space-y-8">
+          {/* Ninja Game Settings */}
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2.5 rounded-xl bg-primary text-white shadow-lg">
+                <Gamepad className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-foreground uppercase tracking-wider">
+                  Experiência
+                </h2>
+                <p className="text-xs text-muted-foreground font-bold uppercase">Gamificação</p>
+              </div>
+            </div>
+
+            <div 
+              className={cn(
+                "flex items-center justify-between p-5 rounded-2xl border-2 transition-all cursor-pointer group mb-4",
+                themeTransitionEnabled ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+              )}
+              onClick={() => setThemeTransitionEnabled(!themeTransitionEnabled)}
+            >
+              <div className="flex-1">
+                <p className="text-sm font-black text-foreground uppercase tracking-tight">
+                  Transição Suave
+                </p>
+                <p className="text-[10px] text-foreground opacity-40 font-bold uppercase">Proteger os olhos ao trocar tema</p>
+              </div>
+              <div className={cn(
+                "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative",
+                themeTransitionEnabled ? 'bg-primary' : 'bg-muted'
+              )}>
+                <div className={cn(
+                  "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
+                  themeTransitionEnabled ? 'translate-x-6' : 'translate-x-0'
+                )} />
+              </div>
+            </div>
+
+            <div 
+              className={cn(
+                "flex items-center justify-between p-5 rounded-2xl border-2 transition-all cursor-pointer group mb-4",
+                ninjaGameEnabled ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+              )}
+              onClick={handleToggleNinjaGame}
+            >
+              <div className="flex-1">
+                <p className="text-sm font-black text-foreground uppercase tracking-tight">
+                  Ninja das Transações
+                </p>
+                <p className="text-[10px] text-foreground opacity-40 font-bold uppercase">Chuva de emojis ao salvar</p>
+              </div>
+              <div className={cn(
+                "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative",
+                ninjaGameEnabled ? 'bg-primary' : 'bg-muted'
+              )}>
+                <div className={cn(
+                  "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
+                  ninjaGameEnabled ? 'translate-x-6' : 'translate-x-0'
+                )} />
+              </div>
+            </div>
+
+            <div 
+              className={cn(
+                "flex items-center justify-between p-5 rounded-2xl border-2 transition-all cursor-pointer group",
+                uiNinjaEnabled ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+              )}
+              onClick={handleToggleUiNinja}
+            >
+              <div className="flex-1">
+                <p className="text-sm font-black text-foreground uppercase tracking-tight">
+                  UI Ninja (Dashboard)
+                </p>
+                <p className="text-[10px] text-foreground opacity-40 font-bold uppercase">Cortar elementos da tela inicial</p>
+              </div>
+              <div className={cn(
+                "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative",
+                uiNinjaEnabled ? 'bg-primary' : 'bg-muted'
+              )}>
+                <div className={cn(
+                  "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
+                  uiNinjaEnabled ? 'translate-x-6' : 'translate-x-0'
+                )} />
+              </div>
+            </div>
+
+            {ninjaGameEnabled && (
+              <div className="mt-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest ml-1">Duração do Jogo</p>
+                <div className="flex gap-2 p-1 border-2 rounded-2xl" style={{ borderColor: theme.cardBorder }}>
+                  {(['10s', '15s', 'zen'] as const).map((mode) => (
+                    <Button
+                      key={mode}
+                      type="button"
+                      onClick={() => handleSetNinjaGameMode(mode)}
+                      variant={ninjaGameMode === mode ? 'primary' : 'ghost'}
+                      size="sm"
+                      className={cn(
+                        "flex-1 text-[10px] font-black uppercase tracking-widest",
+                        ninjaGameMode === mode && "shadow-lg"
+                      )}
+                    >
+                      {mode === 'zen' ? 'Modo Zen' : mode}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-[9px] text-muted-foreground font-bold italic ml-1">
+                  {ninjaGameMode === 'zen' 
+                    ? '* O jogo só termina quando você clicar no botão de fechar.' 
+                    : `* O jogo dura exatamente ${ninjaGameMode}.`}
+                </p>
+              </div>
+            )}
+          </Card>
+
           {/* Data Management Section */}
-          <div className="rounded-3xl border-2 p-6 shadow-xl relative overflow-hidden" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <Card className="p-6 relative overflow-hidden">
             {/* Disabled Overlay */}
             <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center p-6 text-center pointer-events-auto">
-              <div className="p-4 rounded-3xl bg-cardBackground/90 border-2 border-accent/30 shadow-2xl transform -rotate-2">
+              <Card variant="default" className="p-6 transform -rotate-2 border-accent/30 shadow-2xl">
                 <Layers className="w-10 h-10 text-accent mx-auto mb-3 opacity-80" />
-                <h3 className="text-lg font-black text-text uppercase tracking-tighter">Módulo em Manutenção</h3>
-                <p className="text-[10px] text-text opacity-60 font-bold uppercase mt-1">Funcionalidade desativada temporariamente</p>
-              </div>
+                <h3 className="text-lg font-black text-foreground uppercase tracking-tighter">Módulo em Manutenção</h3>
+                <p className="text-[10px] text-muted-foreground font-bold uppercase mt-1">Funcionalidade desativada temporariamente</p>
+              </Card>
             </div>
 
             <div className="flex items-center gap-3 mb-6">
@@ -465,54 +977,54 @@ const Settings: React.FC<SettingsProps> = ({
                 <Layers className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-xl font-black text-text uppercase tracking-wider">
+                <h2 className="text-xl font-black text-foreground uppercase tracking-wider">
                   Banco de Dados
                 </h2>
-                <p className="text-xs text-text opacity-60 font-bold uppercase">Backups e Limpeza</p>
+                <p className="text-xs text-muted-foreground font-bold uppercase">Backups e Limpeza</p>
               </div>
             </div>
 
             <div className="space-y-4">
-              <button
+              <Button
                 onClick={handleExport}
-                className="w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all hover:scale-[1.02] hover:shadow-lg group"
-                style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
+                variant="outline"
+                className="w-full h-auto p-4 flex items-center justify-between group"
               >
                 <div className="flex items-center gap-4">
                   <div className="p-2 rounded-xl bg-primary/10 text-primary transition-transform group-hover:rotate-12">
                     <Download className="w-6 h-6" />
                   </div>
                   <div className="text-left">
-                    <h3 className="font-black text-sm text-text">EXPORTAR BACKUP</h3>
-                    <p className="text-[10px] text-text opacity-60 uppercase font-bold">Baixar arquivo .json</p>
+                    <h3 className="font-black text-sm text-foreground">EXPORTAR BACKUP</h3>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Baixar arquivo .json</p>
                   </div>
                 </div>
                 <CheckCircle className="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
+              </Button>
 
-              <button
+              <Button
                 onClick={() => setShowImportModal(true)}
-                className="w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all hover:scale-[1.02] hover:shadow-lg group"
-                style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
+                variant="outline"
+                className="w-full h-auto p-4 flex items-center justify-between group"
               >
                 <div className="flex items-center gap-4">
                   <div className="p-2 rounded-xl bg-primary/10 text-primary transition-transform group-hover:rotate-12">
                     <Upload className="w-6 h-6" />
                   </div>
                   <div className="text-left">
-                    <h3 className="font-black text-sm text-text">IMPORTAR BACKUP</h3>
-                    <p className="text-[10px] text-text opacity-60 uppercase font-bold">Restaurar dados antigos</p>
+                    <h3 className="font-black text-sm text-foreground">IMPORTAR BACKUP</h3>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Restaurar dados antigos</p>
                   </div>
                 </div>
                 <CheckCircle className="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
+              </Button>
 
-              <div className="h-px bg-cardBorder my-4"></div>
+              <div className="h-px bg-muted my-4"></div>
 
-              <button
+              <Button
                 onClick={() => setShowClearModal(true)}
-                className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-accent/20 transition-all hover:bg-accent/5 hover:border-accent group"
-                style={{ backgroundColor: theme.cardBackground }}
+                variant="outline"
+                className="w-full h-auto p-4 flex items-center justify-between border-accent/20 hover:bg-accent/5 hover:border-accent group"
               >
                 <div className="flex items-center gap-4">
                   <div className="p-2 rounded-xl bg-accent/10 text-accent transition-transform group-hover:scale-110">
@@ -523,94 +1035,91 @@ const Settings: React.FC<SettingsProps> = ({
                     <p className="text-[10px] text-accent opacity-60 uppercase font-bold">Ação Irreversível</p>
                   </div>
                 </div>
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
 
           {/* About Section */}
-          <div className="rounded-3xl border-2 p-6 shadow-md opacity-80 hover:opacity-100 transition-opacity" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-            <div className="flex items-center gap-3 mb-4 text-text">
+          <Card className="p-6 opacity-80 hover:opacity-100">
+            <div className="flex items-center gap-3 mb-4 text-foreground">
               <Info className="w-6 h-6" />
               <h2 className="text-lg font-black uppercase">Informações</h2>
             </div>
 
-            <div className="space-y-4 text-xs text-text font-medium leading-relaxed">
-              <div className="flex justify-between items-center p-3 rounded-xl bg-cardBorder/20">
+            <div className="space-y-4 text-xs text-foreground font-medium leading-relaxed">
+              <div className="flex justify-between items-center p-3 rounded-xl bg-muted/20">
                 <span className="opacity-60 uppercase font-black">Versão</span>
-                <span className="font-black text-primary">{import.meta.env.APP_VERSION || '0.26.x'}</span>
+                <span className="font-black text-primary">0.26.x</span>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
 
       {/* Import Modal */}
       {showImportModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="rounded-3xl w-full max-w-2xl p-8 shadow-2xl animate-in zoom-in-95 duration-200 border-2" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <Card className="w-full max-w-2xl p-8 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
                 <Upload className="w-8 h-8 text-primary" />
-                <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+                <h3 className="text-2xl font-black text-foreground uppercase tracking-tight">
                   Importar Backup
                 </h3>
               </div>
-              <button
+              <Button
                 onClick={() => {
                   setShowImportModal(false);
                   setImportText('');
                   setImportStatus('idle');
                   setImportMessage('');
                 }}
-                className="p-2 rounded-full transition-colors hover:bg-cardBorder"
+                variant="ghost"
+                size="icon"
               >
-                <X className="w-6 h-6 text-text" />
-              </button>
+                <X className="w-6 h-6" />
+              </Button>
             </div>
 
             <div className="space-y-6">
               {/* File Upload */}
-              <div>
-                <label className="block text-xs font-black text-text opacity-60 uppercase mb-3 ml-1">
+              <div className="space-y-2">
+                <label className="block text-xs font-black text-muted-foreground uppercase ml-1">
                   MÉTODO 1: CARREGAR ARQUIVO .JSON
                 </label>
                 <input
                   type="file"
                   accept=".json"
                   onChange={handleFileImport}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-dashed focus:ring-4 focus:ring-primary/20 transition-all font-bold text-sm"
-                  style={{ borderColor: theme.cardBorder, color: theme.text, backgroundColor: theme.cardBackground }}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-dashed focus:ring-4 focus:ring-primary/20 transition-all font-bold text-sm bg-card border-border text-foreground"
                 />
               </div>
 
               <div className="relative flex items-center py-2">
-                <div className="flex-grow border-t-2 border-cardBorder"></div>
+                <div className="flex-grow border-t-2 border-border"></div>
                 <span className="flex-shrink mx-4 text-xs font-black opacity-30 uppercase tracking-widest">ou</span>
-                <div className="flex-grow border-t-2 border-cardBorder"></div>
+                <div className="flex-grow border-t-2 border-border"></div>
               </div>
 
               {/* Text Import */}
-              <div>
-                <label className="block text-xs font-black text-text opacity-60 uppercase mb-3 ml-1">
+              <div className="space-y-2">
+                <label className="block text-xs font-black text-muted-foreground uppercase ml-1">
                   MÉTODO 2: COLAR TEXTO JSON
                 </label>
-                <textarea
+                <Textarea
                   value={importText}
                   onChange={(e) => setImportText(e.target.value)}
                   placeholder="Cole o conteúdo do arquivo JSON aqui..."
-                  className="w-full h-48 px-4 py-3 rounded-2xl border-2 focus:ring-4 focus:ring-primary/20 transition-all resize-none font-mono text-xs"
-                  style={{ borderColor: theme.cardBorder, color: theme.text, backgroundColor: theme.cardBackground }}
+                  className="h-48 font-mono text-xs"
                 />
               </div>
 
               {/* Status Message */}
               {importMessage && (
-                <div className={`flex items-center gap-3 p-4 rounded-2xl animate-in slide-in-from-bottom-2 duration-300 border-2`}
-                  style={{ 
-                    backgroundColor: theme.cardBackground,
-                    borderColor: importStatus === 'success' ? theme.primary : theme.accent,
-                    color: importStatus === 'success' ? theme.primary : theme.accent,
-                  }}>
+                <div className={cn(
+                  "flex items-center gap-3 p-4 rounded-2xl animate-in slide-in-from-bottom-2 duration-300 border-2",
+                  importStatus === 'success' ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-accent/10 border-accent/20 text-accent'
+                )}>
                   {importStatus === 'success' ? (
                     <CheckCircle className="w-6 h-6 flex-shrink-0" />
                   ) : (
@@ -622,42 +1131,42 @@ const Settings: React.FC<SettingsProps> = ({
 
               {/* Actions */}
               <div className="flex gap-4 pt-4">
-                <button
+                <Button
                   onClick={() => {
                     setShowImportModal(false);
                     setImportText('');
                     setImportStatus('idle');
                     setImportMessage('');
                   }}
-                  className="flex-1 px-4 py-4 rounded-2xl font-black text-sm transition-all border-2 hover:bg-cardBorder/30 shadow-md"
-                  style={{ borderColor: theme.cardBorder, color: theme.text }}
+                  variant="outline"
+                  className="flex-1"
                 >
                   CANCELAR
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleImport}
                   disabled={!importText.trim() || importStatus === 'success'}
-                  className="flex-1 px-4 py-4 text-white rounded-2xl font-black text-sm transition-all bg-primary hover:opacity-90 shadow-xl disabled:opacity-50"
+                  className="flex-1"
                 >
                   IMPORTAR AGORA
-                </button>
+                </Button>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {showClearModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-[100] backdrop-blur-md animate-in fade-in duration-300">
-          <div className="rounded-3xl w-full max-w-md p-8 shadow-2xl border-2 border-accent" style={{ backgroundColor: theme.cardBackground }}>
+          <Card className="w-full max-w-md p-8 shadow-2xl border-accent">
             <div className="flex flex-col items-center text-center mb-8">
               <div className="p-4 rounded-full bg-accent text-white shadow-xl animate-bounce mb-6">
                 <AlertTriangle className="w-12 h-12" />
               </div>
-              <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+              <h3 className="text-2xl font-black text-foreground uppercase tracking-tight">
                 Atenção Máxima!
               </h3>
-              <p className="text-sm text-text opacity-70 mt-2 font-medium">
+              <p className="text-sm text-muted-foreground mt-2 font-medium">
                 Esta ação apagará permanentemente todos os seus registros financeiros.
               </p>
             </div>
@@ -667,7 +1176,7 @@ const Settings: React.FC<SettingsProps> = ({
                 <div className="w-2 h-2 rounded-full bg-accent"></div>
                 Dados que serão perdidos:
               </p>
-              <ul className="text-xs text-text font-bold space-y-2 ml-4">
+              <ul className="text-xs text-foreground font-bold space-y-2 ml-4">
                 <li className="flex items-center gap-2">
                   <div className="w-1 h-1 rounded-full bg-text opacity-50"></div>
                   {totalTransactions} Transações
@@ -684,207 +1193,207 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
 
             <div className="flex gap-4">
-              <button
+              <Button
                 onClick={() => setShowClearModal(false)}
-                className="flex-1 px-4 py-4 rounded-2xl font-black text-sm transition-all border-2 shadow-md"
-                style={{ borderColor: theme.cardBorder, color: theme.text }}
+                variant="outline"
+                className="flex-1"
               >
                 CANCELAR
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleClearAllData}
-                className="flex-1 px-4 py-4 text-white rounded-2xl font-black text-sm transition-all bg-accent hover:opacity-90 shadow-xl"
+                variant="danger"
+                className="flex-1"
               >
                 LIMPAR TUDO
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Category Add Confirmation Modal */}
       {showAddCategoryModal && pendingCategory && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="rounded-3xl w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-200 border-2" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <Card className="w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex flex-col items-center text-center mb-8">
               <div className="p-4 rounded-full bg-primary/10 text-primary shadow-xl mb-6">
                 <PlusCircle className="w-12 h-12" />
               </div>
-              <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+              <h3 className="text-2xl font-black text-foreground uppercase tracking-tight">
                 Nova Categoria
               </h3>
-              <p className="text-sm text-text opacity-70 mt-2 font-medium">
+              <p className="text-sm text-muted-foreground mt-2 font-medium">
                 Deseja adicionar a categoria <span className="font-black text-primary">"{pendingCategory.name}"</span> em <span className="font-black">{pendingCategory.type === 'expense' ? 'DESPESAS' : 'RECEITAS'}</span>?
               </p>
             </div>
 
             <div className="flex gap-4">
-              <button
+              <Button
                 onClick={() => {
                   setShowAddCategoryModal(false);
                   setPendingCategory(null);
                 }}
-                className="flex-1 px-4 py-4 rounded-2xl font-black text-sm transition-all border-2 shadow-md"
-                style={{ borderColor: theme.cardBorder, color: theme.text }}
+                variant="outline"
+                className="flex-1"
               >
                 CANCELAR
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={confirmAddCategory}
-                className="flex-1 px-4 py-4 text-white rounded-2xl font-black text-sm transition-all bg-primary hover:opacity-90 shadow-xl"
+                className="flex-1"
               >
                 CONFIRMAR
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Category Delete Confirmation Modal */}
       {showDeleteCategoryModal && pendingCategory && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="rounded-3xl w-full max-w-md p-8 shadow-2xl border-2 border-accent" style={{ backgroundColor: theme.cardBackground }}>
+          <Card className="w-full max-w-md p-8 shadow-2xl border-accent">
             <div className="flex flex-col items-center text-center mb-8">
               <div className="p-4 rounded-full bg-accent/10 text-accent shadow-xl mb-6">
                 <Trash2 className="w-12 h-12" />
               </div>
-              <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+              <h3 className="text-2xl font-black text-foreground uppercase tracking-tight">
                 Excluir Categoria
               </h3>
-              <p className="text-sm text-text opacity-70 mt-2 font-medium">
+              <p className="text-sm text-muted-foreground mt-2 font-medium">
                 Tem certeza que deseja remover <span className="font-black text-accent">"{pendingCategory.name}"</span>?
               </p>
             </div>
 
             <div className="flex gap-4">
-              <button
+              <Button
                 onClick={() => {
                   setShowDeleteCategoryModal(false);
                   setPendingCategory(null);
                 }}
-                className="flex-1 px-4 py-4 rounded-2xl font-black text-sm transition-all border-2 shadow-md"
-                style={{ borderColor: theme.cardBorder, color: theme.text }}
+                variant="outline"
+                className="flex-1"
               >
                 CANCELAR
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={confirmRemoveCategory}
-                className="flex-1 px-4 py-4 text-white rounded-2xl font-black text-sm transition-all bg-accent hover:opacity-90 shadow-xl"
+                variant="danger"
+                className="flex-1"
               >
                 EXCLUIR
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
       {/* Category Error Modal */}
       {showErrorModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[200] backdrop-blur-md animate-in fade-in duration-300">
-          <div className="rounded-3xl w-full max-w-md p-8 shadow-2xl border-2 border-accent" style={{ backgroundColor: theme.cardBackground }}>
+          <Card className="w-full max-w-md p-8 shadow-2xl border-accent">
             <div className="flex flex-col items-center text-center mb-8">
               <div className="p-4 rounded-full bg-accent/10 text-accent shadow-xl mb-6">
                 <AlertTriangle className="w-12 h-12" />
               </div>
-              <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+              <h3 className="text-2xl font-black text-foreground uppercase tracking-tight">
                 Atenção!
               </h3>
-              <p className="text-sm text-text opacity-70 mt-4 font-bold leading-relaxed">
+              <p className="text-sm text-muted-foreground mt-4 font-bold leading-relaxed">
                 {errorModalMessage}
               </p>
             </div>
 
-            <button
+            <Button
               onClick={() => {
                 if (errorTimer === 0) {
                   setShowErrorModal(false);
                 }
               }}
               disabled={errorTimer > 0}
-              className={`w-full px-4 py-4 rounded-2xl font-black text-sm transition-all shadow-xl ${
-                errorTimer > 0 
-                  ? 'bg-cardBorder text-text opacity-50 cursor-not-allowed' 
-                  : 'bg-accent text-white hover:opacity-90'
-              }`}
+              variant={errorTimer > 0 ? 'secondary' : 'danger'}
+              className="w-full"
             >
               OK {errorTimer > 0 ? `(${errorTimer}s)` : ''}
-            </button>
-          </div>
+            </Button>
+          </Card>
         </div>
       )}
 
       {/* Payment Method Add Confirmation Modal */}
       {showAddPaymentMethodModal && pendingPaymentMethod && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="rounded-3xl w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-200 border-2" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+          <Card className="w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex flex-col items-center text-center mb-8">
               <div className="p-4 rounded-full bg-primary/10 text-primary shadow-xl mb-6">
                 <PlusCircle className="w-12 h-12" />
               </div>
-              <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+              <h3 className="text-2xl font-black text-foreground uppercase tracking-tight">
                 Novo Meio de Pagamento
               </h3>
-              <p className="text-sm text-text opacity-70 mt-2 font-medium">
+              <p className="text-sm text-muted-foreground mt-2 font-medium">
                 Deseja adicionar <span className="font-black text-primary">"{pendingPaymentMethod}"</span> aos seus meios de pagamento?
               </p>
             </div>
 
             <div className="flex gap-4">
-              <button
+              <Button
                 onClick={() => {
                   setShowAddPaymentMethodModal(false);
                   setPendingPaymentMethod(null);
                 }}
-                className="flex-1 px-4 py-4 rounded-2xl font-black text-sm transition-all border-2 shadow-md"
-                style={{ borderColor: theme.cardBorder, color: theme.text }}
+                variant="outline"
+                className="flex-1"
               >
                 CANCELAR
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={confirmAddPaymentMethod}
-                className="flex-1 px-4 py-4 text-white rounded-2xl font-black text-sm transition-all bg-primary hover:opacity-90 shadow-xl"
+                className="flex-1"
               >
                 CONFIRMAR
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Payment Method Delete Confirmation Modal */}
       {showDeletePaymentMethodModal && pendingPaymentMethod && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="rounded-3xl w-full max-w-md p-8 shadow-2xl border-2 border-accent" style={{ backgroundColor: theme.cardBackground }}>
+          <Card className="w-full max-w-md p-8 shadow-2xl border-accent">
             <div className="flex flex-col items-center text-center mb-8">
               <div className="p-4 rounded-full bg-accent/10 text-accent shadow-xl mb-6">
                 <Trash2 className="w-12 h-12" />
               </div>
-              <h3 className="text-2xl font-black text-text uppercase tracking-tight">
+              <h3 className="text-2xl font-black text-foreground uppercase tracking-tight">
                 Excluir Meio de Pagamento
               </h3>
-              <p className="text-sm text-text opacity-70 mt-2 font-medium">
+              <p className="text-sm text-muted-foreground mt-2 font-medium">
                 Tem certeza que deseja remover <span className="font-black text-accent">"{pendingPaymentMethod}"</span>?
               </p>
             </div>
 
             <div className="flex gap-4">
-              <button
+              <Button
                 onClick={() => {
                   setShowDeletePaymentMethodModal(false);
                   setPendingPaymentMethod(null);
                 }}
-                className="flex-1 px-4 py-4 rounded-2xl font-black text-sm transition-all border-2 shadow-md"
-                style={{ borderColor: theme.cardBorder, color: theme.text }}
+                variant="outline"
+                className="flex-1"
               >
                 CANCELAR
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={confirmRemovePaymentMethod}
-                className="flex-1 px-4 py-4 text-white rounded-2xl font-black text-sm transition-all bg-accent hover:opacity-90 shadow-xl"
+                variant="danger"
+                className="flex-1"
               >
                 EXCLUIR
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

@@ -1,15 +1,54 @@
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
+export type TaskFlag = 'blocked' | 'impediment' | 'paused' | 'none';
+
+export interface TaskLabel {
+  id: string;
+  text: string;
+  color: string;
+}
+
+export interface BoardTheme {
+  id: string;
+  name: string;
+  color?: string;
+  backgroundImage?: string;
+}
+
+export interface TimeLog {
+  id: string;
+  date: string;
+  hours: number;
+  description?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
   description: string;
   priority: 'low' | 'medium' | 'high';
   date?: Date | string;
-  columnId: 'todo' | 'inProgress' | 'done';
+  columnId: string;
   createdAt: string;
+  checklist?: ChecklistItem[];
+  updatedAt?: string;
+  flag?: TaskFlag;
+  labels?: TaskLabel[];
+  dependsOn?: string[];
+  themeId: string;
+  timeLogs?: TimeLog[];
+  columnEnteredAt?: string;
+  isPinned?: boolean;
+  pinnedAt?: string;
 }
 
 export interface Column {
-  id: 'todo' | 'inProgress' | 'done';
+  id: string;
   title: string;
   tasks: Task[];
+  themeId: string;
 }

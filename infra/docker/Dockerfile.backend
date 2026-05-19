@@ -8,6 +8,8 @@ RUN npm ci --omit=dev
 # Stage 2: Create the production image
 FROM node:20-alpine
 WORKDIR /app
+RUN apk add --no-cache tzdata
+ENV TZ=America/Sao_Paulo
 COPY --from=build /app/node_modules ./node_modules
 COPY . .
 EXPOSE 3001

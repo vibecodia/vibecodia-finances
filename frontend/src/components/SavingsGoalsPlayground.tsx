@@ -16,40 +16,54 @@ import {
   ScatterController,
   Filler,
 } from 'chart.js';
-import { startOfMonth, endOfMonth, isWithinInterval, format, differenceInDays } from 'date-fns';
+import { startOfMonth, endOfMonth, isWithinInterval, format, differenceInDays, subDays, addDays } from 'date-fns';
 import {
-  Target,
-  TrendingUp,
+  AlertCircle,
+  ArrowDown,
+  ArrowUp,
   BarChart3,
   PieChart as PieChartIcon,
-  ArrowUp,
-  ArrowDown,
-  Minus,
-  Maximize2,
-  Filter,
-  AlertCircle,
-  Printer,
   Calculator,
+  CheckCircle2,
+  Eye,
+  Filter,
   Info,
+  Maximize2,
+  Minus,
   PanelLeftClose,
   PanelLeftOpen,
-  Eye,
-  Trash2
+  Pin,
+  Printer,
+  Target,
+  Trash2,
+  TrendingUp,
+  PlusCircle
 } from 'lucide-react';
-import React, { useState, useMemo, useRef } from 'react';
-import { Doughnut, Line, Pie, Scatter } from 'react-chartjs-2';
+import React, { 
+  useState, 
+  useMemo, 
+  useRef 
+} from 'react';
+import { Doughnut, Line, Scatter } from 'react-chartjs-2';
 
 import { useTheme } from '../contexts/ThemeContext';
 import { useLocalStorage } from '../hooks/trello/useLocalStorage';
+import { useCurrencyInput } from '../hooks/useCurrencyInput';
+import { cn } from '../lib/utils';
 import { SavingsGoal, Transaction } from '../types';
 import {
   formatCurrency,
   formatBrazilDate,
   getCurrentBrazilDate,
   parseLocalDate,
+  getBrazilDateString,
 } from '../utils/helpers';
-
-
+import TransactionForm from './TransactionForm';
+import DateRangePicker from './DateRangePicker';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { Card } from './ui/Card';
+import { Select } from './ui/Select';
 
 ChartJS.register(
   CategoryScale,
@@ -72,6 +86,7 @@ ChartJS.register(
 interface SavingsGoalsPlaygroundProps {
   savingsGoals: SavingsGoal[];
   transactions: Transaction[];
+  onAddTransaction?: (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Transaction>;
 }
 
 interface LayoutItem {
@@ -89,22 +104,417 @@ const DEFAULT_LAYOUT: LayoutItem[] = [
   { id: 'contribution_table', label: 'Tabela de Aportes', collapsed: true, number: 5 },
   { id: 'savings_vs_income', label: 'Taxa de Poupança vs Receita', collapsed: true, number: 6 },
   { id: 'priority_matrix', label: 'Matriz de Prioridade', collapsed: true, number: 7 },
-  { id: 'goals_vs_expenses', label: 'Metas vs Despesas', collapsed: true, number: 8 },
 ];
 
-const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savingsGoals, transactions }) => {
+const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savingsGoals, transactions, onAddTransaction }) => {
   const { theme } = useTheme();
   const [layout, setLayout] = useLocalStorage<LayoutItem[]>('savings_playground_layout_v2', DEFAULT_LAYOUT);
   const [showFilters, setShowFilters] = useLocalStorage<boolean>('savings_playground_show_filters', true);
+  const [isSimCardCollapsed, setIsSimCardCollapsed] = useLocalStorage<boolean>('savings_playground_sim_collapsed', false);
 
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
+  const [countdownSimGoalId, setCountdownSimGoalId] = useState<string | null>(null);
+  const [countdownSimExtra, setCountdownSimExtra] = useState<number>(0);
+  const [showAporteForm, setShowAporteForm] = useState(false);
+  const [isSimInputFocused, setIsSimInputFocused] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [projectionDays, setProjectionDays] = useState<number>(5);
+  const [projectionView, setProjectionView] = useState<'current' | 'forward'>('current');
+  const [timeTravelDate, setTimeTravelDate] = useState<string | null>(null);
+  const [catastrophicAmount] = useState<number>(0);
+  const [catastrophicName, setCatastrophicName] = useState<string>('');
+
+  const { inputProps: countdownSimExtraInputProps, numericValue: countdownSimExtraValue } = useCurrencyInput(countdownSimExtra);
+  const { inputProps: catastrophicAmountInputProps, numericValue: catastrophicAmountValue } = useCurrencyInput(catastrophicAmount);
+
+  const simulationRef = useRef<HTMLDivElement>(null);
+
+  const handlePrintSimulation = () => {
+    if (!simulationRef.current) return;
+
+    const printWindow = window.open('', '', 'height=800,width=1000');
+    if (!printWindow) return;
+
+    const isForward = projectionView === 'forward';
+    const reportTitle = isForward ? 'Relatório de Projeção Financeira' : 'Relatório de Fluxo do Período Filtrado';
+    const viewLabel = isForward ? 'Dias seguintes ao filtro' : 'Filtro Atual';
+    const goalName = countdownSimGoal?.name || 'Nenhuma meta selecionada';
+    
+    const dailyData = isForward ? nextDaysData : currentPeriodDailyData;
+    const finalBalance = isForward ? nextDaysData.total : countdownSimAvailableEndOfMonth;
+
+    // --- CÁLCULO DE DADOS ATUAIS (SEM TIME TRAVEL) PARA COMPARAÇÃO ---
+    const actualTotals = timeTravelDate ? (() => {
+      const dayBeforeStart = format(subDays(parseLocalDate(startDate), 1), 'yyyy-MM-dd');
+      
+      const paidTransactionsBefore = transactions.filter(t => {
+        if (t.status === 'deleted' || t.category?.toLowerCase().includes('aporte') || !t.isPaid) return false;
+        return t.date.slice(0, 10) <= dayBeforeStart;
+      });
+
+      const totalIncomeBefore = paidTransactionsBefore
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const totalExpensesBefore = paidTransactionsBefore
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const totalBalanceBefore = totalIncomeBefore - totalExpensesBefore;
+
+      const totalGoalsImpactBefore = activeGoals.reduce((total, goal) => {
+        const goalTotal = (goal.contributions || []).reduce((sum, contribution) => {
+          if (contribution.status === 'deleted' || !contribution.isPaid) return sum;
+          const cDate = contribution.date.slice(0, 10);
+          return sum + (cDate <= dayBeforeStart ? contribution.amount : 0);
+        }, 0);
+        return total + goalTotal;
+      }, 0);
+
+      const previousBalanceAdjusted = totalBalanceBefore - totalGoalsImpactBefore;
+
+      const revenues = transactions
+        .filter(t => {
+          const tDateStr = t.date.slice(0, 10);
+          return t.type === 'income' &&
+                  t.status === 'active' &&
+                 tDateStr >= startDate && tDateStr <= endDate &&
+                 !t.description?.toLowerCase().includes('vero') &&
+                 !t.category?.toLowerCase().includes('vero') &&
+                 !t.description?.toLowerCase().includes('flash') &&
+                 !t.category?.toLowerCase().includes('flash');
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const expenses = transactions
+        .filter(t => {
+          const tDateStr = t.date.slice(0, 10);
+          return t.type === 'expense' &&
+                  t.status === 'active' &&
+                  !t.category?.toLowerCase().includes('aporte') &&
+                  !t.paymentMethod?.toLowerCase().includes('vero') &&
+                  !t.paymentMethod?.toLowerCase().includes('flash') &&
+                 tDateStr >= startDate && tDateStr <= endDate;
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const realContributions = transactions
+        .filter(t => {
+          const tDateStr = t.date.slice(0, 10);
+          return t.type === 'expense' &&
+                  t.isPaid === true &&
+                  t.status === 'active' &&
+                  tDateStr >= startDate && tDateStr <= endDate &&
+                  t.category?.toLowerCase().includes('aporte');
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const actualNet = previousBalanceAdjusted + revenues - expenses - realContributions - catastrophicAmountValue;
+      const actualGoalAmount = countdownSimGoal ? countdownSimGoal.currentAmount : 0;
+
+      // Cálculo de Saldos Diários Atuais para Comparação
+      const dailyStart = isForward ? addDays(parseLocalDate(endDate), 1) : parseLocalDate(startDate);
+      const dailyDaysCount = isForward ? projectionDays : (differenceInDays(parseLocalDate(endDate), parseLocalDate(startDate)) + 1);
+      const actualDailyData: Record<string, { balance: number, revenues: number, expenses: number, divergingItems: string[] }> = {};
+      let runningDailyBalance = isForward ? (actualNet - countdownSimExtraValue) : previousBalanceAdjusted;
+
+      for (let i = 0; i < dailyDaysCount; i++) {
+        const currentDay = addDays(dailyStart, i);
+        const currentDayStr = format(currentDay, 'yyyy-MM-dd');
+        
+        // Itens que divergem: Transações criadas APÓS a data de congelamento
+        const cutoff = new Date(timeTravelDate + 'T23:59:59');
+        const divergingTransactions = transactions.filter(t => {
+          const tDateStr = t.date.slice(0, 10);
+          const desc = t.description?.toLowerCase() || '';
+          const cat = t.category?.toLowerCase() || '';
+          const pm = t.paymentMethod?.toLowerCase() || '';
+          
+          return tDateStr === currentDayStr && 
+                 t.status === 'active' &&
+                 new Date(t.createdAt) > cutoff &&
+                 !desc.includes('vero') && !cat.includes('vero') && !pm.includes('vero') &&
+                 !desc.includes('flash') && !cat.includes('flash') && !pm.includes('flash') &&
+                 !(cat.includes('aporte') && !t.isPaid);
+        });
+
+        const divergingDescriptions = divergingTransactions.map(t => 
+          `${t.type === 'income' ? '[+]' : '[-]'} ${t.description || 'Sem descrição'} (${t.category}): ${formatCurrency(t.amount)}`
+        );
+
+        const dayRevenues = transactions
+          .filter(t => {
+            const tDateStr = t.date.slice(0, 10);
+            const desc = t.description?.toLowerCase() || '';
+            const cat = t.category?.toLowerCase() || '';
+            const pm = t.paymentMethod?.toLowerCase() || '';
+            
+            return t.type === 'income' && t.status === 'active' && tDateStr === currentDayStr &&
+                   !desc.includes('vero') && !cat.includes('vero') && !pm.includes('vero') &&
+                   !desc.includes('flash') && !cat.includes('flash') && !pm.includes('flash');
+          })
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        const dayExpenses = transactions
+          .filter(t => {
+            const tDateStr = t.date.slice(0, 10);
+            const cat = t.category?.toLowerCase() || '';
+            const pm = t.paymentMethod?.toLowerCase() || '';
+            const desc = t.description?.toLowerCase() || '';
+            
+            return t.type === 'expense' && t.status === 'active' && tDateStr === currentDayStr &&
+                   !cat.includes('aporte') &&
+                   !pm.includes('vero') && !desc.includes('vero') && !cat.includes('vero') &&
+                   !pm.includes('flash') && !desc.includes('flash') && !cat.includes('flash');
+          })
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        const dayContributions = transactions
+          .filter(t => {
+            const tDateStr = t.date.slice(0, 10);
+            return t.type === 'expense' && t.isPaid === true && t.status === 'active' && 
+                   tDateStr === currentDayStr && t.category?.toLowerCase().includes('aporte');
+          })
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        runningDailyBalance = runningDailyBalance + dayRevenues - dayExpenses - dayContributions;
+        actualDailyData[currentDayStr] = {
+          balance: runningDailyBalance,
+          revenues: dayRevenues,
+          expenses: dayExpenses + dayContributions,
+          divergingItems: divergingDescriptions
+        };
+      }
+
+      return { 
+        revenues, 
+        expenses, 
+        realContributions,
+        net: actualNet,
+        goalAmount: actualGoalAmount,
+        dailyData: actualDailyData
+      };
+    })() : null;
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${reportTitle}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; line-height: 1.5; background: white; }
+            .header { border-bottom: 2px solid #3b82f6; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .header h1 { margin: 0; color: #3b82f6; font-size: 24px; }
+            .header p { margin: 5px 0 0 0; opacity: 0.7; font-size: 12px; }
+            .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 900; text-transform: uppercase; background: #3b82f6; color: white; margin-top: 10px; }
+            .badge-amber { background: #f59e0b; }
+            .grid { display: grid; grid-template-cols: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+            .card { border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; background: #f8fafc; position: relative; overflow: hidden; }
+            .card-title { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #64748b; margin-bottom: 10px; letter-spacing: 0.05em; }
+            .value { font-size: 24px; font-weight: 900; color: #3b82f6; }
+            .sub-value { font-size: 12px; color: #64748b; margin-top: 5px; }
+            .details { font-size: 11px; margin-top: 15px; font-family: monospace; color: #64748b; }
+            
+            /* Estilos para Comparação */
+            .comparison-grid { display: grid; grid-template-cols: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+            .comp-card { border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px; background: white; }
+            .comp-label { font-size: 9px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; }
+            .comp-values { display: flex; flex-direction: column; gap: 4px; }
+            .comp-item { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+            .comp-item .frozen { color: #f59e0b; font-weight: 700; }
+            .comp-item .actual { color: #3b82f6; font-weight: 700; }
+            .comp-diff { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 900; }
+            .diff-pos { background: #dcfce7; color: #166534; }
+            .diff-neg { background: #fee2e2; color: #991b1b; }
+            .diff-neutral { background: #f1f5f9; color: #475569; }
+
+            .projection-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            .projection-table th { text-align: left; font-size: 10px; color: #64748b; padding: 8px; border-bottom: 1px solid #e2e8f0; }
+            .projection-table td { padding: 8px; border-bottom: 1px solid #f1f5f9; font-size: 12px; }
+            .projection-table .date { font-weight: 700; color: #3b82f6; }
+            .projection-table .amount { font-family: monospace; font-weight: 700; text-align: right; }
+            .pessimist-note { margin-top: 20px; padding: 15px; background: #fff1f2; border: 1px solid #fecaca; border-radius: 8px; color: #991b1b; }
+            .alert-box { margin-top: 20px; padding: 15px; background: #fef2f2; border: 2px solid #ef4444; border-radius: 8px; color: #b91c1c; font-weight: 700; text-align: center; }
+            .no-print-btn { 
+              position: fixed; top: 20px; right: 20px; padding: 10px 20px; 
+              background: #3b82f6; color: white; border: none; border-radius: 8px; 
+              font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            @media print { 
+              body { padding: 0; } 
+              .card, .comp-card { break-inside: avoid; } 
+              .no-print-btn { display: none; }
+            }
+          </style>
+        </head>
+        <body style="color: #1e293b; background: white;">
+          <button class="no-print-btn" onclick="window.print()">IMPRIMIR PDF</button>
+          
+          <div class="header">
+            <div>
+              <h1>${reportTitle}</h1>
+              <div class="badge">${viewLabel}</div>
+              ${timeTravelDate ? `<div class="badge badge-amber">⏳ MODO TIME TRAVEL: ATÉ ${formatBrazilDate(parseLocalDate(timeTravelDate), 'dd/MM/yyyy')}</div>` : ''}
+              <p>Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+              <p>Período Base: ${formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} até ${formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}</p>
+            </div>
+            <div style="text-align: right">
+              <div style="font-size: 10px; font-weight: 900; color: #64748b;">META SELECIONADA</div>
+              <div style="font-weight: 700;">${goalName}</div>
+            </div>
+          </div>
+
+          ${actualTotals ? `
+            <div style="margin-bottom: 10px; font-size: 10px; font-weight: 900; color: #f59e0b; text-transform: uppercase; letter-spacing: 0.1em;">
+              📊 Comparativo: Congelado (${formatBrazilDate(parseLocalDate(timeTravelDate!), 'dd/MM/yyyy')}) vs. Hoje (${format(new Date(), 'dd/MM/yyyy')})
+            </div>
+            <div class="comparison-grid">
+              <div class="comp-card">
+                <div class="comp-label">Saldo Final</div>
+                <div class="comp-values">
+                  <div class="comp-item"><span>Congelado:</span> <span class="frozen">${formatCurrency(finalBalance)}</span></div>
+                  <div class="comp-item"><span>Atual:</span> <span class="actual">${formatCurrency(actualTotals.net)}</span></div>
+                  <div style="margin-top: 8px; text-align: right;">
+                    <span class="comp-diff ${(actualTotals.net - finalBalance) >= 0 ? 'diff-pos' : 'diff-neg'}">
+                      ${(actualTotals.net - finalBalance) >= 0 ? '▲' : '▼'} ${formatCurrency(Math.abs(actualTotals.net - finalBalance))}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="comp-card">
+                <div class="comp-label">Receitas / Despesas</div>
+                <div class="comp-values">
+                  <div class="comp-item"><span>Rec. (Cong.):</span> <span class="frozen">${formatCurrency(monthlyTotals.revenues)}</span></div>
+                  <div class="comp-item"><span>Rec. (Atual):</span> <span class="actual">${formatCurrency(actualTotals.revenues)}</span></div>
+                  <div class="comp-item" style="margin-top: 4px;"><span>Desp. (Cong.):</span> <span class="frozen">${formatCurrency(monthlyTotals.expenses + monthlyTotals.realContributions)}</span></div>
+                  <div class="comp-item"><span>Desp. (Atual):</span> <span class="actual">${formatCurrency(actualTotals.expenses + actualTotals.realContributions)}</span></div>
+                </div>
+              </div>
+
+              <div class="comp-card">
+                <div class="comp-label">Progresso da Meta</div>
+                <div class="comp-values">
+                  <div class="comp-item"><span>Valor (Cong.):</span> <span class="frozen">${formatCurrency(countdownSimGoal ? (countdownSimGoal.currentAmount + countdownSimExtraValue) : 0)}</span></div>
+                  <div class="comp-item"><span>Valor (Atual):</span> <span class="actual">${formatCurrency(actualTotals.goalAmount)}</span></div>
+                  <div style="margin-top: 8px; text-align: right;">
+                    <span class="comp-diff ${(actualTotals.goalAmount - (countdownSimGoal ? (countdownSimGoal.currentAmount + countdownSimExtraValue) : 0)) >= 0 ? 'diff-pos' : 'diff-neg'}">
+                      ${(actualTotals.goalAmount - (countdownSimGoal ? (countdownSimGoal.currentAmount + countdownSimExtraValue) : 0)) >= 0 ? '▲' : '▼'} ${formatCurrency(Math.abs(actualTotals.goalAmount - (countdownSimGoal ? (countdownSimGoal.currentAmount + countdownSimExtraValue) : 0)))}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="grid">
+            <div class="card" ${timeTravelDate ? 'style="border-color: #f59e0b; background: #fffbeb;"' : ''}>
+              ${timeTravelDate ? '<div style="position: absolute; top: 0; right: 0; background: #f59e0b; color: white; font-size: 7px; font-weight: 900; padding: 2px 8px; border-bottom-left-radius: 8px; text-transform: uppercase;">Congelado</div>' : ''}
+              <div class="card-title">Impacto na Meta</div>
+              <div class="value" ${timeTravelDate ? 'style="color: #d97706"' : ''}>${formatCurrency(countdownSimGoal ? countdownSimGoal.currentAmount + countdownSimExtraValue : 0)}</div>
+              <div class="sub-value">Alvo: ${formatCurrency(countdownSimGoal?.targetAmount || 0)}</div>
+              <div class="sub-value" style="color: #10b981; font-weight: 700;">
+                ${countdownSimIsGoalAchieved ? '✅ Meta Atingida!' : `Restam ${formatCurrency((countdownSimGoal?.targetAmount || 0) - (countdownSimGoal ? countdownSimGoal.currentAmount + countdownSimExtraValue : 0))}`}
+              </div>
+            </div>
+            <div class="card" ${timeTravelDate ? 'style="border-color: #f59e0b; background: #fffbeb;"' : ''}>
+              ${timeTravelDate ? '<div style="position: absolute; top: 0; right: 0; background: #f59e0b; color: white; font-size: 7px; font-weight: 900; padding: 2px 8px; border-bottom-left-radius: 8px; text-transform: uppercase;">Congelado</div>' : ''}
+              <div class="card-title">Disponibilidade Final ${isForward ? `D+${projectionDays}` : 'do Período'}</div>
+              <div class="value" ${timeTravelDate ? 'style="color: #d97706"' : ''}>${formatCurrency(finalBalance)}</div>
+              <div class="details">
+                Saldo Base: ${formatCurrency(isForward ? nextDaysData.baseBalance : monthlyTotals.previousMonthAdjustedBalance)}<br>
+                + Receitas: ${formatCurrency(isForward ? nextDaysData.revenues : monthlyTotals.revenues)}<br>
+                - Despesas: ${formatCurrency(isForward ? nextDaysData.expenses : (monthlyTotals.expenses + monthlyTotals.realContributions))}<br>
+                - Aportes Simulados: ${formatCurrency(countdownSimExtraValue)}
+                ${catastrophicAmountValue > 0 ? `<br>- Extra (${catastrophicName || 'Cenário Pessimista'}): ${formatCurrency(catastrophicAmountValue)}` : ''}
+              </div>
+            </div>
+          </div>
+
+          ${dailyData.negativeCount > 0 ? `
+            <div class="alert-box">
+              🚨 ALERTA CRÍTICO: Detectado ${dailyData.negativeCount} ${dailyData.negativeCount === 1 ? 'dia' : 'dias'} com saldo negativo no período.
+            </div>
+          ` : ''}
+
+          ${catastrophicAmountValue > 0 ? `
+            <div class="pessimist-note">
+              <strong>Cenário Pessimista Ativo:</strong> Foi simulado um gasto extra de <strong>${formatCurrency(catastrophicAmountValue)}</strong> 
+              ${catastrophicName ? ` para "<em>${catastrophicName}</em>"` : ''}.
+            </div>
+          ` : ''}
+
+          <div class="card" style="margin-top: 20px;">
+            <div class="card-title">${isForward ? `Projeção Diária (Próximos ${projectionDays} dias)` : 'Fluxo Diário do Período'}</div>
+            <table class="projection-table">
+              <thead>
+                <tr>
+                  <th>DATA</th>
+                  <th style="text-align: right">MOVIMENTAÇÃO</th>
+                  ${actualTotals ? '<th>ITEM QUE DIVERGE</th>' : ''}
+                  <th style="text-align: right">SALDO ${actualTotals ? '(CONGELADO)' : 'ACUMULADO'}</th>
+                  ${actualTotals ? '<th style="text-align: right">SALDO REAL (HOJE)</th><th style="text-align: right">DIFERENÇA</th>' : ''}
+                </tr>
+              </thead>
+              <tbody>
+                ${dailyData.dailyBalances.map((day: any) => {
+                  const actualDayData = actualTotals?.dailyData[day.date];
+                  const actualDayBalance = actualDayData?.balance;
+                  const diff = actualDayBalance !== undefined ? actualDayBalance - day.total : null;
+                  
+                  return `
+                  <tr>
+                    <td class="date">${formatBrazilDate(parseLocalDate(day.date), 'dd/MM/yyyy')}</td>
+                    <td style="text-align: right; font-size: 10px;">
+                      ${day.revenues > 0 ? `<span style="color: #10b981">+${formatCurrency(day.revenues)}</span>` : ''}
+                      ${day.expenses > 0 ? `<span style="color: #ef4444">-${formatCurrency(day.expenses)}</span>` : ''}
+                      ${day.revenues === 0 && day.expenses === 0 ? '-' : ''}
+                    </td>
+                    ${actualTotals ? `
+                      <td style="font-size: 9px; max-width: 150px; color: #64748b;">
+                        ${actualDayData && actualDayData.divergingItems.length > 0 
+                          ? actualDayData.divergingItems.join('<br>') 
+                          : '-'}
+                      </td>
+                    ` : ''}
+                    <td class="amount" style="color: ${day.total < 0 ? '#ef4444' : (actualTotals ? '#d97706' : '#10b981')}">
+                      ${formatCurrency(day.total)}
+                      ${day.isNegative ? '<br><span style="font-size: 8px; text-transform: uppercase;">⚠️ Negativo</span>' : ''}
+                    </td>
+                    ${actualTotals && actualDayBalance !== undefined ? `
+                      <td class="amount" style="color: ${actualDayBalance < 0 ? '#ef4444' : '#3b82f6'}">
+                        ${formatCurrency(actualDayBalance)}
+                      </td>
+                      <td class="amount" style="font-size: 10px;">
+                        <span class="comp-diff ${diff! >= 0 ? (diff! === 0 ? 'diff-neutral' : 'diff-pos') : 'diff-neg'}">
+                          ${diff! > 0 ? '▲' : diff! < 0 ? '▼' : '='} ${formatCurrency(Math.abs(diff!))}
+                        </span>
+                      </td>
+                    ` : ''}
+                  </tr>
+                `}).join('')}
+              </tbody>
+            </table>
+          </div>
+
+          <div style="margin-top: 30px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+            Vibecodia Finances - Planejamento com Liberdade
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+  };
   
   const simChartRef = useRef<any>(null);
   const timelineChartRef = useRef<any>(null);
   const distributionChartRef = useRef<any>(null);
   const savingsVsIncomeChartRef = useRef<any>(null);
   const matrixChartRef = useRef<any>(null);
-  const goalsVsExpensesChartRef = useRef<any>(null);
 
   const toggleAll = (chartRef: React.MutableRefObject<any>) => {
     const chart = chartRef.current;
@@ -140,12 +550,17 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
 
   // Simulator State
   const [simInitialAmount, setSimInitialAmount] = useState<number>(0);
-  const [simMonthlyAmount, setSimMonthlyAmount] = useState<number>(500);
-  const [simInterestRate, setSimInterestRate] = useState<number>(1); // 1% per month
-  const [simPeriod, setSimPeriod] = useState<number>(12); // 12 months
+  const [simMonthlyAmount] = useState<number>(500);
+  const [simInterestRate, setSimInterestRate] = useState<number>(1);
+  const [simPeriod, setSimPeriod] = useState<number>(12);
   const [simMode, setSimMode] = useState<'investment' | 'goal_reach'>('investment');
   const [simTargetGoalId, setSimTargetGoalId] = useState<string | null>(null);
+
+  const { inputProps: simInitialAmountInputProps, numericValue: simInitialAmountValue } = useCurrencyInput(simInitialAmount);
+  const { inputProps: simMonthlyAmountInputProps, numericValue: simMonthlyAmountValue } = useCurrencyInput(simMonthlyAmount);
+
   const [startDate, setStartDate] = useState<string>(format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
+
   const [endDate, setEndDate] = useState<string>(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
   const [neededUnit, setNeededUnit] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
   const [daysUnit, setDaysUnit] = useState<'days' | 'weeks' | 'months'>('months');
@@ -230,7 +645,10 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
               text-transform: uppercase;
               letter-spacing: 0.5px;
             }
-            th:last-child {
+            th:last-child,
+            th:nth-last-child(2),
+            th:nth-last-child(3),
+            th:nth-last-child(4) {
               text-align: right;
             }
             td {
@@ -243,7 +661,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
             }
             td:last-child,
             td:nth-last-child(2),
-            td:nth-last-child(3) {
+            td:nth-last-child(3),
+            td:nth-last-child(4) {
               text-align: right;
               font-weight: 600;
             }
@@ -325,17 +744,293 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     ).sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
   }, [activeGoals, showDeleted]);
 
+  // Calcular disponível mensal (excluindo Vero e Flash)
+  
+
+  // Cálculo de dados para "Disponível Final do Mês" respeitando filtros de data
+  const monthlyTotals = useMemo(() => {
+    // Data limite para o saldo anterior (um dia antes do início do filtro)
+    const dayBeforeStart = format(subDays(parseLocalDate(startDate), 1), 'yyyy-MM-dd');
+
+    // 1. Saldo Anterior (Total Balance - Total Goals Impact até dayBeforeStart)
+    const paidTransactionsBefore = transactions.filter(t => {
+      if (t.status === 'deleted' || t.category?.toLowerCase().includes('aporte') || !t.isPaid) return false;
+      const tDateStr = t.date.slice(0, 10);
+      const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
+      return tDateStr <= dayBeforeStart && isBeforeCutoff;
+    });
+
+    const totalIncomeBefore = paidTransactionsBefore
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const totalExpensesBefore = paidTransactionsBefore
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const totalBalanceBefore = totalIncomeBefore - totalExpensesBefore;
+
+    const totalGoalsImpactBefore = activeGoals.reduce((total, goal) => {
+      const goalTotal = (goal.contributions || []).reduce((sum, contribution) => {
+        if (contribution.status === 'deleted' || !contribution.isPaid) return sum;
+        const cDate = contribution.date.slice(0, 10);
+        const isBeforeCutoff = !timeTravelDate || new Date(contribution.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
+        return sum + (cDate <= dayBeforeStart && isBeforeCutoff ? contribution.amount : 0);
+      }, 0);
+      return total + goalTotal;
+    }, 0);
+
+    const previousBalanceAdjusted = totalBalanceBefore - totalGoalsImpactBefore;
+
+    // 2. Receitas do período (excluindo Vero e Flash) - Todas (incluindo não pagas)
+    const revenues = transactions
+      .filter(t => {
+        const tDateStr = t.date.slice(0, 10);
+        const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
+        return t.type === 'income' &&
+                t.status === 'active' &&
+               tDateStr >= startDate && tDateStr <= endDate &&
+               !t.description?.toLowerCase().includes('vero') &&
+               !t.category?.toLowerCase().includes('vero') &&
+               !t.description?.toLowerCase().includes('flash') &&
+               !t.category?.toLowerCase().includes('flash') &&
+               isBeforeCutoff;
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    // 3. Despesas do período - Todas (incluindo não pagas)
+    const expenses = transactions
+      .filter(t => {
+        const tDateStr = t.date.slice(0, 10);
+        const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
+        return t.type === 'expense' &&
+                t.status === 'active' &&
+                !t.category?.toLowerCase().includes('aporte') &&
+                !t.paymentMethod?.toLowerCase().includes('vero') &&
+                !t.paymentMethod?.toLowerCase().includes('flash') &&
+               tDateStr >= startDate && tDateStr <= endDate &&
+               isBeforeCutoff;
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    // 4. Aportes reais do período (apenas isPaid=true)
+    const realContributions = transactions
+      .filter(t => {
+        const tDateStr = t.date.slice(0, 10);
+        const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
+        return t.type === 'expense' &&
+                t.isPaid === true &&
+                t.status === 'active' &&
+                tDateStr >= startDate && tDateStr <= endDate &&
+                t.category?.toLowerCase().includes('aporte') &&
+                isBeforeCutoff;
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    return { 
+      revenues, 
+      expenses, 
+      realContributions,
+      previousMonthAdjustedBalance: previousBalanceAdjusted,
+      net: previousBalanceAdjusted + revenues - expenses - realContributions - catastrophicAmountValue
+    };
+  }, [transactions, savingsGoals, activeGoals, startDate, endDate, catastrophicAmountValue, timeTravelDate]);
+
+  // Detalhamento diário para o período filtrado (Mês Atual)
+  const currentPeriodDailyData = useMemo(() => {
+    const start = parseLocalDate(startDate);
+    const end = parseLocalDate(endDate);
+    const daysCount = differenceInDays(end, start) + 1;
+    
+    const dailyBalances: any[] = [];
+    let runningBalance = monthlyTotals.previousMonthAdjustedBalance;
+    let negativeCount = 0;
+
+    for (let i = 0; i < daysCount; i++) {
+      const currentDay = addDays(start, i);
+      const currentDayStr = format(currentDay, 'yyyy-MM-dd');
+      
+      const dayRevenues = transactions
+        .filter(t => {
+          const tDateStr = t.date.slice(0, 10);
+          const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
+          return t.type === 'income' && t.status === 'active' && tDateStr === currentDayStr &&
+                 !t.description?.toLowerCase().includes('vero') && !t.category?.toLowerCase().includes('vero') &&
+                 !t.description?.toLowerCase().includes('flash') && !t.category?.toLowerCase().includes('flash') &&
+                 isBeforeCutoff;
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const dayExpenses = transactions
+        .filter(t => {
+          const tDateStr = t.date.slice(0, 10);
+          const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
+          return t.type === 'expense' && t.status === 'active' && tDateStr === currentDayStr &&
+                 !t.category?.toLowerCase().includes('aporte') &&
+                 !t.paymentMethod?.toLowerCase().includes('vero') && !t.paymentMethod?.toLowerCase().includes('flash') &&
+                 isBeforeCutoff;
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const dayContributions = transactions
+        .filter(t => {
+          const tDateStr = t.date.slice(0, 10);
+          const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
+          return t.type === 'expense' && t.isPaid === true && t.status === 'active' && 
+                 tDateStr === currentDayStr && t.category?.toLowerCase().includes('aporte') &&
+                 isBeforeCutoff;
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      runningBalance = runningBalance + dayRevenues - dayExpenses - dayContributions;
+      
+      // Aplicar o aporte simulado e o gasto extra no último dia do período para conciliar com o saldo final
+      const isLastDay = i === daysCount - 1;
+      if (isLastDay) {
+        runningBalance = runningBalance - countdownSimExtraValue - catastrophicAmountValue;
+      }
+
+      if (runningBalance < 0) {
+        negativeCount++;
+      }
+
+      dailyBalances.push({
+        date: currentDayStr,
+        total: runningBalance,
+        revenues: dayRevenues,
+        expenses: dayExpenses + dayContributions + (isLastDay ? (countdownSimExtraValue + catastrophicAmountValue) : 0),
+        previousBalance: runningBalance - dayRevenues + (dayExpenses + dayContributions + (isLastDay ? (countdownSimExtraValue + catastrophicAmountValue) : 0)),
+        isNegative: runningBalance < 0,
+        openingBalance: i === 0 ? monthlyTotals.previousMonthAdjustedBalance : undefined
+      });
+    }
+
+    return { dailyBalances, negativeCount };
+  }, [transactions, startDate, endDate, monthlyTotals.previousMonthAdjustedBalance, countdownSimExtraValue, catastrophicAmountValue, timeTravelDate]);
+
+  // Cálculo para "Disponível próximos X dias" (após a data final do filtro) com detalhamento diário
+  const nextDaysData = useMemo(() => {
+    const filterEndDate = parseLocalDate(endDate);
+    // Para a projeção futura, o saldo base é o saldo real ao final do filtro (sem as simulações do filtro)
+    // E então aplicamos as simulações no primeiro dia da projeção para que apareçam na tabela
+    const baseBalance = monthlyTotals.previousMonthAdjustedBalance + monthlyTotals.revenues - monthlyTotals.expenses - monthlyTotals.realContributions;
+    
+    const dailyBalances: any[] = [];
+    let runningBalance = baseBalance;
+    let negativeCount = 0;
+
+    for (let i = 1; i <= projectionDays; i++) {
+      const currentDay = addDays(filterEndDate, i);
+      const currentDayStr = format(currentDay, 'yyyy-MM-dd');
+      
+      const dayRevenues = transactions
+        .filter(t => {
+          const tDateStr = t.date.slice(0, 10);
+          const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
+          return t.type === 'income' && t.status === 'active' && tDateStr === currentDayStr &&
+                 !t.description?.toLowerCase().includes('vero') && !t.category?.toLowerCase().includes('vero') &&
+                 !t.description?.toLowerCase().includes('flash') && !t.category?.toLowerCase().includes('flash') &&
+                 isBeforeCutoff;
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const dayExpenses = transactions
+        .filter(t => {
+          const tDateStr = t.date.slice(0, 10);
+          const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
+          return t.type === 'expense' && t.status === 'active' && tDateStr === currentDayStr &&
+                 !t.category?.toLowerCase().includes('aporte') &&
+                 !t.paymentMethod?.toLowerCase().includes('vero') && !t.paymentMethod?.toLowerCase().includes('flash') &&
+                 isBeforeCutoff;
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const dayContributions = transactions
+        .filter(t => {
+          const tDateStr = t.date.slice(0, 10);
+          const isBeforeCutoff = !timeTravelDate || new Date(t.createdAt) <= new Date(timeTravelDate + 'T23:59:59');
+          return t.type === 'expense' && t.isPaid === true && t.status === 'active' && 
+                 tDateStr === currentDayStr && t.category?.toLowerCase().includes('aporte') &&
+                 isBeforeCutoff;
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const isFirstDay = i === 1;
+      const simValues = isFirstDay ? (countdownSimExtraValue + catastrophicAmountValue) : 0;
+      
+      runningBalance = runningBalance + dayRevenues - dayExpenses - dayContributions - simValues;
+      
+      if (runningBalance < 0) {
+        negativeCount++;
+      }
+
+      dailyBalances.push({
+        date: currentDayStr,
+        label: `D+${i}`,
+        total: runningBalance,
+        revenues: dayRevenues,
+        expenses: dayExpenses + dayContributions + simValues,
+        previousBalance: runningBalance - dayRevenues + (dayExpenses + dayContributions + simValues),
+        isNegative: runningBalance < 0,
+        negativeDayIndex: runningBalance < 0 ? negativeCount : 0,
+        openingBalance: i === 1 ? baseBalance : undefined
+      });
+    }
+
+    return {
+      dailyBalances,
+      total: runningBalance,
+      baseBalance,
+      negativeCount,
+      revenues: dailyBalances.reduce((sum, d) => sum + d.revenues, 0),
+      expenses: dailyBalances.reduce((sum, d) => sum + d.expenses, 0)
+    };
+  }, [transactions, endDate, monthlyTotals, countdownSimExtraValue, catastrophicAmountValue, projectionDays, timeTravelDate]);
+
+  // Limite de projeção: fim do mês seguinte ao filtro
+  const maxProjectionDays = useMemo(() => {
+    const filterEndDate = parseLocalDate(endDate);
+    const endOfNextMonth = endOfMonth(addDays(endOfMonth(filterEndDate), 1));
+    return differenceInDays(endOfNextMonth, filterEndDate);
+  }, [endDate]);
+
+  // Verificar se o filtro de data está ativo (diferente do mês atual)
+  // const isFilterActive = useMemo(() => {
+  //   const defaultStart = format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd');
+  //   const defaultEnd = format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd');
+  //   return startDate !== defaultStart || endDate !== defaultEnd;
+  // }, [startDate, endDate]);
+
+  const handleCountdownSimGoalChange = (goalId: string) => {
+    setCountdownSimGoalId(goalId || null);
+  };
+
+  const handleRegisterAporte = async (transactionData: any) => {
+    if (onAddTransaction) {
+      try {
+        setFormError(null);
+        await onAddTransaction(transactionData);
+        // setShowAporteForm(false); // Removido para permitir que a animação termine
+        setCountdownSimExtra(0);
+      } catch (error: any) {
+        console.error('Erro ao registrar aporte:', error);
+        setFormError(error.message || 'Erro ao registrar aporte');
+        throw error; // Relança para o TransactionForm
+      }
+    }
+  };
+
   // Simulator Calculations
   const simulationResults = useMemo(() => {
     const data: { month: number; total: number; invested: number; interest: number }[] = [];
-    let currentTotal = simInitialAmount;
-    let currentInvested = simInitialAmount;
+    let currentTotal = simInitialAmountValue;
+    let currentInvested = simInitialAmountValue;
 
     for (let i = 0; i <= simPeriod; i++) {
       if (i > 0) {
         const interest = currentTotal * (simInterestRate / 100);
-        currentTotal += interest + simMonthlyAmount;
-        currentInvested += simMonthlyAmount;
+        currentTotal += interest + simMonthlyAmountValue;
+        currentInvested += simMonthlyAmountValue;
       }
       data.push({
         month: i,
@@ -345,7 +1040,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       });
     }
     return data;
-  }, [simInitialAmount, simMonthlyAmount, simInterestRate, simPeriod]);
+  }, [simInitialAmountValue, simMonthlyAmountValue, simInterestRate, simPeriod]);
 
   const simChartData = useMemo(() => ({
     labels: simulationResults.map(r => `Mês ${r.month}`),
@@ -471,7 +1166,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   const savingsVsIncomeChartData = useMemo(() => {
     const months: Record<string, { income: number; savings: number }> = {};
 
-    // Aggregate income by month
     transactions
       .filter(t => t.type === 'income' && t.isPaid)
       .forEach(t => {
@@ -480,7 +1174,6 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         months[monthKey].income += t.amount;
       });
 
-    // Aggregate savings contributions by month
     allContributions.forEach(c => {
       const monthKey = format(parseLocalDate(c.date), 'yyyy-MM');
       if (!months[monthKey]) months[monthKey] = { income: 0, savings: 0 };
@@ -525,9 +1218,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       }
 
       return {
-        x: daysUntilDeadline !== null ? daysUntilDeadline : 9999, // X = urgency
-        y: remaining, // Y = amount remaining
-        r: goal.targetAmount / 100, // Size = target amount
+        x: daysUntilDeadline !== null ? daysUntilDeadline : 9999,
+        y: remaining,
+        r: goal.targetAmount / 100,
         label: goal.name,
         id: goal.id,
       };
@@ -552,6 +1245,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
   }, [matrixData, theme.cardBackground]);
 
   // Goals Countdown Table Data
+  const countdownSimGoalIdEffective = countdownSimGoalId ?? (savingsGoals[0]?.id ?? null);
+
   const countdownTableData = useMemo(() => {
     return savingsGoals.map(goal => {
       const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
@@ -565,15 +1260,45 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
         monthlyNeeded = remaining / monthsLeft;
       }
 
+      const simulatedExtra = countdownSimGoalIdEffective && goal.id === countdownSimGoalIdEffective ? countdownSimExtraValue : 0;
+      const remainingAfterSimulated = Math.max(0, remaining - simulatedExtra);
+      const monthsWithSimulated = monthlyNeeded > 0 ? Math.ceil(remainingAfterSimulated / monthlyNeeded) : null;
+      const monthsSaved = monthlyNeeded > 0 && simulatedExtra > 0 
+        ? Math.floor(simulatedExtra / monthlyNeeded) 
+        : 0;
+
       return {
         ...goal,
         remaining,
         percentage,
         daysLeft,
         monthlyNeeded,
+        remainingAfterSimulated,
+        monthsWithSimulated,
+        monthsSaved,
+        simulatedExtra,
+        availableEndOfMonth: monthlyTotals.net - simulatedExtra,
       };
     });
-  }, [savingsGoals]);
+  }, [savingsGoals, countdownSimExtraValue, countdownSimGoalIdEffective, monthlyTotals]);
+
+  const countdownSimGoal = useMemo(() => {
+    if (!countdownSimGoalIdEffective) return null;
+    return countdownTableData.find(g => g.id === countdownSimGoalIdEffective) || null;
+  }, [countdownTableData, countdownSimGoalIdEffective]);
+
+  // Se o aporte form for fechado ou o valor mudar, resetar o estado de aporte se necessário
+  // (Opcional, mas ajuda a manter a consistência)
+
+  const countdownSimAvailableEndOfMonth = monthlyTotals.net - countdownSimExtraValue;
+
+  const isSimExceedsTarget = useMemo(() => {
+    if (!countdownSimGoal || !countdownSimExtraValue) return false;
+    const remaining = countdownSimGoal.targetAmount - countdownSimGoal.currentAmount;
+    return countdownSimExtraValue > (remaining + 0.01);
+  }, [countdownSimGoal, countdownSimExtraValue]);
+
+  const countdownSimIsGoalAchieved = countdownSimGoal ? countdownSimGoal.remainingAfterSimulated <= 0 : false;
 
   // Contribution Table Data
   const contributionTableData = useMemo(() => {
@@ -593,323 +1318,780 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     });
   }, [allContributions, startDate, endDate, selectedGoalId, savingsGoals]);
 
-  // Goals vs Expenses Analysis
-  const goalsVsExpensesData = useMemo(() => {
-    const expenseCategories: Record<string, number> = {};
-    transactions
-      .filter(t => t.type === 'expense' && t.isPaid)
-      .forEach(t => {
-        expenseCategories[t.category] = (expenseCategories[t.category] || 0) + t.amount;
-      });
-
-    const goalTotals = savingsGoals.reduce((sum, g) => sum + g.currentAmount, 0);
-
-    const categories = Object.keys(expenseCategories).slice(0, 8); // Top 8
-    const expenseAmounts = categories.map(cat => expenseCategories[cat]);
-    const colors = [
-      '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
-      '#8BC34A', '#E91E63',
-    ];
-
-    return {
-      labels: categories,
-      datasets: [{
-        label: 'Despesas por Categoria',
-        data: expenseAmounts,
-        backgroundColor: colors.slice(0, categories.length),
-        borderColor: theme.cardBackground,
-        borderWidth: 2,
-      }],
-      goalTotals,
-    };
-  }, [transactions, savingsGoals, theme.cardBackground]);
-
   const renderCardHeader = (id: string, label: string, icon: React.ReactNode, index: number, isCollapsed: boolean, onToggleAll?: () => void) => (
-    <div className="p-4 border-b font-semibold text-text flex items-center justify-between group" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+    <div className="p-4 border-b font-semibold text-foreground flex items-center justify-between group bg-muted/30 border-border">
       <div className="flex items-center gap-3">
         <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/20 text-primary font-bold text-xs">
           {DEFAULT_LAYOUT.find(item => item.id === id)?.number}
         </div>
         <div className="flex items-center gap-2">
           {icon}
-          <span className="text-sm lg:text-base">{label}</span>
+          <span className="text-sm lg:text-base uppercase font-black tracking-tight">{label}</span>
         </div>
       </div>
       <div className="flex items-center gap-1">
         {onToggleAll && !isCollapsed && (
-          <button 
+          <Button 
             onClick={(e) => { e.stopPropagation(); onToggleAll(); }}
-            className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
             title="Alternar Todos"
           >
             <Eye className="w-4 h-4" />
-          </button>
+          </Button>
         )}
-        <button
+        <Button
           onClick={(e) => { e.stopPropagation(); moveItem(index, 'up'); }}
           disabled={index === 0}
-          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 disabled:opacity-0"
           title="Mover para Cima"
         >
           <ArrowUp className="w-4 h-4" />
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={(e) => { e.stopPropagation(); moveItem(index, 'down'); }}
           disabled={index === layout.length - 1}
-          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 disabled:opacity-0"
           title="Mover para Baixo"
         >
           <ArrowDown className="w-4 h-4" />
-        </button>
-        <div className="w-[1px] h-4 mx-1 bg-cardBorder opacity-0 group-hover:opacity-100" />
-        <button
+        </Button>
+        <div className="w-[1px] h-4 mx-1 bg-border opacity-0 group-hover:opacity-100" />
+        <Button
           onClick={() => toggleCollapse(id)}
-          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
           title={isCollapsed ? "Expandir" : "Minimizar"}
         >
           {isCollapsed ? <Maximize2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
-        </button>
+        </Button>
       </div>
     </div>
   );
 
   return (
     <div className="space-y-6 pb-10 max-w-full overflow-x-hidden relative">
+      <style>
+        {`
+          @keyframes pulse-border {
+            0% { border-color: ${theme.cardBorder}; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.1); }
+            50% { border-color: rgba(239, 68, 68, 0.8); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0.3); }
+            100% { border-color: ${theme.cardBorder}; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.1); }
+          }
+          .animate-pulse-border {
+            animation: pulse-border 1.5s infinite ease-in-out;
+          }
+          input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+          }
+          input[type=range]:focus {
+            outline: none;
+          }
+          input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: ${theme.primary}33;
+            border-radius: 8px;
+          }
+          input[type=range]::-webkit-slider-thumb {
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: ${theme.primary};
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+          }
+          input[type=range]::-moz-range-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: ${theme.primary}33;
+            border-radius: 8px;
+          }
+          input[type=range]::-moz-range-thumb {
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: ${theme.primary};
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            border: none;
+          }
+        `}
+      </style>
       <div className="flex flex-col lg:flex-row gap-6 items-start mt-4">
         {/* Sidebar Filters */}
         {showFilters && (
           <div className="w-full lg:w-80 lg:sticky lg:top-24 space-y-4 flex-shrink-0 animate-in slide-in-from-left duration-300">
-            <div className="rounded-2xl border overflow-hidden shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-              <div className="p-4 font-semibold text-text flex items-center justify-between border-b" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+            <Card noPadding className="overflow-hidden shadow-sm">
+              <div className="p-4 font-semibold text-foreground flex items-center justify-between border-b bg-muted/30 border-border">
                 <div className="flex items-center gap-2">
                   <Filter className="w-5 h-5" />
                   <span>Filtros</span>
                 </div>
-                <button 
+                <Button 
                   onClick={() => setShowFilters(false)}
-                  className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+                  variant="ghost"
+                  size="sm"
                   title="Esconder Filtros"
+                  className="opacity-50 hover:opacity-100"
                 >
                   <PanelLeftClose className="w-5 h-5" />
-                </button>
+                </Button>
               </div>
 
               <div className="p-4 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-text opacity-70 mb-2">Período</label>
-                <div className="space-y-2">
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full p-2.5 rounded-lg border text-sm"
-                    style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                  />
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full p-2.5 rounded-lg border text-sm"
-                    style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                  />
-                </div>
+                <label className="block text-xs font-medium text-muted-foreground mb-2">Período</label>
+                <DateRangePicker 
+                  startDate={startDate}
+                  endDate={endDate}
+                  onChange={(start, end) => {
+                    setStartDate(start);
+                    setEndDate(end);
+                  }}
+                  theme={theme}
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-text opacity-70 mb-2">Meta (Tabela de Aportes)</label>
-                <select
+                <Select
+                  label="Meta (Tabela de Aportes)"
                   value={selectedGoalId || ''}
                   onChange={(e) => setSelectedGoalId(e.target.value || null)}
-                  className="w-full p-2.5 rounded-lg border text-sm"
-                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
                 >
                   <option value="">Todas as Metas</option>
                   {activeGoals.map(goal => (
                     <option key={goal.id} value={goal.id}>{goal.name}</option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               {(savingsGoals.some(g => g.status === 'deleted') || 
                 savingsGoals.some(g => g.contributions.some(c => c.status === 'deleted'))) && (
-                <div>
-                  <label className="block text-xs font-medium text-text opacity-70 mb-2">Visibilidade</label>
-                  <button
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-muted-foreground">Visibilidade</label>
+                  <Button
                     onClick={() => setShowDeleted(!showDeleted)}
-                    className={`w-full py-2 rounded-md text-[10px] transition-all border font-bold uppercase flex items-center justify-center gap-2 ${
-                      showDeleted 
-                        ? 'bg-accent text-white border-accent shadow-sm' 
-                        : 'bg-transparent text-text opacity-70 border-cardBorder hover:bg-cardBorder/30'
-                    }`}
-                    style={{ 
-                      backgroundColor: showDeleted ? theme.accent : 'transparent',
-                      color: showDeleted ? '#fff' : theme.text 
-                    }}
+                    variant={showDeleted ? 'accent' : 'outline'}
+                    size="sm"
+                    className="w-full uppercase text-[10px]"
                   >
-                    <Trash2 className={`w-3 h-3 ${showDeleted ? 'animate-pulse' : ''}`} />
+                    <Trash2 className={cn("w-3 h-3 mr-2", showDeleted && "animate-pulse")} />
                     {showDeleted ? 'Mostrando Excluídos' : 'Ver Excluídos'}
-                  </button>
+                  </Button>
                 </div>
               )}
 
-              <button
+              <Button
                 onClick={() => {
                   setSelectedGoalId(null);
                   setStartDate(format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
                   setEndDate(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
                 }}
-                className="w-full py-2.5 text-xs text-primary font-bold border border-primary rounded-xl hover:bg-primary hover:text-white transition-all shadow-sm"
+                variant="outline"
+                className="w-full text-xs"
               >
                 LIMPAR FILTROS
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
         )}
 
         {/* Main Content Area */}
         <div className="flex-1 space-y-8 w-full">
           {!showFilters && (
-            <button
+            <Button
               onClick={() => setShowFilters(true)}
-              className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-md hover:scale-105 transition-all animate-in slide-in-from-left duration-300"
+              className="flex items-center gap-2"
             >
               <PanelLeftOpen className="w-5 h-5" />
               MOSTRAR FILTROS
-            </button>
+            </Button>
           )}
           {/* Summary Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-              <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Total em Metas</p>
+            <Card className="p-4 bg-card border-border">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Total em Metas</p>
               <p className="text-2xl font-black text-primary">
                 {formatCurrency(activeGoals.reduce((sum, g) => sum + g.currentAmount, 0))}
               </p>
-            </div>
-            <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-              <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Total Alvo</p>
+            </Card>
+            <Card className="p-4 bg-card border-border">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Total Alvo</p>
               <p className="text-2xl font-black text-accent">
                 {formatCurrency(activeGoals.reduce((sum, g) => sum + g.targetAmount, 0))}
               </p>
-            </div>
-            <div className="rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-              <p className="text-xs font-bold text-text opacity-60 uppercase tracking-widest mb-1">Qtd. de Metas</p>
+            </Card>
+            <Card className="p-4 bg-card border-border">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Qtd. de Metas</p>
               <p className="text-2xl font-black text-primary">
                 {activeGoals.length}
               </p>
-            </div>
+            </Card>
           </div>
+
+          {/* Card de Disponibilidade Mensal */}
+          <Card ref={simulationRef} noPadding className="relative group/simcard overflow-hidden shadow-md transition-all hover:shadow-lg">
+            <div 
+              className="p-4 border-b font-semibold text-foreground flex items-center justify-between bg-muted/30 border-border"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/20 text-primary font-bold text-xs">
+                  S
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calculator className="w-5 h-5 text-primary" />
+                  <span className="text-sm lg:text-base uppercase font-black tracking-tight">Faça Simulações aqui</span>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handlePrintSimulation}
+                  variant="ghost"
+                  size="sm"
+                  className="hidden group-hover/simcard:flex items-center gap-2 text-[10px] h-8"
+                  title="Imprimir Simulação"
+                >
+                  <Printer className="w-4 h-4 text-primary" />
+                  IMPRIMIR
+                </Button>
+                <div className="w-[1px] h-4 mx-1 bg-border hidden group-hover/simcard:block" />
+                <Button
+                  onClick={() => setIsSimCardCollapsed(!isSimCardCollapsed)}
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  title={isSimCardCollapsed ? "Expandir" : "Minimizar"}
+                >
+                  {isSimCardCollapsed ? <Maximize2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
+
+            {!isSimCardCollapsed && (
+              <div className="p-6">
+                <div className="flex flex-col gap-8">
+                  {/* Container Superior: Simulação e Resumo */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Lado Esquerdo: Configuração e Impacto */}
+                    <div className="space-y-6">
+                      <div className="flex flex-col h-full">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
+                          <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px]">1</span>
+                          Simulação e Impacto
+                        </p>
+                        
+                        <div className="flex-1 space-y-6">
+                          {/* Seção de Input de Aporte */}
+                          <div className="rounded-2xl border border-border p-5 bg-muted/5 space-y-4">
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                Meta Alvo
+                              </p>
+                              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                {countdownSimGoal ? (
+                                  <>
+                                    Atual: <span className="font-mono font-bold text-foreground">{formatCurrency(countdownSimGoal.currentAmount)}</span> / Alvo: <span className="font-mono font-bold text-foreground">{formatCurrency(countdownSimGoal.targetAmount)}</span>
+                                  </>
+                                ) : (
+                                  <>Selecione uma meta para simular</>
+                                )}
+                              </p>
+                            </div>
+
+                            <div className="space-y-3">
+                              <Select
+                                value={countdownSimGoalIdEffective || ''}
+                                onChange={(e) => handleCountdownSimGoalChange(e.target.value)}
+                                disabled={savingsGoals.length === 0}
+                                className="h-10 text-xs bg-background border-border text-foreground"
+                              >
+                                <option value="" disabled className="bg-card text-foreground">Selecione a meta...</option>
+                                {savingsGoals.map(g => (
+                                  <option key={g.id} value={g.id} className="bg-card text-foreground">{g.name}</option>
+                                ))}
+                              </Select>
+                              
+                              <div className="relative group">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-primary opacity-50 font-bold text-xs">R$</div>
+                                <Input
+                                  {...countdownSimExtraInputProps}
+                                  onFocus={() => setIsSimInputFocused(true)}
+                                  onBlur={() => setIsSimInputFocused(false)}
+                                  placeholder={!isSimInputFocused ? "Valor do aporte..." : "0"}
+                                  className={cn(
+                                    "pl-10 text-right transition-all duration-300 h-11 text-lg font-black bg-background text-foreground border-border",
+                                    !isSimInputFocused && !countdownSimExtraValue && 'animate-pulse-border',
+                                    countdownSimExtraValue > 0 && 'border-primary ring-2 ring-primary/10 bg-primary/[0.02]'
+                                  )}
+                                  disabled={!countdownSimGoalIdEffective}
+                                />
+                              </div>
+
+                              {countdownSimExtraValue > 0 && onAddTransaction && (
+                                <div className="animate-in fade-in zoom-in duration-300">
+                                  <Button
+                                    onClick={() => !isSimExceedsTarget && setShowAporteForm(true)}
+                                    disabled={isSimExceedsTarget}
+                                    size="sm"
+                                    className="w-full text-[10px] font-black uppercase tracking-widest h-10 shadow-lg"
+                                  >
+                                    <PlusCircle className="w-4 h-4 mr-2" />
+                                    {isSimExceedsTarget ? 'VALOR EXCEDIDO' : 'REGISTRAR APORTE'}
+                                  </Button>
+                                  {isSimExceedsTarget && countdownSimGoal && (
+                                    <span className="text-[10px] text-destructive font-black animate-pulse text-center uppercase tracking-tighter block mt-2">
+                                      Aporte maior que o restante ({formatCurrency(countdownSimGoal.targetAmount - countdownSimGoal.currentAmount)})
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Seção de Simulação de Data e Gasto Catastrófico (Movido da Seção 3) */}
+                          <div className="rounded-2xl border border-border p-5 bg-muted/5 space-y-5">
+                            {/* Time Travel Simulation */}
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
+                                  ⏳ Simular dia...
+                                </label>
+                                {timeTravelDate && (
+                                  <button 
+                                    onClick={() => setTimeTravelDate(null)}
+                                    className="text-[9px] font-black text-amber-600 hover:text-amber-700 uppercase tracking-tighter"
+                                  >
+                                    Limpar
+                                  </button>
+                                )}
+                              </div>
+                              <Input
+                                type="date"
+                                value={timeTravelDate || ''}
+                                onChange={(e) => setTimeTravelDate(e.target.value || null)}
+                                className="h-9 text-[11px] bg-background border-border"
+                              />
+                            </div>
+
+                            {/* Gasto Catastrófico */}
+                            <div className="pt-4 border-t border-border/40 space-y-3">
+                              <label className="text-[9px] font-black uppercase text-destructive tracking-widest flex items-center gap-1.5">
+                                💣 Inserir um gasto imprevisto para simular cenário pessimista
+                              </label>
+                              <div className="grid grid-cols-2 gap-3">
+                                <Input
+                                  {...catastrophicAmountInputProps}
+                                  placeholder="Valor R$"
+                                  className="h-9 text-[11px] bg-background border-border"
+                                />
+                                <Input
+                                  type="text"
+                                  value={catastrophicName}
+                                  onChange={(e) => setCatastrophicName(e.target.value)}
+                                  placeholder="Motivo..."
+                                  className="h-9 text-[11px] bg-background border-border"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Seção de Impacto */}
+                          <div className={cn(
+                            "rounded-2xl border p-5 transition-all duration-500",
+                            countdownSimGoal && countdownSimExtraValue > 0 
+                              ? "bg-primary/[0.03] border-primary/30 shadow-sm" 
+                              : "bg-muted/5 border-border opacity-50"
+                          )}>
+                            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-3 flex items-center justify-between">
+                              Resultado Estimado
+                              {countdownSimGoal && countdownSimExtraValue > 0 && (
+                                <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">Simulado</span>
+                              )}
+                            </p>
+                            
+                            <div className="min-h-[60px] flex flex-col justify-center">
+                              {countdownSimGoal && countdownSimExtraValue > 0 ? (
+                                countdownSimIsGoalAchieved ? (
+                                  <div className="flex items-center gap-3 text-primary animate-in zoom-in duration-300">
+                                    <div className="p-2 rounded-full bg-primary/20">
+                                      <CheckCircle2 className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-black uppercase tracking-tight">Meta Atingida!</p>
+                                      <p className="text-[10px] font-bold opacity-70">Aporte cobre o saldo restante.</p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2 animate-in slide-in-from-left duration-300">
+                                    <div className="flex items-baseline gap-2">
+                                      <span className="text-2xl font-black text-primary tracking-tighter">
+                                        -{countdownSimGoal.monthsSaved}
+                                      </span>
+                                      <span className="text-xs font-bold text-primary uppercase">
+                                        {countdownSimGoal.monthsSaved === 1 ? 'mês' : 'meses'}
+                                      </span>
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">
+                                      Restarão apenas {countdownSimGoal.monthsWithSimulated} {countdownSimGoal.monthsWithSimulated === 1 ? 'mês' : 'meses'} para o alvo.
+                                    </p>
+                                  </div>
+                                )
+                              ) : (
+                                <div className="flex flex-col items-center justify-center py-2 text-center">
+                                  <Info className="w-5 h-5 text-muted-foreground/30 mb-2" />
+                                  <p className="text-[10px] text-muted-foreground font-medium italic">
+                                    Selecione uma meta e valor para ver o impacto no tempo de conclusão.
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Lado Direito (Topo): Resumo do Período */}
+                    <div className="flex flex-col h-full">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px]">2</span>
+                        Resumo Financeiro
+                      </p>
+
+                      <div 
+                        className="flex-1 rounded-2xl border border-border p-5 bg-muted/10 flex flex-col"
+                        title={`Cálculo:\nSaldo Anterior: ${formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}\nReceitas (+): ${formatCurrency(monthlyTotals.revenues)}\nDespesas (-): ${formatCurrency(monthlyTotals.expenses)}\nAportes Reais (-): ${formatCurrency(monthlyTotals.realContributions)}\nAporte Simulado (-): ${formatCurrency(countdownSimExtraValue)}\nGasto Extra (Catastrófico) (-): ${formatCurrency(catastrophicAmountValue)}\nTotal: ${formatCurrency(countdownSimAvailableEndOfMonth)}`}
+                      >
+                        <div className="mb-4">
+                          <p className="text-[9px] font-bold uppercase text-muted-foreground/80 tracking-widest mb-1">
+                            Período de Análise
+                          </p>
+                          <p className="text-[10px] font-black text-foreground">
+                            {formatBrazilDate(parseLocalDate(startDate), 'dd/MM/yyyy')} — {formatBrazilDate(parseLocalDate(endDate), 'dd/MM/yyyy')}
+                          </p>
+                        </div>
+                        
+                        <div className={`flex flex-col gap-1 font-black \${countdownSimAvailableColorClass} p-4 rounded-xl bg-background/40 border border-border/50 mb-6`}>
+                          <div className="flex items-center gap-1.5">
+                            {countdownSimAvailableEndOfMonth < 0 ? <AlertCircle className="w-4 h-4" /> :
+                              countdownSimAvailableEndOfMonth < 500 ? <Pin className="w-4 h-4" /> :
+                              <CheckCircle2 className="w-4 h-4" />
+                            }
+                            <span className="text-[10px] uppercase text-foreground/60 tracking-tight">Saldo Final Estimado</span>
+                          </div>
+                          <span className="text-3xl tracking-tighter"> {formatCurrency(countdownSimAvailableEndOfMonth)}</span>
+                        </div>
+
+                        <div className="text-[11px] text-muted-foreground/90 font-mono space-y-2.5">
+                          <div className="flex justify-between items-center border-b border-border/40 pb-1.5">
+                            <span className="opacity-80 text-foreground/70">Saldo Anterior:</span>
+                            <span className="font-bold text-foreground">{formatCurrency(monthlyTotals.previousMonthAdjustedBalance)}</span>
+                          </div>
+                          <div className="flex justify-between items-center border-b border-border/40 pb-1.5">
+                            <span className="text-primary font-bold opacity-100">+ Receitas:</span>
+                            <span className="font-bold text-foreground">{formatCurrency(monthlyTotals.revenues)}</span>
+                          </div>
+                          <div className="flex justify-between items-center border-b border-border/40 pb-1.5">
+                            <span className="text-destructive font-bold opacity-100">- Despesas:</span>
+                            <span className="font-bold text-foreground">{formatCurrency(monthlyTotals.expenses)}</span>
+                          </div>
+                          <div className="flex justify-between items-center border-b border-border/40 pb-1.5">
+                            <span className="text-destructive font-bold opacity-100">- Aportes Reais:</span>
+                            <span className="font-bold text-foreground">{formatCurrency(monthlyTotals.realContributions)}</span>
+                          </div>
+                          {countdownSimExtraValue > 0 && (
+                            <div className="flex justify-between items-center border-b border-border/40 pb-1.5 text-primary bg-primary/5 px-2 -mx-2 rounded-md">
+                              <span className="font-bold uppercase text-[9px]">Aporte Simulado:</span>
+                              <span className="font-black underline underline-offset-4">{formatCurrency(countdownSimExtraValue)}</span>
+                            </div>
+                          )}
+                          {catastrophicAmountValue > 0 && (
+                            <div className="flex justify-between items-center border-b border-border/40 pb-1.5 text-accent bg-accent/5 px-2 -mx-2 rounded-md">
+                              <span className="font-bold uppercase text-[9px]">Gastos Extra:</span>
+                              <span className="font-black underline underline-offset-4">{formatCurrency(catastrophicAmountValue)}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Container Inferior: Projeção de Caixa (Full Width) */}
+                  <div className="flex flex-col border-t border-border pt-8">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px]">3</span>
+                      Projeção de Caixa
+                    </p>
+
+                    <div className={cn(
+                      "flex-1 rounded-2xl border border-border p-6 transition-all duration-300 bg-muted/10",
+                      timeTravelDate && 'border-amber-500 bg-amber-500/5 shadow-[0_0_20px_rgba(245,158,11,0.1)]'
+                    )}>
+                      <div className="lg:flex lg:gap-8 h-full">
+                        {/* Controles da Projeção */}
+                          <div className="lg:w-1/4 space-y-6">
+                          {/* Toggle de Visualização */}
+                          <div className="flex gap-2 p-1.5 bg-muted rounded-xl border border-border">
+                            <Button 
+                              onClick={() => setProjectionView('current')}
+                              variant={projectionView === 'current' ? 'primary' : 'ghost'}
+                              size="sm"
+                              className="flex-1 text-[10px] font-bold h-8"
+                            >
+                              FILTRO
+                            </Button>
+                            <Button 
+                              onClick={() => setProjectionView('forward')}
+                              variant={projectionView === 'forward' ? 'primary' : 'ghost'}
+                              size="sm"
+                              className="flex-1 text-[10px] font-bold h-8"
+                            >
+                              FUTURO
+                            </Button>
+                          </div>
+
+                          {/* Configurações da Projeção */}
+                          <div className="space-y-6">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">
+                                  {projectionView === 'forward' ? 'Dias à frente' : 'Dias no período'}
+                                </label>
+                                <span className="text-xs font-black text-primary bg-primary/10 px-2 py-1 rounded-lg border border-primary/20">
+                                  {projectionView === 'forward' ? `${projectionDays}d` : `${currentPeriodDailyData.dailyBalances.length}d`}
+                                </span>
+                              </div>
+                              <input 
+                                type="range" 
+                                min="1" 
+                                max={Math.min(maxProjectionDays, 60)} 
+                                value={projectionDays}
+                                onChange={(e) => setProjectionDays(Number(e.target.value))}
+                                disabled={projectionView === 'current'}
+                                className={cn(
+                                  "w-full cursor-pointer h-2 bg-muted rounded-lg appearance-none transition-opacity",
+                                  projectionView === 'current' ? 'opacity-30 cursor-not-allowed' : 'opacity-100'
+                                )}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Detalhamento e Saldo Final */}
+                        <div className="lg:w-3/4 flex flex-col h-full mt-8 lg:mt-0">
+                          <div className="flex-1 overflow-x-auto min-h-[300px] max-h-[450px] scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+                            <table className="w-full text-left text-xs border-collapse">
+                              <thead>
+                                <tr className="bg-muted/40" style={{ color: theme.text }}>
+                                  <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Data</th>
+                                  <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Saldo Inicial</th>
+                                  <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Receitas</th>
+                                  <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Despesas</th>
+                                  <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Saldo Final</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
+                                {(projectionView === 'forward' ? nextDaysData.dailyBalances : currentPeriodDailyData.dailyBalances).map((day: any) => (
+                                  <tr key={day.date} className={cn(
+                                    "text-foreground hover:bg-primary/5 transition-colors group",
+                                    day.isNegative && "bg-destructive/10"
+                                  )}>
+                                    <td className="p-4 border-r font-mono text-xs" style={{ borderColor: theme.cardBorder }}>
+                                      <div className="flex flex-col">
+                                        <span className="font-bold">{formatBrazilDate(parseLocalDate(day.date), 'dd/MM')}</span>
+                                        <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-tighter">
+                                          {formatBrazilDate(parseLocalDate(day.date), 'EEEE')}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td className="p-4 border-r font-mono text-xs opacity-70" style={{ borderColor: theme.cardBorder }}>
+                                      {day.openingBalance !== undefined ? formatCurrency(day.openingBalance) : '-'}
+                                    </td>
+                                    <td className="p-4 border-r font-mono text-xs" style={{ borderColor: theme.cardBorder }}>
+                                      {day.revenues > 0 ? (
+                                        <span className="text-primary font-bold">+{formatCurrency(day.revenues)}</span>
+                                      ) : <span className="opacity-20">-</span>}
+                                    </td>
+                                    <td className="p-4 border-r font-mono text-xs" style={{ borderColor: theme.cardBorder }}>
+                                      {day.expenses > 0 ? (
+                                        <span className="text-destructive font-bold">-{formatCurrency(day.expenses)}</span>
+                                      ) : <span className="opacity-20">-</span>}
+                                    </td>
+                                    <td className={cn(
+                                      "p-4 text-right font-black text-base",
+                                      day.isNegative ? 'text-destructive animate-pulse' : 
+                                      day.total < 500 ? 'text-amber-500' : 'text-primary'
+                                    )}>
+                                      {formatCurrency(day.total)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* Resumo Final da Projeção */}
+                          <div className="mt-6 pt-6 border-t border-border/40">
+                            <div className="flex justify-between items-end">
+                              <div className="space-y-1">
+                                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Saldo Final Projetado</p>
+                                <span className={cn(
+                                  "text-3xl lg:text-5xl font-black tracking-tighter",
+                                  (projectionView === 'forward' ? nextDaysData.total : countdownSimAvailableEndOfMonth) < 0 ? 'text-destructive' : 'text-primary'
+                                )}>
+                                  {formatCurrency(projectionView === 'forward' ? nextDaysData.total : countdownSimAvailableEndOfMonth)}
+                                </span>
+                              </div>
+                              {(projectionView === 'forward' ? nextDaysData.negativeCount : currentPeriodDailyData.negativeCount) > 0 && (
+                                <div className="text-right">
+                                  <span className="bg-destructive text-destructive-foreground text-[10px] font-black px-3 py-2 rounded-xl animate-bounce inline-block uppercase tracking-widest shadow-lg border border-white/20">
+                                    {projectionView === 'forward' ? nextDaysData.negativeCount : currentPeriodDailyData.negativeCount} DIAS NEGATIVOS DETECTADOS ⚠️
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </Card>
+
+          {showAporteForm && (
+            <TransactionForm
+              type="expense"
+              savingsGoals={savingsGoals}
+              submitError={formError}
+              replicateTransaction={{
+                id: 'simulated',
+                amount: countdownSimExtraValue,
+                description: `Aporte: ${countdownSimGoal?.name || ''}`,
+                category: 'Aporte',
+                date: getBrazilDateString(),
+                dueDate: getBrazilDateString(),
+                isPaid: true,
+                type: 'expense',
+                savingsGoalId: countdownSimGoalIdEffective || undefined,
+                createdAt: getCurrentBrazilDate().toISOString(),
+                updatedAt: getCurrentBrazilDate().toISOString()
+              } as any}
+              onSubmit={handleRegisterAporte}
+              onClose={() => {
+                setShowAporteForm(false);
+                setFormError(null);
+              }}
+            />
+
+          )}
 
           {/* Renderable Sections */}
           {layout.map((item, index) => {
             switch (item.id) {
               case 'financial_simulators':
                 return (
-                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <Card key={item.id} noPadding className="overflow-hidden shadow-md transition-all hover:shadow-lg">
                     {renderCardHeader(item.id, item.label, <Calculator className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(simChartRef))}
                     {!item.collapsed && (
                       <div className="p-6 md:p-8 space-y-8">
-                        {/* Simulation Controls */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                           <div className="space-y-6">
-                            <div className="flex gap-2 p-1 bg-cardBorder/30 rounded-xl">
-                              <button 
+                            <div className="flex gap-2 p-1 bg-muted/30 rounded-xl border border-border">
+                              <Button 
                                 onClick={() => setSimMode('investment')}
-                                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${simMode === 'investment' ? 'bg-primary text-white shadow-md' : 'text-text opacity-70 hover:opacity-100'}`}
+                                variant={simMode === 'investment' ? 'primary' : 'ghost'}
+                                size="sm"
+                                className="flex-1 text-[10px] font-bold h-8"
                               >
                                 Investimento Livre
-                              </button>
-                              <button 
+                              </Button>
+                              <Button 
                                 onClick={() => setSimMode('goal_reach')}
-                                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${simMode === 'goal_reach' ? 'bg-primary text-white shadow-md' : 'text-text opacity-70 hover:opacity-100'}`}
+                                variant={simMode === 'goal_reach' ? 'primary' : 'ghost'}
+                                size="sm"
+                                className="flex-1 text-[10px] font-bold h-8"
                               >
                                 Alcance de Meta
-                              </button>
+                              </Button>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <label className="text-[10px] font-bold uppercase opacity-50">Valor Inicial (R$)</label>
-                                <input 
-                                  type="number" 
-                                  value={simInitialAmount}
-                                  onChange={(e) => setSimInitialAmount(Number(e.target.value))}
-                                  className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
-                                  style={{ borderColor: theme.cardBorder }}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-[10px] font-bold uppercase opacity-50">Aporte Mensal (R$)</label>
-                                <input 
-                                  type="number" 
-                                  value={simMonthlyAmount}
-                                  onChange={(e) => setSimMonthlyAmount(Number(e.target.value))}
-                                  className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
-                                  style={{ borderColor: theme.cardBorder }}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-[10px] font-bold uppercase opacity-50">Juros Mensal (%)</label>
-                                <input 
-                                  type="number" 
-                                  step="0.1"
-                                  value={simInterestRate}
-                                  onChange={(e) => setSimInterestRate(Number(e.target.value))}
-                                  className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
-                                  style={{ borderColor: theme.cardBorder }}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-[10px] font-bold uppercase opacity-50">Período (Meses)</label>
-                                <input 
-                                  type="number" 
-                                  value={simPeriod}
-                                  onChange={(e) => setSimPeriod(Number(e.target.value))}
-                                  className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
-                                  style={{ borderColor: theme.cardBorder }}
-                                />
-                              </div>
+                              <Input 
+                                {...simInitialAmountInputProps}
+                                label="Valor Inicial (R$)"
+                                className="font-bold bg-background border-border text-foreground"
+                              />
+                              <Input 
+                                {...simMonthlyAmountInputProps}
+                                label="Aporte Mensal (R$)"
+                                className="font-bold bg-background border-border text-foreground"
+                              />
+                              <Input 
+                                type="number" 
+                                step="0.1"
+                                value={simInterestRate}
+                                onChange={(e) => setSimInterestRate(Number(e.target.value))}
+                                label="Juros Mensal (%)"
+                                className="font-bold bg-background border-border text-foreground"
+                              />
+                              <Input 
+                                type="number" 
+                                value={simPeriod}
+                                onChange={(e) => setSimPeriod(Number(e.target.value))}
+                                label="Período (Meses)"
+                                className="font-bold bg-background border-border text-foreground"
+                              />
                             </div>
 
                             {simMode === 'goal_reach' && (
-                              <div className="space-y-2">
-                                <label className="text-[10px] font-bold uppercase opacity-50">Vincular a Meta Existente</label>
-                                <select 
-                                  value={simTargetGoalId || ''}
-                                  onChange={(e) => {
-                                    const goalId = e.target.value;
-                                    setSimTargetGoalId(goalId);
-                                    const goal = activeGoals.find(g => g.id === goalId);
-                                    if (goal) {
-                                      setSimInitialAmount(goal.currentAmount);
-                                      // Calculate months needed based on current sim settings if target is to reach goal
-                                      const remaining = goal.targetAmount - goal.currentAmount;
-                                      if (simMonthlyAmount > 0) {
-                                        setSimPeriod(Math.ceil(remaining / simMonthlyAmount));
-                                      }
+                              <Select 
+                                label="Vincular a Meta Existente"
+                                value={simTargetGoalId || ''}
+                                className="bg-background border-border text-foreground"
+                                onChange={(e) => {
+                                  const goalId = e.target.value;
+                                  setSimTargetGoalId(goalId);
+                                  const goal = activeGoals.find(g => g.id === goalId);
+                                  if (goal) {
+                                    setSimInitialAmount(goal.currentAmount);
+                                    const remaining = goal.targetAmount - goal.currentAmount;
+                                    if (simMonthlyAmountValue > 0) {
+                                      setSimPeriod(Math.ceil(remaining / simMonthlyAmountValue));
                                     }
-                                  }}
-                                  className="w-full p-3 rounded-xl border text-sm font-bold bg-transparent focus:ring-2 focus:ring-primary/20 outline-none"
-                                  style={{ borderColor: theme.cardBorder }}
-                                >
-                                  <option value="">Nenhuma Meta</option>
-                                  {activeGoals.map(g => (
-                                    <option key={g.id} value={g.id}>{g.name} ({formatCurrency(g.targetAmount)})</option>
-                                  ))}
-                                </select>
-                              </div>
+                                  }
+                                }}
+                              >
+                                <option value="" className="bg-card text-foreground">Nenhuma Meta</option>
+                                {activeGoals.map(g => (
+                                  <option key={g.id} value={g.id} className="bg-card text-foreground">{g.name} ({formatCurrency(g.targetAmount)})</option>
+                                ))}
+                              </Select>
                             )}
 
-                            {/* Summary Box */}
                             <div className="p-5 rounded-2xl bg-primary/5 border border-primary/20 flex items-center justify-between">
                               <div>
-                                <p className="text-[10px] font-bold uppercase opacity-60">Total ao Final</p>
+                                <p className="text-[10px] font-bold uppercase text-foreground/60">Total ao Final</p>
                                 <p className="text-2xl font-black text-primary">
                                   {formatCurrency(simulationResults[simulationResults.length - 1].total)}
                                 </p>
                               </div>
                               <div className="text-right">
-                                <p className="text-[10px] font-bold uppercase opacity-60">Juros Ganhos</p>
+                                <p className="text-[10px] font-bold uppercase text-foreground/60">Juros Ganhos</p>
                                 <p className="text-xl font-black text-accent">
                                   {formatCurrency(simulationResults[simulationResults.length - 1].interest)}
                                 </p>
@@ -933,40 +2115,39 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                           </div>
                         </div>
 
-                        {/* Salary vs Savings Analysis Row */}
-                        <div className="pt-8 border-t" style={{ borderColor: theme.cardBorder }}>
-                          <h4 className="text-sm font-bold mb-4 flex items-center gap-2">
+                        <div className="pt-8 border-t border-border">
+                          <h4 className="text-sm font-bold mb-4 flex items-center gap-2 text-foreground">
                             <Info className="w-4 h-4 text-primary" />
                             Análise Baseada no seu Histórico de Salário
                           </h4>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="p-4 rounded-xl border bg-cardBorder/10" style={{ borderColor: theme.cardBorder }}>
-                              <p className="text-[10px] font-bold uppercase opacity-50 mb-1">Média Salarial Mensal</p>
-                              <p className="text-lg font-black text-text">{formatCurrency(salaryAnalysis.avgIncome)}</p>
-                              <p className="text-[10px] opacity-40 mt-1">Baseado em {salaryAnalysis.monthsCount} meses</p>
+                            <div className="p-4 rounded-xl border bg-muted/10 border-border">
+                              <p className="text-[10px] font-bold uppercase text-muted-foreground/80 mb-1">Média Salarial Mensal</p>
+                              <p className="text-lg font-black text-foreground">{formatCurrency(salaryAnalysis.avgIncome)}</p>
+                              <p className="text-[10px] text-muted-foreground/60 mt-1">Baseado em {salaryAnalysis.monthsCount} meses</p>
                             </div>
-                            <div className="p-4 rounded-xl border bg-cardBorder/10" style={{ borderColor: theme.cardBorder }}>
-                              <p className="text-[10px] font-bold uppercase opacity-50 mb-1">Média de Aportes</p>
+                            <div className="p-4 rounded-xl border bg-muted/10 border-border">
+                              <p className="text-[10px] font-bold uppercase text-muted-foreground/80 mb-1">Média de Aportes</p>
                               <p className="text-lg font-black text-primary">{formatCurrency(salaryAnalysis.avgSavings)}</p>
-                              <p className="text-[10px] opacity-40 mt-1">({salaryAnalysis.avgRate.toFixed(1)}% do salário)</p>
+                              <p className="text-[10px] text-muted-foreground/60 mt-1">({salaryAnalysis.avgRate.toFixed(1)}% do salário)</p>
                             </div>
                             <div className="p-4 rounded-xl border bg-primary/10 border-primary/30">
-                              <p className="text-[10px] font-bold uppercase opacity-50 mb-1">Potencial em 1 Ano</p>
+                              <p className="text-[10px] font-bold uppercase text-primary/70 mb-1">Potencial em 1 Ano</p>
                               <p className="text-lg font-black text-primary">
                                 {formatCurrency((salaryAnalysis.avgSavings * 12) * (1 + (simInterestRate/100) * 6))} 
                               </p>
-                              <p className="text-[10px] opacity-40 mt-1">Se mantiver a média + juros</p>
+                              <p className="text-[10px] text-primary/50 mt-1">Se mantiver a média + juros</p>
                             </div>
                           </div>
                         </div>
                       </div>
                     )}
-                  </div>
+                  </Card>
                 );
 
               case 'contribution_timeline':
                 return (
-                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <Card key={item.id} noPadding className="overflow-hidden shadow-md transition-all hover:shadow-lg">
                     {renderCardHeader(item.id, item.label, <TrendingUp className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(timelineChartRef))}
                     {!item.collapsed && (
                       <div className="p-8 h-80">
@@ -975,72 +2156,72 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                             ref={timelineChartRef}
                             data={timelineChartData}
                             options={{
-                              maintainAspectRatio: false,
-                              plugins: { legend: { labels: { color: theme.text } } },
-                              scales: {
-                                y: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } },
-                                x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } },
-                              },
-                            }}
+                                maintainAspectRatio: false,
+                                plugins: { legend: { labels: { color: theme.text } } },
+                                scales: {
+                                  y: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } },
+                                  x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
+                                }
+                              }}
                           />
                         ) : (
-                          <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
+                          <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
                             <TrendingUp className="w-12 h-12 opacity-10" />
                             <span>Nenhum aporte registrado</span>
                           </div>
                         )}
                       </div>
                     )}
-                  </div>
+                  </Card>
                 );
 
               case 'goals_distribution':
                 return (
-                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <Card key={item.id} noPadding className="overflow-hidden shadow-md transition-all hover:shadow-lg">
                     {renderCardHeader(item.id, item.label, <PieChartIcon className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(distributionChartRef))}
                     {!item.collapsed && (
                       <div className="p-8 h-80">
                         {activeGoals.length > 0 ? (
-                          <Doughnut
-                            ref={distributionChartRef}
-                            data={distributionChartData}
-                            options={{ maintainAspectRatio: false, plugins: { legend: { labels: { color: theme.text } } } }}
-                          />
+                          <Doughnut 
+                              ref={distributionChartRef}
+                              data={distributionChartData} 
+                              options={{ maintainAspectRatio: false, plugins: { legend: { labels: { color: theme.text } } } }} 
+                            />
                         ) : (
-                          <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
+                          <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
                             <PieChartIcon className="w-12 h-12 opacity-10" />
                             <span>Nenhuma meta cadastrada</span>
                           </div>
                         )}
                       </div>
                     )}
-                  </div>
+                  </Card>
                 );
 
               case 'contribution_table':
                 return (
-                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <Card key={item.id} noPadding className="overflow-hidden shadow-md transition-all hover:shadow-lg">
                     {renderCardHeader(item.id, item.label, <BarChart3 className="w-5 h-5 text-primary" />, index, item.collapsed)}
                     {!item.collapsed && (
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm border-collapse">
                           <thead>
-                            <tr className="bg-cardBorder bg-opacity-40" style={{ color: theme.text }}>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Data</th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Meta</th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Aporte</th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-center" style={{ borderColor: theme.cardBorder }}>
+                            <tr className="bg-muted/50 text-foreground">
+                              <th className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider">Data</th>
+                              <th className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider">Meta</th>
+                              <th className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider">Aporte</th>
+                              <th className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider text-center">
                                 <Trash2 className="w-3 h-3 mx-auto" />
                               </th>
-                              <th className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>% da Meta</th>
+                              <th className="p-4 border-b border-border font-bold uppercase text-[10px] tracking-wider text-right">% da Meta</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
+                          <tbody className="divide-y divide-border/30">
                             {contributionTableData.length > 0 ? (
                               contributionTableData.map(c => {
                                 const isDeleted = c.status === 'deleted' || showDeleted;
                                 return (
-                                  <tr key={c.id} className={`text-text hover:bg-primary/5 transition-colors ${isDeleted ? 'opacity-50 grayscale-[0.5]' : ''}`}>
+                                  <tr key={c.id} className={`text-foreground hover:bg-primary/5 transition-colors ${isDeleted ? 'opacity-50 grayscale-[0.5]' : ''}`}>
                                     <td className={`p-4 whitespace-nowrap border-r font-mono text-xs opacity-70 ${isDeleted ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
                                       {formatBrazilDate(c.date, 'dd/MM/yyyy')}
                                     </td>
@@ -1048,7 +2229,14 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                       <span className="font-semibold">{c.goalName}</span>
                                     </td>
                                     <td className={`p-4 border-r font-black text-primary ${isDeleted ? 'line-through opacity-60' : ''}`} style={{ borderColor: theme.cardBorder }}>
-                                      {formatCurrency(c.amount)}
+                                      <div className="flex items-center justify-between gap-3">
+                                        <span>{formatCurrency(c.amount)}</span>
+                                        {c.isPaid === false && !isDeleted && (
+                                          <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#FFE0B2] text-black">
+                                            pending
+                                          </span>
+                                        )}
+                                      </div>
                                     </td>
                                     <td className="p-4 border-r text-center" style={{ borderColor: theme.cardBorder }}>
                                       {isDeleted && (
@@ -1065,7 +2253,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                               })
                             ) : (
                               <tr>
-                                <td colSpan={5} className="p-8 text-center text-text opacity-40 text-sm italic">
+                                <td colSpan={5} className="p-8 text-center text-foreground opacity-40 text-sm italic">
                                   Nenhum aporte encontrado
                                 </td>
                               </tr>
@@ -1074,12 +2262,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         </table>
                       </div>
                     )}
-                  </div>
+                  </Card>
                 );
 
               case 'savings_vs_income':
                 return (
-                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <Card key={item.id} noPadding className="overflow-hidden shadow-md transition-all hover:shadow-lg">
                     {renderCardHeader(item.id, item.label, <BarChart3 className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(savingsVsIncomeChartRef))}
                     {!item.collapsed && (
                       <div className="p-8 h-80">
@@ -1097,19 +2285,19 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                             }}
                           />
                         ) : (
-                          <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
+                          <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
                             <BarChart3 className="w-12 h-12 opacity-10" />
                             <span>Dados insuficientes para este período</span>
                           </div>
                         )}
                       </div>
                     )}
-                  </div>
+                  </Card>
                 );
 
               case 'priority_matrix':
                 return (
-                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+                  <Card key={item.id} noPadding className="overflow-hidden shadow-md transition-all hover:shadow-lg">
                     {renderCardHeader(item.id, item.label, <AlertCircle className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(matrixChartRef))}
                     {!item.collapsed && (
                       <div className="p-8 h-96">
@@ -1145,7 +2333,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                             }}
                           />
                         ) : (
-                          <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-center gap-4 border-2 border-dashed rounded-3xl" style={{ borderColor: theme.cardBorder }}>
+                          <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-center gap-4 border-2 border-dashed rounded-3xl" style={{ borderColor: theme.cardBorder }}>
                             <AlertCircle className="w-16 h-16 opacity-10" />
                             <div className="max-w-xs">
                               <p className="text-base font-bold mb-1">Sem Prazos Definidos</p>
@@ -1155,13 +2343,13 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         )}
                       </div>
                     )}
-                  </div>
+                  </Card>
                 );
 
               case 'goals_countdown':
                 return (
-                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }} ref={countdownTableRef}>
-                    <div className="p-4 border-b font-semibold text-text flex items-center justify-between group" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
+                  <Card key={item.id} noPadding className="overflow-hidden shadow-md transition-all hover:shadow-lg" ref={countdownTableRef}>
+                    <div className="p-4 border-b font-semibold text-foreground flex items-center justify-between group bg-muted/30 border-border">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/20 text-primary font-bold text-xs">
                           {DEFAULT_LAYOUT.find(it => it.id === item.id)?.number}
@@ -1172,85 +2360,91 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <button
+                        <Button
                           onClick={(e) => { e.stopPropagation(); handleCountdownPrintTable(); }}
-                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100"
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100"
                           title="Imprimir tabela"
                         >
                           <Printer className="w-4 h-4" />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={(e) => { e.stopPropagation(); moveItem(index, 'up'); }}
                           disabled={index === 0}
-                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100"
                           title="Mover para Cima"
                         >
                           <ArrowUp className="w-4 h-4" />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={(e) => { e.stopPropagation(); moveItem(index, 'down'); }}
                           disabled={index === layout.length - 1}
-                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-0 group-hover:opacity-100 disabled:opacity-0"
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100"
                           title="Mover para Baixo"
                         >
                           <ArrowDown className="w-4 h-4" />
-                        </button>
-                        <div className="w-[1px] h-4 mx-1 bg-cardBorder opacity-0 group-hover:opacity-100" />
-                        <button
+                        </Button>
+                        <div className="w-[1px] h-4 mx-1 bg-muted opacity-0 group-hover:opacity-100" />
+                        <Button
                           onClick={() => toggleCollapse(item.id)}
-                          className="p-1.5 hover:bg-cardBorder rounded-md transition-colors text-text opacity-50 hover:opacity-100"
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-50 hover:opacity-100"
                           title={item.collapsed ? "Expandir" : "Minimizar"}
                         >
                           {item.collapsed ? <Maximize2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                     {!item.collapsed && (
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm border-collapse">
                           <thead>
-                            <tr className="bg-cardBorder bg-opacity-40" style={{ color: theme.text }}>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Meta</th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider" style={{ borderColor: theme.cardBorder }}>Prazo</th>
+                            <tr className="bg-muted/50 text-foreground">
+                              <th className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider">Meta</th>
+                              <th className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider">Prazo</th>
                               <th 
                                 onClick={() => handleDaysUnitChange(daysUnit === 'days' ? 'weeks' : daysUnit === 'weeks' ? 'months' : 'days')}
-                                className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider cursor-pointer transition-colors hover:bg-primary/10 rounded" 
-                                style={{ borderColor: theme.cardBorder }}
+                                className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider cursor-pointer transition-colors hover:bg-primary/10 rounded" 
                                 title="Clique para alternar entre dias, semanas e meses"
                               >
                                 {daysUnit === 'days' ? 'Dias' : daysUnit === 'weeks' ? 'Semanas' : 'Meses'}
                               </th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Alvo</th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>Atual</th>
-                              <th className="p-4 border-r border-b font-bold uppercase text-[10px] tracking-wider text-right" style={{ borderColor: theme.cardBorder }}>% Completo</th>
+                              <th className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider text-right">Alvo</th>
+                              <th className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider text-right">Atual</th>
+                              <th className="p-4 border-r border-b border-border font-bold uppercase text-[10px] tracking-wider text-right">% Completo</th>
                               <th 
                                 onClick={() => handleNeededUnitChange(neededUnit === 'daily' ? 'weekly' : neededUnit === 'weekly' ? 'monthly' : 'daily')}
-                                className="p-4 border-b font-bold uppercase text-[10px] tracking-wider text-right cursor-pointer transition-colors hover:bg-primary/10 rounded" 
-                                style={{ borderColor: theme.cardBorder }}
+                                className="p-4 border-b border-border font-bold uppercase text-[10px] tracking-wider text-right cursor-pointer transition-colors hover:bg-primary/10 rounded" 
                                 title="Clique para alternar entre diário, semanal e mensal"
                               >
                                 {neededUnit === 'daily' ? 'Diário Necessário' : neededUnit === 'weekly' ? 'Semanal Necessário' : 'Mensal Necessário'}
                               </th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y" style={{ borderColor: theme.cardBorder }}>
+                          <tbody className="divide-y divide-border/30">
                             {countdownTableData.length > 0 ? (
                               countdownTableData.map(goal => {
                                 const statusColor =
-                                  goal.percentage >= 100 ? '#10b981' :
-                                  goal.daysLeft !== null && goal.daysLeft > 0 && (goal.targetAmount - goal.currentAmount) / goal.daysLeft * 30 <= goal.monthlyNeeded ? '#10b981' :
-                                  goal.daysLeft !== null && goal.daysLeft <= 30 ? '#ef4444' :
-                                  '#f59e0b';
-
+                                  goal.percentage >= 100 ? 'text-green-500' :
+                                  goal.daysLeft !== null && goal.daysLeft > 0 && (goal.targetAmount - goal.currentAmount) / goal.daysLeft * 30 <= goal.monthlyNeeded ? 'text-green-500' :
+                                  goal.daysLeft !== null && goal.daysLeft <= 30 ? 'text-destructive' :
+                                  'text-amber-500';
+                                
                                 return (
-                                  <tr key={goal.id} className="text-text hover:bg-primary/5 transition-colors">
-                                    <td className="p-4 border-r font-bold" style={{ borderColor: theme.cardBorder }}>
+                                  <tr key={goal.id} className="text-foreground hover:bg-primary/5 transition-colors">
+                                    <td className="p-4 border-r border-border font-bold">
                                       {goal.name}
                                     </td>
-                                    <td className="p-4 border-r whitespace-nowrap text-xs opacity-70" style={{ borderColor: theme.cardBorder }}>
+                                    <td className="p-4 border-r border-border whitespace-nowrap text-xs opacity-70">
                                       {goal.deadline ? formatBrazilDate(goal.deadline, 'dd/MM/yyyy') : '-'}
                                     </td>
-                                    <td className="p-4 border-r text-sm font-bold" style={{ borderColor: theme.cardBorder, color: statusColor }}>
+                                    <td className={cn("p-4 border-r border-border text-sm font-bold", statusColor)}>
                                       {goal.daysLeft !== null ? (
                                         daysUnit === 'days' 
                                           ? goal.daysLeft
@@ -1259,13 +2453,13 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                                           : Math.ceil(goal.daysLeft / 30)
                                       ) : '-'}
                                     </td>
-                                    <td className="p-4 border-r text-right text-xs font-black opacity-70" style={{ borderColor: theme.cardBorder }}>
+                                    <td className="p-4 border-r border-border text-right text-xs font-black opacity-70">
                                       {formatCurrency(goal.targetAmount)}
                                     </td>
-                                    <td className="p-4 border-r text-right text-xs font-black text-primary" style={{ borderColor: theme.cardBorder }}>
+                                    <td className="p-4 border-r border-border text-right text-xs font-black text-primary">
                                       {formatCurrency(goal.currentAmount)}
                                     </td>
-                                    <td className="p-4 border-r text-right text-xs font-bold" style={{ borderColor: theme.cardBorder, color: statusColor }}>
+                                    <td className={cn("p-4 border-r border-border text-right text-xs font-bold", statusColor)}>
                                       {goal.percentage.toFixed(1)}%
                                     </td>
                                     <td className="p-4 text-right text-xs font-bold text-accent">
@@ -1281,7 +2475,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                               })
                             ) : (
                               <tr>
-                                <td colSpan={7} className="p-8 text-center text-text opacity-40 text-sm italic">
+                                <td colSpan={7} className="p-8 text-center text-foreground opacity-40 text-sm italic">
                                   Nenhuma meta cadastrada
                                 </td>
                               </tr>
@@ -1290,47 +2484,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
                         </table>
                       </div>
                     )}
-                  </div>
-                );
-
-              case 'goals_vs_expenses':
-                return (
-                  <div key={item.id} className="rounded-2xl border p-0 overflow-hidden shadow-md transition-all hover:shadow-lg" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-                    {renderCardHeader(item.id, item.label, <BarChart3 className="w-5 h-5 text-primary" />, index, item.collapsed, () => toggleAll(goalsVsExpensesChartRef))}
-                    {!item.collapsed && (
-                      <div className="p-8 space-y-6">
-                        <div className="h-80">
-                          {transactions.some(t => t.type === 'expense') ? (
-                            <Pie
-                              ref={goalsVsExpensesChartRef}
-                              data={goalsVsExpensesData}
-                              options={{
-                                maintainAspectRatio: false,
-                                plugins: { legend: { labels: { color: theme.text } } },
-                              }}
-                            />
-                          ) : (
-                            <div className="h-full flex flex-col items-center justify-center text-text opacity-40 text-sm italic gap-2">
-                              <BarChart3 className="w-12 h-12 opacity-10" />
-                              <span>Nenhuma despesa registrada</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex justify-between items-end p-4 rounded-lg bg-cardBorder/30">
-                          <div>
-                            <p className="text-xs opacity-70 mb-1">Total em Aportes</p>
-                            <p className="text-2xl font-black text-primary">{formatCurrency(goalsVsExpensesData.goalTotals)}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs opacity-70 mb-1">Total em Despesas (Top 8)</p>
-                            <p className="text-2xl font-black text-accent">
-                              {formatCurrency((Object.values(goalsVsExpensesData).filter(v => typeof v === 'number').reduce((sum: number, v: any) => sum + v, 0) as number) - goalsVsExpensesData.goalTotals)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  </Card>
                 );
 
               default:
@@ -1343,53 +2497,45 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       {/* Print Dialog - Countdown Table */}
       {showCountdownPrintDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="rounded-2xl w-full max-w-md p-6" style={{ backgroundColor: theme.cardBackground }}>
-            <h3 className="text-lg font-semibold text-text mb-4">Imprimir Contagem Regressiva</h3>
+          <Card className="w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Imprimir Contagem Regressiva</h3>
             
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-text mb-2">Título</label>
-                <input
-                  type="text"
-                  value={countdownPrintSettings.title}
-                  onChange={(e) => setCountdownPrintSettings(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg border text-sm"
-                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                />
-              </div>
+              <Input
+                label="Título"
+                type="text"
+                value={countdownPrintSettings.title}
+                onChange={(e) => setCountdownPrintSettings(prev => ({ ...prev, title: e.target.value }))}
+              />
               
-              <div>
-                <label className="block text-sm font-medium text-text mb-2">Subtítulo (Opcional)</label>
-                <input
-                  type="text"
-                  value={countdownPrintSettings.subtitle}
-                  onChange={(e) => setCountdownPrintSettings(prev => ({ ...prev, subtitle: e.target.value }))}
-                  placeholder="Ex: Relatório de Março de 2026"
-                  className="w-full px-3 py-2 rounded-lg border text-sm"
-                  style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
-                />
-              </div>
+              <Input
+                label="Subtítulo (Opcional)"
+                type="text"
+                value={countdownPrintSettings.subtitle}
+                onChange={(e) => setCountdownPrintSettings(prev => ({ ...prev, subtitle: e.target.value }))}
+                placeholder="Ex: Relatório de Março de 2026"
+              />
             </div>
 
             <div className="flex gap-3 mt-6">
-              <button
+              <Button
                 onClick={() => setShowCountdownPrintDialog(false)}
-                className="flex-1 px-4 py-2.5 rounded-xl transition-colors hover:bg-cardBorder"
-                style={{ border: `1px solid ${theme.cardBorder}`, color: theme.text, backgroundColor: theme.cardBackground }}
+                variant="outline"
+                className="flex-1"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => {
                   executeCountdownPrint();
                   setShowCountdownPrintDialog(false);
                 }}
-                className="flex-1 px-4 py-2.5 text-white rounded-xl font-medium transition-colors bg-primary hover:bg-secondary"
+                className="flex-1"
               >
                 Imprimir
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

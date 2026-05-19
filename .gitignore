@@ -6,6 +6,7 @@ pnpm-lock.yaml
 
 # Build outputs
 dist/
+frontend/dev-dist/
 dist-ssr/
 build/
 *.tsbuildinfo
@@ -28,6 +29,7 @@ infra/docker/.env
 # User uploaded content
 uploads/
 public/uploads/
+public/manifest.json
 
 # Editor and OS files
 .vscode/*
@@ -83,3 +85,4 @@ backend/*.prod.ts
 *.backup
 *~
 .aider*
+public/manifest.json

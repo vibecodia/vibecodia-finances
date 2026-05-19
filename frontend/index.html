@@ -1,15 +1,103 @@
 <!doctype html>
 <html lang="pt-BR">
-  <head>
+    <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#2563EB" />
-    <meta name="description" content="Aplicativo de controle financeiro doméstico para Rodolfo e Thaís" />
-    <title>Vibecodia pi</title>
+    <meta name="theme-color" content="#059669" />
+    <meta name="description" content="Aplicativo de controle financeiro doméstico para Rodolfo e Thais" />
+    <title>Carvalho de O. Neto</title>
+    
+    <!-- SCRIPT DE BLOQUEIO IMEDIATO -->
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const isNoSplash = urlParams.has('nosplash');
+      const isFocus = urlParams.get('view') === 'focus' || window.location.pathname === '/hoje';
+
+      if (isNoSplash || isFocus) {
+        // Cria um estilo de emergência que bloqueia elementos antes do React/CSS carregar
+        const style = document.createElement('style');
+        let css = '';
+        
+        if (isNoSplash) css += `#splash-screen { display: none !important; } `;
+        
+        // No modo foco, escondemos tudo o que não é o main/root imediatamente
+        if (isFocus) {
+          css += `header, nav, footer, aside, #splash-screen { display: none !important; } `;
+          css += `body { background: white !important; } `;
+          // Adiciona a classe no HTML para o CSS global já saber o que fazer
+          document.documentElement.classList.add('shortcut-focus-mode');
+        }
+
+        style.innerHTML = css;
+        document.head.appendChild(style);
+      }
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   </head>
+
   <body>
+    <div id="splash-screen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f8fafc; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; transition: opacity 0.5s ease-out;">
+      <!-- Logo Vibecodia -->
+      <div style="width: 80px; height: 80px; margin-bottom: 20px;">
+        <img src="/public/favicon.svg" alt="Vibecodia Logo" style="width: 100%; height: 100%; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.05));">
+      </div>
+      
+      <!-- Nome da Empresa e App -->
+      <h1 style="font-family: system-ui, -apple-system, sans-serif; color: #064e3b; font-size: 28px; font-weight: 700; margin: 0; letter-spacing: -0.02em;">Vibecodia</h1>
+      <p style="font-family: system-ui, -apple-system, sans-serif; color: #059669; font-size: 12px; margin: 4px 0 8px 0; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 500;">{{APP_SUBTITLE}}</p>
+      <span style="font-family: system-ui, -apple-system, sans-serif; color: #64748b; font-size: 10px; font-weight: 700; opacity: 0.4; letter-spacing: 0.1em; margin-bottom: 32px;">v{{APP_VERSION}}</span>
+      
+      <!-- Barra de Progresso Slime -->
+      <div style="width: 140px; height: 4px; background: #e2e8f0; border-radius: 10px; overflow: hidden; position: relative; margin-bottom: 24px;">
+        <div id="loading-bar" style="position: absolute; height: 100%; width: 40%; background: #059669; border-radius: 10px; animation: slime-bar 2s infinite ease-in-out; box-shadow: 0 0 15px rgba(5, 150, 105, 0.4);"></div>
+      </div>
+      
+      <!-- Texto Único Fixo -->
+      <div id="loading-text" style="font-family: system-ui, -apple-system, sans-serif; color: #64748b; font-size: 14px; font-weight: 400; height: 24px; transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); opacity: 0; transform: translateY(15px); font-style: italic;">
+        carregando suas finanças...
+      </div>
+      
+      <style>
+        @keyframes slime-bar {
+          0% { left: -40%; width: 20%; }
+          50% { left: 40%; width: 50%; }
+          100% { left: 100%; width: 20%; }
+        }
+        .text-slime-in {
+          opacity: 1 !important;
+          transform: translateY(0) !important;
+        }
+      </style>
+      
+      <script>
+        // Bypass Splash Screen if nosplash=true is in URL
+        if (window.location.search.includes('nosplash=true')) {
+          document.getElementById('splash-screen').style.display = 'none';
+        }
+
+        window.addEventListener('load', () => {
+          const textElement = document.getElementById('loading-text');
+
+          // Mostra a frase com o efeito de subida após meio segundo
+          setTimeout(() => {
+            textElement.classList.add('text-slime-in');
+          }, 500);
+
+          // Fecha o splash após 3 segundos totais
+          setTimeout(() => {
+            const splash = document.getElementById('splash-screen');
+            splash.style.opacity = '0';
+            setTimeout(() => {
+              splash.style.display = 'none';
+            }, 200); // tempo da transição de sumiço
+          }, 2300); 
+        });
+      </script>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

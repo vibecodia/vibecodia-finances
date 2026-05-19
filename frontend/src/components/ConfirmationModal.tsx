@@ -1,14 +1,15 @@
 import { AlertTriangle } from 'lucide-react';
 import React from 'react';
 
-import { useTheme } from '../contexts/ThemeContext';
+import { Button } from './ui/Button';
+import { Card } from './ui/Card';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  message: string;
+  message: string | React.ReactNode;
   confirmText?: string;
 }
 
@@ -20,49 +21,43 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   message,
   confirmText = 'Confirmar Exclusão',
 }) => {
-  const { theme } = useTheme();
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="rounded-2xl shadow-2xl w-full max-w-md transform transition-all" style={{ backgroundColor: theme.cardBackground }}>
-        <div className="p-6">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-300">
+      <Card className="w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 p-0 overflow-hidden">
+        <div className="p-8">
           <div className="flex flex-col items-center text-center">
-            <div className="p-3 rounded-full mb-4" style={{ backgroundColor: theme.primary, opacity: 0.2 }}>
-              <AlertTriangle className="w-8 h-8" style={{ color: theme.primary }} />
+            <div className="p-4 rounded-full mb-6 bg-primary/10 text-primary">
+              <AlertTriangle className="w-10 h-10" />
             </div>
-            <h3 className="text-xl font-semibold" style={{ color: theme.text }} id="modal-title">
+            <h3 className="text-2xl font-black text-foreground uppercase tracking-tight mb-3">
               {title}
             </h3>
-            <div className="mt-2">
-              <p className="text-sm" style={{ color: theme.text, opacity: 0.9 }}>
-                {message}
-              </p>
+            <div className="text-sm text-muted-foreground font-medium leading-relaxed">
+              {message}
             </div>
           </div>
         </div>
-        <div className="px-6 py-4 flex flex-col sm:flex-row-reverse gap-3 rounded-b-2xl" style={{ backgroundColor: theme.cardBackground }}>
-          <button
-            type="button"
-            className="w-full inline-flex justify-center rounded-xl border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:w-auto sm:text-sm transition-colors"
-            style={{ backgroundColor: theme.primary }}
+        <div className="px-8 py-6 flex flex-col sm:flex-row-reverse gap-4 bg-muted/50 border-t border-border">
+          <Button
             onClick={() => {
               onConfirm();
               onClose();
             }}
+            className="flex-1"
           >
             {confirmText}
-          </button>
-          <button
-            type="button"
-            className="w-full inline-flex justify-center rounded-xl shadow-sm px-4 py-2 text-base font-medium hover:bg-cardBorder focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:mt-0 sm:w-auto sm:text-sm transition-colors"
-            style={{ backgroundColor: theme.cardBackground, color: theme.text, border: `1px solid ${theme.cardBorder}` }}
+          </Button>
+          <Button
             onClick={onClose}
+            variant="outline"
+            className="flex-1"
           >
             Cancelar
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
     </div>
   );
 };

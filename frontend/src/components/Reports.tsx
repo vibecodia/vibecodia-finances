@@ -1,13 +1,15 @@
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, TooltipItem, Filler } from 'chart.js';
-import { format, addMonths, subMonths } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { BarChart3, PieChart, TrendingUp, Brain, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BarChart3, PieChart, TrendingUp, Brain } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { Bar, Doughnut } from 'react-chartjs-2';
 
 import { useTheme } from '../contexts/ThemeContext';
 import { Transaction, SavingsGoal } from '../types';
 import { getMonthlyData, getCategoryData, formatCurrency, getCurrentBrazilDate } from '../utils/helpers';
+import { Button } from './ui/Button';
+import { Card } from './ui/Card';
+import { cn } from '../lib/utils';
+import MonthSegmentedControl from './MonthSegmentedControl';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, Filler);
 
@@ -18,11 +20,7 @@ interface ReportsProps {
 
 const Reports: React.FC<ReportsProps> = ({ transactions, savingsGoals = [] }) => {
   const [currentMonth, setCurrentMonth] = useState<Date>(getCurrentBrazilDate());
-  const { theme, setThemeMonth } = useTheme();
-
-  useEffect(() => {
-    setThemeMonth(currentMonth);
-  }, [currentMonth, setThemeMonth]);
+  const { theme } = useTheme();
 
   const monthlyData = getMonthlyData(transactions, savingsGoals, 6, currentMonth);
   const categoryData = getCategoryData(transactions, currentMonth);
@@ -218,10 +216,10 @@ const Reports: React.FC<ReportsProps> = ({ transactions, savingsGoals = [] }) =>
     return (
       <div className="text-center py-12">
         <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: theme.cardBorder }}>
-          <BarChart3 className="w-8 h-8 text-text opacity-70" />
+          <BarChart3 className="w-8 h-8 text-muted-foreground" />
         </div>
-        <p className="text-text opacity-90 mb-2">Nenhum dado para exibir</p>
-        <p className="text-sm text-text opacity-70">
+        <p className="text-muted-foreground mb-2">Nenhum dado para exibir</p>
+        <p className="text-sm text-muted-foreground">
           Adicione algumas transações para ver os relatórios
         </p>
       </div>
@@ -230,79 +228,73 @@ const Reports: React.FC<ReportsProps> = ({ transactions, savingsGoals = [] }) =>
 
   return (
     <div className="space-y-6 relative">
-      <div className="text-center py-4">
-        <h1 className="text-2xl font-bold text-text mb-2">
+      <div className="text-center py-4 space-y-4">
+        <h1 className="text-2xl font-black text-foreground uppercase tracking-tight">
           Relatórios Financeiros
         </h1>
-        <div className="flex items-center justify-center gap-2 text-text opacity-90">
-          <button onClick={() => setCurrentMonth(prevMonth => subMonths(prevMonth, 1))} className="p-1 rounded-full hover:bg-cardBorder">
-            <ChevronLeft className="w-5 h-5 text-text" />
-          </button>
-          <p className="text-text opacity-90">
-            {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
-          </p>
-          <button onClick={() => setCurrentMonth(prevMonth => addMonths(prevMonth, 1))} className="p-1 rounded-full hover:bg-cardBorder">
-            <ChevronRight className="w-5 h-5 text-text" />
-          </button>
+        <div className="w-full">
+          <MonthSegmentedControl
+            month={currentMonth}
+            onChange={(newMonth) => setCurrentMonth(newMonth)}
+          />
         </div>
       </div>
 
       {showAiMessagePopup && (
-        <div className="fixed inset-0 bg-background bg-opacity-50 flex items-center justify-center z-50">
-          <div className="p-6 rounded-lg shadow-xl max-w-sm w-full text-center relative" style={{ backgroundColor: theme.cardBackground }}>
-            <h3 className="text-lg font-semibold text-text mb-4">Insight de IA</h3>
-            <p className="text-text opacity-90 mb-6">{aiMessage}</p>
-            <button
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm animate-in fade-in duration-300">
+          <Card className="p-8 shadow-2xl max-w-sm w-full text-center relative border-primary animate-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-black text-foreground uppercase tracking-tight mb-4">Insight de IA</h3>
+            <p className="text-muted-foreground mb-8 font-medium">{aiMessage}</p>
+            <Button
               onClick={() => setShowAiMessagePopup(false)}
-              className={`${buttonColorClass} hover:opacity-80 text-white font-bold py-2 px-4 rounded-full transition-all duration-500 ease-in-out`}
+              className={cn(
+                "w-full transition-all duration-500 ease-in-out font-black uppercase tracking-widest",
+                buttonColorClass === 'bg-blue-500' ? 'bg-blue-500 hover:bg-blue-600' : ''
+              )}
             >
               Fechar ({countdown})
-            </button>
-          </div>
+            </Button>
+          </Card>
         </div>
       )}
 
       {/* Monthly Trends */}
-      <div className="rounded-2xl border p-6 relative" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+      <Card className="p-6 relative">
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 rounded-lg" style={{ backgroundColor: '#E0E0E0' }}>
-            <TrendingUp className="w-5 h-5 text-black" />
+          <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+            <TrendingUp className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-semibold text-text truncate">
+            <h2 className="text-lg font-black text-foreground uppercase tracking-wider">
               Evolução Mensal
             </h2>
-            <p className="text-sm text-text opacity-90 truncate">
-              das finanças nos últimos 6 meses
+            <p className="text-xs text-muted-foreground font-bold uppercase">
+              Finanças nos últimos 6 meses
             </p>
           </div>
         </div>
         <div className="h-64">
           <Bar data={barChartData} options={barChartOptions} />
         </div>
-
-        
-
-        
-      </div>
+      </Card>
       {/* Category Distribution */}
       {categoryData.length > 0 && (
-        <div className="rounded-2xl border p-6" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
+        <Card className="p-6">
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 rounded-lg" style={{ backgroundColor: '#E0E0E0' }}>
-              <PieChart className="w-5 h-5 text-black" />
+            <div className="p-2.5 rounded-xl bg-accent/10 text-accent">
+              <PieChart className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-semibold text-text truncate">
+              <h2 className="text-lg font-black text-foreground uppercase tracking-wider">
                 Gastos por Categoria
               </h2>
-              <p className="text-sm text-text opacity-90 truncate">
+              <p className="text-xs text-muted-foreground font-bold uppercase">
                 Distribuição das suas despesas pagas
               </p>
             </div>
           </div>
           <div className="h-64 mb-6 relative">
-            <div className={`absolute inset-0 flex items-center justify-center ${loadingAi ? 'animate-spin-slow' : ''}`}>
+            <div className={cn("absolute inset-0 flex items-center justify-center", loadingAi && "animate-spin-slow")}>
               <Doughnut
                 data={doughnutData}
                 options={{
@@ -317,17 +309,19 @@ const Reports: React.FC<ReportsProps> = ({ transactions, savingsGoals = [] }) =>
                 }}
               />
             </div>
-            <button
+            <Button
               onClick={generateAiMessage}
-              className="absolute top-4 right-4 text-white p-1 rounded-full shadow-lg flex items-center justify-center z-50 transition-all duration-300 ease-in-out transform hover:scale-110 animate-pulse" style={{ backgroundColor: theme.primary }}
-              aria-label="Gerar insights de IA"
+              variant="primary"
+              size="icon"
+              className="absolute top-4 right-4 animate-pulse"
               disabled={loadingAi}
+              title="Gerar insights de IA"
             >
               <Brain className="w-6 h-6" />
-            </button>
+            </Button>
             {loadingAi && (
-              <div className="absolute inset-0 bg-background bg-opacity-50 flex items-center justify-center rounded-2xl z-40">
-                <p className="text-white text-lg font-semibold">Gerando Relatório IA...</p>
+              <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center rounded-2xl z-40">
+                <p className="text-foreground text-lg font-black uppercase tracking-tighter animate-pulse">Gerando Relatório IA...</p>
               </div>
             )}
           </div>
@@ -335,66 +329,66 @@ const Reports: React.FC<ReportsProps> = ({ transactions, savingsGoals = [] }) =>
           {/* Category Details */}
           <div className="space-y-3">
             {categoryData.map((category, index) => (
-              <div key={index} className="flex items-center justify-between p-3 rounded-lg gap-3" style={{ backgroundColor: theme.cardBorder }}>
+              <div key={index} className="flex items-center justify-between p-4 rounded-xl gap-3 border border-border bg-card/50 hover:bg-card transition-colors">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <div 
-                    className="w-4 h-4 rounded flex-shrink-0"
+                    className="w-4 h-4 rounded-full flex-shrink-0"
                     style={{ backgroundColor: category.color }}
                   />
-                  <span className="font-medium text-text truncate">
+                  <span className="font-bold text-foreground uppercase text-xs tracking-tight truncate">
                     {category.category}
                   </span>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="font-semibold text-text">
+                  <p className="font-black text-foreground">
                     {formatCurrency(category.amount)}
                   </p>
-                  <p className="text-sm text-text opacity-90">
+                  <p className="text-[10px] text-muted-foreground font-bold">
                     {category.percentage.toFixed(1)}%
                   </p>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {monthlyData.slice(-3).map((month, index) => (
-          <div key={index} className="rounded-xl border p-4" style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }}>
-            <h3 className="font-semibold text-text mb-3 truncate">
+          <Card key={index} className="p-4">
+            <h3 className="font-black text-foreground uppercase tracking-widest text-xs mb-3 truncate">
               {month.month}
             </h3>
             <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-text opacity-90 truncate pr-2">Receitas</span>
-                <span className="font-medium text-primary flex-shrink-0">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground font-bold uppercase truncate pr-2">Receitas</span>
+                <span className="font-black text-primary flex-shrink-0">
                   {formatCurrency(month.income)}
                 </span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-text opacity-90 truncate pr-2">Despesas</span>
-                <span className="font-medium text-accent flex-shrink-0">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground font-bold uppercase truncate pr-2">Despesas</span>
+                <span className="font-black text-accent flex-shrink-0">
                   {formatCurrency(month.expenses)}
                 </span>
               </div>
               {month.goalsImpact && month.goalsImpact > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-text opacity-90 truncate pr-2">Metas</span>
-                  <span className="font-medium text-primary flex-shrink-0">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground font-bold uppercase truncate pr-2">Metas</span>
+                  <span className="font-black text-primary flex-shrink-0">
                     {formatCurrency(month.goalsImpact)}
                   </span>
                 </div>
               )}
-              <div className="flex justify-between text-sm pt-2 border-t" style={{ borderColor: theme.cardBorder }}>
-                <span className="font-medium text-text truncate pr-2">Saldo</span>
-                <span className={`font-semibold flex-shrink-0 ${month.balance >= 0 ? 'text-primary' : 'text-accent'}`}>
+              <div className="flex justify-between text-sm pt-2 border-t border-border">
+                <span className="font-black text-foreground uppercase tracking-tighter truncate pr-2">Saldo</span>
+                <span className={cn("font-black flex-shrink-0", month.balance >= 0 ? 'text-primary' : 'text-accent')}>
                   {formatCurrency(month.balance)}
                 </span>
               </div>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
     </div>
