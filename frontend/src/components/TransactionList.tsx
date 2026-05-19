@@ -16,6 +16,7 @@ import ConfirmationModal from './ConfirmationModal';
 import DailyDateSlider from './DailyDateSlider';
 import TransactionForm from './TransactionForm';
 import MonthSegmentedControl from './MonthSegmentedControl';
+import { AmountRangeSlider } from './AmountRangeSlider';
 
 
 
@@ -62,6 +63,9 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(true);
 
+  // Amount range filter state
+  const [amountRange, setAmountRange] = useState<{ min: number; max: number } | null>(null);
+
   // Filter and split transactions early so useEffect and body can use them
   const allMonthTransactions = filterTransactionsByMonth(
     transactions.filter(t => t.type === type)
@@ -81,11 +85,11 @@ const TransactionList: React.FC<TransactionListProps> = ({
           return t.description.toLowerCase().includes(searchTerm.toLowerCase());
         }
         return true;
-      }), 
-    currentMonth, 
+      }),
+    currentMonth,
     true
   );
-  
+
   const baseActiveTransactions = allMonthTransactions.filter(t => t.status !== 'deleted');
   const baseDeletedTransactions = allMonthTransactions.filter(t => t.status === 'deleted');
 
@@ -104,12 +108,35 @@ const TransactionList: React.FC<TransactionListProps> = ({
       })
     : baseDeletedTransactions;
 
+  // Compute min and max amount from currently visible transactions (before amount filter)
+  const amountLimits = React.useMemo(() => {
+    const amounts = activeTransactions.map(t => t.amount);
+    if (amounts.length === 0) return { min: 0, max: 0 };
+    return { min: Math.min(...amounts), max: Math.max(...amounts) };
+  }, [activeTransactions]);
+
+  // Initialize amountRange when amountLimits change (reset to full range)
+  React.useEffect(() => {
+    if (amountLimits) {
+      setAmountRange(amountLimits);
+    }
+  }, [amountLimits]);
+
+  // Apply amount range filter on top of other filters
+  const finalActiveTransactions = amountRange
+    ? activeTransactions.filter(t => t.amount >= amountRange.min && t.amount <= amountRange.max)
+    : activeTransactions;
+
+  const finalDeletedTransactions = amountRange
+    ? deletedTransactions.filter(t => t.amount >= amountRange.min && t.amount <= amountRange.max)
+    : deletedTransactions;
+
   // Auto-switch back to active view if no deleted transactions remain in the current range
   useEffect(() => {
-    if (showDeleted && deletedTransactions.length === 0) {
+    if (showDeleted && finalDeletedTransactions.length === 0) {
       setShowDeleted(false);
     }
-  }, [deletedTransactions.length, showDeleted]);
+  }, [finalDeletedTransactions.length, showDeleted]);
 
   const toggleNotes = (id: string) => {
     setExpandedNotes(prev => ({
@@ -120,11 +147,11 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
   const formatNotes = (notes: any) => {
     if (!notes) return '';
-    
+
     // Se já for um objeto (nova estrutura de Map/Mixed no banco)
     if (typeof notes === 'object' && notes !== null) {
       if (notes.items && Array.isArray(notes.items)) {
-        return `ITENS DA NOTA:\n${notes.items.map((item: any) => 
+        return `ITENS DA NOTA:\n${notes.items.map((item: any) =>
           `${item.qty}x ${item.description} - R$ ${item.unitPrice.toFixed(2).replace('.', ',')}`
         ).join('\n')}`;
       }
@@ -136,7 +163,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
       if (typeof notes === 'string' && notes.startsWith('{')) {
         const parsed = JSON.parse(notes);
         if (parsed.items && Array.isArray(parsed.items)) {
-          return `ITENS DA NOTA:\n${parsed.items.map((item: any) => 
+          return `ITENS DA NOTA:\n${parsed.items.map((item: any) =>
             `${item.qty}x ${item.description} - R$ ${item.unitPrice.toFixed(2).replace('.', ',')}`
           ).join('\n')}`;
         }
@@ -155,7 +182,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const highlightId = params.get('highlight');
-    
+
     if (highlightId) {
       const transaction = transactions.find(t => t.id === highlightId || t._id === highlightId);
       if (transaction) {
@@ -167,7 +194,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
         // Trigger animation
         setAnimatedTransactionId(highlightId);
-        
+
         // Clear highlight param from URL
         params.delete('highlight');
         const newSearch = params.toString();
@@ -254,11 +281,11 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
   const [transactionToReactivate, setTransactionToReactivate] = useState<string | null>(null);
-  
+
   const categories = [...new Set(transactions.filter(t => t.type === type).map(t => t.category))];
-  
+
   // Apply visibility toggle - if showDeleted is true, show ONLY deleted
-  const transactionsForDisplay = showDeleted ? deletedTransactions : activeTransactions;
+  const transactionsForDisplay = showDeleted ? finalDeletedTransactions : finalActiveTransactions;
 
   // Sort expenses by due date
   const sortedTransactions = type === 'expense'
@@ -269,7 +296,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
       })
     : transactionsForDisplay;
 
-  const currentTotal = activeTransactions.reduce((acc, t) => acc + t.amount, 0);
+  const currentTotal = sortedTransactions.reduce((acc, t) => acc + t.amount, 0);
 
   const handleEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction);
@@ -350,6 +377,8 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const handleClearDailyFilter = () => {
     setStartDateFilter(startOfMonth(currentMonth));
     setEndDateFilter(endOfMonth(currentMonth));
+    // Also reset amount range to full limits
+    setAmountRange(amountLimits);
   };
 
   const handlePressStart = (e: React.MouseEvent | React.TouchEvent, transaction: Transaction) => {
@@ -434,6 +463,11 @@ const TransactionList: React.FC<TransactionListProps> = ({
     setAnimatedTransactionId(id);
   };
 
+  // Handler for amount range changes
+  const handleAmountRangeChange = (min: number, max: number) => {
+    setAmountRange({ min, max });
+  };
+
   return (
     <div className="space-y-6">
       {apporteMessage && (
@@ -460,23 +494,23 @@ const TransactionList: React.FC<TransactionListProps> = ({
             <p className="text-sm font-black uppercase tracking-tighter" style={{ color: type === 'income' ? 'hsl(var(--primary))' : 'hsl(var(--accent))' }}>
               Total: {formatCurrency(currentTotal)}
             </p>
-            {activeTransactions.length > 0 && (
+            {sortedTransactions.length > 0 && (
               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                {activeTransactions.length} {activeTransactions.length === 1 ? 'item' : 'itens'}
+                {sortedTransactions.length} {sortedTransactions.length === 1 ? 'item' : 'itens'}
               </span>
             )}
-            {deletedTransactions.length > 0 && (
-              <Button 
+            {finalDeletedTransactions.length > 0 && (
+              <Button
                 onClick={() => setShowDeleted(!showDeleted)}
                 variant={showDeleted ? 'accent' : 'ghost'}
                 size="sm"
                 className="h-6 text-[10px] px-2 py-0"
               >
-                {deletedTransactions.length} {deletedTransactions.length === 1 ? 'excluído' : 'excluídos'}
+                {finalDeletedTransactions.length} {finalDeletedTransactions.length === 1 ? 'excluído' : 'excluídos'}
                 <ChevronDown className={cn("w-3 h-3 ml-1 transition-transform", showDeleted && "rotate-180")} />
               </Button>
             )}
-            <Button 
+            <Button
               onClick={() => setShowFilters(!showFilters)}
               variant={showFilters ? 'primary' : 'ghost'}
               size="sm"
@@ -619,6 +653,23 @@ const TransactionList: React.FC<TransactionListProps> = ({
               </Button>
             </div>
           )}
+
+          {/* Amount Range Filter */}
+          {amountLimits && amountRange && amountLimits.min !== amountLimits.max && (
+            <div className="flex items-center gap-3 pb-2">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest whitespace-nowrap min-w-[40px]">
+                Valor (R$)
+              </span>
+              <AmountRangeSlider
+                minAmount={amountLimits.min}
+                maxAmount={amountLimits.max}
+                selectedMin={amountRange.min}
+                selectedMax={amountRange.max}
+                onChange={handleAmountRangeChange}
+              />
+              {/* Optional extra clear button for amount range only? We'll rely on the daily filter clear to reset */}
+            </div>
+          )}
         </div>
       )}
 
@@ -653,7 +704,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                   animatedTransactionId === transaction.id && 'animate-pulse-once',
                   isDeleted && 'opacity-50 grayscale cursor-not-allowed'
                 )}
-                style={{ 
+                style={{
                   borderColor: isDeleted ? theme.cardBorder : (overdue ? theme.primary : (!transaction.isPaid && type === 'expense' ? theme.accent : theme.cardBorder))
                 }}
                 onMouseDown={(e) => !isDeleted && handlePressStart(e, transaction)}
@@ -700,41 +751,41 @@ const TransactionList: React.FC<TransactionListProps> = ({
                         )}>
                           {formatNotes(transaction.notes)}
                         </p>
-                        {( (typeof transaction.notes === 'string' && (transaction.notes.length > 40 || transaction.notes.includes('\n') || transaction.notes.startsWith('{'))) || 
-                           (typeof transaction.notes === 'object')) && (
-                          <Button 
-                            onClick={() => toggleNotes(transaction.id)}
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 text-[10px] uppercase font-black"
-                            disabled={isDeleted}
-                          >
-                            {expandedNotes[transaction.id] ? (
-                              <><ChevronUp className="w-3 h-3 mr-1" /> Ver menos</>
-                            ) : (
-                              <><ChevronDown className="w-3 h-3 mr-1" /> Ver itens da nota</>
-                            )}
-                          </Button>
-                        )}
+                        {((typeof transaction.notes === 'string' && (transaction.notes.length > 40 || transaction.notes.includes('\n') || transaction.notes.startsWith('{'))) ||
+                          (typeof transaction.notes === 'object')) && (
+                            <Button
+                              onClick={() => toggleNotes(transaction.id)}
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-[10px] uppercase font-black"
+                              disabled={isDeleted}
+                            >
+                              {expandedNotes[transaction.id] ? (
+                                <><ChevronUp className="w-3 h-3 mr-1" /> Ver menos</>
+                              ) : (
+                                <><ChevronDown className="w-3 h-3 mr-1" /> Ver itens da nota</>
+                              )}
+                            </Button>
+                          )}
                       </div>
                     )}
-                    
+
                     <div className="flex flex-wrap gap-2">
                       <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-muted/30 text-foreground/60">
                         {transaction.category}
                       </span>
-                      
+
                       {type === 'expense' && transaction.paymentMethod && (
                         <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-muted/30 text-foreground/60 flex items-center gap-1.5">
                           <Wallet className="w-3 h-3" />
                           {formatPaymentMethod(transaction.paymentMethod)}
                         </span>
                       )}
-                      
+
                       <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-muted/30 text-foreground/60">
                         {formatBrazilDate(transaction.date)}
                       </span>
-                      
+
                       {transaction.recurrence !== 'none' && (
                         <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-primary text-white shadow-sm">
                           {transaction.recurrence === 'weekly' && 'Semanal'}
@@ -749,32 +800,32 @@ const TransactionList: React.FC<TransactionListProps> = ({
                       <div className="flex flex-wrap gap-2">
                         <span className={cn(
                           "px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm",
-                          transaction.isPaid 
-                            ? 'bg-green-500/10 border-green-500/20 text-green-500' 
+                          transaction.isPaid
+                            ? 'bg-green-500/10 border-green-500/20 text-green-500'
                             : 'bg-amber-500/10 border-amber-500/20 text-amber-500'
                         )}>
-                          {transaction.isPaid 
-                            ? (type === 'expense' ? '✓ Pago' : '✓ Recebido') 
+                          {transaction.isPaid
+                            ? (type === 'expense' ? '✓ Pago' : '✓ Recebido')
                             : (type === 'expense' ? '⏳ Pendente' : '⏳ A Receber')}
                         </span>
-                        
+
                         {type === 'expense' && transaction.dueDate && (
                           <span className={cn(
                             "px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border flex items-center gap-1.5 shadow-sm",
                             overdue ? 'bg-accent text-white border-accent' : 'bg-amber-500/10 border-amber-500/20 text-amber-600'
                           )}>
                             <Calendar className="w-3 h-3" />
-                            {overdue ? 'Vencido' : 
-                             daysUntilDue === 0 ? 'Vence hoje' : 
-                             daysUntilDue === 1 ? 'Vence amanhã' :
-                             daysUntilDue !== null && daysUntilDue > 0 ? `${daysUntilDue} dias` :
-                             formatBrazilDate(transaction.dueDate)}
+                            {overdue ? 'Vencido' :
+                              daysUntilDue === 0 ? 'Vence hoje' :
+                                daysUntilDue === 1 ? 'Vence amanhã' :
+                                  daysUntilDue !== null && daysUntilDue > 0 ? `${daysUntilDue} dias` :
+                                    formatBrazilDate(transaction.dueDate)}
                           </span>
                         )}
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="flex flex-col items-end gap-3 flex-shrink-0">
                     <span className={cn(
                       "font-black text-lg sm:text-2xl",
