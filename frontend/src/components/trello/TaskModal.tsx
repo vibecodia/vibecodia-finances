@@ -2,7 +2,7 @@ import { X, Target, Flag, Trash2, Plus, CheckCircle2, Circle, GripVertical, Chec
 import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
-import { Task, ChecklistItem, TaskFlag, TaskLabel, Column, TimeLog } from '../../types/trello/task';
+import { Task, ChecklistItem, TaskFlag, TaskLabel, Column, TimeLog, HistoryEntry } from '../../types/trello/task';
 import { createTask, generateId, formatTimeElapsed } from '../../utils/trello/taskUtils';
 import { getBrazilDateString } from '../../utils/helpers';
 import { Button } from '../ui/Button';
@@ -10,6 +10,7 @@ import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import { cn } from '../../lib/utils';
+import TaskHistory from './TaskHistory';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -43,6 +44,7 @@ export function TaskModal({ isOpen, onClose, onSave, onAutoSave, onDelete, onArc
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  const [showHistory, setShowHistory] = useState(true);
   
   // Time Logging State
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
@@ -869,6 +871,30 @@ export function TaskModal({ isOpen, onClose, onSave, onAutoSave, onDelete, onArc
                   )}
                 </div>
               </div>
+
+              {/* Histórico da Tarefa */}
+              {mode === 'edit' && task && (
+                <div className="space-y-3 pt-6 border-t border-border">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                      <History className="w-4 h-4 text-primary" />
+                      Histórico
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowHistory(!showHistory)}
+                      className="p-1 hover:bg-muted rounded transition-colors text-muted-foreground"
+                    >
+                      {showHistory ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {showHistory && (
+                    <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                      <TaskHistory history={task.history || []} />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

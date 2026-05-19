@@ -26,6 +26,15 @@ export interface TimeLog {
   description?: string;
 }
 
+export interface HistoryEntry {
+  id: string;
+  action: 'create' | 'update' | 'move' | 'archive' | 'unarchive' | 'pin' | 'unpin' | 'checklist_toggle' | 'timelog_add';
+  details: string;
+  date: string; // ISO String
+  previousValue?: any;
+  newValue?: any;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -44,6 +53,7 @@ export interface Task {
   columnEnteredAt?: string;
   isPinned?: boolean;
   pinnedAt?: string;
+  history?: HistoryEntry[];
 }
 
 export interface Column {
