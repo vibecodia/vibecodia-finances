@@ -10,7 +10,7 @@ interface ThemeSelectorProps {
   themes: BoardTheme[];
   tasks: Task[];
   onSelectTheme: (themeId: string) => void;
-  onAddTheme: (name: string) => void;
+  onAddTheme: (name: string, subtitle?: string) => void;
   onUpdateTheme: (themeId: string, updates: Partial<BoardTheme>) => void;
   onDeleteTheme: (themeId: string) => void;
 }
@@ -19,6 +19,7 @@ export function ThemeSelector({ themes, tasks, onSelectTheme, onAddTheme, onUpda
   const { isGuest } = useVerification();
   const [isNewThemeModalOpen, setIsNewThemeModalOpen] = useState(false);
   const [newThemeName, setNewThemeName] = useState('');
+  const [newThemeSubtitle, setNewThemeSubtitle] = useState('');
   
   const [editingTheme, setEditingTheme] = useState<BoardTheme | null>(null);
 
@@ -26,8 +27,9 @@ export function ThemeSelector({ themes, tasks, onSelectTheme, onAddTheme, onUpda
 
   const handleCreateTheme = () => {
     if (newThemeName.trim() && !isLimitReached) {
-      onAddTheme(newThemeName.trim());
+      onAddTheme(newThemeName.trim(), newThemeSubtitle.trim());
       setNewThemeName('');
+      setNewThemeSubtitle('');
       setIsNewThemeModalOpen(false);
     }
   };
@@ -83,8 +85,16 @@ export function ThemeSelector({ themes, tasks, onSelectTheme, onAddTheme, onUpda
                 )}>
                   {theme.name}
                 </h3>
+                {theme.subtitle && (
+                  <p className={cn(
+                    "text-xs font-medium uppercase tracking-widest mt-1",
+                    theme.backgroundImage ? "text-white/70" : "text-muted-foreground"
+                  )}>
+                    {theme.subtitle}
+                  </p>
+                )}
                 <p className={cn(
-                  "text-xs font-bold uppercase tracking-widest mt-1",
+                  "text-xs font-bold uppercase tracking-widest mt-2",
                   theme.backgroundImage ? "text-white/70" : "text-muted-foreground"
                 )}>
                   {tasks.filter(t => t.themeId === theme.id).length} Tarefas
@@ -157,11 +167,19 @@ export function ThemeSelector({ themes, tasks, onSelectTheme, onAddTheme, onUpda
               placeholder="Nome do tema..."
               value={newThemeName}
               onChange={(e) => setNewThemeName(e.target.value)}
+              className="w-full bg-foreground/5 border-2 border-border rounded-2xl p-4 text-sm font-bold focus:outline-none focus:border-primary transition-colors mb-4"
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateTheme()}
+            />
+            <input
+              type="text"
+              placeholder="Subtítulo (opcional)"
+              value={newThemeSubtitle}
+              onChange={(e) => setNewThemeSubtitle(e.target.value)}
               className="w-full bg-foreground/5 border-2 border-border rounded-2xl p-4 text-sm font-bold focus:outline-none focus:border-primary transition-colors mb-6"
               onKeyDown={(e) => e.key === 'Enter' && handleCreateTheme()}
             />
             <div className="flex gap-3">
-              <Button variant="ghost" className="flex-1" onClick={() => setIsNewThemeModalOpen(false)}>Cancelar</Button>
+              <Button variant="ghost" className="flex-1" onClick={() => { setIsNewThemeModalOpen(false); setNewThemeSubtitle(''); }}>Cancelar</Button>
               <Button 
                 className="flex-1" 
                 disabled={!newThemeName.trim() || isLimitReached}
