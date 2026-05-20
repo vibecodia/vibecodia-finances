@@ -24,6 +24,7 @@ export function ThemeSettingsModal({
   isOnlyTheme 
 }: ThemeSettingsModalProps) {
   const [name, setName] = useState(theme.name);
+  const [subtitle, setSubtitle] = useState(theme.subtitle || '');
   const [color, setColor] = useState(theme.color || '#3b82f6');
   const [backgroundImage, setBackgroundImage] = useState(theme.backgroundImage || '');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -31,6 +32,7 @@ export function ThemeSettingsModal({
   useEffect(() => {
     if (isOpen) {
       setName(theme.name);
+      setSubtitle(theme.subtitle || '');
       setColor(theme.color || '#3b82f6');
       setBackgroundImage(theme.backgroundImage || '');
       setShowDeleteConfirm(false);
@@ -40,6 +42,7 @@ export function ThemeSettingsModal({
   const handleSave = () => {
     onUpdate({
       name: name.trim(),
+      subtitle: subtitle.trim() || undefined,
       color,
       backgroundImage: backgroundImage.trim() || undefined
     });
@@ -78,6 +81,13 @@ export function ThemeSettingsModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Ex: Trabalho, Pessoal..."
+          />
+
+          <Input
+            label="Subtítulo (opcional)"
+            value={subtitle}
+            onChange={(e) => setSubtitle(e.target.value)}
+            placeholder="Breve descrição do espaço..."
           />
 
           <div className="space-y-3">

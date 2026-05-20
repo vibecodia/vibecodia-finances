@@ -399,8 +399,8 @@ export function Board() {
           setCurrentThemeId(id);
           setShowThemeSelector(false);
         }}
-        onAddTheme={(name) => {
-            const theme = addTheme(name);
+        onAddTheme={(name, subtitle) => {
+            const theme = addTheme(name, subtitle);
             setCurrentThemeId(theme.id);
             setShowThemeSelector(false);
           }}
@@ -478,7 +478,11 @@ export function Board() {
               )}
               <div className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest">Tema Ativo</div>
             </div>
-            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Gerencie seu fluxo de trabalho</p>
+            {currentTheme.subtitle ? (
+              <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">{currentTheme.subtitle}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Gerencie seu fluxo de trabalho</p>
+            )}
           </div>
         </div>
         

@@ -218,10 +218,11 @@ export function useTrello() {
 
   const matchCount = filteredTasks.length;
 
-  const addTheme = useCallback((name: string, color?: string) => {
+  const addTheme = useCallback((name: string, subtitle?: string, color?: string) => {
     const newTheme: BoardTheme = {
       id: generateId(),
       name,
+      subtitle,
       color
     };
     setThemes(prev => [...prev, newTheme]);

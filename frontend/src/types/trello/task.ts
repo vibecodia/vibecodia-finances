@@ -15,6 +15,7 @@ export interface TaskLabel {
 export interface BoardTheme {
   id: string;
   name: string;
+  subtitle?: string;
   color?: string;
   backgroundImage?: string;
 }
