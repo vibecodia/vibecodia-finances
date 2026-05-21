@@ -318,6 +318,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals, onA
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [expenseItemSearch, setExpenseItemSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'expense' | 'income'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
   const [showDeleted, setShowDeleted] = useState(false);
@@ -932,12 +933,155 @@ INSTRUÇÕES:
     };
   }, [transactions, theme.cardBackground]);
 
+  // Extract Items from Notes for Price Comparison
+  const allItems = useMemo(() => {
+    const itemsMap: Record<string, { date: string, price: number }[]> = {};
+    
+    transactions.forEach((t: any) => {
+      // Handle soft-deleted status
+      if (showDeleted) {
+        if (t.status !== 'deleted') return;
+      } else {
+        if (t.status === 'deleted') return;
+      }
+
+      let items: any[] = [];
+      if (t.notes) {
+        if (typeof t.notes === 'object' && Array.isArray(t.notes.items)) {
+          items = t.notes.items;
+        } else if (typeof t.notes === 'string') {
+          try {
+            const parsed = JSON.parse(t.notes);
+            if (Array.isArray(parsed.items)) {
+              items = parsed.items;
+            }
+          } catch (e) {
+            // Not JSON
+          }
+        }
+      }
+
+      items.forEach(item => {
+        const name = item.description || item.name;
+        const price = item.unitPrice || item.price;
+        if (name && typeof price === 'number') {
+          if (!itemsMap[name]) itemsMap[name] = [];
+          itemsMap[name].push({ date: t.date, price });
+        }
+      });
+    });
+
+    return itemsMap;
+  }, [transactions, showDeleted]);
+
+  const sortedItemNames = useMemo(() => {
+    const keys = Object.keys(allItems);
+    // Separate duplicates (items with multiple prices) from unique items
+    const duplicates = keys.filter(name => allItems[name].length > 1).sort();
+    const unique = keys.filter(name => allItems[name].length === 1).sort();
+    // Put duplicates on top
+    return [...duplicates, ...unique];
+  }, [allItems]);
+
   // Expense Timeline Chart Data
   const expenseTimelineChartData = useMemo(() => {
     const getExpenseTimelineDateSource = (t: any): string => {
       if (expenseDateField === 'createdAt') return t.createdAt || t.date;
       return t.date;
     };
+
+    const searchTerm = expenseItemSearch.trim();
+    if (searchTerm.length >= 2) {
+      // Filter transactions by description match AND date range
+      const matchedTransactions = transactions.filter(t => {
+        const isExpense = t.type === 'expense';
+        if (!isExpense) return false;
+
+        // Handle soft-deleted status
+        if (showDeleted) {
+          if (t.status !== 'deleted') return false;
+        } else {
+          if (t.status === 'deleted') return false;
+        }
+
+        // Search match
+        if (!t.description.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+
+        // Date match
+        const date = parseLocalDate(getExpenseTimelineDateSource(t));
+        if (expenseMode === 'range') {
+          const start = parseLocalDate(expenseTimelineStartDate);
+          const end = parseLocalDate(expenseTimelineEndDate);
+          return isWithinInterval(date, { start, end });
+        } else {
+          const monthKey = format(date, 'yyyy-MM');
+          return monthKey === expenseComparisonMonth1 || monthKey === expenseComparisonMonth2;
+        }
+      });
+
+      if (matchedTransactions.length > 0) {
+        // Sort first to ensure chronological month collection
+        const sortedMatched = [...matchedTransactions].sort((a, b) => 
+          parseLocalDate(getExpenseTimelineDateSource(a)).getTime() - parseLocalDate(getExpenseTimelineDateSource(b)).getTime()
+        );
+
+        // Group by Description (Case-Insensitive) AND Month
+        const groupedData: Record<string, Record<string, number>> = {};
+        const prettyNames: Record<string, string> = {};
+        const chronologicalMonths: string[] = [];
+        const normalizedDescriptions = new Set<string>();
+
+        sortedMatched.forEach(t => {
+          const date = parseLocalDate(getExpenseTimelineDateSource(t));
+          const monthKey = format(date, 'MMM/yy');
+          const originalDesc = t.description;
+          const normalizedDesc = originalDesc.toLowerCase().trim();
+          
+          if (!groupedData[normalizedDesc]) {
+            groupedData[normalizedDesc] = {};
+            prettyNames[normalizedDesc] = originalDesc;
+          }
+          groupedData[normalizedDesc][monthKey] = (groupedData[normalizedDesc][monthKey] || 0) + t.amount;
+          
+          if (!chronologicalMonths.includes(monthKey)) {
+            chronologicalMonths.push(monthKey);
+          }
+          normalizedDescriptions.add(normalizedDesc);
+        });
+
+        const colors = [
+          '#EF4444', '#F97316', '#F59E0B', '#10B981', '#3B82F6', '#6366F1',
+          '#8B5CF6', '#EC4899', '#64748B', '#06B6D4', '#84CC16', '#0891B2'
+        ];
+
+        const datasets = Array.from(normalizedDescriptions).map((normDesc, idx) => ({
+          label: prettyNames[normDesc],
+          data: chronologicalMonths.map(m => groupedData[normDesc][m] || 0),
+          borderColor: colors[idx % colors.length],
+          backgroundColor: colors[idx % colors.length] + '33',
+          fill: false,
+          tension: 0.4,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: colors[idx % colors.length],
+          pointBorderColor: theme.cardBackground,
+          pointBorderWidth: 1,
+        }));
+
+        return {
+          labels: chronologicalMonths,
+          datasets,
+          isItemSearch: true
+        };
+      } else {
+        return {
+          labels: [],
+          datasets: [],
+          isItemSearch: true,
+          noMatch: true
+        };
+      }
+    }
 
     const expenseTransactions = transactions.filter((t: any) => {
       const isExpense = t.type === 'expense';
@@ -1015,57 +1159,7 @@ INSTRUÇÕES:
       labels: sortedDates,
       datasets,
     };
-  }, [transactions, expenseGroupBy, expenseStatusFilter, theme.cardBackground, expenseTimelineStartDate, expenseTimelineEndDate, expenseMode, expenseComparisonMonth1, expenseComparisonMonth2, showDeleted, expenseDateField]);
-
-  // Extract Items from Notes for Price Comparison
-  const allItems = useMemo(() => {
-    const itemsMap: Record<string, { date: string, price: number }[]> = {};
-    
-    transactions.forEach((t: any) => {
-      // Handle soft-deleted status
-      if (showDeleted) {
-        if (t.status !== 'deleted') return;
-      } else {
-        if (t.status === 'deleted') return;
-      }
-
-      let items: any[] = [];
-      if (t.notes) {
-        if (typeof t.notes === 'object' && Array.isArray(t.notes.items)) {
-          items = t.notes.items;
-        } else if (typeof t.notes === 'string') {
-          try {
-            const parsed = JSON.parse(t.notes);
-            if (Array.isArray(parsed.items)) {
-              items = parsed.items;
-            }
-          } catch (e) {
-            // Not JSON
-          }
-        }
-      }
-
-      items.forEach(item => {
-        const name = item.description || item.name;
-        const price = item.unitPrice || item.price;
-        if (name && typeof price === 'number') {
-          if (!itemsMap[name]) itemsMap[name] = [];
-          itemsMap[name].push({ date: t.date, price });
-        }
-      });
-    });
-
-    return itemsMap;
-  }, [transactions, showDeleted]);
-
-  const sortedItemNames = useMemo(() => {
-    const keys = Object.keys(allItems);
-    // Separate duplicates (items with multiple prices) from unique items
-    const duplicates = keys.filter(name => allItems[name].length > 1).sort();
-    const unique = keys.filter(name => allItems[name].length === 1).sort();
-    // Put duplicates on top
-    return [...duplicates, ...unique];
-  }, [allItems]);
+  }, [transactions, expenseGroupBy, expenseStatusFilter, theme.cardBackground, expenseTimelineStartDate, expenseTimelineEndDate, expenseMode, expenseComparisonMonth1, expenseComparisonMonth2, showDeleted, expenseDateField, expenseItemSearch, allItems]);
 
   // Price Evolution Chart Data
   const priceChartData = useMemo(() => {
@@ -1723,18 +1817,60 @@ INSTRUÇÕES:
             )}
             {maximizedId === 'expense_timeline' && (
               <div className="h-full min-h-[500px]">
-                <Bar 
-                  ref={maximizedChartRef}
-                  data={expenseTimelineChartData} 
-                  options={{ 
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: theme.text, font: { size: 14 } } } },
-                    scales: {
-                      y: { 
-                        stacked: true,
-                        grace: '10%',
-                        ticks: { 
-                          color: theme.text, 
+                {expenseItemSearch.trim().length >= 2 ? (
+                  (expenseTimelineChartData as any).noMatch ? (
+                    <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-xl italic gap-4">
+                      <Search className="w-20 h-20 opacity-10" />
+                      <span>Nenhum item encontrado para "{expenseItemSearch}"</span>
+                    </div>
+                  ) : (
+                    <Line 
+                      ref={maximizedChartRef}
+                      data={expenseTimelineChartData} 
+                      options={{ 
+                        maintainAspectRatio: false,
+                        plugins: { 
+                          legend: { 
+                            labels: { 
+                              color: theme.text, 
+                              font: { size: 14 } 
+                            } 
+                          } 
+                        },
+                        scales: {
+                          y: { 
+                            ticks: { 
+                              color: theme.text, 
+                              font: { size: 12 },
+                              callback: (value) => formatCurrency(value as number)
+                            }, 
+                            grid: { color: theme.cardBorder } 
+                          },
+                          x: { ticks: { color: theme.text, font: { size: 12 } }, grid: { color: theme.cardBorder } }
+                        }
+                      }} 
+                    />
+                  )
+                ) : (
+                  <Bar 
+                    ref={maximizedChartRef}
+                    data={expenseTimelineChartData} 
+                    options={{ 
+                      maintainAspectRatio: false,
+                      plugins: { 
+                        legend: { 
+                          labels: { 
+                            color: theme.text, 
+                            font: { size: 14 } 
+                          } 
+                        } 
+                      },
+                      scales: {
+                        y: { 
+                          stacked: true,
+                          grace: '10%',
+                          ticks: { 
+                            color: theme.text, 
                             font: { size: 12 },
                             callback: (value) => formatCurrency(value as number)
                           }, 
@@ -1748,8 +1884,9 @@ INSTRUÇÕES:
                       }
                     }} 
                   />
-                </div>
-              )}
+                )}
+              </div>
+            )}
               {maximizedId === 'categories' && (
                 <div className="h-full min-h-[500px] flex items-center justify-center">
                   <div className="w-full h-full">
@@ -2747,6 +2884,27 @@ INSTRUÇÕES:
                       <div className="flex flex-wrap items-center gap-2 md:gap-3">
                         {!item.collapsed && (
                           <div className="flex flex-wrap items-center gap-2">
+                            {/* Item Search */}
+                            <div className="relative w-full md:w-64">
+                              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                              <input 
+                                type="text" 
+                                placeholder="Buscar Item (ex: Leite)..."
+                                value={expenseItemSearch}
+                                onChange={(e) => setExpenseItemSearch(e.target.value)}
+                                className="w-full pl-8 pr-8 py-1.5 rounded-lg border text-[10px] font-bold focus:ring-2 focus:ring-accent/50 outline-none transition-all"
+                                style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
+                              />
+                              {expenseItemSearch && (
+                                <button 
+                                  onClick={() => setExpenseItemSearch('')}
+                                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-accent"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+
                             {/* Mode Toggle */}
                             <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
                               <button
@@ -2912,30 +3070,68 @@ INSTRUÇÕES:
                     {!item.collapsed && (
                       <div className="p-8 h-[500px]">
                         {transactions.filter((t: any) => t.type === 'expense').length > 0 ? (
-                          <Bar 
-                            ref={expenseChartRef}
-                            data={expenseTimelineChartData} 
-                            options={{ 
-                              maintainAspectRatio: false,
-                              plugins: { legend: { labels: { color: theme.text } } },
-                              scales: {
-                                y: { 
-                                  stacked: true,
-                                  grace: '10%',
-                                  ticks: { 
-                                    color: theme.text,
-                                    callback: (value) => formatCurrency(value as number)
-                                  }, 
-                                  grid: { color: theme.cardBorder } 
+                          expenseItemSearch.trim().length >= 2 ? (
+                            (expenseTimelineChartData as any).noMatch ? (
+                              <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
+                                <Search className="w-12 h-12 opacity-10" />
+                                <span>Nenhum item encontrado para "{expenseItemSearch}"</span>
+                              </div>
+                            ) : (
+                              <Line 
+                                ref={expenseChartRef}
+                                data={expenseTimelineChartData} 
+                                options={{ 
+                                  maintainAspectRatio: false,
+                                  plugins: { 
+                                    legend: { 
+                                      labels: { 
+                                        color: theme.text,
+                                      } 
+                                    } 
+                                  },
+                                  scales: {
+                                    y: { 
+                                      ticks: { 
+                                        color: theme.text,
+                                        callback: (value) => formatCurrency(value as number)
+                                      }, 
+                                      grid: { color: theme.cardBorder } 
+                                    },
+                                    x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
+                                  }
+                                }} 
+                              />
+                            )
+                          ) : (
+                            <Bar 
+                              ref={expenseChartRef}
+                              data={expenseTimelineChartData} 
+                              options={{ 
+                                maintainAspectRatio: false,
+                                plugins: { 
+                                  legend: { 
+                                    labels: { color: theme.text } 
+                                  } 
                                 },
-                                x: { 
-                                  stacked: true,
-                                  ticks: { color: theme.text }, 
-                                  grid: { color: theme.cardBorder } 
+                                scales: {
+                                  y: { 
+                                    stacked: true,
+                                    grace: '10%',
+                                    ticks: { 
+                                      color: theme.text,
+                                      callback: (value) => formatCurrency(value as number)
+                                    }, 
+                                    grid: { color: theme.cardBorder } 
+                                  },
+                                  x: { 
+                                    stacked: true,
+                                    ticks: { color: theme.text }, 
+                                    grid: { color: theme.cardBorder } 
+                                  }
                                 }
-                              }
-                            }} 
-                          />
+                              }} 
+                            />
+                          )
                         ) : (
                           <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
                             <TrendingUp className="w-12 h-12 opacity-10" />
