@@ -686,6 +686,37 @@ INSTRUÇÕES:
   const [expenseStatusFilter, setExpenseStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
   const [expenseDateField, setExpenseDateField] = useState<'date' | 'createdAt'>('date');
 
+  const toggleExpenseTimeRange = () => {
+    if (transactions.length === 0) return;
+    
+    const startOfCurrentMonth = format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd');
+    const endOfCurrentMonth = format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd');
+
+    // If it's already NOT the current month (could be all time or any other), we reset to current month
+    // OR if we want to be specific about "is it all time?", we calculate min/max
+    const dates = transactions
+      .map(t => parseLocalDate(t.date).getTime())
+      .filter(d => !isNaN(d));
+    
+    if (dates.length === 0) return;
+
+    const minDateStr = format(new Date(Math.min(...dates)), 'yyyy-MM-dd');
+    const maxDateStr = format(new Date(Math.max(...dates)), 'yyyy-MM-dd');
+
+    const isCurrentlyAllTime = expenseTimelineStartDate === minDateStr && expenseTimelineEndDate === maxDateStr;
+
+    if (isCurrentlyAllTime) {
+      // Switch to Current Month
+      setExpenseTimelineStartDate(startOfCurrentMonth);
+      setExpenseTimelineEndDate(endOfCurrentMonth);
+    } else {
+      // Switch to All Time
+      setExpenseTimelineStartDate(minDateStr);
+      setExpenseTimelineEndDate(maxDateStr);
+    }
+    setExpenseMode('range');
+  };
+
   // Expense Timeline Date Range State (default to last 6 months for better closing view)
   const [expenseTimelineStartDate, setExpenseTimelineStartDate] = useState<string>(format(startOfMonth(subMonths(getCurrentBrazilDate(), 6)), 'yyyy-MM-dd'));
   const [expenseTimelineEndDate, setExpenseTimelineEndDate] = useState<string>(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
@@ -3003,6 +3034,28 @@ INSTRUÇÕES:
                                 </>
                               )}
                             </div>
+
+                            {/* Todo Período / Mês Atual Toggle Button */}
+                            <button
+                              onClick={toggleExpenseTimeRange}
+                              className="px-3 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-primary/10"
+                              style={{ borderColor: theme.cardBorder, color: theme.text, backgroundColor: theme.cardBackground }}
+                              title={(() => {
+                                const dates = transactions.map(t => parseLocalDate(t.date).getTime()).filter(d => !isNaN(d));
+                                if (dates.length === 0) return "Todo Período";
+                                const minStr = format(new Date(Math.min(...dates)), 'yyyy-MM-dd');
+                                const maxStr = format(new Date(Math.max(...dates)), 'yyyy-MM-dd');
+                                return (expenseTimelineStartDate === minStr && expenseTimelineEndDate === maxStr) ? "Voltar para Mês Atual" : "Ver histórico completo";
+                              })()}
+                            >
+                              {(() => {
+                                const dates = transactions.map(t => parseLocalDate(t.date).getTime()).filter(d => !isNaN(d));
+                                if (dates.length === 0) return "Todo Período";
+                                const minStr = format(new Date(Math.min(...dates)), 'yyyy-MM-dd');
+                                const maxStr = format(new Date(Math.max(...dates)), 'yyyy-MM-dd');
+                                return (expenseTimelineStartDate === minStr && expenseTimelineEndDate === maxStr) ? "Mês Atual" : "Todo Período";
+                              })()}
+                            </button>
 
                             {/* Group By */}
                             <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
