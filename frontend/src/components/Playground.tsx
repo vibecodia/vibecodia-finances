@@ -1075,13 +1075,19 @@ INSTRUÇÕES:
         return {
           labels: chronologicalMonths,
           datasets,
-          isItemSearch: true
+          isItemSearch: true,
+          totalAmount: matchedTransactions.reduce((sum, t) => sum + t.amount, 0),
+          totalCount: matchedTransactions.length,
+          noMatch: false
         };
       } else {
         return {
           labels: [],
           datasets: [],
-          isItemSearch: true
+          isItemSearch: true,
+          totalAmount: 0,
+          totalCount: 0,
+          noMatch: true
         };
       }
     }
@@ -1803,9 +1809,12 @@ INSTRUÇÕES:
               <div className="h-full min-h-[500px]">
                 {expenseItemSearch.trim().length >= 2 ? (
                   (expenseTimelineChartData as any).noMatch ? (
-                    <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-xl italic gap-4">
-                      <Search className="w-20 h-20 opacity-10" />
-                      <span>Nenhum item encontrado para "{expenseItemSearch}"</span>
+                    <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-xl italic gap-4 animate-in fade-in duration-300">
+                      <div className="p-6 bg-muted/20 rounded-full">
+                        <Search className="w-20 h-20 opacity-20" />
+                      </div>
+                      <span className="text-2xl font-bold">Nenhum item encontrado para "{expenseItemSearch}"</span>
+                      <span className="text-sm opacity-60">Tente termos mais genéricos ou verifique se as transações estão dentro do período selecionado.</span>
                     </div>
                   ) : (
                     <Line 
@@ -2889,6 +2898,19 @@ INSTRUÇÕES:
                               )}
                             </div>
 
+                            {/* Search Totals Feedback */}
+                            {expenseItemSearch.trim().length >= 2 && (expenseTimelineChartData as any).totalCount > 0 && (
+                              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-accent/10 border border-accent/20 animate-in fade-in zoom-in duration-300">
+                                <span className="text-[9px] font-black text-accent uppercase tracking-tighter">
+                                  {(expenseTimelineChartData as any).totalCount} {(expenseTimelineChartData as any).totalCount === 1 ? 'item' : 'itens'}
+                                </span>
+                                <div className="w-px h-2.5 bg-accent/20" />
+                                <span className="text-[10px] font-black text-accent tracking-tighter">
+                                  {formatCurrency((expenseTimelineChartData as any).totalAmount)}
+                                </span>
+                              </div>
+                            )}
+
                             {/* Mode Toggle */}
                             <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
                               <button
@@ -3056,30 +3078,40 @@ INSTRUÇÕES:
                       <div className="p-8 h-[500px]">
                         {transactions.filter((t: any) => t.type === 'expense').length > 0 ? (
                           expenseItemSearch.trim().length >= 2 ? (
-                            <Line 
-                              ref={expenseChartRef}
-                              data={expenseTimelineChartData} 
-                              options={{ 
-                                maintainAspectRatio: false,
-                                plugins: { 
-                                  legend: { 
-                                    labels: { 
-                                      color: theme.text,
+                            (expenseTimelineChartData as any).noMatch ? (
+                              <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2 animate-in fade-in duration-300">
+                                <div className="p-4 bg-muted/20 rounded-full">
+                                  <Search className="w-12 h-12 opacity-20" />
+                                </div>
+                                <span className="text-base font-bold">Nenhum item encontrado para "{expenseItemSearch}"</span>
+                                <span className="text-xs opacity-60">Tente termos mais genéricos ou verifique as datas.</span>
+                              </div>
+                            ) : (
+                              <Line 
+                                ref={expenseChartRef}
+                                data={expenseTimelineChartData} 
+                                options={{ 
+                                  maintainAspectRatio: false,
+                                  plugins: { 
+                                    legend: { 
+                                      labels: { 
+                                        color: theme.text,
+                                      } 
                                     } 
-                                  } 
-                                },
-                                scales: {
-                                  y: { 
-                                    ticks: { 
-                                      color: theme.text,
-                                      callback: (value) => formatCurrency(value as number)
-                                    }, 
-                                    grid: { color: theme.cardBorder } 
                                   },
-                                  x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
-                                }
-                              }} 
-                            />
+                                  scales: {
+                                    y: { 
+                                      ticks: { 
+                                        color: theme.text,
+                                        callback: (value) => formatCurrency(value as number)
+                                      }, 
+                                      grid: { color: theme.cardBorder } 
+                                    },
+                                    x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
+                                  }
+                                }} 
+                              />
+                            )
                           ) : (
                             <Bar 
                               ref={expenseChartRef}

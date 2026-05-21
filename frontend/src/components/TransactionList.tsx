@@ -1,6 +1,6 @@
 import { startOfMonth, endOfMonth, isSameDay } from 'date-fns';
 import { Plus, Trash2, Filter, Check, Calendar, CreditCard, Clock, Edit3, Wallet, ChevronDown, ChevronUp, RefreshCw, Search } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useTheme } from '../contexts/ThemeContext';
@@ -434,6 +434,15 @@ const TransactionList: React.FC<TransactionListProps> = ({
     setAnimatedTransactionId(id);
   };
 
+  const searchTotals = useMemo(() => {
+    if (!searchTerm.trim()) return { count: 0, total: 0 };
+    const matches = transactionsForDisplay.filter(t => t.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    return {
+      count: matches.length,
+      total: matches.reduce((sum, t) => sum + t.amount, 0)
+    };
+  }, [searchTerm, transactionsForDisplay]);
+
   return (
     <div className="space-y-6">
       {apporteMessage && (
@@ -587,15 +596,40 @@ const TransactionList: React.FC<TransactionListProps> = ({
           )}
 
           {/* Search Input */}
-          <div className="relative flex items-center w-full group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors z-10" />
-            <Input
-              type="text"
-              placeholder={type === 'expense' ? "Buscar despesas..." : "Buscar receitas..."}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-12"
-            />
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <div className="relative flex items-center w-full group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors z-10" />
+              <Input
+                type="text"
+                placeholder={type === 'expense' ? "Buscar despesas..." : "Buscar receitas..."}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-12"
+              />
+            </div>
+
+            {/* Search Totals Feedback */}
+            {searchTerm.trim().length >= 2 && searchTotals.count > 0 && (
+              <div 
+                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-opacity-10 border animate-in fade-in zoom-in duration-300 flex-shrink-0"
+                style={{ 
+                  backgroundColor: type === 'income' ? 'hsl(var(--primary))' : 'hsl(var(--accent))',
+                  borderColor: type === 'income' ? 'hsla(var(--primary), 0.2)' : 'hsla(var(--accent), 0.2)',
+                  color: type === 'income' ? 'hsl(var(--primary))' : 'hsl(var(--accent))'
+                }}
+              >
+                <span className="text-[10px] font-black uppercase tracking-tighter">
+                  {searchTotals.count} {searchTotals.count === 1 ? 'item' : 'itens'}
+                </span>
+                <div 
+                  className="w-px h-3 opacity-20" 
+                  style={{ backgroundColor: type === 'income' ? 'hsl(var(--primary))' : 'hsl(var(--accent))' }} 
+                />
+                <span className="text-xs font-black tracking-tighter">
+                  {formatCurrency(searchTotals.total)}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Daily Filter for Income/Expense */}
