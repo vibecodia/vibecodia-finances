@@ -318,6 +318,7 @@ const Playground: React.FC<PlaygroundProps> = ({ transactions, savingsGoals, onA
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [expenseItemSearch, setExpenseItemSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'expense' | 'income'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
   const [showDeleted, setShowDeleted] = useState(false);
@@ -685,6 +686,37 @@ INSTRUÇÕES:
   const [expenseStatusFilter, setExpenseStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
   const [expenseDateField, setExpenseDateField] = useState<'date' | 'createdAt'>('date');
 
+  const toggleExpenseTimeRange = () => {
+    if (transactions.length === 0) return;
+    
+    const startOfCurrentMonth = format(startOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd');
+    const endOfCurrentMonth = format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd');
+
+    // If it's already NOT the current month (could be all time or any other), we reset to current month
+    // OR if we want to be specific about "is it all time?", we calculate min/max
+    const dates = transactions
+      .map(t => parseLocalDate(t.date).getTime())
+      .filter(d => !isNaN(d));
+    
+    if (dates.length === 0) return;
+
+    const minDateStr = format(new Date(Math.min(...dates)), 'yyyy-MM-dd');
+    const maxDateStr = format(new Date(Math.max(...dates)), 'yyyy-MM-dd');
+
+    const isCurrentlyAllTime = expenseTimelineStartDate === minDateStr && expenseTimelineEndDate === maxDateStr;
+
+    if (isCurrentlyAllTime) {
+      // Switch to Current Month
+      setExpenseTimelineStartDate(startOfCurrentMonth);
+      setExpenseTimelineEndDate(endOfCurrentMonth);
+    } else {
+      // Switch to All Time
+      setExpenseTimelineStartDate(minDateStr);
+      setExpenseTimelineEndDate(maxDateStr);
+    }
+    setExpenseMode('range');
+  };
+
   // Expense Timeline Date Range State (default to last 6 months for better closing view)
   const [expenseTimelineStartDate, setExpenseTimelineStartDate] = useState<string>(format(startOfMonth(subMonths(getCurrentBrazilDate(), 6)), 'yyyy-MM-dd'));
   const [expenseTimelineEndDate, setExpenseTimelineEndDate] = useState<string>(format(endOfMonth(getCurrentBrazilDate()), 'yyyy-MM-dd'));
@@ -932,12 +964,164 @@ INSTRUÇÕES:
     };
   }, [transactions, theme.cardBackground]);
 
+  // Extract Items from Notes for Price Comparison
+  const allItems = useMemo(() => {
+    const itemsMap: Record<string, { date: string, price: number }[]> = {};
+    
+    transactions.forEach((t: any) => {
+      // Handle soft-deleted status
+      if (showDeleted) {
+        if (t.status !== 'deleted') return;
+      } else {
+        if (t.status === 'deleted') return;
+      }
+
+      let items: any[] = [];
+      if (t.notes) {
+        if (typeof t.notes === 'object' && Array.isArray(t.notes.items)) {
+          items = t.notes.items;
+        } else if (typeof t.notes === 'string') {
+          try {
+            const parsed = JSON.parse(t.notes);
+            if (Array.isArray(parsed.items)) {
+              items = parsed.items;
+            }
+          } catch (e) {
+            // Not JSON
+          }
+        }
+      }
+
+      items.forEach(item => {
+        const name = item.description || item.name;
+        const price = item.unitPrice || item.price;
+        if (name && typeof price === 'number') {
+          if (!itemsMap[name]) itemsMap[name] = [];
+          itemsMap[name].push({ date: t.date, price });
+        }
+      });
+    });
+
+    return itemsMap;
+  }, [transactions, showDeleted]);
+
+  const sortedItemNames = useMemo(() => {
+    const keys = Object.keys(allItems);
+    // Separate duplicates (items with multiple prices) from unique items
+    const duplicates = keys.filter(name => allItems[name].length > 1).sort();
+    const unique = keys.filter(name => allItems[name].length === 1).sort();
+    // Put duplicates on top
+    return [...duplicates, ...unique];
+  }, [allItems]);
+
   // Expense Timeline Chart Data
   const expenseTimelineChartData = useMemo(() => {
     const getExpenseTimelineDateSource = (t: any): string => {
       if (expenseDateField === 'createdAt') return t.createdAt || t.date;
       return t.date;
     };
+
+    const searchTerms = expenseItemSearch.split(',')
+      .map(term => term.trim().toLowerCase())
+      .filter(term => term.length >= 2);
+
+    if (searchTerms.length > 0) {
+      // Filter transactions by ANY of the search terms AND date range
+      const matchedTransactions = transactions.filter(t => {
+        const isExpense = t.type === 'expense';
+        if (!isExpense) return false;
+
+        // Handle soft-deleted status
+        if (showDeleted) {
+          if (t.status !== 'deleted') return false;
+        } else {
+          if (t.status === 'deleted') return false;
+        }
+
+        // Multiple Search match: Check if description matches ANY of the terms
+        const desc = t.description.toLowerCase();
+        if (!searchTerms.some(term => desc.includes(term))) return false;
+
+        // Date match
+        const date = parseLocalDate(getExpenseTimelineDateSource(t));
+        if (expenseMode === 'range') {
+          const start = parseLocalDate(expenseTimelineStartDate);
+          const end = parseLocalDate(expenseTimelineEndDate);
+          return isWithinInterval(date, { start, end });
+        } else {
+          const monthKey = format(date, 'yyyy-MM');
+          return monthKey === expenseComparisonMonth1 || monthKey === expenseComparisonMonth2;
+        }
+      });
+
+      if (matchedTransactions.length > 0) {
+        // Sort first to ensure chronological month collection
+        const sortedMatched = [...matchedTransactions].sort((a, b) => 
+          parseLocalDate(getExpenseTimelineDateSource(a)).getTime() - parseLocalDate(getExpenseTimelineDateSource(b)).getTime()
+        );
+
+        // Group by Description (Case-Insensitive) AND Month
+        const groupedData: Record<string, Record<string, number>> = {};
+        const prettyNames: Record<string, string> = {};
+        const chronologicalMonths: string[] = [];
+        const normalizedDescriptions = new Set<string>();
+
+        sortedMatched.forEach(t => {
+          const date = parseLocalDate(getExpenseTimelineDateSource(t));
+          const monthKey = format(date, 'MMM/yy');
+          const originalDesc = t.description;
+          const normalizedDesc = originalDesc.toLowerCase().trim();
+          
+          if (!groupedData[normalizedDesc]) {
+            groupedData[normalizedDesc] = {};
+            prettyNames[normalizedDesc] = originalDesc;
+          }
+          groupedData[normalizedDesc][monthKey] = (groupedData[normalizedDesc][monthKey] || 0) + t.amount;
+          
+          if (!chronologicalMonths.includes(monthKey)) {
+            chronologicalMonths.push(monthKey);
+          }
+          normalizedDescriptions.add(normalizedDesc);
+        });
+
+        const colors = [
+          '#EF4444', '#F97316', '#F59E0B', '#10B981', '#3B82F6', '#6366F1',
+          '#8B5CF6', '#EC4899', '#64748B', '#06B6D4', '#84CC16', '#0891B2'
+        ];
+
+        const datasets = Array.from(normalizedDescriptions).map((normDesc, idx) => ({
+          label: prettyNames[normDesc],
+          data: chronologicalMonths.map(m => groupedData[normDesc][m] || 0),
+          borderColor: colors[idx % colors.length],
+          backgroundColor: colors[idx % colors.length] + '33',
+          fill: false,
+          tension: 0.4,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: colors[idx % colors.length],
+          pointBorderColor: theme.cardBackground,
+          pointBorderWidth: 1,
+        }));
+
+        return {
+          labels: chronologicalMonths,
+          datasets,
+          isItemSearch: true,
+          totalAmount: matchedTransactions.reduce((sum, t) => sum + t.amount, 0),
+          totalCount: matchedTransactions.length,
+          noMatch: false
+        };
+      } else {
+        return {
+          labels: [],
+          datasets: [],
+          isItemSearch: true,
+          totalAmount: 0,
+          totalCount: 0,
+          noMatch: true
+        };
+      }
+    }
 
     const expenseTransactions = transactions.filter((t: any) => {
       const isExpense = t.type === 'expense';
@@ -1015,57 +1199,7 @@ INSTRUÇÕES:
       labels: sortedDates,
       datasets,
     };
-  }, [transactions, expenseGroupBy, expenseStatusFilter, theme.cardBackground, expenseTimelineStartDate, expenseTimelineEndDate, expenseMode, expenseComparisonMonth1, expenseComparisonMonth2, showDeleted, expenseDateField]);
-
-  // Extract Items from Notes for Price Comparison
-  const allItems = useMemo(() => {
-    const itemsMap: Record<string, { date: string, price: number }[]> = {};
-    
-    transactions.forEach((t: any) => {
-      // Handle soft-deleted status
-      if (showDeleted) {
-        if (t.status !== 'deleted') return;
-      } else {
-        if (t.status === 'deleted') return;
-      }
-
-      let items: any[] = [];
-      if (t.notes) {
-        if (typeof t.notes === 'object' && Array.isArray(t.notes.items)) {
-          items = t.notes.items;
-        } else if (typeof t.notes === 'string') {
-          try {
-            const parsed = JSON.parse(t.notes);
-            if (Array.isArray(parsed.items)) {
-              items = parsed.items;
-            }
-          } catch (e) {
-            // Not JSON
-          }
-        }
-      }
-
-      items.forEach(item => {
-        const name = item.description || item.name;
-        const price = item.unitPrice || item.price;
-        if (name && typeof price === 'number') {
-          if (!itemsMap[name]) itemsMap[name] = [];
-          itemsMap[name].push({ date: t.date, price });
-        }
-      });
-    });
-
-    return itemsMap;
-  }, [transactions, showDeleted]);
-
-  const sortedItemNames = useMemo(() => {
-    const keys = Object.keys(allItems);
-    // Separate duplicates (items with multiple prices) from unique items
-    const duplicates = keys.filter(name => allItems[name].length > 1).sort();
-    const unique = keys.filter(name => allItems[name].length === 1).sort();
-    // Put duplicates on top
-    return [...duplicates, ...unique];
-  }, [allItems]);
+  }, [transactions, expenseGroupBy, expenseStatusFilter, theme.cardBackground, expenseTimelineStartDate, expenseTimelineEndDate, expenseMode, expenseComparisonMonth1, expenseComparisonMonth2, showDeleted, expenseDateField, expenseItemSearch, allItems]);
 
   // Price Evolution Chart Data
   const priceChartData = useMemo(() => {
@@ -1534,25 +1668,6 @@ INSTRUÇÕES:
     }, 500);
   };
 
-  const highlightText = (text: string, highlight: string) => {
-    if (!highlight.trim()) {
-      return <span>{text}</span>;
-    }
-    const regex = new RegExp(`(${highlight})`, 'gi');
-    const parts = text.split(regex);
-    return (
-      <span>
-        {parts.map((part, i) => 
-          regex.test(part) ? (
-            <mark key={i} className="bg-yellow-300 text-black px-0.5 rounded">{part}</mark>
-          ) : (
-            <span key={i}>{part}</span>
-          )
-        )}
-      </span>
-    );
-  };
-
   const renderCardHeader = (id: string, label: string, icon: React.ReactNode, index: number, isCollapsed: boolean, onToggleAll?: () => void) => (
     <div className="p-4 border-b font-semibold text-foreground flex items-center justify-between group" style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBorder + '33' }}>
       <div className="flex items-center gap-2">
@@ -1723,18 +1838,63 @@ INSTRUÇÕES:
             )}
             {maximizedId === 'expense_timeline' && (
               <div className="h-full min-h-[500px]">
-                <Bar 
-                  ref={maximizedChartRef}
-                  data={expenseTimelineChartData} 
-                  options={{ 
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: theme.text, font: { size: 14 } } } },
-                    scales: {
-                      y: { 
-                        stacked: true,
-                        grace: '10%',
-                        ticks: { 
-                          color: theme.text, 
+                {expenseItemSearch.trim().length >= 2 ? (
+                  (expenseTimelineChartData as any).noMatch ? (
+                    <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-xl italic gap-4 animate-in fade-in duration-300">
+                      <div className="p-6 bg-muted/20 rounded-full">
+                        <Search className="w-20 h-20 opacity-20" />
+                      </div>
+                      <span className="text-2xl font-bold">Nenhum item encontrado para "{expenseItemSearch}"</span>
+                      <span className="text-sm opacity-60">Tente termos mais genéricos ou verifique se as transações estão dentro do período selecionado.</span>
+                    </div>
+                  ) : (
+                    <Line 
+                      ref={maximizedChartRef}
+                      data={expenseTimelineChartData} 
+                      options={{ 
+                        maintainAspectRatio: false,
+                        plugins: { 
+                          legend: { 
+                            labels: { 
+                              color: theme.text, 
+                              font: { size: 14 } 
+                            } 
+                          } 
+                        },
+                        scales: {
+                          y: { 
+                            ticks: { 
+                              color: theme.text, 
+                              font: { size: 12 },
+                              callback: (value) => formatCurrency(value as number)
+                            }, 
+                            grid: { color: theme.cardBorder } 
+                          },
+                          x: { ticks: { color: theme.text, font: { size: 12 } }, grid: { color: theme.cardBorder } }
+                        }
+                      }} 
+                    />
+                  )
+                ) : (
+                  <Bar 
+                    ref={maximizedChartRef}
+                    data={expenseTimelineChartData} 
+                    options={{ 
+                      maintainAspectRatio: false,
+                      plugins: { 
+                        legend: { 
+                          labels: { 
+                            color: theme.text, 
+                            font: { size: 14 } 
+                          } 
+                        } 
+                      },
+                      scales: {
+                        y: { 
+                          stacked: true,
+                          grace: '10%',
+                          ticks: { 
+                            color: theme.text, 
                             font: { size: 12 },
                             callback: (value) => formatCurrency(value as number)
                           }, 
@@ -1748,8 +1908,9 @@ INSTRUÇÕES:
                       }
                     }} 
                   />
-                </div>
-              )}
+                )}
+              </div>
+            )}
               {maximizedId === 'categories' && (
                 <div className="h-full min-h-[500px] flex items-center justify-center">
                   <div className="w-full h-full">
@@ -2747,6 +2908,40 @@ INSTRUÇÕES:
                       <div className="flex flex-wrap items-center gap-2 md:gap-3">
                         {!item.collapsed && (
                           <div className="flex flex-wrap items-center gap-2">
+                            {/* Item Search */}
+                            <div className="relative w-full md:w-64">
+                              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                              <input 
+                                type="text" 
+                                placeholder="Buscar Itens (ex: Leite, CPFL)..."
+                                value={expenseItemSearch}
+                                onChange={(e) => setExpenseItemSearch(e.target.value)}
+                                className="w-full pl-8 pr-8 py-1.5 rounded-lg border text-[10px] font-bold focus:ring-2 focus:ring-accent/50 outline-none transition-all"
+                                style={{ backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, color: theme.text }}
+                              />
+                              {expenseItemSearch && (
+                                <button 
+                                  onClick={() => setExpenseItemSearch('')}
+                                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-accent"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Search Totals Feedback */}
+                            {expenseItemSearch.trim().length >= 2 && (expenseTimelineChartData as any).totalCount > 0 && (
+                              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-accent/10 border border-accent/20 animate-in fade-in zoom-in duration-300">
+                                <span className="text-[9px] font-black text-accent uppercase tracking-tighter">
+                                  {(expenseTimelineChartData as any).totalCount} {(expenseTimelineChartData as any).totalCount === 1 ? 'item' : 'itens'}
+                                </span>
+                                <div className="w-px h-2.5 bg-accent/20" />
+                                <span className="text-[10px] font-black text-accent tracking-tighter">
+                                  {formatCurrency((expenseTimelineChartData as any).totalAmount)}
+                                </span>
+                              </div>
+                            )}
+
                             {/* Mode Toggle */}
                             <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
                               <button
@@ -2840,6 +3035,28 @@ INSTRUÇÕES:
                               )}
                             </div>
 
+                            {/* Todo Período / Mês Atual Toggle Button */}
+                            <button
+                              onClick={toggleExpenseTimeRange}
+                              className="px-3 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-tighter transition-all hover:bg-primary/10"
+                              style={{ borderColor: theme.cardBorder, color: theme.text, backgroundColor: theme.cardBackground }}
+                              title={(() => {
+                                const dates = transactions.map(t => parseLocalDate(t.date).getTime()).filter(d => !isNaN(d));
+                                if (dates.length === 0) return "Todo Período";
+                                const minStr = format(new Date(Math.min(...dates)), 'yyyy-MM-dd');
+                                const maxStr = format(new Date(Math.max(...dates)), 'yyyy-MM-dd');
+                                return (expenseTimelineStartDate === minStr && expenseTimelineEndDate === maxStr) ? "Voltar para Mês Atual" : "Ver histórico completo";
+                              })()}
+                            >
+                              {(() => {
+                                const dates = transactions.map(t => parseLocalDate(t.date).getTime()).filter(d => !isNaN(d));
+                                if (dates.length === 0) return "Todo Período";
+                                const minStr = format(new Date(Math.min(...dates)), 'yyyy-MM-dd');
+                                const maxStr = format(new Date(Math.max(...dates)), 'yyyy-MM-dd');
+                                return (expenseTimelineStartDate === minStr && expenseTimelineEndDate === maxStr) ? "Mês Atual" : "Todo Período";
+                              })()}
+                            </button>
+
                             {/* Group By */}
                             <div className="flex gap-1 border rounded-lg p-1" style={{ borderColor: theme.cardBorder }}>
                               <button
@@ -2909,33 +3126,75 @@ INSTRUÇÕES:
                         </div>
                       </div>
                     </div>
+
                     {!item.collapsed && (
                       <div className="p-8 h-[500px]">
                         {transactions.filter((t: any) => t.type === 'expense').length > 0 ? (
-                          <Bar 
-                            ref={expenseChartRef}
-                            data={expenseTimelineChartData} 
-                            options={{ 
-                              maintainAspectRatio: false,
-                              plugins: { legend: { labels: { color: theme.text } } },
-                              scales: {
-                                y: { 
-                                  stacked: true,
-                                  grace: '10%',
-                                  ticks: { 
-                                    color: theme.text,
-                                    callback: (value) => formatCurrency(value as number)
-                                  }, 
-                                  grid: { color: theme.cardBorder } 
+                          expenseItemSearch.trim().length >= 2 ? (
+                            (expenseTimelineChartData as any).noMatch ? (
+                              <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2 animate-in fade-in duration-300">
+                                <div className="p-4 bg-muted/20 rounded-full">
+                                  <Search className="w-12 h-12 opacity-20" />
+                                </div>
+                                <span className="text-base font-bold">Nenhum item encontrado para "{expenseItemSearch}"</span>
+                                <span className="text-xs opacity-60">Tente termos mais genéricos ou verifique as datas.</span>
+                              </div>
+                            ) : (
+                              <Line 
+                                ref={expenseChartRef}
+                                data={expenseTimelineChartData} 
+                                options={{ 
+                                  maintainAspectRatio: false,
+                                  plugins: { 
+                                    legend: { 
+                                      labels: { 
+                                        color: theme.text,
+                                      } 
+                                    } 
+                                  },
+                                  scales: {
+                                    y: { 
+                                      ticks: { 
+                                        color: theme.text,
+                                        callback: (value) => formatCurrency(value as number)
+                                      }, 
+                                      grid: { color: theme.cardBorder } 
+                                    },
+                                    x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
+                                  }
+                                }} 
+                              />
+                            )
+                          ) : (
+                            <Bar 
+                              ref={expenseChartRef}
+                              data={expenseTimelineChartData} 
+                              options={{ 
+                                maintainAspectRatio: false,
+                                plugins: { 
+                                  legend: { 
+                                    labels: { color: theme.text } 
+                                  } 
                                 },
-                                x: { 
-                                  stacked: true,
-                                  ticks: { color: theme.text }, 
-                                  grid: { color: theme.cardBorder } 
+                                scales: {
+                                  y: { 
+                                    stacked: true,
+                                    grace: '10%',
+                                    ticks: { 
+                                      color: theme.text,
+                                      callback: (value) => formatCurrency(value as number)
+                                    }, 
+                                    grid: { color: theme.cardBorder } 
+                                  },
+                                  x: { 
+                                    stacked: true,
+                                    ticks: { color: theme.text }, 
+                                    grid: { color: theme.cardBorder } 
+                                  }
                                 }
-                              }
-                            }} 
-                          />
+                              }} 
+                            />
+                          )
                         ) : (
                           <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
                             <TrendingUp className="w-12 h-12 opacity-10" />
@@ -3284,7 +3543,7 @@ INSTRUÇÕES:
                                 </td>
                                 <td className={`p-4 font-bold border-r ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
                                   <div className="flex items-center gap-2">
-                                    {highlightText(t.description, searchTerm)}
+                                    {t.description}
                                     {t.status !== 'deleted' && (
                                       <button
                                         onClick={() => removeTransaction(t.id)}
