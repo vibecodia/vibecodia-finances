@@ -990,9 +990,12 @@ INSTRUÇÕES:
       return t.date;
     };
 
-    const searchTerm = expenseItemSearch.trim();
-    if (searchTerm.length >= 2) {
-      // Filter transactions by description match AND date range
+    const searchTerms = expenseItemSearch.split(',')
+      .map(term => term.trim().toLowerCase())
+      .filter(term => term.length >= 2);
+
+    if (searchTerms.length > 0) {
+      // Filter transactions by ANY of the search terms AND date range
       const matchedTransactions = transactions.filter(t => {
         const isExpense = t.type === 'expense';
         if (!isExpense) return false;
@@ -1004,8 +1007,9 @@ INSTRUÇÕES:
           if (t.status === 'deleted') return false;
         }
 
-        // Search match
-        if (!t.description.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+        // Multiple Search match: Check if description matches ANY of the terms
+        const desc = t.description.toLowerCase();
+        if (!searchTerms.some(term => desc.includes(term))) return false;
 
         // Date match
         const date = parseLocalDate(getExpenseTimelineDateSource(t));
@@ -1077,8 +1081,7 @@ INSTRUÇÕES:
         return {
           labels: [],
           datasets: [],
-          isItemSearch: true,
-          noMatch: true
+          isItemSearch: true
         };
       }
     }
@@ -1626,25 +1629,6 @@ INSTRUÇÕES:
       printWindow.print();
       printWindow.close();
     }, 500);
-  };
-
-  const highlightText = (text: string, highlight: string) => {
-    if (!highlight.trim()) {
-      return <span>{text}</span>;
-    }
-    const regex = new RegExp(`(${highlight})`, 'gi');
-    const parts = text.split(regex);
-    return (
-      <span>
-        {parts.map((part, i) => 
-          regex.test(part) ? (
-            <mark key={i} className="bg-yellow-300 text-black px-0.5 rounded">{part}</mark>
-          ) : (
-            <span key={i}>{part}</span>
-          )
-        )}
-      </span>
-    );
   };
 
   const renderCardHeader = (id: string, label: string, icon: React.ReactNode, index: number, isCollapsed: boolean, onToggleAll?: () => void) => (
@@ -2889,7 +2873,7 @@ INSTRUÇÕES:
                               <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                               <input 
                                 type="text" 
-                                placeholder="Buscar Item (ex: Leite)..."
+                                placeholder="Buscar Itens (ex: Leite, CPFL)..."
                                 value={expenseItemSearch}
                                 onChange={(e) => setExpenseItemSearch(e.target.value)}
                                 className="w-full pl-8 pr-8 py-1.5 rounded-lg border text-[10px] font-bold focus:ring-2 focus:ring-accent/50 outline-none transition-all"
@@ -3067,41 +3051,35 @@ INSTRUÇÕES:
                         </div>
                       </div>
                     </div>
+
                     {!item.collapsed && (
                       <div className="p-8 h-[500px]">
                         {transactions.filter((t: any) => t.type === 'expense').length > 0 ? (
                           expenseItemSearch.trim().length >= 2 ? (
-                            (expenseTimelineChartData as any).noMatch ? (
-                              <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
-                                <Search className="w-12 h-12 opacity-10" />
-                                <span>Nenhum item encontrado para "{expenseItemSearch}"</span>
-                              </div>
-                            ) : (
-                              <Line 
-                                ref={expenseChartRef}
-                                data={expenseTimelineChartData} 
-                                options={{ 
-                                  maintainAspectRatio: false,
-                                  plugins: { 
-                                    legend: { 
-                                      labels: { 
-                                        color: theme.text,
-                                      } 
+                            <Line 
+                              ref={expenseChartRef}
+                              data={expenseTimelineChartData} 
+                              options={{ 
+                                maintainAspectRatio: false,
+                                plugins: { 
+                                  legend: { 
+                                    labels: { 
+                                      color: theme.text,
                                     } 
+                                  } 
+                                },
+                                scales: {
+                                  y: { 
+                                    ticks: { 
+                                      color: theme.text,
+                                      callback: (value) => formatCurrency(value as number)
+                                    }, 
+                                    grid: { color: theme.cardBorder } 
                                   },
-                                  scales: {
-                                    y: { 
-                                      ticks: { 
-                                        color: theme.text,
-                                        callback: (value) => formatCurrency(value as number)
-                                      }, 
-                                      grid: { color: theme.cardBorder } 
-                                    },
-                                    x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
-                                  }
-                                }} 
-                              />
-                            )
+                                  x: { ticks: { color: theme.text }, grid: { color: theme.cardBorder } }
+                                }
+                              }} 
+                            />
                           ) : (
                             <Bar 
                               ref={expenseChartRef}
@@ -3480,7 +3458,7 @@ INSTRUÇÕES:
                                 </td>
                                 <td className={`p-4 font-bold border-r ${t.status === 'deleted' ? 'line-through' : ''}`} style={{ borderColor: theme.cardBorder }}>
                                   <div className="flex items-center gap-2">
-                                    {highlightText(t.description, searchTerm)}
+                                    {t.description}
                                     {t.status !== 'deleted' && (
                                       <button
                                         onClick={() => removeTransaction(t.id)}
