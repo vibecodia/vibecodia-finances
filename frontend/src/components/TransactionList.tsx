@@ -768,14 +768,6 @@ const TransactionList: React.FC<TransactionListProps> = ({
                       <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-muted/30 text-foreground/60">
                         {formatBrazilDate(transaction.date)}
                       </span>
-                      
-                      {transaction.recurrence !== 'none' && (
-                        <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-primary text-white shadow-sm">
-                          {transaction.recurrence === 'weekly' && 'Semanal'}
-                          {transaction.recurrence === 'monthly' && 'Mensal'}
-                          {transaction.recurrence === 'yearly' && 'Anual'}
-                        </span>
-                      )}
                     </div>
 
                     {/* Status Badges */}

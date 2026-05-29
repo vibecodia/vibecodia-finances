@@ -1,5 +1,5 @@
 import { addMonths } from 'date-fns';
-import { Plus, Minus, X, CreditCard, Calculator, Wallet, Receipt, AlertCircle } from 'lucide-react';
+import { Plus, Minus, X, CreditCard, Calculator, Wallet, Receipt, AlertCircle, Repeat } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 
 import { useTheme } from '../contexts/ThemeContext';
@@ -7,7 +7,7 @@ import { useCategories } from '../hooks/useCategories';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { useCurrencyInput } from '../hooks/useCurrencyInput';
 import { SavingsGoal, Transaction, PaymentMethod } from '../types';
-import { formatCurrency, getBrazilDateString } from '../utils/helpers';
+import { formatCurrency, getBrazilDateString, parseLocalDate } from '../utils/helpers';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
@@ -44,7 +44,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     date: string;
     dueDate: string;
     isPaid: boolean;
-    recurrence: Transaction['recurrence'];
     paymentMethod: PaymentMethod;
     notes: any;
   }>({
@@ -54,7 +53,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     date: getBrazilDateString(),
     dueDate: getBrazilDateString(),
     isPaid: type === 'expense' ? false : false, // Receitas e despesas são marcadas como não pagas por padrão
-    recurrence: 'none' as Transaction['recurrence'],
     paymentMethod: defaultPaymentMethod,
     notes: '',
   });
@@ -66,6 +64,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationCategory, setAnimationCategory] = useState('');
   const [animationMode, setAnimationMode] = useState<'10s' | '15s' | 'zen'>('10s');
+  const [repeatMonths, setRepeatMonths] = useState(1);
 
   const [initialAmount, setInitialAmount] = useState<number>(transaction?.amount ?? replicateTransaction?.amount ?? 0);
   const { inputProps: amountInputProps, numericValue: amountValue, setNumericValue: setAmountValue } = useCurrencyInput(
@@ -94,7 +93,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         date: getBrazilDateString(new Date(transaction.date)),
         dueDate: transaction.dueDate ? getBrazilDateString(new Date(transaction.dueDate)) : '',
         isPaid: transaction.isPaid,
-        recurrence: transaction.recurrence || 'none',
         paymentMethod: transaction.paymentMethod || defaultPaymentMethod,
         notes: transaction.notes || '',
       });
@@ -117,7 +115,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         date: nextMonthDateString, 
         dueDate: nextMonthDueDateString, 
         isPaid: isSimulated ? replicateTransaction.isPaid : false, 
-        recurrence: replicateTransaction.recurrence || 'none',
         paymentMethod: replicateTransaction.paymentMethod || defaultPaymentMethod,
         notes: replicateTransaction.notes || '',
       });
@@ -131,7 +128,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         date: getBrazilDateString(),
         dueDate: getBrazilDateString(),
         isPaid: type === 'expense' ? false : false,
-        recurrence: 'none',
         paymentMethod: defaultPaymentMethod,
         notes: '',
       });
@@ -182,19 +178,33 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     const finalDate = type === 'expense' ? (finalDueDate || getBrazilDateString()) : formData.date;
 
     try {
-      await onSubmit({
-        type,
-        amount: amountValue,
-        description: formData.description,
-        category: formData.category,
-        date: finalDate,
-        dueDate: type === 'expense' ? (finalDueDate || undefined) : undefined,
-        isPaid: formData.isPaid,
-        recurrence: formData.recurrence,
-        paymentMethod: type === 'expense' ? formData.paymentMethod : undefined,
-        notes: formData.notes,
-        savingsGoalId: showGoalSelect ? formData.savingsGoalId : undefined,
-      });
+      const count = transaction ? 1 : (repeatMonths > 0 ? repeatMonths : 1);
+      
+      for (let i = 0; i < count; i++) {
+        const currentDate = parseLocalDate(finalDate);
+        const currentDueDate = finalDueDate ? parseLocalDate(finalDueDate) : null;
+        
+        const newDate = getBrazilDateString(addMonths(currentDate, i));
+        const newDueDate = currentDueDate ? getBrazilDateString(addMonths(currentDueDate, i)) : undefined;
+
+        const finalDescription = count > 1 
+          ? `${formData.description} ${i + 1}/${count}`
+          : formData.description;
+
+        await onSubmit({
+          type,
+          amount: amountValue,
+          description: finalDescription,
+          category: formData.category,
+          date: newDate,
+          dueDate: type === 'expense' ? (newDueDate || undefined) : undefined,
+          isPaid: i === 0 ? formData.isPaid : false,
+          recurrence: 'none',
+          paymentMethod: type === 'expense' ? formData.paymentMethod : undefined,
+          notes: formData.notes,
+          savingsGoalId: showGoalSelect ? formData.savingsGoalId : undefined,
+        });
+      }
 
       // Somente anima se não houver erro de submissão imediato (embora o erro possa vir via prop)
       // Se o pai capturou o erro e setou submitError, o componente vai re-renderizar
@@ -541,6 +551,38 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
               </span>
             </div>
           </div>
+
+          {/* Opção de repetir por meses (apenas se for nova transação) */}
+          {!transaction && (
+            <div className="space-y-4 p-5 rounded-2xl border-2 border-dashed bg-muted/5 border-border animate-in slide-in-from-bottom-2 duration-300">
+              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2">
+                <Repeat className="w-4 h-4 text-primary" />
+                Repetir Lançamento
+              </label>
+              
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <Input
+                    type="number"
+                    min="1"
+                    max="60"
+                    value={repeatMonths}
+                    onChange={(e) => setRepeatMonths(Math.max(1, parseInt(e.target.value) || 1))}
+                    disabled={isAnimating}
+                    className="font-black text-lg"
+                  />
+                </div>
+                <div className="flex-[2] space-y-0.5">
+                  <p className="text-sm font-black text-foreground uppercase tracking-tight">
+                    {repeatMonths === 1 ? 'Apenas uma vez' : `Por ${repeatMonths} meses`}
+                  </p>
+                  <p className="text-[10px] text-foreground opacity-40 font-bold uppercase">
+                    {repeatMonths === 1 ? 'Lançamento único' : `Criará ${repeatMonths} registros`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Checkbox para "Pago" ou "Recebido" */}
           <div 
