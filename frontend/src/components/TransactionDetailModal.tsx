@@ -1,4 +1,4 @@
-import { TrendingUp, DollarSign, Check, Repeat, Tag, Calendar as CalendarIcon, Info, CreditCard, Wallet } from 'lucide-react';
+import { TrendingUp, DollarSign, Check, Tag, Calendar as CalendarIcon, Info, CreditCard, Wallet } from 'lucide-react';
 import React from 'react';
 
 import { useTheme } from '../contexts/ThemeContext';
@@ -22,7 +22,6 @@ const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({ transac
   const isExpense = transaction.type === 'expense';
   const isIncome = transaction.type === 'income';
   const isPaid = transaction.isPaid;
-  const isRecurring = transaction.recurrence !== 'none';
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

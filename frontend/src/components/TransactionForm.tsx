@@ -44,7 +44,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     date: string;
     dueDate: string;
     isPaid: boolean;
-    recurrence: Transaction['recurrence'];
     paymentMethod: PaymentMethod;
     notes: any;
   }>({
@@ -54,7 +53,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
     date: getBrazilDateString(),
     dueDate: getBrazilDateString(),
     isPaid: type === 'expense' ? false : false, // Receitas e despesas são marcadas como não pagas por padrão
-    recurrence: 'none' as Transaction['recurrence'],
     paymentMethod: defaultPaymentMethod,
     notes: '',
   });
@@ -95,7 +93,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         date: getBrazilDateString(new Date(transaction.date)),
         dueDate: transaction.dueDate ? getBrazilDateString(new Date(transaction.dueDate)) : '',
         isPaid: transaction.isPaid,
-        recurrence: transaction.recurrence || 'none',
         paymentMethod: transaction.paymentMethod || defaultPaymentMethod,
         notes: transaction.notes || '',
       });
@@ -118,7 +115,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         date: nextMonthDateString, 
         dueDate: nextMonthDueDateString, 
         isPaid: isSimulated ? replicateTransaction.isPaid : false, 
-        recurrence: replicateTransaction.recurrence || 'none',
         paymentMethod: replicateTransaction.paymentMethod || defaultPaymentMethod,
         notes: replicateTransaction.notes || '',
       });
@@ -132,7 +128,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         date: getBrazilDateString(),
         dueDate: getBrazilDateString(),
         isPaid: type === 'expense' ? false : false,
-        recurrence: 'none',
         paymentMethod: defaultPaymentMethod,
         notes: '',
       });
@@ -192,10 +187,14 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ type, transaction, re
         const newDate = getBrazilDateString(addMonths(currentDate, i));
         const newDueDate = currentDueDate ? getBrazilDateString(addMonths(currentDueDate, i)) : undefined;
 
+        const finalDescription = count > 1 
+          ? `${formData.description} ${i + 1}/${count}`
+          : formData.description;
+
         await onSubmit({
           type,
           amount: amountValue,
-          description: formData.description,
+          description: finalDescription,
           category: formData.category,
           date: newDate,
           dueDate: type === 'expense' ? (newDueDate || undefined) : undefined,
