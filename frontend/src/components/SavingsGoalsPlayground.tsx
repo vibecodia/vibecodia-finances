@@ -734,7 +734,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
       (goal.contributions || [])
         .filter(c => {
           if (showDeleted) return c.status === 'deleted';
-          return c.status !== 'deleted';
+          // Filter out deleted AND unpaid contributions for the "real" timeline
+          return c.status !== 'deleted' && c.isPaid !== false;
         })
         .map(contrib => ({
           ...contrib,
@@ -1126,7 +1127,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     const sortedMonths = Object.keys(grouped).sort();
 
     return {
-      labels: sortedMonths.map(m => formatBrazilDate(new Date(m + '-01'), 'MMM/yy')),
+      labels: sortedMonths.map(m => formatBrazilDate(m + '-01', 'MMM/yy')),
       datasets: [{
         label: 'Aportes Mensais',
         data: sortedMonths.map(m => grouped[m]),
@@ -1183,7 +1184,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({ savings
     const sortedMonths = Object.keys(months).sort();
 
     return {
-      labels: sortedMonths.map(m => formatBrazilDate(new Date(m + '-01'), 'MMM/yy')),
+      labels: sortedMonths.map(m => formatBrazilDate(m + '-01', 'MMM/yy')),
       datasets: [
         {
           label: 'Receita',
