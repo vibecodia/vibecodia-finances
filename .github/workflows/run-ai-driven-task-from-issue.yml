@@ -100,6 +100,8 @@ jobs:
             echo "- Never modify authentication, environment configuration or database schema unless explicitly requested"
             echo "- Implement only minimal and safe changes"
             echo "- Do not refactor unrelated code"
+            echo "- Never create unused imports/vars - prefix unused params with _"
+            echo "- Verify with npx tsc --noEmit"
           } > "$TASK_FILE"
 
           git config user.name "IA Bot"
@@ -389,6 +391,10 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
           echo "::endgroup::"
+
+      - name: "🧹 Cleanup TS"
+        run: |
+          cd frontend && npx eslint --fix 'src/**/*.{ts,tsx}' --rule '@typescript-eslint/no-unused-vars: error' || true && npx prettier --write 'src/**/*.{ts,tsx}' || true && (git add . && git diff --staged --quiet || (git commit -m "fix: remove unused" && git push))
 
   validate:
     name: "Validate (${{ matrix.target }})"
