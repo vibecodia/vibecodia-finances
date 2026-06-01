@@ -1,23 +1,26 @@
-import React from 'react';
-import { addMonths, subMonths, format, isSameMonth } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { useTheme } from '../contexts/ThemeContext';
+import React from "react";
+import { addMonths, subMonths, format, isSameMonth } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { useTheme } from "../contexts/ThemeContext";
 
 interface MonthSegmentedControlProps {
   month: Date;
   onChange: (newMonth: Date) => void;
 }
 
-const MonthSegmentedControl: React.FC<MonthSegmentedControlProps> = ({ month, onChange }) => {
+const MonthSegmentedControl: React.FC<MonthSegmentedControlProps> = ({
+  month,
+  onChange,
+}) => {
   const { theme } = useTheme();
   const currentDate = new Date();
 
   const prevMonth = subMonths(month, 1);
   const nextMonth = addMonths(month, 1);
 
-  const labelPrev = format(prevMonth, 'MMMM', { locale: ptBR });
-  const labelCurrent = format(month, 'MMMM yyyy', { locale: ptBR });
-  const labelNext = format(nextMonth, 'MMMM', { locale: ptBR });
+  const labelPrev = format(prevMonth, "MMMM", { locale: ptBR });
+  const labelCurrent = format(month, "MMMM yyyy", { locale: ptBR });
+  const labelNext = format(nextMonth, "MMMM", { locale: ptBR });
 
   const isCurrentMonth = isSameMonth(month, currentDate);
 
@@ -29,7 +32,10 @@ const MonthSegmentedControl: React.FC<MonthSegmentedControlProps> = ({ month, on
     <div className="relative w-full">
       <div
         className="w-full rounded-xl overflow-hidden border select-none"
-        style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
+        style={{
+          borderColor: theme.cardBorder,
+          backgroundColor: theme.cardBackground,
+        }}
         role="tablist"
         aria-label="Selecionar mês"
       >
@@ -61,7 +67,7 @@ const MonthSegmentedControl: React.FC<MonthSegmentedControlProps> = ({ month, on
               minHeight: 44,
               paddingTop: 10,
               paddingBottom: 10,
-              backgroundColor: theme.primary + '20',
+              backgroundColor: theme.primary + "20",
               color: theme.text,
               borderRight: `1px solid ${theme.cardBorder}`,
               borderLeft: `1px solid ${theme.cardBorder}`,
@@ -94,28 +100,28 @@ const MonthSegmentedControl: React.FC<MonthSegmentedControlProps> = ({ month, on
           <button
             onClick={goToCurrentMonth}
             style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '50%',
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
               backgroundColor: theme.primary,
-              color: '#fff',
+              color: "#fff",
               border: `2px solid ${theme.cardBackground}`,
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '18px',
-              transition: 'transform 0.2s, box-shadow 0.2s',
+              cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "18px",
+              transition: "transform 0.2s, box-shadow 0.2s",
               zIndex: 10,
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'scale(1.1)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+              e.currentTarget.style.transform = "scale(1.1)";
+              e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+              e.currentTarget.style.transform = "scale(1)";
+              e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
             }}
             aria-label="Voltar ao mês atual"
           >

@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState } from "react";
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 
@@ -26,63 +26,68 @@ export const useTour = () => {
 
     const driverObj = driver({
       showProgress: true,
-      nextBtnText: 'Próximo',
-      prevBtnText: 'Anterior',
-      doneBtnText: 'Finalizar',
+      nextBtnText: "Próximo",
+      prevBtnText: "Anterior",
+      doneBtnText: "Finalizar",
       allowClose: true,
-      overlayColor: 'rgba(0, 0, 0, 0.85)',
+      overlayColor: "rgba(0, 0, 0, 0.85)",
       stagePadding: 4,
-      popoverClass: 'vibecodia-tour-popover',
+      popoverClass: "vibecodia-tour-popover",
       steps: [
-        { 
-          element: '#tour-balance-card', 
-          popover: { 
-            title: '💳 SEU CARTÃO VIBECODIA', 
-            description: 'Aqui você controla seu saldo. No modo convidado, você pode personalizar o nome e a foto!', 
-            side: 'bottom',
-            align: 'center'
-          } 
+        {
+          element: "#tour-balance-card",
+          popover: {
+            title: "💳 SEU CARTÃO VIBECODIA",
+            description:
+              "Aqui você controla seu saldo. No modo convidado, você pode personalizar o nome e a foto!",
+            side: "bottom",
+            align: "center",
+          },
         },
-        { 
-          element: '#tour-month-selector', 
-          popover: { 
-            title: '📅 NAVEGAÇÃO TEMPORAL', 
-            description: 'Navegue entre os meses para planejar seu futuro financeiro.', 
-            side: 'bottom',
-            align: 'center'
-          } 
+        {
+          element: "#tour-month-selector",
+          popover: {
+            title: "📅 NAVEGAÇÃO TEMPORAL",
+            description:
+              "Navegue entre os meses para planejar seu futuro financeiro.",
+            side: "bottom",
+            align: "center",
+          },
         },
-        { 
-          element: '#tour-income-expense-bar', 
-          popover: { 
-            title: '📊 FLUXO DE CAIXA', 
-            description: 'Acompanhe visualmente a relação entre suas receitas e despesas.', 
-            side: 'top',
-            align: 'center'
-          } 
+        {
+          element: "#tour-income-expense-bar",
+          popover: {
+            title: "📊 FLUXO DE CAIXA",
+            description:
+              "Acompanhe visualmente a relação entre suas receitas e despesas.",
+            side: "top",
+            align: "center",
+          },
         },
-        { 
-          element: '.lg\\:hidden.fixed.top-4.left-4', 
-          popover: { 
-            title: '📱 MENU DE ACESSO', 
-            description: 'Clique aqui para acessar Gastos, Receitas, Agenda e Metas.', 
-            side: 'bottom',
-            align: 'start'
-          } 
+        {
+          element: ".lg\\:hidden.fixed.top-4.left-4",
+          popover: {
+            title: "📱 MENU DE ACESSO",
+            description:
+              "Clique aqui para acessar Gastos, Receitas, Agenda e Metas.",
+            side: "bottom",
+            align: "start",
+          },
         },
-        { 
-          element: '#tour-header-actions', 
-          popover: { 
-            title: '⚡ ATALHOS RÁPIDOS', 
-            description: 'Mude o tema ou acesse sua lista de compras rapidamente.', 
-            side: 'bottom',
-            align: 'end'
-          } 
-        }
+        {
+          element: "#tour-header-actions",
+          popover: {
+            title: "⚡ ATALHOS RÁPIDOS",
+            description:
+              "Mude o tema ou acesse sua lista de compras rapidamente.",
+            side: "bottom",
+            align: "end",
+          },
+        },
       ],
       onDestroyed: () => {
         localStorage.setItem(TOUR_SKIPPED_KEY, "true");
-      }
+      },
     });
 
     driverObj.drive();
@@ -90,7 +95,7 @@ export const useTour = () => {
 
   useEffect(() => {
     // Injeta estilos customizados para o popover do Driver.js
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.innerHTML = `
       .vibecodia-tour-popover {
         background: rgba(30, 41, 59, 0.9) !important;
@@ -184,9 +189,10 @@ export const useTour = () => {
       }
     `;
     document.head.appendChild(style);
-    return () => { document.head.removeChild(style); };
+    return () => {
+      document.head.removeChild(style);
+    };
   }, []);
 
   return { startTour, showConfirm, setShowConfirm };
 };
-

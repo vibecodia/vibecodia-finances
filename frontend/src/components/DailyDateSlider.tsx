@@ -1,7 +1,13 @@
-import { getDaysInMonth, startOfMonth, addDays, endOfDay, isSameDay } from 'date-fns';
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  getDaysInMonth,
+  startOfMonth,
+  addDays,
+  endOfDay,
+  isSameDay,
+} from "date-fns";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from "../contexts/ThemeContext";
 
 interface DailyDateSliderProps {
   currentMonth: Date;
@@ -23,7 +29,7 @@ const DailyDateSlider: React.FC<DailyDateSliderProps> = ({
   const sliderRef = useRef<HTMLDivElement>(null);
   const [isDraggingStart, setIsDraggingStart] = useState(false);
   const [isDraggingEnd, setIsDraggingEnd] = useState(false);
-  const [activeThumb, setActiveThumb] = useState<'start' | 'end' | null>(null);
+  const [activeThumb, setActiveThumb] = useState<"start" | "end" | null>(null);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Convert dates to day numbers (1-indexed)
@@ -40,90 +46,126 @@ const DailyDateSlider: React.FC<DailyDateSliderProps> = ({
     setEndDay(newEnd);
   }, [startDate, endDate, getDayNumber]);
 
-  const calculateDayFromMouseEvent = useCallback((e: MouseEvent | React.MouseEvent | TouchEvent | React.TouchEvent) => {
-    if (!sliderRef.current) return 1;
-    const sliderRect = sliderRef.current.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
-    const clickX = clientX - sliderRect.left;
-    const percentage = clickX / sliderRect.width;
-    const day = Math.round(percentage * (daysInMonth - 1)) + 1;
-    return Math.max(1, Math.min(daysInMonth, day));
-  }, [daysInMonth]);
+  const calculateDayFromMouseEvent = useCallback(
+    (e: MouseEvent | React.MouseEvent | TouchEvent | React.TouchEvent) => {
+      if (!sliderRef.current) return 1;
+      const sliderRect = sliderRef.current.getBoundingClientRect();
+      const clientX =
+        "touches" in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+      const clickX = clientX - sliderRect.left;
+      const percentage = clickX / sliderRect.width;
+      const day = Math.round(percentage * (daysInMonth - 1)) + 1;
+      return Math.max(1, Math.min(daysInMonth, day));
+    },
+    [daysInMonth],
+  );
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    const clickedDay = calculateDayFromMouseEvent(e);
-    const distanceToStart = Math.abs(clickedDay - startDay);
-    const distanceToEnd = Math.abs(clickedDay - endDay);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      const clickedDay = calculateDayFromMouseEvent(e);
+      const distanceToStart = Math.abs(clickedDay - startDay);
+      const distanceToEnd = Math.abs(clickedDay - endDay);
 
-    if (distanceToStart <= distanceToEnd) {
-      setIsDraggingStart(true);
-      setActiveThumb('start');
-    } else {
-      setIsDraggingEnd(true);
-      setActiveThumb('end');
-    }
-  }, [calculateDayFromMouseEvent, startDay, endDay]);
+      if (distanceToStart <= distanceToEnd) {
+        setIsDraggingStart(true);
+        setActiveThumb("start");
+      } else {
+        setIsDraggingEnd(true);
+        setActiveThumb("end");
+      }
+    },
+    [calculateDayFromMouseEvent, startDay, endDay],
+  );
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const clickedDay = calculateDayFromMouseEvent(e);
-    const distanceToStart = Math.abs(clickedDay - startDay);
-    const distanceToEnd = Math.abs(clickedDay - endDay);
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      const clickedDay = calculateDayFromMouseEvent(e);
+      const distanceToStart = Math.abs(clickedDay - startDay);
+      const distanceToEnd = Math.abs(clickedDay - endDay);
 
-    const targetThumb = distanceToStart <= distanceToEnd ? 'start' : 'end';
-    setActiveThumb(targetThumb);
+      const targetThumb = distanceToStart <= distanceToEnd ? "start" : "end";
+      setActiveThumb(targetThumb);
 
-    if (longPressTimeoutRef.current) {
-      clearTimeout(longPressTimeoutRef.current);
-    }
+      if (longPressTimeoutRef.current) {
+        clearTimeout(longPressTimeoutRef.current);
+      }
 
-    if (targetThumb === 'start') {
-      setIsDraggingStart(true);
-    } else {
-      setIsDraggingEnd(true);
-    }
-  }, [calculateDayFromMouseEvent, startDay, endDay]);
+      if (targetThumb === "start") {
+        setIsDraggingStart(true);
+      } else {
+        setIsDraggingEnd(true);
+      }
+    },
+    [calculateDayFromMouseEvent, startDay, endDay],
+  );
 
-  const updateRange = useCallback((newStart: number, newEnd: number) => {
-    const newStartDate = addDays(monthStart, newStart - 1);
-    const newEndDate = endOfDay(addDays(monthStart, newEnd - 1));
-    
-    // Only call onChange if dates have actually changed
-    if (!isSameDay(newStartDate, startDate) || !isSameDay(newEndDate, endDate)) {
-      onChange(newStartDate, newEndDate);
-    }
-  }, [monthStart, onChange, startDate, endDate]);
+  const updateRange = useCallback(
+    (newStart: number, newEnd: number) => {
+      const newStartDate = addDays(monthStart, newStart - 1);
+      const newEndDate = endOfDay(addDays(monthStart, newEnd - 1));
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDraggingStart && !isDraggingEnd) return;
+      // Only call onChange if dates have actually changed
+      if (
+        !isSameDay(newStartDate, startDate) ||
+        !isSameDay(newEndDate, endDate)
+      ) {
+        onChange(newStartDate, newEndDate);
+      }
+    },
+    [monthStart, onChange, startDate, endDate],
+  );
 
-    const newDay = calculateDayFromMouseEvent(e);
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDraggingStart && !isDraggingEnd) return;
 
-    if (isDraggingStart) {
-      const clampedStart = Math.min(newDay, endDay);
-      setStartDay(clampedStart);
-      updateRange(clampedStart, endDay);
-    } else if (isDraggingEnd) {
-      const clampedEnd = Math.max(newDay, startDay);
-      setEndDay(clampedEnd);
-      updateRange(startDay, clampedEnd);
-    }
-  }, [isDraggingStart, isDraggingEnd, calculateDayFromMouseEvent, endDay, startDay, updateRange]);
+      const newDay = calculateDayFromMouseEvent(e);
 
-  const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (!isDraggingStart && !isDraggingEnd) return;
+      if (isDraggingStart) {
+        const clampedStart = Math.min(newDay, endDay);
+        setStartDay(clampedStart);
+        updateRange(clampedStart, endDay);
+      } else if (isDraggingEnd) {
+        const clampedEnd = Math.max(newDay, startDay);
+        setEndDay(clampedEnd);
+        updateRange(startDay, clampedEnd);
+      }
+    },
+    [
+      isDraggingStart,
+      isDraggingEnd,
+      calculateDayFromMouseEvent,
+      endDay,
+      startDay,
+      updateRange,
+    ],
+  );
 
-    const newDay = calculateDayFromMouseEvent(e);
+  const handleTouchMove = useCallback(
+    (e: TouchEvent) => {
+      if (!isDraggingStart && !isDraggingEnd) return;
 
-    if (isDraggingStart) {
-      const clampedStart = Math.min(newDay, endDay);
-      setStartDay(clampedStart);
-      updateRange(clampedStart, endDay);
-    } else if (isDraggingEnd) {
-      const clampedEnd = Math.max(newDay, startDay);
-      setEndDay(clampedEnd);
-      updateRange(startDay, clampedEnd);
-    }
-  }, [isDraggingStart, isDraggingEnd, calculateDayFromMouseEvent, endDay, startDay, updateRange]);
+      const newDay = calculateDayFromMouseEvent(e);
+
+      if (isDraggingStart) {
+        const clampedStart = Math.min(newDay, endDay);
+        setStartDay(clampedStart);
+        updateRange(clampedStart, endDay);
+      } else if (isDraggingEnd) {
+        const clampedEnd = Math.max(newDay, startDay);
+        setEndDay(clampedEnd);
+        updateRange(startDay, clampedEnd);
+      }
+    },
+    [
+      isDraggingStart,
+      isDraggingEnd,
+      calculateDayFromMouseEvent,
+      endDay,
+      startDay,
+      updateRange,
+    ],
+  );
 
   const handleMouseUp = useCallback(() => {
     setIsDraggingStart(false);
@@ -138,16 +180,16 @@ const DailyDateSlider: React.FC<DailyDateSliderProps> = ({
   }, []);
 
   useEffect(() => {
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    document.addEventListener('touchend', handleTouchEnd);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    document.addEventListener("touchmove", handleTouchMove, { passive: false });
+    document.addEventListener("touchend", handleTouchEnd);
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleTouchEnd);
     };
   }, [handleMouseMove, handleMouseUp, handleTouchMove, handleTouchEnd]);
 
@@ -179,13 +221,13 @@ const DailyDateSlider: React.FC<DailyDateSliderProps> = ({
         {/* Ticks */}
         <div className="absolute inset-0 flex justify-between px-0.5 pointer-events-none">
           {Array.from({ length: daysInMonth }).map((_, i) => (
-            <div 
-              key={i} 
-              className={`w-px h-1 rounded-full ${i + 1 === startDay || i + 1 === endDay ? 'opacity-0' : 'opacity-20'}`}
-              style={{ 
+            <div
+              key={i}
+              className={`w-px h-1 rounded-full ${i + 1 === startDay || i + 1 === endDay ? "opacity-0" : "opacity-20"}`}
+              style={{
                 backgroundColor: theme.text,
-                height: (i + 1) % 5 === 0 ? '6px' : '3px',
-                marginTop: (i + 1) % 5 === 0 ? '-2px' : '0px'
+                height: (i + 1) % 5 === 0 ? "6px" : "3px",
+                marginTop: (i + 1) % 5 === 0 ? "-2px" : "0px",
               }}
             />
           ))}
@@ -198,14 +240,14 @@ const DailyDateSlider: React.FC<DailyDateSliderProps> = ({
             left: `${rangeLeft}%`,
             width: `${rangeWidth}%`,
             backgroundColor: theme.primary,
-            boxShadow: `0 0 10px ${theme.primary}40`
+            boxShadow: `0 0 10px ${theme.primary}40`,
           }}
         ></div>
 
         {/* Start Thumb */}
         <div
           className={`absolute w-6 h-6 rounded-full shadow-lg flex items-center justify-center transform transition-all duration-150 z-30 ${
-            activeThumb === 'start' ? 'scale-125' : 'hover:scale-110'
+            activeThumb === "start" ? "scale-125" : "hover:scale-110"
           }`}
           style={{
             left: `calc(${startPercentage}% - 12px)`,
@@ -213,16 +255,23 @@ const DailyDateSlider: React.FC<DailyDateSliderProps> = ({
             border: `2px solid ${theme.cardBackground}`,
           }}
         >
-          <span className="text-[10px] font-bold text-white select-none">{startDay}</span>
-          
+          <span className="text-[10px] font-bold text-white select-none">
+            {startDay}
+          </span>
+
           {/* Tooltip */}
-          {(activeThumb === 'start' || isDraggingStart) && (
-            <div 
+          {(activeThumb === "start" || isDraggingStart) && (
+            <div
               className="absolute top-[-38px] left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg text-white text-[10px] font-bold shadow-[0_5px_15px_rgba(0,0,0,0.3)] border border-white/20 z-[100] whitespace-nowrap animate-float-in"
               style={{ backgroundColor: theme.primary }}
             >
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 border-r border-b border-white/10" style={{ backgroundColor: theme.primary }}></div>
-              <span className="relative z-10 drop-shadow-sm">Dia {startDay}</span>
+              <div
+                className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 border-r border-b border-white/10"
+                style={{ backgroundColor: theme.primary }}
+              ></div>
+              <span className="relative z-10 drop-shadow-sm">
+                Dia {startDay}
+              </span>
             </div>
           )}
         </div>
@@ -230,7 +279,7 @@ const DailyDateSlider: React.FC<DailyDateSliderProps> = ({
         {/* End Thumb */}
         <div
           className={`absolute w-6 h-6 rounded-full shadow-lg flex items-center justify-center transform transition-all duration-150 z-30 ${
-            activeThumb === 'end' ? 'scale-125' : 'hover:scale-110'
+            activeThumb === "end" ? "scale-125" : "hover:scale-110"
           }`}
           style={{
             left: `calc(${endPercentage}% - 12px)`,
@@ -238,15 +287,20 @@ const DailyDateSlider: React.FC<DailyDateSliderProps> = ({
             border: `2px solid ${theme.cardBackground}`,
           }}
         >
-          <span className="text-[10px] font-bold text-white select-none">{endDay}</span>
-          
+          <span className="text-[10px] font-bold text-white select-none">
+            {endDay}
+          </span>
+
           {/* Tooltip */}
-          {(activeThumb === 'end' || isDraggingEnd) && (
-            <div 
+          {(activeThumb === "end" || isDraggingEnd) && (
+            <div
               className="absolute top-[-38px] left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg text-white text-[10px] font-bold shadow-[0_5px_15px_rgba(0,0,0,0.3)] border border-white/20 z-[100] whitespace-nowrap animate-float-in"
               style={{ backgroundColor: theme.primary }}
             >
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 border-r border-b border-white/10" style={{ backgroundColor: theme.primary }}></div>
+              <div
+                className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 border-r border-b border-white/10"
+                style={{ backgroundColor: theme.primary }}
+              ></div>
               <span className="relative z-10 drop-shadow-sm">Dia {endDay}</span>
             </div>
           )}

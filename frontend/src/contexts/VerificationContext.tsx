@@ -1,11 +1,17 @@
-// GUEST MODE STORAGE CONVENTION: 
-// When isGuest === true, components should read/write to localStorage 
-// using keys prefixed with "guest_" (e.g., "guest_tasks", "guest_notes", "guest_transactions", "guest_goals", "guest_shopping_list"). 
-// On verify() success, migrateGuestData() will POST all "guest_*" keys 
+// GUEST MODE STORAGE CONVENTION:
+// When isGuest === true, components should read/write to localStorage
+// using keys prefixed with "guest_" (e.g., "guest_tasks", "guest_notes", "guest_transactions", "guest_goals", "guest_shopping_list").
+// On verify() success, migrateGuestData() will POST all "guest_*" keys
 // to /api/migrate-guest-data and clear them from localStorage.
 
 import Cookies from "js-cookie";
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 import { useLocation } from "react-router-dom";
 
 const VERIFICATION_COOKIE_NAME: string =
@@ -14,7 +20,8 @@ const PIN_COOKIE_NAME: string = "pin_code";
 const GUEST_MODE_STORAGE_KEY: string = "guest_mode";
 
 const VERIFICATION_TIMEOUT: number =
-  Number((import.meta as any).env.VITE_VERIFICATION_TIMEOUT_MS) || 15 * 60 * 1000; // Default: 15 min
+  Number((import.meta as any).env.VITE_VERIFICATION_TIMEOUT_MS) ||
+  15 * 60 * 1000; // Default: 15 min
 
 interface VerificationContextType {
   isVerified: boolean;
@@ -33,12 +40,16 @@ interface VerificationContextType {
   isInitializing: boolean;
 }
 
-const VerificationContext = createContext<VerificationContextType | undefined>(undefined);
+const VerificationContext = createContext<VerificationContextType | undefined>(
+  undefined,
+);
 
 export const useVerification = (): VerificationContextType => {
   const context = useContext(VerificationContext);
   if (!context) {
-    throw new Error("useVerification must be used within a VerificationProvider");
+    throw new Error(
+      "useVerification must be used within a VerificationProvider",
+    );
   }
   return context;
 };
@@ -47,13 +58,16 @@ interface VerificationProviderProps {
   children: ReactNode;
 }
 
-export const VerificationProvider: React.FC<VerificationProviderProps> = ({ children }) => {
+export const VerificationProvider: React.FC<VerificationProviderProps> = ({
+  children,
+}) => {
   const location = useLocation();
   const [isVerified, setIsVerified] = useState<boolean>(false);
   const [isSettingsVerified, setIsSettingsVerified] = useState<boolean>(false);
   const [isGuest, setIsGuest] = useState<boolean>(false);
   const [pin, setPin] = useState<string | null>(null);
-  const [showVerificationModal, setShowVerificationModal] = useState<boolean>(false);
+  const [showVerificationModal, setShowVerificationModal] =
+    useState<boolean>(false);
   const [isInitializing, setIsInitializing] = useState(true);
 
   const checkVerification = (): void => {
@@ -62,7 +76,7 @@ export const VerificationProvider: React.FC<VerificationProviderProps> = ({ chil
     const isGuestMode = localStorage.getItem(GUEST_MODE_STORAGE_KEY) === "true";
 
     // Se estiver na rota /guest, não forçamos a verificação nem abrimos o modal
-    if (location.pathname === '/guest') {
+    if (location.pathname === "/guest") {
       setIsInitializing(false);
       return;
     }
@@ -83,7 +97,7 @@ export const VerificationProvider: React.FC<VerificationProviderProps> = ({ chil
       setShowVerificationModal(false);
     } else {
       // Don't auto-show modal if we are on the guest entry page
-      if (location.pathname !== '/guest') {
+      if (location.pathname !== "/guest") {
         setShowVerificationModal(true);
       }
     }
@@ -98,11 +112,13 @@ export const VerificationProvider: React.FC<VerificationProviderProps> = ({ chil
 
   const migrateGuestData = async (verifiedPin?: string) => {
     try {
-      const guestKeys = Object.keys(localStorage).filter(key => key.startsWith("guest_") && key !== GUEST_MODE_STORAGE_KEY);
+      const guestKeys = Object.keys(localStorage).filter(
+        (key) => key.startsWith("guest_") && key !== GUEST_MODE_STORAGE_KEY,
+      );
       if (guestKeys.length === 0) return;
 
       const guestData: Record<string, any> = {};
-      guestKeys.forEach(key => {
+      guestKeys.forEach((key) => {
         try {
           guestData[key] = JSON.parse(localStorage.getItem(key) || "");
         } catch {
@@ -112,17 +128,17 @@ export const VerificationProvider: React.FC<VerificationProviderProps> = ({ chil
 
       const currentPin = verifiedPin || pin;
 
-      const response = await fetch('/api/migrate-guest-data', {
-        method: 'POST',
+      const response = await fetch("/api/migrate-guest-data", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${currentPin}`, 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${currentPin}`,
         },
         body: JSON.stringify({ guestData, pin: currentPin }),
       });
 
       if (response.ok) {
-        guestKeys.forEach(key => localStorage.removeItem(key));
+        guestKeys.forEach((key) => localStorage.removeItem(key));
       } else {
         console.error("Migration failed:", await response.text());
       }
@@ -146,10 +162,10 @@ export const VerificationProvider: React.FC<VerificationProviderProps> = ({ chil
 
   const verify = async (code: string): Promise<boolean> => {
     try {
-      const response = await fetch('/api/verify-pin', {
-        method: 'POST',
+      const response = await fetch("/api/verify-pin", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ pin: code }),
       });
@@ -158,10 +174,14 @@ export const VerificationProvider: React.FC<VerificationProviderProps> = ({ chil
         // Calcula a expiração em dias com base no timeout definido (js-cookie usa dias no campo expires)
         const expirationInDays = VERIFICATION_TIMEOUT / (24 * 60 * 60 * 1000);
         const cookieOptions = { expires: expirationInDays };
-        
-        Cookies.set(VERIFICATION_COOKIE_NAME, new Date().toISOString(), cookieOptions);
+
+        Cookies.set(
+          VERIFICATION_COOKIE_NAME,
+          new Date().toISOString(),
+          cookieOptions,
+        );
         Cookies.set(PIN_COOKIE_NAME, code, cookieOptions);
-        
+
         // Seta o pin antes de migrar para que migrateGuestData tenha acesso ao PIN se necessário
         setPin(code);
 
@@ -191,28 +211,28 @@ export const VerificationProvider: React.FC<VerificationProviderProps> = ({ chil
     setIsSettingsVerified(false);
     setIsGuest(false);
     setPin(null);
-    if (location.pathname !== '/guest') {
+    if (location.pathname !== "/guest") {
       setShowVerificationModal(true);
     }
   };
 
   return (
     <VerificationContext.Provider
-      value={{ 
-        isVerified, 
-        isSettingsVerified, 
+      value={{
+        isVerified,
+        isSettingsVerified,
         isGuest,
-        pin, 
-        verify, 
-        logout, 
-        showVerificationModal, 
-        setShowVerificationModal, 
+        pin,
+        verify,
+        logout,
+        showVerificationModal,
+        setShowVerificationModal,
         setSettingsVerified: setIsSettingsVerified,
-        checkVerification, 
+        checkVerification,
         enterGuestMode,
         exitGuestMode,
         migrateGuestData,
-        isInitializing 
+        isInitializing,
       }}
     >
       {children}

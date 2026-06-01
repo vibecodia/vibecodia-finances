@@ -1,8 +1,8 @@
-import { AlertTriangle } from 'lucide-react';
-import React from 'react';
+import { AlertTriangle } from "lucide-react";
+import React from "react";
 
-import { Button } from './ui/Button';
-import { Card } from './ui/Card';
+import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -19,7 +19,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   onConfirm,
   title,
   message,
-  confirmText = 'Confirmar Exclusão',
+  confirmText = "Confirmar Exclusão",
 }) => {
   if (!isOpen) return null;
 
@@ -49,11 +49,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           >
             {confirmText}
           </Button>
-          <Button
-            onClick={onClose}
-            variant="outline"
-            className="flex-1"
-          >
+          <Button onClick={onClose} variant="outline" className="flex-1">
             Cancelar
           </Button>
         </div>

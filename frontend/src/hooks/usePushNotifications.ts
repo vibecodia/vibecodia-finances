@@ -1,11 +1,9 @@
-import { useEffect } from 'react';
-import axios from 'axios';
+import { useEffect } from "react";
+import axios from "axios";
 
 const urlBase64ToUint8Array = (base64String: string) => {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
 
   const rawData = window.atob(base64);
   const outputArray = new Uint8Array(rawData.length);
@@ -16,7 +14,10 @@ const urlBase64ToUint8Array = (base64String: string) => {
   return outputArray;
 };
 
-export const usePushNotifications = (pin: string | null, isVerified: boolean) => {
+export const usePushNotifications = (
+  pin: string | null,
+  isVerified: boolean,
+) => {
   useEffect(() => {
     // Somente registra se estiver verificado e tiver um PIN (não funciona para convidados sem banco persistente)
     if (!isVerified || !pin) return;
@@ -24,8 +25,10 @@ export const usePushNotifications = (pin: string | null, isVerified: boolean) =>
     const registerPush = async () => {
       try {
         // 1. Garantir que o Service Worker está pronto
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-          console.warn('Push notifications não são suportadas neste navegador.');
+        if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+          console.warn(
+            "Push notifications não são suportadas neste navegador.",
+          );
           return;
         }
 
@@ -35,11 +38,13 @@ export const usePushNotifications = (pin: string | null, isVerified: boolean) =>
         let subscription = await registration.pushManager.getSubscription();
 
         // 3. Buscar a chave VAPID pública do backend
-        const response = await axios.post('/api/verify-pin', { pin });
+        const response = await axios.post("/api/verify-pin", { pin });
         const vapidPublicKey = response.data.vapidPublicKey;
 
         if (!vapidPublicKey) {
-          console.error('VAPID Public Key não encontrada na resposta do servidor.');
+          console.error(
+            "VAPID Public Key não encontrada na resposta do servidor.",
+          );
           return;
         }
 
@@ -47,26 +52,30 @@ export const usePushNotifications = (pin: string | null, isVerified: boolean) =>
         if (!subscription) {
           // Solicitar permissão se necessário
           const permission = await Notification.requestPermission();
-          if (permission !== 'granted') {
-            console.warn('Permissão para notificações negada pelo usuário.');
+          if (permission !== "granted") {
+            console.warn("Permissão para notificações negada pelo usuário.");
             return;
           }
 
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
           });
         }
 
         // 5. Enviar/Atualizar no Backend
-        await axios.post('/api/notifications/subscribe', 
-          { subscription }, 
-          { headers: { 'x-pin': pin } }
+        await axios.post(
+          "/api/notifications/subscribe",
+          { subscription },
+          { headers: { "x-pin": pin } },
         );
 
-        console.log('Push Notification registrada com sucesso para o PIN:', pin);
+        console.log(
+          "Push Notification registrada com sucesso para o PIN:",
+          pin,
+        );
       } catch (err) {
-        console.error('Falha ao registrar Push Notification:', err);
+        console.error("Falha ao registrar Push Notification:", err);
       }
     };
 

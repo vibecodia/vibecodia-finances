@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { cn } from '../lib/utils';
+import React, { useState } from "react";
+import { cn } from "../lib/utils";
 
 interface Particle {
   id: number;
@@ -9,78 +9,101 @@ interface Particle {
 }
 
 interface BandaidEasterEggProps {
-  type: 'slugs' | 'coins' | 'hearts';
+  type: "slugs" | "coins" | "hearts";
   children: React.ReactNode;
   className?: string;
 }
 
-export const BandaidEasterEgg: React.FC<BandaidEasterEggProps> = ({ type, children, className }) => {
+export const BandaidEasterEgg: React.FC<BandaidEasterEggProps> = ({
+  type,
+  children,
+  className,
+}) => {
   const [particles, setParticles] = useState<Particle[]>([]);
 
   const playSquishSound = () => {
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioCtx = new (
+        window.AudioContext || (window as any).webkitAudioContext
+      )();
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
 
-      oscillator.type = 'sine';
+      oscillator.type = "sine";
       // Frequência começa média e cai rápido para simular o "squish"
       oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+      oscillator.frequency.exponentialRampToValueAtTime(
+        40,
+        audioCtx.currentTime + 0.1,
+      );
 
       gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.01,
+        audioCtx.currentTime + 0.1,
+      );
 
       oscillator.connect(gainNode);
       gainNode.connect(audioCtx.destination);
 
       oscillator.start();
       oscillator.stop(audioCtx.currentTime + 0.1);
-      
+
       // Fechar o contexto após o som para economizar recursos
       setTimeout(() => audioCtx.close(), 200);
     } catch (e) {
-      console.error('Audio context error:', e);
+      console.error("Audio context error:", e);
     }
   };
 
   const handleClick = () => {
     playSquishSound();
     const emojis = {
-      slugs: ['🐌', '🐛', '🐌'],
-      coins: ['🪙', '✨', '💰'],
-      hearts: ['💖', '✨', '💝']
+      slugs: ["🐌", "🐛", "🐌"],
+      coins: ["🪙", "✨", "💰"],
+      hearts: ["💖", "✨", "💝"],
     };
 
     const newParticles: Particle[] = Array.from({ length: 6 }).map((_, i) => ({
       id: Date.now() + i,
       emoji: emojis[type][Math.floor(Math.random() * emojis[type].length)],
-      angle: (Math.random() * 360) * (Math.PI / 180),
-      speed: 2 + Math.random() * 3
+      angle: Math.random() * 360 * (Math.PI / 180),
+      speed: 2 + Math.random() * 3,
     }));
 
-    setParticles(prev => [...prev, ...newParticles]);
-    
+    setParticles((prev) => [...prev, ...newParticles]);
+
     // Limpar partículas após a animação
     setTimeout(() => {
-      setParticles(prev => prev.filter(p => !newParticles.find(np => np.id === p.id)));
+      setParticles((prev) =>
+        prev.filter((p) => !newParticles.find((np) => np.id === p.id)),
+      );
     }, 2000);
   };
 
   return (
-    <div className={cn("relative cursor-pointer select-none", className)} onClick={handleClick}>
+    <div
+      className={cn("relative cursor-pointer select-none", className)}
+      onClick={handleClick}
+    >
       {children}
-      {particles.map(p => (
+      {particles.map((p) => (
         <div
           key={p.id}
           className={cn(
             "absolute pointer-events-none text-xl z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
-            type === 'slugs' ? "animate-slug-crawl" : type === 'coins' ? "animate-coin-pop" : "animate-heart-float"
+            type === "slugs"
+              ? "animate-slug-crawl"
+              : type === "coins"
+                ? "animate-coin-pop"
+                : "animate-heart-float",
           )}
-          style={{
-            '--angle': `${p.angle}rad`,
-            '--speed': `${p.speed}`,
-          } as React.CSSProperties}
+          style={
+            {
+              "--angle": `${p.angle}rad`,
+              "--speed": `${p.speed}`,
+            } as React.CSSProperties
+          }
         >
           {p.emoji}
         </div>

@@ -1,7 +1,7 @@
-import { X, Camera, RefreshCw } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
+import { X, Camera, RefreshCw } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
 
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from "../contexts/ThemeContext";
 
 interface QRScannerProps {
   onScan: (data: string) => void;
@@ -31,59 +31,67 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
       cancelAnimationFrame(animationFrameRef.current);
     }
     if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
     }
   };
 
   const startScanner = async () => {
     if (!isMountedRef.current) return;
-    
+
     setIsInitializing(true);
     setCameraError(null);
-    console.log('Iniciando startScanner...');
+    console.log("Iniciando startScanner...");
 
     // Segurança: se em 10 segundos não inicializar, cancela
     const timeoutId = setTimeout(() => {
       if (isMountedRef.current && isInitializing) {
-        console.warn('Timeout na inicialização da câmera.');
-        setCameraError('A inicialização da câmera demorou demais. Tente recarregar a página.');
+        console.warn("Timeout na inicialização da câmera.");
+        setCameraError(
+          "A inicialização da câmera demorou demais. Tente recarregar a página.",
+        );
         setIsInitializing(false);
       }
     }, 10000);
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       clearTimeout(timeoutId);
-      const msg = 'Seu navegador não suporta acesso à câmera ou você não está em um ambiente seguro (HTTPS).';
+      const msg =
+        "Seu navegador não suporta acesso à câmera ou você não está em um ambiente seguro (HTTPS).";
       setCameraError(msg);
       onError?.(msg);
       setIsInitializing(false);
       return;
     }
-    
+
     try {
       // Tenta primeiro com a câmera traseira, se falhar, tenta qualquer uma
-      const getStream = async (facingMode: 'environment' | 'user' | null) => {
-        const videoConstraints: any = facingMode ? { 
-          facingMode: { ideal: facingMode },
-        } : true;
+      const getStream = async (facingMode: "environment" | "user" | null) => {
+        const videoConstraints: any = facingMode
+          ? {
+              facingMode: { ideal: facingMode },
+            }
+          : true;
 
         const constraints: MediaStreamConstraints = {
-          video: videoConstraints
+          video: videoConstraints,
         };
-        
-        console.log('Solicitando getUserMedia com constraints:', constraints);
+
+        console.log("Solicitando getUserMedia com constraints:", constraints);
         return await navigator.mediaDevices.getUserMedia(constraints);
       };
 
       let newStream: MediaStream;
       try {
-        newStream = await getStream('environment');
+        newStream = await getStream("environment");
       } catch (e) {
-        console.warn('Falha ao abrir câmera traseira, tentando qualquer câmera disponível:', e);
+        console.warn(
+          "Falha ao abrir câmera traseira, tentando qualquer câmera disponível:",
+          e,
+        );
         try {
           newStream = await getStream(null);
         } catch (e2) {
-          console.error('Falha em todas as tentativas de abrir câmera:', e2);
+          console.error("Falha em todas as tentativas de abrir câmera:", e2);
           throw e2;
         }
       }
@@ -91,48 +99,53 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
       clearTimeout(timeoutId);
 
       if (!isMountedRef.current) {
-        console.log('Componente desmontado durante a obtenção do stream, parando tracks.');
-        newStream.getTracks().forEach(track => track.stop());
+        console.log(
+          "Componente desmontado durante a obtenção do stream, parando tracks.",
+        );
+        newStream.getTracks().forEach((track) => track.stop());
         return;
       }
-      
+
       setStream(newStream);
-      console.log('Stream obtido com sucesso.');
-      
+      console.log("Stream obtido com sucesso.");
+
       if (videoRef.current) {
-        console.log('Configurando video element...');
+        console.log("Configurando video element...");
         videoRef.current.srcObject = newStream;
-        videoRef.current.setAttribute('playsinline', 'true'); // Required for iOS
-        
+        videoRef.current.setAttribute("playsinline", "true"); // Required for iOS
+
         try {
           await videoRef.current.play();
-          console.log('Video.play() resolvido.');
+          console.log("Video.play() resolvido.");
           if (isMountedRef.current) {
             requestAnimationFrame(tick);
           }
         } catch (playErr: any) {
-          console.error('Erro no video.play():', playErr);
+          console.error("Erro no video.play():", playErr);
           // Ignora erros de interrupção do play() se estivermos desmontando
-          if (playErr.name !== 'AbortError' && isMountedRef.current) {
+          if (playErr.name !== "AbortError" && isMountedRef.current) {
             throw playErr;
           }
         }
       } else {
-        console.warn('videoRef.current não está disponível ao configurar o stream.');
+        console.warn(
+          "videoRef.current não está disponível ao configurar o stream.",
+        );
       }
 
       if (isMountedRef.current) {
-        console.log('Finalizando inicialização com sucesso.');
+        console.log("Finalizando inicialização com sucesso.");
         setIsInitializing(false);
       }
     } catch (err: any) {
       clearTimeout(timeoutId);
       if (!isMountedRef.current) return;
-      
-      console.error('Erro fatal ao acessar a câmera:', err);
-      const msg = err.name === 'NotAllowedError' 
-        ? 'Permissão de câmera negada. Por favor, habilite o acesso.' 
-        : 'Não foi possível acessar a câmera ou dispositivo não encontrado.';
+
+      console.error("Erro fatal ao acessar a câmera:", err);
+      const msg =
+        err.name === "NotAllowedError"
+          ? "Permissão de câmera negada. Por favor, habilite o acesso."
+          : "Não foi possível acessar a câmera ou dispositivo não encontrado.";
       setCameraError(msg);
       onError?.(msg);
       setIsInitializing(false);
@@ -144,18 +157,20 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
 
     if (videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
       const canvas = canvasRef.current;
-      const context = canvas.getContext('2d');
+      const context = canvas.getContext("2d");
       if (!context) return;
 
       canvas.height = videoRef.current.videoHeight;
       canvas.width = videoRef.current.videoWidth;
-      
+
       context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-      
-      const code = window.jsQR ? window.jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: 'dontInvert',
-      }) : null;
+
+      const code = window.jsQR
+        ? window.jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: "dontInvert",
+          })
+        : null;
 
       if (code && code.data) {
         stopScanner(); // Para tudo antes de notificar o componente pai
@@ -168,7 +183,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
 
   useEffect(() => {
     isMountedRef.current = true;
-    
+
     // Pequeno delay para evitar conflitos de hardware em remounts rápidos (Strict Mode)
     const timer = setTimeout(() => {
       if (isMountedRef.current) {
@@ -190,7 +205,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
           <Camera className="w-5 h-5 text-primary" />
           <span className="font-medium">Escanear QR Code</span>
         </div>
-        <button 
+        <button
           onClick={onClose}
           className="p-2 rounded-full hover:bg-white/20 transition-colors"
         >
@@ -211,7 +226,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
           <div className="absolute inset-0 flex flex-col items-center justify-center text-white bg-black z-10 p-6 text-center">
             <X className="w-12 h-12 text-red-500 mb-4" />
             <p className="mb-4 text-lg">{cameraError}</p>
-            <button 
+            <button
               onClick={startScanner}
               className="px-6 py-2 rounded-full font-medium"
               style={{ backgroundColor: theme.primary }}
@@ -221,17 +236,14 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
           </div>
         )}
 
-        <video 
-          ref={videoRef} 
-          className="h-full w-full object-cover"
-        />
-        
+        <video ref={videoRef} className="h-full w-full object-cover" />
+
         {/* Scanning UI Overlay */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <div className="relative w-64 h-64 border-2 border-primary/50 rounded-lg">
             {/* Animated Scanning Line */}
             <div className="absolute top-0 left-0 w-full h-1 bg-primary/60 animate-scan shadow-[0_0_10px_#10b981]"></div>
-            
+
             {/* Corner Borders */}
             <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-sm"></div>
             <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-sm"></div>

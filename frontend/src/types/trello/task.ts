@@ -4,7 +4,7 @@ export interface ChecklistItem {
   completed: boolean;
 }
 
-export type TaskFlag = 'blocked' | 'impediment' | 'paused' | 'none';
+export type TaskFlag = "blocked" | "impediment" | "paused" | "none";
 
 export interface TaskLabel {
   id: string;
@@ -29,7 +29,16 @@ export interface TimeLog {
 
 export interface HistoryEntry {
   id: string;
-  action: 'create' | 'update' | 'move' | 'archive' | 'unarchive' | 'pin' | 'unpin' | 'checklist_toggle' | 'timelog_add';
+  action:
+    | "create"
+    | "update"
+    | "move"
+    | "archive"
+    | "unarchive"
+    | "pin"
+    | "unpin"
+    | "checklist_toggle"
+    | "timelog_add";
   details: string;
   date: string; // ISO String
   previousValue?: any;
@@ -40,7 +49,7 @@ export interface Task {
   id: string;
   title: string;
   description: string;
-  priority: 'low' | 'medium' | 'high';
+  priority: "low" | "medium" | "high";
   date?: Date | string;
   columnId: string;
   createdAt: string;

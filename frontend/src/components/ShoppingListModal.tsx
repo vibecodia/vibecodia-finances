@@ -1,19 +1,25 @@
-import { Check, Trash2, PlusCircle, Star, ShoppingBasket } from 'lucide-react';
-import React, { useState, useRef, useEffect } from 'react';
-import { TransitionGroup, CSSTransition } from 'react-transition-group';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
-import { Button } from './ui/Button';
-import { Input } from './ui/Input';
-import { cn } from '../lib/utils';
+import { Check, Trash2, PlusCircle, Star, ShoppingBasket } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { TransitionGroup, CSSTransition } from "react-transition-group";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "./ui/dialog";
+import { Button } from "./ui/Button";
+import { Input } from "./ui/Input";
+import { cn } from "../lib/utils";
 
-import { ColorPalette } from '../contexts/ThemeContext';
-import { ShoppingItem } from '../hooks/useShoppingList';
+import { ColorPalette } from "../contexts/ThemeContext";
+import { ShoppingItem } from "../hooks/useShoppingList";
 
 interface ShoppingListModalProps {
   isOpen: boolean;
   onClose: () => void;
   shoppingList: ShoppingItem[];
-  addItem: (name: string, type: 'compras' | 'afazeres') => void;
+  addItem: (name: string, type: "compras" | "afazeres") => void;
   togglePurchased: (id: string) => void;
   removeItem: (id: string) => void;
   clearPurchased: () => void;
@@ -32,27 +38,27 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
   togglePriority,
   theme,
 }) => {
-  const [newItemName, setNewItemName] = useState('');
-  const [activeTab, setActiveTab] = useState<'compras' | 'afazeres'>('compras');
+  const [newItemName, setNewItemName] = useState("");
+  const [activeTab, setActiveTab] = useState<"compras" | "afazeres">("compras");
   const itemRefs = useRef(new Map<string, React.RefObject<HTMLLIElement>>());
 
-  const filteredList = (shoppingList || []).filter(item => {
+  const filteredList = (shoppingList || []).filter((item) => {
     // Para retrocompatibilidade se o item não tiver type, assume 'compras'
-    const itemType = item.type || 'compras';
+    const itemType = item.type || "compras";
     return itemType === activeTab;
   });
 
   useEffect(() => {
     // Clean up refs for items that are no longer in the shopping list
     const currentRefs = itemRefs.current;
-    shoppingList.forEach(item => {
+    shoppingList.forEach((item) => {
       if (!currentRefs.has(item.id)) {
         currentRefs.set(item.id, React.createRef());
       }
     });
     // Remove refs that are no longer needed
     currentRefs.forEach((_value, key) => {
-      if (!shoppingList.some(item => item.id === key)) {
+      if (!shoppingList.some((item) => item.id === key)) {
         currentRefs.delete(key);
       }
     });
@@ -61,28 +67,31 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
   const handleAddItem = () => {
     if (!newItemName.trim()) return;
     addItem(newItemName.trim(), activeTab);
-    setNewItemName('');
+    setNewItemName("");
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md p-0 overflow-hidden border-none shadow-2xl">
-        <div 
+        <div
           className="p-6 transition-colors duration-300"
-          style={{ 
+          style={{
             backgroundColor: theme.cardBackground,
-            color: theme.text 
+            color: theme.text,
           }}
         >
           <DialogHeader className="mb-4">
             <div className="flex items-center justify-center gap-3 mb-2">
-              <div 
+              <div
                 className="p-2 rounded-xl"
                 style={{ backgroundColor: `${theme.primary}15` }}
               >
-                <ShoppingBasket className="w-6 h-6" style={{ color: theme.primary }} />
+                <ShoppingBasket
+                  className="w-6 h-6"
+                  style={{ color: theme.primary }}
+                />
               </div>
-              <DialogTitle 
+              <DialogTitle
                 className="text-2xl font-black tracking-tight uppercase italic"
                 style={{ color: theme.text }}
               >
@@ -98,33 +107,38 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
           </DialogHeader>
 
           {/* Tabs Navigation */}
-          <div className="flex gap-2 mb-6 p-1 rounded-2xl" style={{ backgroundColor: `${theme.text}08` }}>
+          <div
+            className="flex gap-2 mb-6 p-1 rounded-2xl"
+            style={{ backgroundColor: `${theme.text}08` }}
+          >
             <button
-              onClick={() => setActiveTab('compras')}
+              onClick={() => setActiveTab("compras")}
               className={cn(
                 "flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300",
-                activeTab === 'compras' 
-                  ? "shadow-lg scale-[1.02]" 
-                  : "opacity-40 hover:opacity-60"
+                activeTab === "compras"
+                  ? "shadow-lg scale-[1.02]"
+                  : "opacity-40 hover:opacity-60",
               )}
               style={{
-                backgroundColor: activeTab === 'compras' ? theme.primary : 'transparent',
-                color: activeTab === 'compras' ? '#fff' : theme.text,
+                backgroundColor:
+                  activeTab === "compras" ? theme.primary : "transparent",
+                color: activeTab === "compras" ? "#fff" : theme.text,
               }}
             >
               Compras
             </button>
             <button
-              onClick={() => setActiveTab('afazeres')}
+              onClick={() => setActiveTab("afazeres")}
               className={cn(
                 "flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300",
-                activeTab === 'afazeres' 
-                  ? "shadow-lg scale-[1.02]" 
-                  : "opacity-40 hover:opacity-60"
+                activeTab === "afazeres"
+                  ? "shadow-lg scale-[1.02]"
+                  : "opacity-40 hover:opacity-60",
               )}
               style={{
-                backgroundColor: activeTab === 'afazeres' ? theme.primary : 'transparent',
-                color: activeTab === 'afazeres' ? '#fff' : theme.text,
+                backgroundColor:
+                  activeTab === "afazeres" ? theme.primary : "transparent",
+                color: activeTab === "afazeres" ? "#fff" : theme.text,
               }}
             >
               Afazeres
@@ -135,21 +149,25 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
             <Input
               value={newItemName}
               onChange={(e) => setNewItemName(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleAddItem()}
-              placeholder={activeTab === 'compras' ? "O que você precisa comprar?" : "O que você precisa fazer?"}
+              onKeyPress={(e) => e.key === "Enter" && handleAddItem()}
+              placeholder={
+                activeTab === "compras"
+                  ? "O que você precisa comprar?"
+                  : "O que você precisa fazer?"
+              }
               className="flex-grow transition-all"
-              style={{ 
+              style={{
                 backgroundColor: theme.background,
                 borderColor: theme.cardBorder,
-                color: theme.text
+                color: theme.text,
               }}
             />
             <Button
               onClick={handleAddItem}
               className="px-4 shrink-0 shadow-lg"
-              style={{ 
+              style={{
                 backgroundColor: theme.primary,
-                color: '#fff'
+                color: "#fff",
               }}
             >
               <PlusCircle className="w-5 h-5" />
@@ -158,9 +176,9 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
 
           <div className="space-y-4">
             {Array.isArray(filteredList) && filteredList.length > 0 ? (
-              <TransitionGroup 
+              <TransitionGroup
                 key={activeTab}
-                component="ul" 
+                component="ul"
                 className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar"
               >
                 {filteredList.map((item) => {
@@ -176,42 +194,52 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
                         ref={nodeRef}
                         className={cn(
                           "group flex items-center justify-between p-3 rounded-xl transition-all duration-300 border",
-                          item.purchased 
-                            ? "opacity-60" 
-                            : "shadow-sm"
+                          item.purchased ? "opacity-60" : "shadow-sm",
                         )}
                         style={{
-                          backgroundColor: item.purchased ? `${theme.primary}10` : theme.background,
-                          borderColor: item.purchased ? `${theme.primary}20` : theme.cardBorder,
+                          backgroundColor: item.purchased
+                            ? `${theme.primary}10`
+                            : theme.background,
+                          borderColor: item.purchased
+                            ? `${theme.primary}20`
+                            : theme.cardBorder,
                         }}
                       >
-                        <div 
+                        <div
                           className="flex-grow flex items-center gap-3 cursor-pointer select-none"
                           onClick={() => togglePurchased(item.id)}
                         >
-                          <div 
+                          <div
                             className={cn(
                               "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
-                              item.purchased && "scale-110"
+                              item.purchased && "scale-110",
                             )}
                             style={{
-                              backgroundColor: item.purchased ? theme.primary : 'transparent',
-                              borderColor: item.purchased ? theme.primary : `${theme.text}20`
+                              backgroundColor: item.purchased
+                                ? theme.primary
+                                : "transparent",
+                              borderColor: item.purchased
+                                ? theme.primary
+                                : `${theme.text}20`,
                             }}
                           >
-                            {item.purchased && <Check className="w-3 h-3 text-white stroke-[4]" />}
+                            {item.purchased && (
+                              <Check className="w-3 h-3 text-white stroke-[4]" />
+                            )}
                           </div>
-                          <span className={cn(
-                            "font-medium transition-all",
-                            item.purchased && "line-through opacity-50"
-                          )}>
+                          <span
+                            className={cn(
+                              "font-medium transition-all",
+                              item.purchased && "line-through opacity-50",
+                            )}
+                          >
                             {item.name}
                           </span>
                           {item.isPriority && !item.purchased && (
                             <Star className="w-3 h-3 text-yellow-500 fill-yellow-500 animate-pulse" />
                           )}
                         </div>
-                        
+
                         <div className="flex items-center gap-2 shrink-0">
                           <Button
                             variant="ghost"
@@ -219,10 +247,17 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
                             onClick={() => togglePriority(item.id)}
                             className={cn(
                               "h-10 w-10 rounded-xl transition-all",
-                              item.isPriority ? "text-yellow-500 bg-yellow-500/10 shadow-inner" : "opacity-60 hover:opacity-100 hover:text-yellow-500 hover:bg-yellow-500/10"
+                              item.isPriority
+                                ? "text-yellow-500 bg-yellow-500/10 shadow-inner"
+                                : "opacity-60 hover:opacity-100 hover:text-yellow-500 hover:bg-yellow-500/10",
                             )}
                           >
-                            <Star className={cn("w-5 h-5", item.isPriority && "fill-yellow-500")} />
+                            <Star
+                              className={cn(
+                                "w-5 h-5",
+                                item.isPriority && "fill-yellow-500",
+                              )}
+                            />
                           </Button>
                           <Button
                             variant="ghost"
@@ -230,10 +265,17 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
                             onClick={() => togglePurchased(item.id)}
                             className={cn(
                               "h-10 w-10 rounded-xl transition-all",
-                              item.purchased ? "text-green-500 bg-green-500/10 shadow-inner" : "opacity-60 hover:opacity-100 hover:text-green-500 hover:bg-green-500/10"
+                              item.purchased
+                                ? "text-green-500 bg-green-500/10 shadow-inner"
+                                : "opacity-60 hover:opacity-100 hover:text-green-500 hover:bg-green-500/10",
                             )}
                           >
-                            <Check className={cn("w-5 h-5", item.purchased && "stroke-[3]")} />
+                            <Check
+                              className={cn(
+                                "w-5 h-5",
+                                item.purchased && "stroke-[3]",
+                              )}
+                            />
                           </Button>
                           <Button
                             variant="ghost"
@@ -253,23 +295,25 @@ const ShoppingListModal: React.FC<ShoppingListModalProps> = ({
               <div className="py-12 flex flex-col items-center justify-center text-center opacity-40">
                 <ShoppingBasket className="w-12 h-12 mb-3" />
                 <p className="font-medium uppercase tracking-widest text-[10px]">
-                  {activeTab === 'compras' ? 'Sua lista de compras está vazia' : 'Sua lista de afazeres está vazia'}
+                  {activeTab === "compras"
+                    ? "Sua lista de compras está vazia"
+                    : "Sua lista de afazeres está vazia"}
                 </p>
               </div>
             )}
           </div>
 
-          {filteredList.some(item => item.purchased) && (
+          {filteredList.some((item) => item.purchased) && (
             <Button
               variant="outline"
               onClick={clearPurchased}
               className="mt-6 w-full transition-all uppercase tracking-widest text-[10px] font-bold h-10"
               style={{
                 borderColor: `${theme.text}20`,
-                color: theme.text
+                color: theme.text,
               }}
             >
-              Limpar {activeTab === 'compras' ? 'Itens' : 'Afazeres'} Concluídos
+              Limpar {activeTab === "compras" ? "Itens" : "Afazeres"} Concluídos
             </Button>
           )}
         </div>

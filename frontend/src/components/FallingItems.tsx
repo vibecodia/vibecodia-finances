@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from "react";
 
 // --- Tipagens e Constantes ---
 
@@ -6,34 +6,34 @@ interface FallingItemsProps {
   category: string;
   isVisible: boolean;
   onComplete: () => void;
-  mode?: '10s' | '15s' | 'zen';
+  mode?: "10s" | "15s" | "zen";
 }
 
 const CATEGORY_EMOJIS: Record<string, string[]> = {
-  'Moradia': ['🏠', '🏡', '🏢', '🏘️', '🔑'],
-  'Patrimônio': ['🏠', '🏡', '🏢', '🏘️', '🔑'],
-  'Dívidas': ['💸', '🧾', '💳', '📉', '💰'],
-  'Educação': ['📚', '🎓', '✏️', '📓', '🏫'],
-  'Serviços': ['🛠️', '🔌', '⚙️', '🔩', '🔧'],
-  'Saúde': ['🏥', '💊', '🍎', '🚑', '🩺', '💉'],
-  'Internet': ['🌐', '📶', '💻', '🖱️', '📡'],
-  'Transporte': ['🚗', '🚌', '🚲', '🚇', '🛞', '⛽', '🛵'],
-  'Entretenimento': ['🎬', '🎮', '🍿', '🎟️', '🎭', '🎧'],
-  'Alimentação': ['🍎', '🥦', '🍔', '🍕', '🥕', '🍇', '🥑', '🍳', '🍉'],
-  'Utilidades': ['💡', '🚰', '🔌', '🔋', '🔥'],
-  'Beleza': ['💄', '💅', '💇', '🧴', '💈', '👗'],
-  'Compras': ['🛍️', '🛒', '🏷️', '🎁', '👜'],
-  'Consumo': ['🛒', '🥛', '🍞', '🥤', '🍱'],
-  'Aporte': ['📈', '💰', '🏦', '💹', '💎', '💸'],
-  'Outros': ['✨', '📦', '🌀', '🎯', '🌈'],
-  'Salário': ['💵', '💰', '🏦', '💸', '🤑'],
-  'Vale': ['🎟️', '🎫', '🍔', '🍕'],
-  'Reembolsos': ['🔙', '💵', '💰', '💸'],
-  'Aluguéis': ['🏠', '🔑', '🏢', '🏗️'],
-  'Premiação': ['🏆', '🥇', '🏅', '✨', '🎉'],
-  'Déc.Terceiro': ['🎄', '🎁', '💰', '🥂', '🎅'],
-  'Férias': ['🏖️', '✈️', '🌴', '🍹', '👙', '🌊'],
-  'Rendimentos': ['📊', '💹', '📈', '💎', '🚀'],
+  Moradia: ["🏠", "🏡", "🏢", "🏘️", "🔑"],
+  Patrimônio: ["🏠", "🏡", "🏢", "🏘️", "🔑"],
+  Dívidas: ["💸", "🧾", "💳", "📉", "💰"],
+  Educação: ["📚", "🎓", "✏️", "📓", "🏫"],
+  Serviços: ["🛠️", "🔌", "⚙️", "🔩", "🔧"],
+  Saúde: ["🏥", "💊", "🍎", "🚑", "🩺", "💉"],
+  Internet: ["🌐", "📶", "💻", "🖱️", "📡"],
+  Transporte: ["🚗", "🚌", "🚲", "🚇", "🛞", "⛽", "🛵"],
+  Entretenimento: ["🎬", "🎮", "🍿", "🎟️", "🎭", "🎧"],
+  Alimentação: ["🍎", "🥦", "🍔", "🍕", "🥕", "🍇", "🥑", "🍳", "🍉"],
+  Utilidades: ["💡", "🚰", "🔌", "🔋", "🔥"],
+  Beleza: ["💄", "💅", "💇", "🧴", "💈", "👗"],
+  Compras: ["🛍️", "🛒", "🏷️", "🎁", "👜"],
+  Consumo: ["🛒", "🥛", "🍞", "🥤", "🍱"],
+  Aporte: ["📈", "💰", "🏦", "💹", "💎", "💸"],
+  Outros: ["✨", "📦", "🌀", "🎯", "🌈"],
+  Salário: ["💵", "💰", "🏦", "💸", "🤑"],
+  Vale: ["🎟️", "🎫", "🍔", "🍕"],
+  Reembolsos: ["🔙", "💵", "💰", "💸"],
+  Aluguéis: ["🏠", "🔑", "🏢", "🏗️"],
+  Premiação: ["🏆", "🥇", "🏅", "✨", "🎉"],
+  "Déc.Terceiro": ["🎄", "🎁", "💰", "🥂", "🎅"],
+  Férias: ["🏖️", "✈️", "🌴", "🍹", "👙", "🌊"],
+  Rendimentos: ["📊", "💹", "📈", "💎", "🚀"],
 };
 
 const GRAVITY = 0.15;
@@ -99,11 +99,11 @@ class Fruit {
     this.size = 60 + Math.random() * 20;
     this.x = Math.random() * (canvasWidth - 100) + 50;
     this.y = canvasHeight + 100;
-    
+
     const targetX = canvasWidth / 2;
     this.vx = (targetX - this.x) * 0.012 + (Math.random() - 0.5) * 4;
     this.vy = -(Math.random() * 6 + 13);
-    
+
     this.rotation = Math.random() * Math.PI * 2;
     this.rv = (Math.random() - 0.5) * 0.12;
     this.isSliced = false;
@@ -129,17 +129,17 @@ class Fruit {
     ctx.translate(this.x, this.y);
     ctx.rotate(this.rotation);
     ctx.font = `${this.size}px Arial`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
 
     if (!this.isSliced) {
       ctx.shadowBlur = 15;
-      ctx.shadowColor = 'rgba(0,0,0,0.2)';
+      ctx.shadowColor = "rgba(0,0,0,0.2)";
       ctx.fillText(this.emoji, 0, 0);
     } else {
       ctx.save();
       ctx.rotate(this.sliceAngle);
-      
+
       // Metade Superior
       ctx.save();
       ctx.translate(-this.halfX, -5);
@@ -159,7 +159,7 @@ class Fruit {
       ctx.rotate(-this.sliceAngle);
       ctx.fillText(this.emoji, 0, 0);
       ctx.restore();
-      
+
       ctx.restore();
     }
     ctx.restore();
@@ -168,47 +168,55 @@ class Fruit {
 
 // --- Componente Principal ---
 
-export const FallingItems: React.FC<FallingItemsProps> = ({ 
-  category, 
-  isVisible, 
-  onComplete, 
-  mode = '10s' 
+export const FallingItems: React.FC<FallingItemsProps> = ({
+  category,
+  isVisible,
+  onComplete,
+  mode = "10s",
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  
+
   // Usar refs para evitar que mudanças nas props resetem o game loop
   const onCompleteRef = useRef(onComplete);
   const categoryRef = useRef(category);
   const modeRef = useRef(mode);
 
-  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
-  useEffect(() => { categoryRef.current = category; }, [category]);
-  useEffect(() => { modeRef.current = mode; }, [mode]);
-  
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+  useEffect(() => {
+    categoryRef.current = category;
+  }, [category]);
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
+
   // Refs para Engine
   const fruitsRef = useRef<Fruit[]>([]);
   const particlesRef = useRef<Particle[]>([]);
-  const trailRef = useRef<{ x: number, y: number, t: number }[]>([]);
-  const mouseRef = useRef<{ x: number, y: number } | null>(null);
+  const trailRef = useRef<{ x: number; y: number; t: number }[]>([]);
+  const mouseRef = useRef<{ x: number; y: number } | null>(null);
   const scoreRef = useRef(0);
   const requestRef = useRef<number>();
-  
+
   const [displayScore, setDisplayScore] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(mode === 'zen' ? 0 : (mode === '10s' ? 10 : 15));
+  const [timeLeft, setTimeLeft] = useState(
+    mode === "zen" ? 0 : mode === "10s" ? 10 : 15,
+  );
 
   useEffect(() => {
     if (!isVisible) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     const resize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     };
-    window.addEventListener('resize', resize);
+    window.addEventListener("resize", resize);
     resize();
 
     // Reset Engine
@@ -217,25 +225,33 @@ export const FallingItems: React.FC<FallingItemsProps> = ({
     fruitsRef.current = [];
     particlesRef.current = [];
     trailRef.current = [];
-    
-    const initialTime = modeRef.current === 'zen' ? 0 : (modeRef.current === '10s' ? 10 : 15);
+
+    const initialTime =
+      modeRef.current === "zen" ? 0 : modeRef.current === "10s" ? 10 : 15;
     setTimeLeft(initialTime);
-    
+
     // Spawn Interval
     const spawnInterval = setInterval(() => {
       const currentCategory = categoryRef.current;
-      const emojis = CATEGORY_EMOJIS[currentCategory] || CATEGORY_EMOJIS['Outro'];
+      const emojis =
+        CATEGORY_EMOJIS[currentCategory] || CATEGORY_EMOJIS["Outro"];
       const count = Math.floor(Math.random() * 2) + 1;
-      for(let i=0; i<count; i++) {
-        fruitsRef.current.push(new Fruit(canvas.width, canvas.height, emojis[Math.floor(Math.random() * emojis.length)]));
+      for (let i = 0; i < count; i++) {
+        fruitsRef.current.push(
+          new Fruit(
+            canvas.width,
+            canvas.height,
+            emojis[Math.floor(Math.random() * emojis.length)],
+          ),
+        );
       }
     }, 1300);
 
     // Timer de jogo (Apenas se NÃO for Zen)
     let gameTimer: NodeJS.Timeout | null = null;
-    if (modeRef.current !== 'zen') {
+    if (modeRef.current !== "zen") {
       gameTimer = setInterval(() => {
-        setTimeLeft(prev => {
+        setTimeLeft((prev) => {
           if (prev <= 1) {
             if (gameTimer) clearInterval(gameTimer);
             clearInterval(spawnInterval);
@@ -252,7 +268,7 @@ export const FallingItems: React.FC<FallingItemsProps> = ({
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const now = Date.now();
-      trailRef.current = trailRef.current.filter(p => now - p.t < 150);
+      trailRef.current = trailRef.current.filter((p) => now - p.t < 150);
       if (mouseRef.current) {
         trailRef.current.push({ ...mouseRef.current, t: now });
       }
@@ -265,12 +281,12 @@ export const FallingItems: React.FC<FallingItemsProps> = ({
         for (let i = 1; i < trailRef.current.length; i++) {
           ctx.lineTo(trailRef.current[i].x, trailRef.current[i].y);
         }
-        ctx.strokeStyle = 'white';
+        ctx.strokeStyle = "white";
         ctx.lineWidth = 4;
-        ctx.lineCap = 'round';
+        ctx.lineCap = "round";
         ctx.stroke();
         ctx.shadowBlur = 10;
-        ctx.shadowColor = 'rgba(255,255,255,0.5)';
+        ctx.shadowColor = "rgba(255,255,255,0.5)";
         ctx.stroke();
         ctx.restore();
       }
@@ -290,7 +306,9 @@ export const FallingItems: React.FC<FallingItemsProps> = ({
             scoreRef.current++;
             setDisplayScore(scoreRef.current);
             for (let i = 0; i < 10; i++) {
-              particlesRef.current.push(new Particle(fruit.x, fruit.y, 'rgba(255,255,255,0.5)'));
+              particlesRef.current.push(
+                new Particle(fruit.x, fruit.y, "rgba(255,255,255,0.5)"),
+              );
             }
           }
         }
@@ -313,7 +331,7 @@ export const FallingItems: React.FC<FallingItemsProps> = ({
     requestRef.current = requestAnimationFrame(update);
 
     return () => {
-      window.removeEventListener('resize', resize);
+      window.removeEventListener("resize", resize);
       clearInterval(spawnInterval);
       if (gameTimer) clearInterval(gameTimer);
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
@@ -324,34 +342,44 @@ export const FallingItems: React.FC<FallingItemsProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
     mouseRef.current = { x: clientX - rect.left, y: clientY - rect.top };
   };
 
   if (!isVisible) return null;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[9999] overflow-hidden bg-black/50 backdrop-blur-md touch-none select-none cursor-none"
       onMouseMove={handleInput}
       onTouchMove={handleInput}
       onMouseDown={handleInput}
       onTouchStart={handleInput}
-      onMouseUp={() => { mouseRef.current = null; }}
-      onTouchEnd={() => { mouseRef.current = null; }}
+      onMouseUp={() => {
+        mouseRef.current = null;
+      }}
+      onTouchEnd={() => {
+        mouseRef.current = null;
+      }}
     >
       <div className="absolute top-10 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none">
-        <span className="text-white/40 text-[10px] font-black tracking-[0.5em] uppercase mb-1">CORTES</span>
+        <span className="text-white/40 text-[10px] font-black tracking-[0.5em] uppercase mb-1">
+          CORTES
+        </span>
         <span className="text-white text-7xl font-black italic tracking-tighter drop-shadow-2xl">
           {displayScore}
         </span>
       </div>
 
-      {mode !== 'zen' && (
+      {mode !== "zen" && (
         <div className="absolute top-10 right-10 text-right pointer-events-none">
-          <span className="text-white/30 text-[10px] font-black tracking-widest uppercase block">Tempo</span>
-          <span className={`text-4xl font-black ${timeLeft < 5 ? 'text-red-500 animate-pulse' : 'text-white/70'}`}>
+          <span className="text-white/30 text-[10px] font-black tracking-widest uppercase block">
+            Tempo
+          </span>
+          <span
+            className={`text-4xl font-black ${timeLeft < 5 ? "text-red-500 animate-pulse" : "text-white/70"}`}
+          >
             {timeLeft}s
           </span>
         </div>
@@ -359,7 +387,7 @@ export const FallingItems: React.FC<FallingItemsProps> = ({
 
       <canvas ref={canvasRef} className="block w-full h-full" />
 
-      {mode === 'zen' && (
+      {mode === "zen" && (
         <button
           onClick={() => onCompleteRef.current()}
           className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-white/10 hover:bg-white/20 text-white px-10 py-4 rounded-full font-black uppercase tracking-widest border border-white/20 backdrop-blur-xl transition-all hover:scale-105 active:scale-95 cursor-pointer z-50"

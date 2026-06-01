@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Pencil } from 'lucide-react';
-import { Button } from './ui/Button';
-import { Card } from './ui/Card';
-import { Input } from './ui/Input';
+import React, { useState, useEffect } from "react";
+import { Pencil } from "lucide-react";
+import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
+import { Input } from "./ui/Input";
 
 interface InputModalProps {
   isOpen: boolean;
@@ -22,8 +22,8 @@ export const InputModal: React.FC<InputModalProps> = ({
   title,
   label,
   placeholder,
-  initialValue = '',
-  confirmText = 'Salvar',
+  initialValue = "",
+  confirmText = "Salvar",
 }) => {
   const [value, setValue] = useState(initialValue);
 
@@ -67,11 +67,7 @@ export const InputModal: React.FC<InputModalProps> = ({
             </div>
           </div>
           <div className="px-8 py-6 flex flex-col sm:flex-row-reverse gap-4 bg-muted/50 border-t border-border">
-            <Button
-              type="submit"
-              disabled={!value.trim()}
-              className="flex-1"
-            >
+            <Button type="submit" disabled={!value.trim()} className="flex-1">
               {confirmText}
             </Button>
             <Button
