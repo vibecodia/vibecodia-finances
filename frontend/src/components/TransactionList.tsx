@@ -1102,7 +1102,8 @@ const TransactionList: React.FC<TransactionListProps> = ({
         onClose={() => setIsMarkAllPaidModalOpen(false)}
         onConfirm={markAllAsPaid}
         title="Marcar todos como pagos"
-        message="Tem certeza de que deseja marcar todos os itens filtrados como pagos?"
+        message={`Tem certeza de que deseja marcar os ${activeTransactions.length} itens filtrados como pagos?`}
+        confirmButtonText="confirmar ação"
       />
       {/* ------------------------------------------------- */}
     </div>
