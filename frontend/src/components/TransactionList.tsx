@@ -61,6 +61,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [apporteMessage, setApporteMessage] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(true);
+  const [isMarkAllPaidModalOpen, setIsMarkAllPaidModalOpen] = useState(false);
 
   // Filter and split transactions early so useEffect and body can use them
   const allMonthTransactions = filterTransactionsByMonth(
@@ -434,6 +435,19 @@ const TransactionList: React.FC<TransactionListProps> = ({
     setAnimatedTransactionId(id);
   };
 
+  // ---- New: Mark all as paid ----
+  const canMarkAllAsPaid = paymentFilter === 'pending' && !paymentMethodFilter.includes('all') && activeTransactions.length > 0;
+
+  const markAllAsPaid = async () => {
+    for (const t of activeTransactions) {
+      if (!t.isPaid) {
+        await onUpdatePaymentStatus(t.id, true);
+      }
+    }
+    setIsMarkAllPaidModalOpen(false);
+  };
+  // -------------------------------
+
   return (
     <div className="space-y-6">
       {apporteMessage && (
@@ -585,6 +599,22 @@ const TransactionList: React.FC<TransactionListProps> = ({
               ))}
             </div>
           )}
+
+          {/* ---- New: Mark all as paid button ---- */}
+          {type === 'expense' && (
+            <div className="flex items-center gap-2 pb-2">
+              <Button
+                onClick={() => setIsMarkAllPaidModalOpen(true)}
+                disabled={!canMarkAllAsPaid}
+                size="sm"
+                variant={canMarkAllAsPaid ? 'primary' : 'outline'}
+                className="rounded-full text-[10px] uppercase h-8 px-4"
+              >
+                Marcar todos como pago
+              </Button>
+            </div>
+          )}
+          {/* ------------------------------------ */}
 
           {/* Search Input */}
           <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -845,6 +875,16 @@ const TransactionList: React.FC<TransactionListProps> = ({
         message="Deseja reativar esta transação? Ela voltará a ser contabilizada nos seus totais."
         confirmText="Confirmar Reativação"
       />
+
+      {/* ---- New: Mark all as paid confirmation modal ---- */}
+      <ConfirmationModal
+        isOpen={isMarkAllPaidModalOpen}
+        onClose={() => setIsMarkAllPaidModalOpen(false)}
+        onConfirm={markAllAsPaid}
+        title="Marcar todos como pagos"
+        message="Tem certeza de que deseja marcar todos os itens filtrados como pagos?"
+      />
+      {/* ------------------------------------------------- */}
     </div>
   );
 };
