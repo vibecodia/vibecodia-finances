@@ -3,14 +3,14 @@ export type PaymentMethod = string;
 export interface Transaction {
   _id?: string; // Adicionado para o MongoDB
   id: string; // Mantido para compatibilidade
-  type: 'expense' | 'income';
+  type: "expense" | "income";
   amount: number;
   description: string;
   category: string;
   date: string;
   dueDate?: string; // Data de vencimento para gastos pendentes
   isPaid: boolean; // Status de pagamento
-  recurrence: 'none' | 'weekly' | 'monthly' | 'yearly';
+  recurrence: "none" | "weekly" | "monthly" | "yearly";
   paymentMethod?: PaymentMethod; // Adicionado para despesas
   createdAt: string;
   updatedAt: string;
@@ -18,7 +18,7 @@ export interface Transaction {
   imageUrl?: string; // Link para o recibo/imagem
   savingsGoalId?: string; // ID da meta vinculada
   savingsGoalContributionId?: string; // ID da contribuição original
-  status?: 'active' | 'deleted'; // Adicionado para Soft Delete
+  status?: "active" | "deleted"; // Adicionado para Soft Delete
   deletedAt?: string; // Adicionado para Soft Delete
 }
 
@@ -30,7 +30,7 @@ export interface SavingsContribution {
   transactionId?: string;
   createdAt: string;
   updatedAt: string;
-  status?: 'active' | 'deleted'; // Adicionado para Soft Delete
+  status?: "active" | "deleted"; // Adicionado para Soft Delete
   deletedAt?: string; // Adicionado para Soft Delete
 }
 
@@ -44,7 +44,7 @@ export interface SavingsGoal {
   contributions: SavingsContribution[]; // Histórico de aportes
   createdAt: string;
   updatedAt: string;
-  status?: 'active' | 'deleted'; // Adicionado para Soft Delete
+  status?: "active" | "deleted"; // Adicionado para Soft Delete
   deletedAt?: string; // Adicionado para Soft Delete
 }
 

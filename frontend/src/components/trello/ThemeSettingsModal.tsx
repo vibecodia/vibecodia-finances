@@ -1,10 +1,17 @@
-import { useState, useEffect } from 'react';
-import { X, Palette, Image as ImageIcon, Trash2, Save, AlertTriangle } from 'lucide-react';
-import { BoardTheme } from '../../types/trello/task';
-import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
-import { Card } from '../ui/Card';
-import { cn } from '../../lib/utils';
+import { useState, useEffect } from "react";
+import {
+  X,
+  Palette,
+  Image as ImageIcon,
+  Trash2,
+  Save,
+  AlertTriangle,
+} from "lucide-react";
+import { BoardTheme } from "../../types/trello/task";
+import { Button } from "../ui/Button";
+import { Input } from "../ui/Input";
+import { Card } from "../ui/Card";
+import { cn } from "../../lib/utils";
 
 interface ThemeSettingsModalProps {
   isOpen: boolean;
@@ -15,26 +22,28 @@ interface ThemeSettingsModalProps {
   isOnlyTheme: boolean;
 }
 
-export function ThemeSettingsModal({ 
-  isOpen, 
-  onClose, 
-  theme, 
-  onUpdate, 
+export function ThemeSettingsModal({
+  isOpen,
+  onClose,
+  theme,
+  onUpdate,
   onDelete,
-  isOnlyTheme 
+  isOnlyTheme,
 }: ThemeSettingsModalProps) {
   const [name, setName] = useState(theme.name);
-  const [subtitle, setSubtitle] = useState(theme.subtitle || '');
-  const [color, setColor] = useState(theme.color || '#3b82f6');
-  const [backgroundImage, setBackgroundImage] = useState(theme.backgroundImage || '');
+  const [subtitle, setSubtitle] = useState(theme.subtitle || "");
+  const [color, setColor] = useState(theme.color || "#3b82f6");
+  const [backgroundImage, setBackgroundImage] = useState(
+    theme.backgroundImage || "",
+  );
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setName(theme.name);
-      setSubtitle(theme.subtitle || '');
-      setColor(theme.color || '#3b82f6');
-      setBackgroundImage(theme.backgroundImage || '');
+      setSubtitle(theme.subtitle || "");
+      setColor(theme.color || "#3b82f6");
+      setBackgroundImage(theme.backgroundImage || "");
       setShowDeleteConfirm(false);
     }
   }, [isOpen, theme]);
@@ -44,20 +53,27 @@ export function ThemeSettingsModal({
       name: name.trim(),
       subtitle: subtitle.trim() || undefined,
       color,
-      backgroundImage: backgroundImage.trim() || undefined
+      backgroundImage: backgroundImage.trim() || undefined,
     });
     onClose();
   };
 
   const presetColors = [
-    '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b', '#000000'
+    "#3b82f6",
+    "#ef4444",
+    "#10b981",
+    "#f59e0b",
+    "#8b5cf6",
+    "#ec4899",
+    "#64748b",
+    "#000000",
   ];
 
   const presetImages = [
-    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=60',
-    'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=60',
-    'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=800&q=60',
-    'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=60',
+    "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=60",
+    "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=60",
+    "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=800&q=60",
+    "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=60",
   ];
 
   if (!isOpen) return null;
@@ -96,19 +112,21 @@ export function ThemeSettingsModal({
               Cor do Tema
             </label>
             <div className="flex flex-wrap gap-2">
-              {presetColors.map(c => (
+              {presetColors.map((c) => (
                 <button
                   key={c}
                   onClick={() => setColor(c)}
                   className={cn(
                     "w-8 h-8 rounded-full border-2 transition-all hover:scale-110",
-                    color === c ? "border-primary scale-110" : "border-transparent"
+                    color === c
+                      ? "border-primary scale-110"
+                      : "border-transparent",
                   )}
                   style={{ backgroundColor: c }}
                 />
               ))}
-              <input 
-                type="color" 
+              <input
+                type="color"
                 value={color}
                 onChange={(e) => setColor(e.target.value)}
                 className="w-8 h-8 rounded-full border-none p-0 cursor-pointer overflow-hidden"
@@ -133,16 +151,20 @@ export function ThemeSettingsModal({
                   onClick={() => setBackgroundImage(img)}
                   className={cn(
                     "h-12 rounded-lg bg-cover bg-center border-2 transition-all hover:scale-105",
-                    backgroundImage === img ? "border-primary" : "border-transparent"
+                    backgroundImage === img
+                      ? "border-primary"
+                      : "border-transparent",
                   )}
                   style={{ backgroundImage: `url(${img})` }}
                 />
               ))}
               <button
-                onClick={() => setBackgroundImage('')}
+                onClick={() => setBackgroundImage("")}
                 className={cn(
                   "h-12 rounded-lg bg-foreground/5 border-2 border-dashed flex items-center justify-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground",
-                  !backgroundImage ? "border-primary text-primary" : "border-border"
+                  !backgroundImage
+                    ? "border-primary text-primary"
+                    : "border-border",
                 )}
               >
                 Limpar
@@ -156,15 +178,18 @@ export function ThemeSettingsModal({
                 <div className="bg-destructive/10 p-4 rounded-2xl border border-destructive/20 space-y-3">
                   <div className="flex items-center gap-2 text-destructive">
                     <AlertTriangle className="w-5 h-5" />
-                    <span className="text-xs font-black uppercase tracking-tight">Confirmar Exclusão?</span>
+                    <span className="text-xs font-black uppercase tracking-tight">
+                      Confirmar Exclusão?
+                    </span>
                   </div>
                   <p className="text-[10px] text-destructive/70 font-bold uppercase leading-tight">
-                    Isso apagará permanentemente este espaço, todas as suas colunas e tarefas.
+                    Isso apagará permanentemente este espaço, todas as suas
+                    colunas e tarefas.
                   </p>
                   <div className="flex gap-2">
-                    <Button 
-                      variant="danger" 
-                      size="sm" 
+                    <Button
+                      variant="danger"
+                      size="sm"
                       className="flex-1"
                       onClick={() => {
                         onDelete();
@@ -173,9 +198,9 @@ export function ThemeSettingsModal({
                     >
                       Sim, Excluir
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="flex-1"
                       onClick={() => setShowDeleteConfirm(false)}
                     >
@@ -184,8 +209,8 @@ export function ThemeSettingsModal({
                   </div>
                 </div>
               ) : (
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   className="w-full text-destructive hover:bg-destructive/10 flex items-center justify-center gap-2"
                   onClick={() => setShowDeleteConfirm(true)}
                 >
@@ -198,8 +223,13 @@ export function ThemeSettingsModal({
         </div>
 
         <div className="p-6 bg-foreground/5 flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
-          <Button className="flex-1 flex items-center justify-center gap-2" onClick={handleSave}>
+          <Button variant="outline" className="flex-1" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            className="flex-1 flex items-center justify-center gap-2"
+            onClick={handleSave}
+          >
             <Save className="w-4 h-4" />
             Salvar
           </Button>

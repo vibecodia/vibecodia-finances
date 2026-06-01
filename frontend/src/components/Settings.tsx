@@ -1,139 +1,209 @@
-import { 
-  Settings as SettingsIcon, 
-  Download, 
-  Upload, 
-  Trash2, 
-  AlertTriangle, 
-  CheckCircle, 
-  PlusCircle, 
-  Tag, 
-  Info, 
-  Layers, 
-  Wallet, 
-   Gamepad,
-   CreditCard,
-   Scissors,
-   Check,
-   Eye,
-   EyeOff,
-   X,
-   Clock,
-   Ghost,
-   ShieldCheck,
-   Lock
-   } from 'lucide-react';
-   import React, { useState } from 'react';
-   import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../contexts/ThemeContext';
-import { useVerification } from '../contexts/VerificationContext';
-import { useCategories } from '../hooks/useCategories';
-import { usePaymentMethods } from '../hooks/usePaymentMethods';
-import { useLocalStorage } from '../hooks/trello/useLocalStorage';
-import { useCurrencyInput } from '../hooks/useCurrencyInput';
-import { Transaction, SavingsGoal } from '../types';
-import { exportFinancialData, validateImportData, getCurrentBrazilDate, formatBrazilDate } from '../utils/helpers';
-import { Button } from './ui/Button';
-import { Input } from './ui/Input';
-import { Card } from './ui/Card';
-import { Textarea } from './ui/Textarea';
-import { cn } from '../lib/utils';
+import {
+  Settings as SettingsIcon,
+  Download,
+  Upload,
+  Trash2,
+  AlertTriangle,
+  CheckCircle,
+  PlusCircle,
+  Tag,
+  Info,
+  Layers,
+  Wallet,
+  Gamepad,
+  CreditCard,
+  Scissors,
+  Check,
+  Eye,
+  EyeOff,
+  X,
+  Clock,
+  Ghost,
+  ShieldCheck,
+  Lock,
+} from "lucide-react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useTheme } from "../contexts/ThemeContext";
+import { useVerification } from "../contexts/VerificationContext";
+import { useCategories } from "../hooks/useCategories";
+import { usePaymentMethods } from "../hooks/usePaymentMethods";
+import { useLocalStorage } from "../hooks/trello/useLocalStorage";
+import { useCurrencyInput } from "../hooks/useCurrencyInput";
+import { Transaction, SavingsGoal } from "../types";
+import {
+  exportFinancialData,
+  validateImportData,
+  getCurrentBrazilDate,
+  formatBrazilDate,
+} from "../utils/helpers";
+import { Button } from "./ui/Button";
+import { Input } from "./ui/Input";
+import { Card } from "./ui/Card";
+import { Textarea } from "./ui/Textarea";
+import { cn } from "../lib/utils";
 
 interface SettingsProps {
   transactions: Transaction[];
   savingsGoals: SavingsGoal[];
-  onImportData: (transactions: Transaction[], savingsGoals: SavingsGoal[]) => void;
+  onImportData: (
+    transactions: Transaction[],
+    savingsGoals: SavingsGoal[],
+  ) => void;
   onClearAllData: () => void;
 }
 
-const Settings: React.FC<SettingsProps> = ({ 
-  transactions, 
-  savingsGoals, 
-  onImportData, 
-  onClearAllData 
+const Settings: React.FC<SettingsProps> = ({
+  transactions,
+  savingsGoals,
+  onImportData,
+  onClearAllData,
 }) => {
-  const { theme, themeTransitionEnabled, setThemeTransitionEnabled } = useTheme();
+  const { theme, themeTransitionEnabled, setThemeTransitionEnabled } =
+    useTheme();
   const navigate = useNavigate();
   const { isGuest, setShowVerificationModal } = useVerification();
-  const { expenseCategories, incomeCategories, addCategory, removeCategory, resetToDefaults: resetCategoriesToDefaults } = useCategories();
-  const { paymentMethods, addPaymentMethod, removePaymentMethod, resetToDefaults: resetPaymentMethodsToDefaults } = usePaymentMethods();
-  
+  const {
+    expenseCategories,
+    incomeCategories,
+    addCategory,
+    removeCategory,
+    resetToDefaults: resetCategoriesToDefaults,
+  } = useCategories();
+  const {
+    paymentMethods,
+    addPaymentMethod,
+    removePaymentMethod,
+    resetToDefaults: resetPaymentMethodsToDefaults,
+  } = usePaymentMethods();
+
   // Dashboard Editable Info
-  const [cardHolderName, setCardHolderName] = useLocalStorage('dashboard_card_holder_name', 'alterar aqui');
-  const [flashFlexAmount, setFlashFlexAmount] = useLocalStorage('dashboard_flash_flex_amount', 0);
-  const [isFlashSplit, setIsFlashSplit] = useLocalStorage('dashboard_flash_is_split', false);
-  const [showBalance, setShowBalance] = useLocalStorage('dashboard_show_balance', true);
-  const [includeBenefits, setIncludeBenefits] = useLocalStorage('dashboard_include_benefits', true);
-  const [recentTransactionsDuration, setRecentTransactionsDuration] = useLocalStorage('recent_transactions_duration', 15);
-  const [recentTransactionsEnabled, setRecentTransactionsEnabled] = useLocalStorage('recent_transactions_enabled', true);
-  const [recentTransactionsOpacity, setRecentTransactionsOpacity] = useLocalStorage('recent_transactions_opacity', 80);
-  const [recentTransactionsCount, setRecentTransactionsCount] = useLocalStorage('recent_transactions_count', 3);
+  const [cardHolderName, setCardHolderName] = useLocalStorage(
+    "dashboard_card_holder_name",
+    "alterar aqui",
+  );
+  const [flashFlexAmount, setFlashFlexAmount] = useLocalStorage(
+    "dashboard_flash_flex_amount",
+    0,
+  );
+  const [isFlashSplit, setIsFlashSplit] = useLocalStorage(
+    "dashboard_flash_is_split",
+    false,
+  );
+  const [showBalance, setShowBalance] = useLocalStorage(
+    "dashboard_show_balance",
+    true,
+  );
+  const [includeBenefits, setIncludeBenefits] = useLocalStorage(
+    "dashboard_include_benefits",
+    true,
+  );
+  const [recentTransactionsDuration, setRecentTransactionsDuration] =
+    useLocalStorage("recent_transactions_duration", 15);
+  const [recentTransactionsEnabled, setRecentTransactionsEnabled] =
+    useLocalStorage("recent_transactions_enabled", true);
+  const [recentTransactionsOpacity, setRecentTransactionsOpacity] =
+    useLocalStorage("recent_transactions_opacity", 80);
+  const [recentTransactionsCount, setRecentTransactionsCount] = useLocalStorage(
+    "recent_transactions_count",
+    3,
+  );
 
   // Dashboard Layout Settings
-  const [showIncomeExpenseBar, setShowIncomeExpenseBar] = useLocalStorage('dashboard_show_income_expense_bar', true);
-  const [showBenefitsCard, setShowBenefitsCard] = useLocalStorage('dashboard_show_benefits_card', true);
-  const [showSavingsGoalsCard, setShowSavingsGoalsCard] = useLocalStorage('dashboard_show_savings_goals_card', true);
+  const [showIncomeExpenseBar, setShowIncomeExpenseBar] = useLocalStorage(
+    "dashboard_show_income_expense_bar",
+    true,
+  );
+  const [showBenefitsCard, setShowBenefitsCard] = useLocalStorage(
+    "dashboard_show_benefits_card",
+    true,
+  );
+  const [showSavingsGoalsCard, setShowSavingsGoalsCard] = useLocalStorage(
+    "dashboard_show_savings_goals_card",
+    true,
+  );
 
-  const { inputProps: flexAmountProps, numericValue: flexAmountValue } = useCurrencyInput(flashFlexAmount);
+  const { inputProps: flexAmountProps, numericValue: flexAmountValue } =
+    useCurrencyInput(flashFlexAmount);
   const [tempName, setTempName] = useState(cardHolderName);
 
-  const [importText, setImportText] = useState('');
+  const [importText, setImportText] = useState("");
   const [showImportModal, setShowImportModal] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
-  const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [importMessage, setImportMessage] = useState('');
+  const [importStatus, setImportStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
+  const [importMessage, setImportMessage] = useState("");
 
   // Category State
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [categoryType, setCategoryType] = useState<'expense' | 'income'>('expense');
-  const [categoryMessage, setCategoryMessage] = useState({ text: '', type: 'idle' as 'idle' | 'success' | 'error' });
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryType, setCategoryType] = useState<"expense" | "income">(
+    "expense",
+  );
+  const [categoryMessage, setCategoryMessage] = useState({
+    text: "",
+    type: "idle" as "idle" | "success" | "error",
+  });
 
   // Payment Method State
-  const [newPaymentMethodName, setNewPaymentMethodName] = useState('');
-  const [paymentMethodMessage, setPaymentMethodMessage] = useState({ text: '', type: 'idle' as 'idle' | 'success' | 'error' });
+  const [newPaymentMethodName, setNewPaymentMethodName] = useState("");
+  const [paymentMethodMessage, setPaymentMethodMessage] = useState({
+    text: "",
+    type: "idle" as "idle" | "success" | "error",
+  });
 
   // Ninja Game State
   const [ninjaGameEnabled, setNinjaGameEnabled] = useState<boolean>(() => {
-    const saved = localStorage.getItem('ninjaGameEnabled');
-    return saved === 'true'; // Default to false
+    const saved = localStorage.getItem("ninjaGameEnabled");
+    return saved === "true"; // Default to false
   });
 
   const [uiNinjaEnabled, setUiNinjaEnabled] = useState<boolean>(() => {
-    const saved = localStorage.getItem('uiNinjaEnabled');
-    return saved === 'true'; // Default to false
+    const saved = localStorage.getItem("uiNinjaEnabled");
+    return saved === "true"; // Default to false
   });
 
-  const [ninjaGameMode, setNinjaGameMode] = useState<'10s' | '15s' | 'zen'>(() => {
-    const saved = localStorage.getItem('ninjaGameMode');
-    return (saved as any) || '10s'; // Default to 10s
-  });
+  const [ninjaGameMode, setNinjaGameMode] = useState<"10s" | "15s" | "zen">(
+    () => {
+      const saved = localStorage.getItem("ninjaGameMode");
+      return (saved as any) || "10s"; // Default to 10s
+    },
+  );
 
   const handleToggleNinjaGame = () => {
     const newValue = !ninjaGameEnabled;
     setNinjaGameEnabled(newValue);
-    localStorage.setItem('ninjaGameEnabled', String(newValue));
+    localStorage.setItem("ninjaGameEnabled", String(newValue));
   };
 
   const handleToggleUiNinja = () => {
     const newValue = !uiNinjaEnabled;
     setUiNinjaEnabled(newValue);
-    localStorage.setItem('uiNinjaEnabled', String(newValue));
+    localStorage.setItem("uiNinjaEnabled", String(newValue));
   };
 
-  const handleSetNinjaGameMode = (mode: '10s' | '15s' | 'zen') => {
+  const handleSetNinjaGameMode = (mode: "10s" | "15s" | "zen") => {
     setNinjaGameMode(mode);
-    localStorage.setItem('ninjaGameMode', mode);
+    localStorage.setItem("ninjaGameMode", mode);
   };
 
   // New Confirmation States
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [showDeleteCategoryModal, setShowDeleteCategoryModal] = useState(false);
-  const [showAddPaymentMethodModal, setShowAddPaymentMethodModal] = useState(false);
-  const [showDeletePaymentMethodModal, setShowDeletePaymentMethodModal] = useState(false);
+  const [showAddPaymentMethodModal, setShowAddPaymentMethodModal] =
+    useState(false);
+  const [showDeletePaymentMethodModal, setShowDeletePaymentMethodModal] =
+    useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorModalMessage, setErrorModalMessage] = useState('');
+  const [errorModalMessage, setErrorModalMessage] = useState("");
   const [errorTimer, setErrorTimer] = useState(0);
-  const [pendingCategory, setPendingCategory] = useState<{ type: 'expense' | 'income', name: string } | null>(null);
-  const [pendingPaymentMethod, setPendingPaymentMethod] = useState<string | null>(null);
+  const [pendingCategory, setPendingCategory] = useState<{
+    type: "expense" | "income";
+    name: string;
+  } | null>(null);
+  const [pendingPaymentMethod, setPendingPaymentMethod] = useState<
+    string | null
+  >(null);
 
   // Timer Effect for Error Modal
   React.useEffect(() => {
@@ -150,11 +220,11 @@ const Settings: React.FC<SettingsProps> = ({
 
   const handleExport = () => {
     const exportData = exportFinancialData(transactions, savingsGoals);
-    const blob = new Blob([exportData], { type: 'application/json' });
+    const blob = new Blob([exportData], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.download = `financeiro-backup-${formatBrazilDate(getCurrentBrazilDate(), 'yyyy-MM-dd')}.json`;
+    link.download = `financeiro-backup-${formatBrazilDate(getCurrentBrazilDate(), "yyyy-MM-dd")}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -163,28 +233,32 @@ const Settings: React.FC<SettingsProps> = ({
 
   const handleImport = () => {
     if (!importText.trim()) {
-      setImportStatus('error');
-      setImportMessage('Por favor, cole os dados JSON para importar.');
+      setImportStatus("error");
+      setImportMessage("Por favor, cole os dados JSON para importar.");
       return;
     }
 
     const validatedData = validateImportData(importText);
-    
+
     if (!validatedData) {
-      setImportStatus('error');
-      setImportMessage('Dados inválidos. Verifique se o arquivo JSON está correto.');
+      setImportStatus("error");
+      setImportMessage(
+        "Dados inválidos. Verifique se o arquivo JSON está correto.",
+      );
       return;
     }
 
     onImportData(validatedData.transactions, validatedData.savingsGoals);
-    setImportStatus('success');
-    setImportMessage(`Importação realizada com sucesso! ${validatedData.transactions.length} transações e ${validatedData.savingsGoals.length} metas importadas.`);
-    
+    setImportStatus("success");
+    setImportMessage(
+      `Importação realizada com sucesso! ${validatedData.transactions.length} transações e ${validatedData.savingsGoals.length} metas importadas.`,
+    );
+
     setTimeout(() => {
       setShowImportModal(false);
-      setImportText('');
-      setImportStatus('idle');
-      setImportMessage('');
+      setImportText("");
+      setImportStatus("idle");
+      setImportMessage("");
     }, 2000);
   };
 
@@ -216,28 +290,35 @@ const Settings: React.FC<SettingsProps> = ({
   const confirmAddCategory = () => {
     if (pendingCategory) {
       if (addCategory(pendingCategory.type, pendingCategory.name)) {
-        setNewCategoryName('');
+        setNewCategoryName("");
       }
       setShowAddCategoryModal(false);
       setPendingCategory(null);
     }
   };
 
-  const handleRemoveCategory = (type: 'expense' | 'income', cat: string) => {
+  const handleRemoveCategory = (type: "expense" | "income", cat: string) => {
     setPendingCategory({ type, name: cat });
     setShowDeleteCategoryModal(true);
   };
 
   const confirmRemoveCategory = () => {
     if (pendingCategory) {
-      const result = removeCategory(pendingCategory.type, pendingCategory.name, transactions);
+      const result = removeCategory(
+        pendingCategory.type,
+        pendingCategory.name,
+        transactions,
+      );
       if (!result.success) {
-        setErrorModalMessage(result.message || 'Erro ao excluir categoria.');
+        setErrorModalMessage(result.message || "Erro ao excluir categoria.");
         setErrorTimer(5); // 5 seconds
         setShowErrorModal(true);
       } else {
-        setCategoryMessage({ text: `Categoria "${pendingCategory.name}" removida com sucesso.`, type: 'success' });
-        setTimeout(() => setCategoryMessage({ text: '', type: 'idle' }), 2000);
+        setCategoryMessage({
+          text: `Categoria "${pendingCategory.name}" removida com sucesso.`,
+          type: "success",
+        });
+        setTimeout(() => setCategoryMessage({ text: "", type: "idle" }), 2000);
       }
       setShowDeleteCategoryModal(false);
       setPendingCategory(null);
@@ -246,11 +327,11 @@ const Settings: React.FC<SettingsProps> = ({
 
   const handleResetCategories = () => {
     const result = resetCategoriesToDefaults(categoryType, transactions);
-    setCategoryMessage({ 
-      text: `Padrões restaurados! ${result.restored} categorias base carregadas. ${result.preserved > 0 ? `${result.preserved} categorias em uso foram preservadas.` : ''}`, 
-      type: 'success' 
+    setCategoryMessage({
+      text: `Padrões restaurados! ${result.restored} categorias base carregadas. ${result.preserved > 0 ? `${result.preserved} categorias em uso foram preservadas.` : ""}`,
+      type: "success",
     });
-    setTimeout(() => setCategoryMessage({ text: '', type: 'idle' }), 4000);
+    setTimeout(() => setCategoryMessage({ text: "", type: "idle" }), 4000);
   };
 
   // Payment Method Handlers
@@ -265,7 +346,7 @@ const Settings: React.FC<SettingsProps> = ({
   const confirmAddPaymentMethod = () => {
     if (pendingPaymentMethod) {
       if (addPaymentMethod(pendingPaymentMethod)) {
-        setNewPaymentMethodName('');
+        setNewPaymentMethodName("");
       }
       setShowAddPaymentMethodModal(false);
       setPendingPaymentMethod(null);
@@ -281,12 +362,20 @@ const Settings: React.FC<SettingsProps> = ({
     if (pendingPaymentMethod) {
       const result = removePaymentMethod(pendingPaymentMethod, transactions);
       if (!result.success) {
-        setErrorModalMessage(result.message || 'Erro ao excluir meio de pagamento.');
+        setErrorModalMessage(
+          result.message || "Erro ao excluir meio de pagamento.",
+        );
         setErrorTimer(5); // 5 seconds
         setShowErrorModal(true);
       } else {
-        setPaymentMethodMessage({ text: `Meio de pagamento "${pendingPaymentMethod}" removido com sucesso.`, type: 'success' });
-        setTimeout(() => setPaymentMethodMessage({ text: '', type: 'idle' }), 2000);
+        setPaymentMethodMessage({
+          text: `Meio de pagamento "${pendingPaymentMethod}" removido com sucesso.`,
+          type: "success",
+        });
+        setTimeout(
+          () => setPaymentMethodMessage({ text: "", type: "idle" }),
+          2000,
+        );
       }
       setShowDeletePaymentMethodModal(false);
       setPendingPaymentMethod(null);
@@ -295,11 +384,11 @@ const Settings: React.FC<SettingsProps> = ({
 
   const handleResetPaymentMethods = () => {
     const result = resetPaymentMethodsToDefaults(transactions);
-    setPaymentMethodMessage({ 
-      text: `Padrões restaurados! ${result.restored} meios de pagamento carregados. ${result.preserved > 0 ? `${result.preserved} meios em uso foram preservados.` : ''}`, 
-      type: 'success' 
+    setPaymentMethodMessage({
+      text: `Padrões restaurados! ${result.restored} meios de pagamento carregados. ${result.preserved > 0 ? `${result.preserved} meios em uso foram preservados.` : ""}`,
+      type: "success",
     });
-    setTimeout(() => setPaymentMethodMessage({ text: '', type: 'idle' }), 4000);
+    setTimeout(() => setPaymentMethodMessage({ text: "", type: "idle" }), 4000);
   };
 
   const totalTransactions = transactions.length;
@@ -319,9 +408,10 @@ const Settings: React.FC<SettingsProps> = ({
               Acesso <span className="text-primary italic">Restrito</span>
             </h2>
             <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-8 leading-relaxed opacity-60">
-              Para gerenciar categorias, pagamentos e dados, você precisa de um PIN.
+              Para gerenciar categorias, pagamentos e dados, você precisa de um
+              PIN.
             </p>
-            <Button 
+            <Button
               onClick={() => setShowVerificationModal(true)}
               className="w-full py-6 text-sm font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-primary/20"
             >
@@ -332,7 +422,10 @@ const Settings: React.FC<SettingsProps> = ({
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-6 border-b" style={{ borderColor: theme.cardBorder }}>
+      <div
+        className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-6 border-b"
+        style={{ borderColor: theme.cardBorder }}
+      >
         <div className="flex flex-col md:flex-row md:items-center gap-4">
           <div className="p-3 rounded-2xl bg-primary text-white shadow-lg shadow-primary/20">
             <SettingsIcon className="w-8 h-8" />
@@ -348,12 +441,14 @@ const Settings: React.FC<SettingsProps> = ({
         </div>
 
         <Button
-          onClick={() => navigate('/')}
+          onClick={() => navigate("/")}
           variant="outline"
           className="group flex items-center gap-2 h-12 px-6 rounded-2xl border-2 hover:bg-destructive/5 hover:border-destructive hover:text-destructive transition-all"
         >
           <X className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-          <span className="font-black uppercase text-xs tracking-widest">Sair</span>
+          <span className="font-black uppercase text-xs tracking-widest">
+            Sair
+          </span>
         </Button>
       </div>
 
@@ -370,10 +465,12 @@ const Settings: React.FC<SettingsProps> = ({
                   <h2 className="text-xl font-black text-foreground uppercase tracking-wider">
                     Categorias
                   </h2>
-                  <p className="text-xs text-muted-foreground font-bold uppercase">Gerencie suas classificações</p>
+                  <p className="text-xs text-muted-foreground font-bold uppercase">
+                    Gerencie suas classificações
+                  </p>
                 </div>
               </div>
-              <Button 
+              <Button
                 onClick={handleResetCategories}
                 variant="outline"
                 size="sm"
@@ -384,22 +481,35 @@ const Settings: React.FC<SettingsProps> = ({
               </Button>
             </div>
 
-            {categoryMessage.type !== 'idle' && (
-              <div className={cn(
-                "mb-6 p-4 rounded-2xl border-2 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300",
-                categoryMessage.type === 'success' ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-accent/10 border-accent/20 text-accent'
-              )}>
-                {categoryMessage.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
-                <p className="text-xs font-bold uppercase tracking-tight">{categoryMessage.text}</p>
+            {categoryMessage.type !== "idle" && (
+              <div
+                className={cn(
+                  "mb-6 p-4 rounded-2xl border-2 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300",
+                  categoryMessage.type === "success"
+                    ? "bg-primary/10 border-primary/20 text-primary"
+                    : "bg-accent/10 border-accent/20 text-accent",
+                )}
+              >
+                {categoryMessage.type === "success" ? (
+                  <CheckCircle className="w-5 h-5" />
+                ) : (
+                  <AlertTriangle className="w-5 h-5" />
+                )}
+                <p className="text-xs font-bold uppercase tracking-tight">
+                  {categoryMessage.text}
+                </p>
               </div>
             )}
 
             <form onSubmit={handleAddCategory} className="space-y-4 mb-8">
-              <div className="flex gap-2 p-1 border-2 rounded-2xl" style={{ borderColor: theme.cardBorder }}>
+              <div
+                className="flex gap-2 p-1 border-2 rounded-2xl"
+                style={{ borderColor: theme.cardBorder }}
+              >
                 <Button
                   type="button"
-                  onClick={() => setCategoryType('expense')}
-                  variant={categoryType === 'expense' ? 'accent' : 'ghost'}
+                  onClick={() => setCategoryType("expense")}
+                  variant={categoryType === "expense" ? "accent" : "ghost"}
                   size="sm"
                   className="flex-1 text-[10px]"
                 >
@@ -407,8 +517,8 @@ const Settings: React.FC<SettingsProps> = ({
                 </Button>
                 <Button
                   type="button"
-                  onClick={() => setCategoryType('income')}
-                  variant={categoryType === 'income' ? 'primary' : 'ghost'}
+                  onClick={() => setCategoryType("income")}
+                  variant={categoryType === "income" ? "primary" : "ghost"}
                   size="sm"
                   className="flex-1 text-[10px]"
                 >
@@ -421,7 +531,7 @@ const Settings: React.FC<SettingsProps> = ({
                   type="text"
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder={`Nova categoria de ${categoryType === 'expense' ? 'despesa' : 'receita'}...`}
+                  placeholder={`Nova categoria de ${categoryType === "expense" ? "despesa" : "receita"}...`}
                 />
                 <Button
                   type="submit"
@@ -441,18 +551,24 @@ const Settings: React.FC<SettingsProps> = ({
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {expenseCategories.map((cat, idx) => {
-                    const catName = typeof cat === 'string' ? cat : (cat && (cat as any).name) || 'Categoria';
+                    const catName =
+                      typeof cat === "string"
+                        ? cat
+                        : (cat && (cat as any).name) || "Categoria";
                     return (
-                      <div 
-                        key={`${catName}-${idx}`} 
+                      <div
+                        key={`${catName}-${idx}`}
                         className="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 font-bold text-xs group hover:border-accent transition-all shadow-sm"
-                        style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
+                        style={{
+                          borderColor: theme.cardBorder,
+                          backgroundColor: theme.cardBackground,
+                        }}
                       >
-                        <span style={{ color: theme.text }}>
-                          {catName}
-                        </span>
-                        <button 
-                          onClick={() => handleRemoveCategory('expense', catName)}
+                        <span style={{ color: theme.text }}>{catName}</span>
+                        <button
+                          onClick={() =>
+                            handleRemoveCategory("expense", catName)
+                          }
                           className="opacity-0 group-hover:opacity-100 text-accent hover:scale-125 transition-all"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -470,18 +586,24 @@ const Settings: React.FC<SettingsProps> = ({
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {incomeCategories.map((cat, idx) => {
-                    const catName = typeof cat === 'string' ? cat : (cat && (cat as any).name) || 'Categoria';
+                    const catName =
+                      typeof cat === "string"
+                        ? cat
+                        : (cat && (cat as any).name) || "Categoria";
                     return (
-                      <div 
-                        key={`${catName}-${idx}`} 
+                      <div
+                        key={`${catName}-${idx}`}
                         className="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 font-bold text-xs group hover:border-primary transition-all shadow-sm"
-                        style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
+                        style={{
+                          borderColor: theme.cardBorder,
+                          backgroundColor: theme.cardBackground,
+                        }}
                       >
-                        <span style={{ color: theme.text }}>
-                          {catName}
-                        </span>
-                        <button 
-                          onClick={() => handleRemoveCategory('income', catName)}
+                        <span style={{ color: theme.text }}>{catName}</span>
+                        <button
+                          onClick={() =>
+                            handleRemoveCategory("income", catName)
+                          }
                           className="opacity-0 group-hover:opacity-100 text-accent hover:scale-125 transition-all"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -505,10 +627,12 @@ const Settings: React.FC<SettingsProps> = ({
                   <h2 className="text-xl font-black text-foreground uppercase tracking-wider">
                     Pagamento
                   </h2>
-                  <p className="text-xs text-muted-foreground font-bold uppercase">Meios de Pagamento</p>
+                  <p className="text-xs text-muted-foreground font-bold uppercase">
+                    Meios de Pagamento
+                  </p>
                 </div>
               </div>
-              <Button 
+              <Button
                 onClick={handleResetPaymentMethods}
                 variant="outline"
                 size="sm"
@@ -519,13 +643,23 @@ const Settings: React.FC<SettingsProps> = ({
               </Button>
             </div>
 
-            {paymentMethodMessage.type !== 'idle' && (
-              <div className={cn(
-                "mb-6 p-4 rounded-2xl border-2 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300",
-                paymentMethodMessage.type === 'success' ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-accent/10 border-accent/20 text-accent'
-              )}>
-                {paymentMethodMessage.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
-                <p className="text-xs font-bold uppercase tracking-tight">{paymentMethodMessage.text}</p>
+            {paymentMethodMessage.type !== "idle" && (
+              <div
+                className={cn(
+                  "mb-6 p-4 rounded-2xl border-2 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300",
+                  paymentMethodMessage.type === "success"
+                    ? "bg-primary/10 border-primary/20 text-primary"
+                    : "bg-accent/10 border-accent/20 text-accent",
+                )}
+              >
+                {paymentMethodMessage.type === "success" ? (
+                  <CheckCircle className="w-5 h-5" />
+                ) : (
+                  <AlertTriangle className="w-5 h-5" />
+                )}
+                <p className="text-xs font-bold uppercase tracking-tight">
+                  {paymentMethodMessage.text}
+                </p>
               </div>
             )}
 
@@ -555,13 +689,16 @@ const Settings: React.FC<SettingsProps> = ({
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {paymentMethods.map((method) => (
-                    <div 
-                      key={method} 
+                    <div
+                      key={method}
                       className="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 font-bold text-xs group hover:border-primary transition-all shadow-sm"
-                      style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBackground }}
+                      style={{
+                        borderColor: theme.cardBorder,
+                        backgroundColor: theme.cardBackground,
+                      }}
                     >
                       <span style={{ color: theme.text }}>{method}</span>
-                      <button 
+                      <button
                         onClick={() => handleRemovePaymentMethod(method)}
                         className="opacity-0 group-hover:opacity-100 text-accent hover:scale-125 transition-all"
                       >
@@ -584,17 +721,21 @@ const Settings: React.FC<SettingsProps> = ({
                 <h2 className="text-xl font-black text-foreground uppercase tracking-wider">
                   Dashboard
                 </h2>
-                <p className="text-xs text-muted-foreground font-bold uppercase">Personalização Visual</p>
+                <p className="text-xs text-muted-foreground font-bold uppercase">
+                  Personalização Visual
+                </p>
               </div>
             </div>
 
             <div className="space-y-6">
               {/* Visibility & Benefits Toggles */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div 
+                <div
                   className={cn(
                     "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
-                    showBalance ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                    showBalance
+                      ? "bg-primary/5 border-primary shadow-sm"
+                      : "bg-card border-border",
                   )}
                   onClick={() => setShowBalance(!showBalance)}
                 >
@@ -602,15 +743,23 @@ const Settings: React.FC<SettingsProps> = ({
                     <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
                       Mostrar Saldo
                     </p>
-                    <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">Privacidade no Dashboard</p>
+                    <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">
+                      Privacidade no Dashboard
+                    </p>
                   </div>
-                  {showBalance ? <Eye className="w-5 h-5 text-primary" /> : <EyeOff className="w-5 h-5 opacity-40" />}
+                  {showBalance ? (
+                    <Eye className="w-5 h-5 text-primary" />
+                  ) : (
+                    <EyeOff className="w-5 h-5 opacity-40" />
+                  )}
                 </div>
 
-                <div 
+                <div
                   className={cn(
                     "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
-                    includeBenefits ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                    includeBenefits
+                      ? "bg-primary/5 border-primary shadow-sm"
+                      : "bg-card border-border",
                   )}
                   onClick={() => setIncludeBenefits(!includeBenefits)}
                 >
@@ -618,9 +767,16 @@ const Settings: React.FC<SettingsProps> = ({
                     <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
                       Incluir Benefícios
                     </p>
-                    <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">Somar Flash/Vero no total</p>
+                    <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">
+                      Somar Flash/Vero no total
+                    </p>
                   </div>
-                  <Wallet className={cn("w-5 h-5 transition-colors", includeBenefits ? 'text-primary' : 'opacity-40')} />
+                  <Wallet
+                    className={cn(
+                      "w-5 h-5 transition-colors",
+                      includeBenefits ? "text-primary" : "opacity-40",
+                    )}
+                  />
                 </div>
               </div>
 
@@ -658,17 +814,19 @@ const Settings: React.FC<SettingsProps> = ({
                     <Scissors className="w-4 h-4" />
                     Split Flash (Flex)
                   </label>
-                  <div 
+                  <div
                     className={cn(
                       "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative cursor-pointer",
-                      isFlashSplit ? 'bg-primary' : 'bg-muted'
+                      isFlashSplit ? "bg-primary" : "bg-muted",
                     )}
                     onClick={() => setIsFlashSplit(!isFlashSplit)}
                   >
-                    <div className={cn(
-                      "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
-                      isFlashSplit ? 'translate-x-6' : 'translate-x-0'
-                    )} />
+                    <div
+                      className={cn(
+                        "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
+                        isFlashSplit ? "translate-x-6" : "translate-x-0",
+                      )}
+                    />
                   </div>
                 </div>
 
@@ -691,7 +849,8 @@ const Settings: React.FC<SettingsProps> = ({
                       </Button>
                     </div>
                     <p className="text-[10px] text-muted-foreground font-bold italic ml-1">
-                      * Este valor será reservado do saldo total Flash para gastos Flex.
+                      * Este valor será reservado do saldo total Flash para
+                      gastos Flex.
                     </p>
                   </div>
                 )}
@@ -705,28 +864,40 @@ const Settings: React.FC<SettingsProps> = ({
                   <Layers className="w-4 h-4" />
                   Layout do Dashboard
                 </label>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div 
+                  <div
                     className={cn(
                       "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
-                      showIncomeExpenseBar ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                      showIncomeExpenseBar
+                        ? "bg-primary/5 border-primary shadow-sm"
+                        : "bg-card border-border",
                     )}
-                    onClick={() => setShowIncomeExpenseBar(!showIncomeExpenseBar)}
+                    onClick={() =>
+                      setShowIncomeExpenseBar(!showIncomeExpenseBar)
+                    }
                   >
                     <div className="flex-1">
                       <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
                         Barra Receitas vs Despesas
                       </p>
-                      <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">Gráfico de proporção</p>
+                      <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">
+                        Gráfico de proporção
+                      </p>
                     </div>
-                    {showIncomeExpenseBar ? <CheckCircle className="w-5 h-5 text-primary" /> : <PlusCircle className="w-5 h-5 opacity-40" />}
+                    {showIncomeExpenseBar ? (
+                      <CheckCircle className="w-5 h-5 text-primary" />
+                    ) : (
+                      <PlusCircle className="w-5 h-5 opacity-40" />
+                    )}
                   </div>
 
-                  <div 
+                  <div
                     className={cn(
                       "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
-                      showBenefitsCard ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                      showBenefitsCard
+                        ? "bg-primary/5 border-primary shadow-sm"
+                        : "bg-card border-border",
                     )}
                     onClick={() => setShowBenefitsCard(!showBenefitsCard)}
                   >
@@ -734,41 +905,67 @@ const Settings: React.FC<SettingsProps> = ({
                       <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
                         Cartões de Benefícios
                       </p>
-                      <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">Flash e Vero Card</p>
+                      <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">
+                        Flash e Vero Card
+                      </p>
                     </div>
-                    {showBenefitsCard ? <CheckCircle className="w-5 h-5 text-primary" /> : <PlusCircle className="w-5 h-5 opacity-40" />}
+                    {showBenefitsCard ? (
+                      <CheckCircle className="w-5 h-5 text-primary" />
+                    ) : (
+                      <PlusCircle className="w-5 h-5 opacity-40" />
+                    )}
                   </div>
 
-                  <div 
+                  <div
                     className={cn(
                       "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
-                      showSavingsGoalsCard ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                      showSavingsGoalsCard
+                        ? "bg-primary/5 border-primary shadow-sm"
+                        : "bg-card border-border",
                     )}
-                    onClick={() => setShowSavingsGoalsCard(!showSavingsGoalsCard)}
+                    onClick={() =>
+                      setShowSavingsGoalsCard(!showSavingsGoalsCard)
+                    }
                   >
                     <div className="flex-1">
                       <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
                         Progresso das Metas
                       </p>
-                      <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">Resumo de economia</p>
+                      <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">
+                        Resumo de economia
+                      </p>
                     </div>
-                    {showSavingsGoalsCard ? <CheckCircle className="w-5 h-5 text-primary" /> : <PlusCircle className="w-5 h-5 opacity-40" />}
+                    {showSavingsGoalsCard ? (
+                      <CheckCircle className="w-5 h-5 text-primary" />
+                    ) : (
+                      <PlusCircle className="w-5 h-5 opacity-40" />
+                    )}
                   </div>
 
-                  <div 
+                  <div
                     className={cn(
                       "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
-                      recentTransactionsEnabled ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                      recentTransactionsEnabled
+                        ? "bg-primary/5 border-primary shadow-sm"
+                        : "bg-card border-border",
                     )}
-                    onClick={() => setRecentTransactionsEnabled(!recentTransactionsEnabled)}
+                    onClick={() =>
+                      setRecentTransactionsEnabled(!recentTransactionsEnabled)
+                    }
                   >
                     <div className="flex-1">
                       <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
                         Transações Recentes
                       </p>
-                      <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">Card flutuante temporário</p>
+                      <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">
+                        Card flutuante temporário
+                      </p>
                     </div>
-                    {recentTransactionsEnabled ? <CheckCircle className="w-5 h-5 text-primary" /> : <PlusCircle className="w-5 h-5 opacity-40" />}
+                    {recentTransactionsEnabled ? (
+                      <CheckCircle className="w-5 h-5 text-primary" />
+                    ) : (
+                      <PlusCircle className="w-5 h-5 opacity-40" />
+                    )}
                   </div>
                 </div>
               </div>
@@ -781,21 +978,29 @@ const Settings: React.FC<SettingsProps> = ({
                   <div className="space-y-6 animate-in slide-in-from-top-2 duration-200 p-4 rounded-2xl bg-muted/20 border-2 border-dashed border-muted">
                     <div className="flex items-center gap-2 mb-2">
                       <Clock className="w-4 h-4 text-muted-foreground" />
-                      <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Ajustes de Transações Recentes</p>
+                      <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                        Ajustes de Transações Recentes
+                      </p>
                     </div>
                     {/* Duration Slider */}
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
-                        <p className="text-[10px] font-black text-foreground uppercase tracking-tight">Duração: {recentTransactionsDuration}s</p>
-                        <p className="text-[8px] text-muted-foreground font-bold uppercase">3s - 15s</p>
+                        <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
+                          Duração: {recentTransactionsDuration}s
+                        </p>
+                        <p className="text-[8px] text-muted-foreground font-bold uppercase">
+                          3s - 15s
+                        </p>
                       </div>
-                      <input 
-                        type="range" 
-                        min="3" 
-                        max="15" 
+                      <input
+                        type="range"
+                        min="3"
+                        max="15"
                         step="1"
                         value={recentTransactionsDuration}
-                        onChange={(e) => setRecentTransactionsDuration(Number(e.target.value))}
+                        onChange={(e) =>
+                          setRecentTransactionsDuration(Number(e.target.value))
+                        }
                         className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
                       />
                     </div>
@@ -805,16 +1010,20 @@ const Settings: React.FC<SettingsProps> = ({
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2">
                           <Ghost className="w-3.5 h-3.5 opacity-60" />
-                          <p className="text-[10px] font-black text-foreground uppercase tracking-tight">Transparência: {recentTransactionsOpacity}%</p>
+                          <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
+                            Transparência: {recentTransactionsOpacity}%
+                          </p>
                         </div>
                       </div>
-                      <input 
-                        type="range" 
-                        min="10" 
-                        max="100" 
+                      <input
+                        type="range"
+                        min="10"
+                        max="100"
                         step="5"
                         value={recentTransactionsOpacity}
-                        onChange={(e) => setRecentTransactionsOpacity(Number(e.target.value))}
+                        onChange={(e) =>
+                          setRecentTransactionsOpacity(Number(e.target.value))
+                        }
                         className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
                       />
                     </div>
@@ -824,17 +1033,23 @@ const Settings: React.FC<SettingsProps> = ({
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2">
                           <PlusCircle className="w-3.5 h-3.5 opacity-60" />
-                          <p className="text-[10px] font-black text-foreground uppercase tracking-tight">Itens Visíveis: {recentTransactionsCount}</p>
+                          <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
+                            Itens Visíveis: {recentTransactionsCount}
+                          </p>
                         </div>
-                        <p className="text-[8px] text-muted-foreground font-bold uppercase">1 - 5 itens</p>
+                        <p className="text-[8px] text-muted-foreground font-bold uppercase">
+                          1 - 5 itens
+                        </p>
                       </div>
-                      <input 
-                        type="range" 
-                        min="1" 
-                        max="5" 
+                      <input
+                        type="range"
+                        min="1"
+                        max="5"
                         step="1"
                         value={recentTransactionsCount}
-                        onChange={(e) => setRecentTransactionsCount(Number(e.target.value))}
+                        onChange={(e) =>
+                          setRecentTransactionsCount(Number(e.target.value))
+                        }
                         className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
                       />
                     </div>
@@ -856,14 +1071,18 @@ const Settings: React.FC<SettingsProps> = ({
                 <h2 className="text-xl font-black text-foreground uppercase tracking-wider">
                   Experiência
                 </h2>
-                <p className="text-xs text-muted-foreground font-bold uppercase">Gamificação</p>
+                <p className="text-xs text-muted-foreground font-bold uppercase">
+                  Gamificação
+                </p>
               </div>
             </div>
 
-            <div 
+            <div
               className={cn(
                 "flex items-center justify-between p-5 rounded-2xl border-2 transition-all cursor-pointer group mb-4",
-                themeTransitionEnabled ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                themeTransitionEnabled
+                  ? "bg-primary/5 border-primary shadow-sm"
+                  : "bg-card border-border",
               )}
               onClick={() => setThemeTransitionEnabled(!themeTransitionEnabled)}
             >
@@ -871,23 +1090,31 @@ const Settings: React.FC<SettingsProps> = ({
                 <p className="text-sm font-black text-foreground uppercase tracking-tight">
                   Transição Suave
                 </p>
-                <p className="text-[10px] text-foreground opacity-40 font-bold uppercase">Proteger os olhos ao trocar tema</p>
+                <p className="text-[10px] text-foreground opacity-40 font-bold uppercase">
+                  Proteger os olhos ao trocar tema
+                </p>
               </div>
-              <div className={cn(
-                "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative",
-                themeTransitionEnabled ? 'bg-primary' : 'bg-muted'
-              )}>
-                <div className={cn(
-                  "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
-                  themeTransitionEnabled ? 'translate-x-6' : 'translate-x-0'
-                )} />
+              <div
+                className={cn(
+                  "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative",
+                  themeTransitionEnabled ? "bg-primary" : "bg-muted",
+                )}
+              >
+                <div
+                  className={cn(
+                    "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
+                    themeTransitionEnabled ? "translate-x-6" : "translate-x-0",
+                  )}
+                />
               </div>
             </div>
 
-            <div 
+            <div
               className={cn(
                 "flex items-center justify-between p-5 rounded-2xl border-2 transition-all cursor-pointer group mb-4",
-                ninjaGameEnabled ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                ninjaGameEnabled
+                  ? "bg-primary/5 border-primary shadow-sm"
+                  : "bg-card border-border",
               )}
               onClick={handleToggleNinjaGame}
             >
@@ -895,23 +1122,31 @@ const Settings: React.FC<SettingsProps> = ({
                 <p className="text-sm font-black text-foreground uppercase tracking-tight">
                   Ninja das Transações
                 </p>
-                <p className="text-[10px] text-foreground opacity-40 font-bold uppercase">Chuva de emojis ao salvar</p>
+                <p className="text-[10px] text-foreground opacity-40 font-bold uppercase">
+                  Chuva de emojis ao salvar
+                </p>
               </div>
-              <div className={cn(
-                "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative",
-                ninjaGameEnabled ? 'bg-primary' : 'bg-muted'
-              )}>
-                <div className={cn(
-                  "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
-                  ninjaGameEnabled ? 'translate-x-6' : 'translate-x-0'
-                )} />
+              <div
+                className={cn(
+                  "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative",
+                  ninjaGameEnabled ? "bg-primary" : "bg-muted",
+                )}
+              >
+                <div
+                  className={cn(
+                    "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
+                    ninjaGameEnabled ? "translate-x-6" : "translate-x-0",
+                  )}
+                />
               </div>
             </div>
 
-            <div 
+            <div
               className={cn(
                 "flex items-center justify-between p-5 rounded-2xl border-2 transition-all cursor-pointer group",
-                uiNinjaEnabled ? 'bg-primary/5 border-primary shadow-sm' : 'bg-card border-border'
+                uiNinjaEnabled
+                  ? "bg-primary/5 border-primary shadow-sm"
+                  : "bg-card border-border",
               )}
               onClick={handleToggleUiNinja}
             >
@@ -919,42 +1154,53 @@ const Settings: React.FC<SettingsProps> = ({
                 <p className="text-sm font-black text-foreground uppercase tracking-tight">
                   UI Ninja (Dashboard)
                 </p>
-                <p className="text-[10px] text-foreground opacity-40 font-bold uppercase">Cortar elementos da tela inicial</p>
+                <p className="text-[10px] text-foreground opacity-40 font-bold uppercase">
+                  Cortar elementos da tela inicial
+                </p>
               </div>
-              <div className={cn(
-                "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative",
-                uiNinjaEnabled ? 'bg-primary' : 'bg-muted'
-              )}>
-                <div className={cn(
-                  "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
-                  uiNinjaEnabled ? 'translate-x-6' : 'translate-x-0'
-                )} />
+              <div
+                className={cn(
+                  "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative",
+                  uiNinjaEnabled ? "bg-primary" : "bg-muted",
+                )}
+              >
+                <div
+                  className={cn(
+                    "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
+                    uiNinjaEnabled ? "translate-x-6" : "translate-x-0",
+                  )}
+                />
               </div>
             </div>
 
             {ninjaGameEnabled && (
               <div className="mt-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest ml-1">Duração do Jogo</p>
-                <div className="flex gap-2 p-1 border-2 rounded-2xl" style={{ borderColor: theme.cardBorder }}>
-                  {(['10s', '15s', 'zen'] as const).map((mode) => (
+                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest ml-1">
+                  Duração do Jogo
+                </p>
+                <div
+                  className="flex gap-2 p-1 border-2 rounded-2xl"
+                  style={{ borderColor: theme.cardBorder }}
+                >
+                  {(["10s", "15s", "zen"] as const).map((mode) => (
                     <Button
                       key={mode}
                       type="button"
                       onClick={() => handleSetNinjaGameMode(mode)}
-                      variant={ninjaGameMode === mode ? 'primary' : 'ghost'}
+                      variant={ninjaGameMode === mode ? "primary" : "ghost"}
                       size="sm"
                       className={cn(
                         "flex-1 text-[10px] font-black uppercase tracking-widest",
-                        ninjaGameMode === mode && "shadow-lg"
+                        ninjaGameMode === mode && "shadow-lg",
                       )}
                     >
-                      {mode === 'zen' ? 'Modo Zen' : mode}
+                      {mode === "zen" ? "Modo Zen" : mode}
                     </Button>
                   ))}
                 </div>
                 <p className="text-[9px] text-muted-foreground font-bold italic ml-1">
-                  {ninjaGameMode === 'zen' 
-                    ? '* O jogo só termina quando você clicar no botão de fechar.' 
+                  {ninjaGameMode === "zen"
+                    ? "* O jogo só termina quando você clicar no botão de fechar."
                     : `* O jogo dura exatamente ${ninjaGameMode}.`}
                 </p>
               </div>
@@ -965,10 +1211,17 @@ const Settings: React.FC<SettingsProps> = ({
           <Card className="p-6 relative overflow-hidden">
             {/* Disabled Overlay */}
             <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center p-6 text-center pointer-events-auto">
-              <Card variant="default" className="p-6 transform -rotate-2 border-accent/30 shadow-2xl">
+              <Card
+                variant="default"
+                className="p-6 transform -rotate-2 border-accent/30 shadow-2xl"
+              >
                 <Layers className="w-10 h-10 text-accent mx-auto mb-3 opacity-80" />
-                <h3 className="text-lg font-black text-foreground uppercase tracking-tighter">Módulo em Manutenção</h3>
-                <p className="text-[10px] text-muted-foreground font-bold uppercase mt-1">Funcionalidade desativada temporariamente</p>
+                <h3 className="text-lg font-black text-foreground uppercase tracking-tighter">
+                  Módulo em Manutenção
+                </h3>
+                <p className="text-[10px] text-muted-foreground font-bold uppercase mt-1">
+                  Funcionalidade desativada temporariamente
+                </p>
               </Card>
             </div>
 
@@ -980,7 +1233,9 @@ const Settings: React.FC<SettingsProps> = ({
                 <h2 className="text-xl font-black text-foreground uppercase tracking-wider">
                   Banco de Dados
                 </h2>
-                <p className="text-xs text-muted-foreground font-bold uppercase">Backups e Limpeza</p>
+                <p className="text-xs text-muted-foreground font-bold uppercase">
+                  Backups e Limpeza
+                </p>
               </div>
             </div>
 
@@ -995,8 +1250,12 @@ const Settings: React.FC<SettingsProps> = ({
                     <Download className="w-6 h-6" />
                   </div>
                   <div className="text-left">
-                    <h3 className="font-black text-sm text-foreground">EXPORTAR BACKUP</h3>
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Baixar arquivo .json</p>
+                    <h3 className="font-black text-sm text-foreground">
+                      EXPORTAR BACKUP
+                    </h3>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold">
+                      Baixar arquivo .json
+                    </p>
                   </div>
                 </div>
                 <CheckCircle className="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -1012,8 +1271,12 @@ const Settings: React.FC<SettingsProps> = ({
                     <Upload className="w-6 h-6" />
                   </div>
                   <div className="text-left">
-                    <h3 className="font-black text-sm text-foreground">IMPORTAR BACKUP</h3>
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Restaurar dados antigos</p>
+                    <h3 className="font-black text-sm text-foreground">
+                      IMPORTAR BACKUP
+                    </h3>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold">
+                      Restaurar dados antigos
+                    </p>
                   </div>
                 </div>
                 <CheckCircle className="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -1031,8 +1294,12 @@ const Settings: React.FC<SettingsProps> = ({
                     <Trash2 className="w-6 h-6" />
                   </div>
                   <div className="text-left">
-                    <h3 className="font-black text-sm text-accent">LIMPAR TUDO</h3>
-                    <p className="text-[10px] text-accent opacity-60 uppercase font-bold">Ação Irreversível</p>
+                    <h3 className="font-black text-sm text-accent">
+                      LIMPAR TUDO
+                    </h3>
+                    <p className="text-[10px] text-accent opacity-60 uppercase font-bold">
+                      Ação Irreversível
+                    </p>
                   </div>
                 </div>
               </Button>
@@ -1070,9 +1337,9 @@ const Settings: React.FC<SettingsProps> = ({
               <Button
                 onClick={() => {
                   setShowImportModal(false);
-                  setImportText('');
-                  setImportStatus('idle');
-                  setImportMessage('');
+                  setImportText("");
+                  setImportStatus("idle");
+                  setImportMessage("");
                 }}
                 variant="ghost"
                 size="icon"
@@ -1097,7 +1364,9 @@ const Settings: React.FC<SettingsProps> = ({
 
               <div className="relative flex items-center py-2">
                 <div className="flex-grow border-t-2 border-border"></div>
-                <span className="flex-shrink mx-4 text-xs font-black opacity-30 uppercase tracking-widest">ou</span>
+                <span className="flex-shrink mx-4 text-xs font-black opacity-30 uppercase tracking-widest">
+                  ou
+                </span>
                 <div className="flex-grow border-t-2 border-border"></div>
               </div>
 
@@ -1116,11 +1385,15 @@ const Settings: React.FC<SettingsProps> = ({
 
               {/* Status Message */}
               {importMessage && (
-                <div className={cn(
-                  "flex items-center gap-3 p-4 rounded-2xl animate-in slide-in-from-bottom-2 duration-300 border-2",
-                  importStatus === 'success' ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-accent/10 border-accent/20 text-accent'
-                )}>
-                  {importStatus === 'success' ? (
+                <div
+                  className={cn(
+                    "flex items-center gap-3 p-4 rounded-2xl animate-in slide-in-from-bottom-2 duration-300 border-2",
+                    importStatus === "success"
+                      ? "bg-primary/10 border-primary/20 text-primary"
+                      : "bg-accent/10 border-accent/20 text-accent",
+                  )}
+                >
+                  {importStatus === "success" ? (
                     <CheckCircle className="w-6 h-6 flex-shrink-0" />
                   ) : (
                     <AlertTriangle className="w-6 h-6 flex-shrink-0" />
@@ -1134,9 +1407,9 @@ const Settings: React.FC<SettingsProps> = ({
                 <Button
                   onClick={() => {
                     setShowImportModal(false);
-                    setImportText('');
-                    setImportStatus('idle');
-                    setImportMessage('');
+                    setImportText("");
+                    setImportStatus("idle");
+                    setImportMessage("");
                   }}
                   variant="outline"
                   className="flex-1"
@@ -1145,7 +1418,7 @@ const Settings: React.FC<SettingsProps> = ({
                 </Button>
                 <Button
                   onClick={handleImport}
-                  disabled={!importText.trim() || importStatus === 'success'}
+                  disabled={!importText.trim() || importStatus === "success"}
                   className="flex-1"
                 >
                   IMPORTAR AGORA
@@ -1167,7 +1440,8 @@ const Settings: React.FC<SettingsProps> = ({
                 Atenção Máxima!
               </h3>
               <p className="text-sm text-muted-foreground mt-2 font-medium">
-                Esta ação apagará permanentemente todos os seus registros financeiros.
+                Esta ação apagará permanentemente todos os seus registros
+                financeiros.
               </p>
             </div>
 
@@ -1224,7 +1498,15 @@ const Settings: React.FC<SettingsProps> = ({
                 Nova Categoria
               </h3>
               <p className="text-sm text-muted-foreground mt-2 font-medium">
-                Deseja adicionar a categoria <span className="font-black text-primary">"{pendingCategory.name}"</span> em <span className="font-black">{pendingCategory.type === 'expense' ? 'DESPESAS' : 'RECEITAS'}</span>?
+                Deseja adicionar a categoria{" "}
+                <span className="font-black text-primary">
+                  "{pendingCategory.name}"
+                </span>{" "}
+                em{" "}
+                <span className="font-black">
+                  {pendingCategory.type === "expense" ? "DESPESAS" : "RECEITAS"}
+                </span>
+                ?
               </p>
             </div>
 
@@ -1239,10 +1521,7 @@ const Settings: React.FC<SettingsProps> = ({
               >
                 CANCELAR
               </Button>
-              <Button
-                onClick={confirmAddCategory}
-                className="flex-1"
-              >
+              <Button onClick={confirmAddCategory} className="flex-1">
                 CONFIRMAR
               </Button>
             </div>
@@ -1262,7 +1541,11 @@ const Settings: React.FC<SettingsProps> = ({
                 Excluir Categoria
               </h3>
               <p className="text-sm text-muted-foreground mt-2 font-medium">
-                Tem certeza que deseja remover <span className="font-black text-accent">"{pendingCategory.name}"</span>?
+                Tem certeza que deseja remover{" "}
+                <span className="font-black text-accent">
+                  "{pendingCategory.name}"
+                </span>
+                ?
               </p>
             </div>
 
@@ -1311,10 +1594,10 @@ const Settings: React.FC<SettingsProps> = ({
                 }
               }}
               disabled={errorTimer > 0}
-              variant={errorTimer > 0 ? 'secondary' : 'danger'}
+              variant={errorTimer > 0 ? "secondary" : "danger"}
               className="w-full"
             >
-              OK {errorTimer > 0 ? `(${errorTimer}s)` : ''}
+              OK {errorTimer > 0 ? `(${errorTimer}s)` : ""}
             </Button>
           </Card>
         </div>
@@ -1332,7 +1615,11 @@ const Settings: React.FC<SettingsProps> = ({
                 Novo Meio de Pagamento
               </h3>
               <p className="text-sm text-muted-foreground mt-2 font-medium">
-                Deseja adicionar <span className="font-black text-primary">"{pendingPaymentMethod}"</span> aos seus meios de pagamento?
+                Deseja adicionar{" "}
+                <span className="font-black text-primary">
+                  "{pendingPaymentMethod}"
+                </span>{" "}
+                aos seus meios de pagamento?
               </p>
             </div>
 
@@ -1347,10 +1634,7 @@ const Settings: React.FC<SettingsProps> = ({
               >
                 CANCELAR
               </Button>
-              <Button
-                onClick={confirmAddPaymentMethod}
-                className="flex-1"
-              >
+              <Button onClick={confirmAddPaymentMethod} className="flex-1">
                 CONFIRMAR
               </Button>
             </div>
@@ -1370,7 +1654,11 @@ const Settings: React.FC<SettingsProps> = ({
                 Excluir Meio de Pagamento
               </h3>
               <p className="text-sm text-muted-foreground mt-2 font-medium">
-                Tem certeza que deseja remover <span className="font-black text-accent">"{pendingPaymentMethod}"</span>?
+                Tem certeza que deseja remover{" "}
+                <span className="font-black text-accent">
+                  "{pendingPaymentMethod}"
+                </span>
+                ?
               </p>
             </div>
 

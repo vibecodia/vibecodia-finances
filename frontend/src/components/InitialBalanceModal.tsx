@@ -1,27 +1,35 @@
-import React, { useState } from 'react';
-import { useCurrencyInput } from '../hooks/useCurrencyInput';
-import { Sparkles, Wallet, X } from 'lucide-react';
-import { Button } from './ui/Button';
-import { Card } from './ui/Card';
-import { cn } from '../lib/utils';
+import React, { useState } from "react";
+import { useCurrencyInput } from "../hooks/useCurrencyInput";
+import { Sparkles, Wallet, X } from "lucide-react";
+import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
+import { cn } from "../lib/utils";
 
 interface InitialBalanceModalProps {
   isOpen: boolean;
-  onConfirm: (amount: number, type: 'income' | 'expense') => void;
+  onConfirm: (amount: number, type: "income" | "expense") => void;
   onClose: () => void;
 }
 
-const InitialBalanceModal: React.FC<InitialBalanceModalProps> = ({ isOpen, onConfirm, onClose }) => {
+const InitialBalanceModal: React.FC<InitialBalanceModalProps> = ({
+  isOpen,
+  onConfirm,
+  onClose,
+}) => {
   const appVersion = (import.meta as any).env.APP_VERSION;
-  const [type, setType] = useState<'income' | 'expense'>('income');
+  const [type, setType] = useState<"income" | "expense">("income");
 
-  const { inputProps: amountInputProps, numericValue: amountValue, setNumericValue } = useCurrencyInput(0);
+  const {
+    inputProps: amountInputProps,
+    numericValue: amountValue,
+    setNumericValue,
+  } = useCurrencyInput(0);
 
   // Reset value when modal opens
   React.useEffect(() => {
     if (isOpen) {
       setNumericValue(0);
-      setType('income');
+      setType("income");
     }
   }, [isOpen, setNumericValue]);
 
@@ -38,8 +46,8 @@ const InitialBalanceModal: React.FC<InitialBalanceModalProps> = ({ isOpen, onCon
       <Card className="w-full max-w-md p-10 shadow-2xl animate-in zoom-in-95 duration-300 text-center border-white/10 bg-card/80 relative overflow-hidden">
         {/* Decorative elements */}
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50" />
-        
-        <button 
+
+        <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground transition-colors"
         >
@@ -69,7 +77,7 @@ const InitialBalanceModal: React.FC<InitialBalanceModalProps> = ({ isOpen, onCon
                 placeholder="0,00"
                 className={cn(
                   "w-full h-20 text-4xl font-black text-center border-2 rounded-[2rem] transition-all focus:ring-8 focus:ring-primary/10 outline-none bg-background border-border text-foreground shadow-inner",
-                  "focus:border-primary focus:scale-[1.02]"
+                  "focus:border-primary focus:scale-[1.02]",
                 )}
                 autoFocus
               />
@@ -81,39 +89,51 @@ const InitialBalanceModal: React.FC<InitialBalanceModalProps> = ({ isOpen, onCon
 
           <div className="grid grid-cols-2 gap-3">
             <button
-              onClick={() => setType('income')}
+              onClick={() => setType("income")}
               className={cn(
                 "flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all group",
-                type === 'income' 
-                  ? "bg-primary/10 border-primary shadow-lg scale-105" 
-                  : "bg-background border-border opacity-60 hover:opacity-100"
+                type === "income"
+                  ? "bg-primary/10 border-primary shadow-lg scale-105"
+                  : "bg-background border-border opacity-60 hover:opacity-100",
               )}
             >
-              <div className={cn(
-                "p-3 rounded-xl transition-colors",
-                type === 'income' ? "bg-primary text-white" : "bg-muted text-muted-foreground group-hover:bg-primary/20"
-              )}>
+              <div
+                className={cn(
+                  "p-3 rounded-xl transition-colors",
+                  type === "income"
+                    ? "bg-primary text-white"
+                    : "bg-muted text-muted-foreground group-hover:bg-primary/20",
+                )}
+              >
                 <Wallet className="w-6 h-6" />
               </div>
-              <span className="text-[10px] font-black uppercase tracking-widest">Saldo Positivo</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                Saldo Positivo
+              </span>
             </button>
 
             <button
-              onClick={() => setType('expense')}
+              onClick={() => setType("expense")}
               className={cn(
                 "flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all group",
-                type === 'expense' 
-                  ? "bg-red-500/10 border-red-500 shadow-lg scale-105" 
-                  : "bg-background border-border opacity-60 hover:opacity-100"
+                type === "expense"
+                  ? "bg-red-500/10 border-red-500 shadow-lg scale-105"
+                  : "bg-background border-border opacity-60 hover:opacity-100",
               )}
             >
-              <div className={cn(
-                "p-3 rounded-xl transition-colors",
-                type === 'expense' ? "bg-red-500 text-white" : "bg-muted text-muted-foreground group-hover:bg-red-500/20"
-              )}>
+              <div
+                className={cn(
+                  "p-3 rounded-xl transition-colors",
+                  type === "expense"
+                    ? "bg-red-500 text-white"
+                    : "bg-muted text-muted-foreground group-hover:bg-red-500/20",
+                )}
+              >
                 <Wallet className="w-6 h-6 rotate-180" />
               </div>
-              <span className="text-[10px] font-black uppercase tracking-widest">Saldo Devedor</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                Saldo Devedor
+              </span>
             </button>
           </div>
 
@@ -125,7 +145,7 @@ const InitialBalanceModal: React.FC<InitialBalanceModalProps> = ({ isOpen, onCon
             >
               Começar Agora
             </Button>
-            
+
             <button
               onClick={onClose}
               className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-60 hover:opacity-100 hover:text-primary transition-all active:scale-95 py-2 px-4 rounded-xl hover:bg-primary/5"

@@ -1,49 +1,72 @@
-import { format, startOfMonth, endOfMonth, isWithinInterval, addWeeks, addMonths, addYears } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  isWithinInterval,
+  addWeeks,
+  addMonths,
+  addYears,
+} from "date-fns";
+import { ptBR } from "date-fns/locale";
 
-import { Transaction, MonthlyData, CategoryData, SavingsGoal } from '../types';
+import { Transaction, MonthlyData, CategoryData, SavingsGoal } from "../types";
 
 export const generateId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 };
 
 export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
   }).format(amount);
 };
 
 export const getCurrentBrazilDate = (): Date => {
   const now = new Date();
-  const brazilTime = new Intl.DateTimeFormat('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
+  const brazilTime = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
   }).formatToParts(now);
 
-  const year = parseInt(brazilTime.find(part => part.type === 'year')?.value || '0');
-  const month = parseInt(brazilTime.find(part => part.type === 'month')?.value || '0') - 1;
-  const day = parseInt(brazilTime.find(part => part.type === 'day')?.value || '0');
-  const hour = parseInt(brazilTime.find(part => part.type === 'hour')?.value || '0');
-  const minute = parseInt(brazilTime.find(part => part.type === 'minute')?.value || '0');
-  const second = parseInt(brazilTime.find(part => part.type === 'second')?.value || '0');
+  const year = parseInt(
+    brazilTime.find((part) => part.type === "year")?.value || "0",
+  );
+  const month =
+    parseInt(brazilTime.find((part) => part.type === "month")?.value || "0") -
+    1;
+  const day = parseInt(
+    brazilTime.find((part) => part.type === "day")?.value || "0",
+  );
+  const hour = parseInt(
+    brazilTime.find((part) => part.type === "hour")?.value || "0",
+  );
+  const minute = parseInt(
+    brazilTime.find((part) => part.type === "minute")?.value || "0",
+  );
+  const second = parseInt(
+    brazilTime.find((part) => part.type === "second")?.value || "0",
+  );
 
   return new Date(year, month, day, hour, minute, second);
 };
 
 // CRITICAL FIX: Format date in Brazil format - CARDS DATE DISPLAY FIXED 100%
-export const formatBrazilDate = (date: Date | string, formatStr: string = 'dd/MM/yyyy'): string => {
+export const formatBrazilDate = (
+  date: Date | string,
+  formatStr: string = "dd/MM/yyyy",
+): string => {
   let dateObj: Date;
-  
-  if (typeof date === 'string') {
+
+  if (typeof date === "string") {
     // CRITICAL FIX FOR CARDS: Handle date strings with ABSOLUTE ZERO timezone interference
-    if (date.includes('T')) {
+    if (date.includes("T")) {
       // If it's an ISO string (from backend), parse it as UTC and then adjust to Brazil's local day
       const utcDate = new Date(date);
       // Get year, month, day from UTC date
@@ -54,7 +77,7 @@ export const formatBrazilDate = (date: Date | string, formatStr: string = 'dd/MM
       dateObj = new Date(year, month, day, 12, 0, 0, 0);
     } else if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
       // For YYYY-MM-DD strings (from frontend date pickers), parse as LOCAL date with NO UTC conversion
-      const [yearStr, monthStr, dayStr] = date.split('-');
+      const [yearStr, monthStr, dayStr] = date.split("-");
       const year = parseInt(yearStr, 10);
       const month = parseInt(monthStr, 10) - 1; // month is 0-indexed
       const day = parseInt(dayStr, 10);
@@ -66,19 +89,19 @@ export const formatBrazilDate = (date: Date | string, formatStr: string = 'dd/MM
   } else {
     dateObj = date;
   }
-  
+
   return format(dateObj, formatStr, { locale: ptBR });
 };
 
 export const getBrazilDateString = (date?: Date): string => {
   // Se não passar data, usa 'now' real para evitar double-shift de getCurrentBrazilDate
   const dateObj = date || new Date();
-  
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
+
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   }).format(dateObj);
 };
 
@@ -90,15 +113,22 @@ export const parseLocalDate = (dateString: string): Date => {
   }
 
   // Handles ISO strings from backend (e.g., "2023-10-27T10:00:00.000Z")
-  if (dateString.includes('T')) {
+  if (dateString.includes("T")) {
     const utcDate = new Date(dateString);
     // Create a new Date object representing the same calendar day in local timezone (at noon to avoid DST issues)
-    return new Date(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate(), 12, 0, 0);
+    return new Date(
+      utcDate.getUTCFullYear(),
+      utcDate.getUTCMonth(),
+      utcDate.getUTCDate(),
+      12,
+      0,
+      0,
+    );
   }
 
   // Handles "YYYY-MM-DD" strings from date pickers, avoiding timezone issues.
   if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
-    const [year, month, day] = dateString.split('-').map(Number);
+    const [year, month, day] = dateString.split("-").map(Number);
     // Create date in local time at noon to avoid DST and timezone boundary issues.
     return new Date(year, month - 1, day, 12, 0, 0);
   }
@@ -108,25 +138,25 @@ export const parseLocalDate = (dateString: string): Date => {
 };
 
 export const getMonthKey = (date: Date): string => {
-  return format(date, 'yyyy-MM');
+  return format(date, "yyyy-MM");
 };
 
 // FIXED: Generate recurring transactions with proper payment status logic for different contexts
 export const generateRecurringTransactions = (
-  baseTransaction: Transaction, 
-  startDate: Date, 
+  baseTransaction: Transaction,
+  startDate: Date,
   endDate: Date,
-  currentMonthOnly: boolean = false // New parameter to control payment status logic
+  currentMonthOnly: boolean = false, // New parameter to control payment status logic
 ): Transaction[] => {
-  if (baseTransaction.recurrence === 'none') {
+  if (baseTransaction.recurrence === "none") {
     return [baseTransaction];
   }
 
   const recurringTransactions: Transaction[] = [];
   let currentDate = parseLocalDate(baseTransaction.date);
-  
+
   // For expenses, use due date if available
-  if (baseTransaction.type === 'expense' && baseTransaction.dueDate) {
+  if (baseTransaction.type === "expense" && baseTransaction.dueDate) {
     currentDate = parseLocalDate(baseTransaction.dueDate);
   }
 
@@ -140,10 +170,10 @@ export const generateRecurringTransactions = (
     if (currentDate >= startDate) {
       const isFirstOccurrence = occurrenceCount === 0;
       const occurrenceMonth = getMonthKey(currentDate);
-      
+
       // CRITICAL FIX: Payment status logic based on context
       let isPaidStatus: boolean;
-      if (baseTransaction.type === 'income') {
+      if (baseTransaction.type === "income") {
         // Income is always paid
         isPaidStatus = true;
       } else {
@@ -162,28 +192,36 @@ export const generateRecurringTransactions = (
           }
         }
       }
-      
+
       const occurrence: Transaction = {
         ...baseTransaction,
-        id: isFirstOccurrence ? baseTransaction.id : `${baseTransaction.id}_${currentDate.getTime()}`,
-        date: baseTransaction.type === 'income' ? getBrazilDateString(currentDate) : baseTransaction.date,
-        dueDate: baseTransaction.type === 'expense' ? getBrazilDateString(currentDate) : undefined,
+        id: isFirstOccurrence
+          ? baseTransaction.id
+          : `${baseTransaction.id}_${currentDate.getTime()}`,
+        date:
+          baseTransaction.type === "income"
+            ? getBrazilDateString(currentDate)
+            : baseTransaction.date,
+        dueDate:
+          baseTransaction.type === "expense"
+            ? getBrazilDateString(currentDate)
+            : undefined,
         isPaid: isPaidStatus,
       };
-      
+
       recurringTransactions.push(occurrence);
       occurrenceCount++;
     }
 
     // Calculate next occurrence
     switch (baseTransaction.recurrence) {
-      case 'weekly':
+      case "weekly":
         currentDate = addWeeks(currentDate, 1);
         break;
-      case 'monthly':
+      case "monthly":
         currentDate = addMonths(currentDate, 1);
         break;
-      case 'yearly':
+      case "yearly":
         currentDate = addYears(currentDate, 1);
         break;
       default:
@@ -196,48 +234,55 @@ export const generateRecurringTransactions = (
 
 // FIXED: Get all transactions including recurring ones for a specific period
 export const getTransactionsWithRecurrence = (
-  transactions: Transaction[], 
-  startDate: Date, 
+  transactions: Transaction[],
+  startDate: Date,
   endDate: Date,
   currentMonthOnly: boolean = false, // New parameter for context-aware logic
-  includeDeleted: boolean = false // New parameter
+  includeDeleted: boolean = false, // New parameter
 ): Transaction[] => {
   const allTransactions: Transaction[] = [];
 
-  transactions.forEach(transaction => {
-    if (!includeDeleted && transaction.status === 'deleted') return;
+  transactions.forEach((transaction) => {
+    if (!includeDeleted && transaction.status === "deleted") return;
 
-    if (transaction.recurrence === 'none') {
+    if (transaction.recurrence === "none") {
       // Non-recurring transaction - include if within date range
-      const transactionDate = transaction.type === 'income' 
-        ? parseLocalDate(transaction.date)
-        : transaction.dueDate 
-        ? parseLocalDate(transaction.dueDate)
-        : parseLocalDate(transaction.date);
+      const transactionDate =
+        transaction.type === "income"
+          ? parseLocalDate(transaction.date)
+          : transaction.dueDate
+            ? parseLocalDate(transaction.dueDate)
+            : parseLocalDate(transaction.date);
 
-      if (isWithinInterval(transactionDate, { start: startDate, end: endDate })) {
+      if (
+        isWithinInterval(transactionDate, { start: startDate, end: endDate })
+      ) {
         allTransactions.push(transaction);
       }
     } else {
       // FIXED: For recurring transactions, generate all occurrences with proper context
       const recurringTransactions = generateRecurringTransactions(
-        transaction, 
-        startDate, 
-        endDate, 
-        currentMonthOnly
+        transaction,
+        startDate,
+        endDate,
+        currentMonthOnly,
       );
-      
+
       // Filter to only include occurrences that fall within the period
-      const validOccurrences = recurringTransactions.filter(occurrence => {
-        const occurrenceDate = occurrence.type === 'income' 
-          ? parseLocalDate(occurrence.date)
-          : occurrence.dueDate 
-          ? parseLocalDate(occurrence.dueDate)
-          : parseLocalDate(occurrence.date);
-        
-        return isWithinInterval(occurrenceDate, { start: startDate, end: endDate });
+      const validOccurrences = recurringTransactions.filter((occurrence) => {
+        const occurrenceDate =
+          occurrence.type === "income"
+            ? parseLocalDate(occurrence.date)
+            : occurrence.dueDate
+              ? parseLocalDate(occurrence.dueDate)
+              : parseLocalDate(occurrence.date);
+
+        return isWithinInterval(occurrenceDate, {
+          start: startDate,
+          end: endDate,
+        });
       });
-      
+
       allTransactions.push(...validOccurrences);
     }
   });
@@ -245,82 +290,106 @@ export const getTransactionsWithRecurrence = (
   return allTransactions;
 };
 
-export const filterTransactionsByMonth = (transactions: Transaction[], date: Date, includeDeleted: boolean = false): Transaction[] => {
+export const filterTransactionsByMonth = (
+  transactions: Transaction[],
+  date: Date,
+  includeDeleted: boolean = false,
+): Transaction[] => {
   const start = startOfMonth(date);
   const end = endOfMonth(date);
-  
+
   // FIXED: Use currentMonthOnly=true for dashboard/reports to maintain proper payment status
   const currentBrazilDate = getCurrentBrazilDate();
   const isCurrentMonth = getMonthKey(date) === getMonthKey(currentBrazilDate);
-  
-  return getTransactionsWithRecurrence(transactions, start, end, isCurrentMonth, includeDeleted);
+
+  return getTransactionsWithRecurrence(
+    transactions,
+    start,
+    end,
+    isCurrentMonth,
+    includeDeleted,
+  );
 };
 
 // Calculate actual contributions made to goals in a specific month
-export const calculateGoalsImpactForMonth = (savingsGoals: SavingsGoal[], date: Date): number => {
+export const calculateGoalsImpactForMonth = (
+  savingsGoals: SavingsGoal[],
+  date: Date,
+): number => {
   if (!savingsGoals || savingsGoals.length === 0) return 0;
-  
+
   const start = startOfMonth(date);
   const end = endOfMonth(date);
-  
+
   return savingsGoals.reduce((total, goal) => {
     // Ignora metas deletadas
-    if (goal.status === 'deleted') return total;
-    
+    if (goal.status === "deleted") return total;
+
     if (!goal.contributions) return total;
-    
+
     // Sum all contributions made in this specific month
     const monthlyContributions = goal.contributions
-      .filter(contribution => {
+      .filter((contribution) => {
         // Ignora contribuições deletadas
-        if (contribution.status === 'deleted') return false;
+        if (contribution.status === "deleted") return false;
         if (contribution.isPaid === false) return false;
-        
+
         const contributionDate = parseLocalDate(contribution.date);
         return isWithinInterval(contributionDate, { start, end });
       })
       .reduce((sum, contribution) => sum + contribution.amount, 0);
-    
+
     return total + monthlyContributions;
   }, 0);
 };
 
 // Legacy function for backward compatibility - now uses actual contributions
-export const calculateGoalsImpact = (savingsGoals: SavingsGoal[], date: Date): number => {
+export const calculateGoalsImpact = (
+  savingsGoals: SavingsGoal[],
+  date: Date,
+): number => {
   return calculateGoalsImpactForMonth(savingsGoals, date);
 };
 
 // FIXED: Calculate monthly balance - ALWAYS deduct paid expenses regardless of due date
-export const calculateMonthlyBalance = (transactions: Transaction[], date?: Date): number => {
+export const calculateMonthlyBalance = (
+  transactions: Transaction[],
+  date?: Date,
+): number => {
   // If date is provided, get all transactions for that month including recurring ones
   if (date) {
     const monthTransactions = filterTransactionsByMonth(transactions, date);
     return calculateBalanceFromTransactionList(monthTransactions);
   }
-  
+
   // If no date provided, calculate for current month
   const currentDate = getCurrentBrazilDate();
-  const monthTransactions = filterTransactionsByMonth(transactions, currentDate);
+  const monthTransactions = filterTransactionsByMonth(
+    transactions,
+    currentDate,
+  );
   return calculateBalanceFromTransactionList(monthTransactions);
 };
 
 // FIXED: Helper function to calculate balance from a list of transactions
-const calculateBalanceFromTransactionList = (transactions: Transaction[]): number => {
+const calculateBalanceFromTransactionList = (
+  transactions: Transaction[],
+): number => {
   return transactions.reduce((balance, transaction) => {
     // Ignora transações deletadas no saldo
-    if (transaction.status === 'deleted') return balance;
+    if (transaction.status === "deleted") return balance;
 
     // Ignora 'Aporte' no saldo real, pois é calculado separadamente como impacto de metas
-    if (transaction.category === 'Aporte') return balance;
+    if (transaction.category === "Aporte") return balance;
 
-    if (transaction.type === 'income') {
+    if (transaction.type === "income") {
       return balance + transaction.amount;
     } else {
       // CRITICAL FIX: For expenses, ALWAYS deduct if paid, regardless of due date
       if (transaction.isPaid) {
         return balance - transaction.amount;
       }
-      
+
       // Don't deduct unpaid expenses from the balance
       return balance;
     }
@@ -328,10 +397,10 @@ const calculateBalanceFromTransactionList = (transactions: Transaction[]): numbe
 };
 
 export const getMonthlyData = (
-  transactions: Transaction[], 
-  savingsGoals: SavingsGoal[] = [], 
-  months: number = 6, 
-  endDate: Date = getCurrentBrazilDate() // Parameter is now actually used
+  transactions: Transaction[],
+  savingsGoals: SavingsGoal[] = [],
+  months: number = 6,
+  endDate: Date = getCurrentBrazilDate(), // Parameter is now actually used
 ): MonthlyData[] => {
   const data: MonthlyData[] = [];
   // Use the provided endDate instead of getting a new current date
@@ -340,23 +409,25 @@ export const getMonthlyData = (
   for (let i = months - 1; i >= 0; i--) {
     const date = new Date(end.getFullYear(), end.getMonth() - i, 1);
     const monthTransactions = filterTransactionsByMonth(transactions, date);
-    
+
     const income = monthTransactions
-      .filter(t => t.type === 'income' && t.isPaid && t.status !== 'deleted')
+      .filter((t) => t.type === "income" && t.isPaid && t.status !== "deleted")
       .reduce((sum, t) => sum + t.amount, 0);
-    
+
     const expenses = monthTransactions
-      .filter(t => t.type === 'expense' && t.isPaid && t.status !== 'deleted')
+      .filter((t) => t.type === "expense" && t.isPaid && t.status !== "deleted")
       .reduce((sum, t) => sum + t.amount, 0);
 
     const unpaidExpenses = monthTransactions
-      .filter(t => t.type === 'expense' && !t.isPaid && t.status !== 'deleted')
+      .filter(
+        (t) => t.type === "expense" && !t.isPaid && t.status !== "deleted",
+      )
       .reduce((sum, t) => sum + t.amount, 0);
 
     const goalsImpact = calculateGoalsImpactForMonth(savingsGoals, date);
 
     data.push({
-      month: format(date, 'MMM', { locale: ptBR }),
+      month: format(date, "MMM", { locale: ptBR }),
       income,
       expenses,
       unpaidExpenses,
@@ -368,27 +439,52 @@ export const getMonthlyData = (
   return data;
 };
 
-export const getCategoryData = (transactions: Transaction[], date: Date = getCurrentBrazilDate()): CategoryData[] => {
+export const getCategoryData = (
+  transactions: Transaction[],
+  date: Date = getCurrentBrazilDate(),
+): CategoryData[] => {
   // Get current month transactions with recurrence
   const start = startOfMonth(date);
   const end = endOfMonth(date);
-  const currentMonthTransactions = getTransactionsWithRecurrence(transactions, start, end, true);
-  
+  const currentMonthTransactions = getTransactionsWithRecurrence(
+    transactions,
+    start,
+    end,
+    true,
+  );
+
   // FIXED: Only consider paid expenses for category analysis
-  const expenses = currentMonthTransactions.filter(t => t.type === 'expense' && t.isPaid && t.status !== 'deleted');
-  
+  const expenses = currentMonthTransactions.filter(
+    (t) => t.type === "expense" && t.isPaid && t.status !== "deleted",
+  );
+
   const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
-  
-  const categoryTotals = expenses.reduce((acc, transaction) => {
-    const category = transaction.category;
-    acc[category] = (acc[category] || 0) + transaction.amount;
-    return acc;
-  }, {} as Record<string, number>);
+
+  const categoryTotals = expenses.reduce(
+    (acc, transaction) => {
+      const category = transaction.category;
+      acc[category] = (acc[category] || 0) + transaction.amount;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
 
   const colors = [
-    '#EF4444', '#F97316', '#EAB308', '#84CC16', '#22C55E',
-    '#10B981', '#14B8A6', '#06B6D4', '#0EA5E9', '#3B82F6',
-    '#6366F1', '#8B5CF6', '#D946EF', '#EC4899', '#F43F5E'
+    "#EF4444",
+    "#F97316",
+    "#EAB308",
+    "#84CC16",
+    "#22C55E",
+    "#10B981",
+    "#14B8A6",
+    "#06B6D4",
+    "#0EA5E9",
+    "#3B82F6",
+    "#6366F1",
+    "#8B5CF6",
+    "#D946EF",
+    "#EC4899",
+    "#F43F5E",
   ];
 
   return Object.entries(categoryTotals)
@@ -403,17 +499,21 @@ export const getCategoryData = (transactions: Transaction[], date: Date = getCur
 
 // FIXED: Check if a transaction is overdue (Brazil timezone) - DEFINITIVE SOLUTION
 export const isTransactionOverdue = (transaction: Transaction): boolean => {
-  if (!transaction.dueDate || transaction.isPaid || transaction.type !== 'expense') {
+  if (
+    !transaction.dueDate ||
+    transaction.isPaid ||
+    transaction.type !== "expense"
+  ) {
     return false;
   }
-  
+
   const today = getCurrentBrazilDate();
   const dueDate = parseLocalDate(transaction.dueDate);
-  
+
   // Set time to start of day for comparison
   today.setHours(0, 0, 0, 0);
   dueDate.setHours(0, 0, 0, 0);
-  
+
   return dueDate < today;
 };
 
@@ -421,52 +521,62 @@ export const isTransactionOverdue = (transaction: Transaction): boolean => {
 export const getDaysUntilDue = (dueDate: string): number => {
   const today = getCurrentBrazilDate();
   const due = parseLocalDate(dueDate);
-  
+
   // Set time to start of day for comparison
   today.setHours(0, 0, 0, 0);
   due.setHours(0, 0, 0, 0);
-  
+
   const diffTime = due.getTime() - today.getTime();
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
 
 // Export/Import functions
-export const exportFinancialData = (transactions: Transaction[], savingsGoals: SavingsGoal[]): string => {
+export const exportFinancialData = (
+  transactions: Transaction[],
+  savingsGoals: SavingsGoal[],
+): string => {
   const data = {
     transactions,
     savingsGoals,
     exportDate: getCurrentBrazilDate().toISOString(),
-    version: '1.0'
+    version: "1.0",
   };
   return JSON.stringify(data, null, 2);
 };
 
-export const validateImportData = (jsonString: string): { transactions: Transaction[], savingsGoals: SavingsGoal[] } | null => {
+export const validateImportData = (
+  jsonString: string,
+): { transactions: Transaction[]; savingsGoals: SavingsGoal[] } | null => {
   try {
     const data = JSON.parse(jsonString);
-    
+
     // Basic validation
     if (!data.transactions || !Array.isArray(data.transactions)) {
-      throw new Error('Invalid transactions data');
+      throw new Error("Invalid transactions data");
     }
-    
+
     if (!data.savingsGoals || !Array.isArray(data.savingsGoals)) {
-      throw new Error('Invalid savings goals data');
+      throw new Error("Invalid savings goals data");
     }
-    
+
     // Validate transaction structure
     for (const transaction of data.transactions) {
-      if (!transaction.id || !transaction.type || !transaction.amount || !transaction.description) {
-        throw new Error('Invalid transaction structure');
+      if (
+        !transaction.id ||
+        !transaction.type ||
+        !transaction.amount ||
+        !transaction.description
+      ) {
+        throw new Error("Invalid transaction structure");
       }
     }
-    
+
     // Validate savings goals structure and migrate old format
     for (const goal of data.savingsGoals) {
-      if (!goal.id || !goal.name || typeof goal.targetAmount !== 'number') {
-        throw new Error('Invalid savings goal structure');
+      if (!goal.id || !goal.name || typeof goal.targetAmount !== "number") {
+        throw new Error("Invalid savings goal structure");
       }
-      
+
       // Migrate old format to new format with contributions
       if (!goal.contributions) {
         goal.contributions = [];
@@ -481,61 +591,63 @@ export const validateImportData = (jsonString: string): { transactions: Transact
         }
       }
     }
-    
+
     return {
       transactions: data.transactions,
-      savingsGoals: data.savingsGoals
+      savingsGoals: data.savingsGoals,
     };
   } catch (error) {
-    console.error('Import validation error:', error);
+    console.error("Import validation error:", error);
     return null;
   }
 };
 
 export const EXPENSE_CATEGORIES = [
-  'Moradia',
-  'Dívidas',
-  'Educação',
-  'Serviços',
-  'Saúde',
-  'Internet',
-  'Transporte',
-  'Entretenimento',
-  'Alimentação',
-  'Utilidades',
-  'Beleza',
-  'Compras',
-  'Consumo',
-  'Aporte',
-  'Outros',
-  'Patrimônio'
+  "Moradia",
+  "Dívidas",
+  "Educação",
+  "Serviços",
+  "Saúde",
+  "Internet",
+  "Transporte",
+  "Entretenimento",
+  "Alimentação",
+  "Utilidades",
+  "Beleza",
+  "Compras",
+  "Consumo",
+  "Aporte",
+  "Outros",
+  "Patrimônio",
 ];
 
 export const INCOME_CATEGORIES = [
-  'Salário',
-  'Vale',
-  'Reembolsos',
-  'Aluguéis',
-  'Premiação',
-  'Déc.Terceiro',
-  'Férias',
-  'Rendimentos'
+  "Salário",
+  "Vale",
+  "Reembolsos",
+  "Aluguéis",
+  "Premiação",
+  "Déc.Terceiro",
+  "Férias",
+  "Rendimentos",
 ];
 
 export const PAYMENT_METHODS = [
-  { id: 'pix', label: 'PIX' },
-  { id: 'xp', label: 'XP' },
-  { id: 'c6', label: 'C6 Bank' },
-  { id: 'bradesco_t', label: 'Bradesco T' },
-  { id: 'bradesco_r', label: 'Bradesco R' },
-  { id: 'nubank', label: 'Nubank' },
-  { id: 'vero_card', label: 'Vero Card' },
-  { id: 'flash', label: 'Flash' },
-  { id: 'saldo_conta', label: 'Saldo em Conta' },
+  { id: "pix", label: "PIX" },
+  { id: "xp", label: "XP" },
+  { id: "c6", label: "C6 Bank" },
+  { id: "bradesco_t", label: "Bradesco T" },
+  { id: "bradesco_r", label: "Bradesco R" },
+  { id: "nubank", label: "Nubank" },
+  { id: "vero_card", label: "Vero Card" },
+  { id: "flash", label: "Flash" },
+  { id: "saldo_conta", label: "Saldo em Conta" },
 ] as const;
 
 export const formatPaymentMethod = (method?: string): string => {
-  if (!method) return 'Não informado';
-  const found = PAYMENT_METHODS.find(m => m.id === method || m.label === method);
+  if (!method) return "Não informado";
+  const found = PAYMENT_METHODS.find(
+    (m) => m.id === method || m.label === method,
+  );
   return found ? found.label : method;
 };

@@ -1,5 +1,5 @@
-import { Search, X } from 'lucide-react';
-import { Input } from '../ui/Input';
+import { Search, X } from "lucide-react";
+import { Input } from "../ui/Input";
 
 interface SearchBarProps {
   searchTerm: string;
@@ -19,7 +19,7 @@ export function SearchBar({ searchTerm, onSearchChange }: SearchBarProps) {
       />
       {searchTerm && (
         <button
-          onClick={() => onSearchChange('')}
+          onClick={() => onSearchChange("")}
           className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-foreground/10 rounded-full transition-all text-muted-foreground hover:text-destructive"
           title="Limpar busca"
         >

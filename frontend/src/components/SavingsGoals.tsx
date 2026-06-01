@@ -1,67 +1,94 @@
-import { Target, Plus, Minus, Trash2, Edit3, Calendar, TrendingUp, History, X, ChevronDown, RotateCcw, Check } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import {
+  Target,
+  Plus,
+  Minus,
+  Trash2,
+  Edit3,
+  Calendar,
+  TrendingUp,
+  History,
+  X,
+  ChevronDown,
+  RotateCcw,
+  Check,
+} from "lucide-react";
+import React, { useState, useEffect } from "react";
 
-import { useTheme } from '../contexts/ThemeContext';
-import { useCurrencyInput } from '../hooks/useCurrencyInput';
-import { cn } from '../lib/utils';
-import { SavingsGoal, SavingsContribution } from '../types';
-import { formatCurrency, formatBrazilDate, getBrazilDateString } from '../utils/helpers';
-import { Button } from './ui/Button';
-import { Input } from './ui/Input';
-import { Card } from './ui/Card';
+import { useTheme } from "../contexts/ThemeContext";
+import { useCurrencyInput } from "../hooks/useCurrencyInput";
+import { cn } from "../lib/utils";
+import { SavingsGoal, SavingsContribution } from "../types";
+import {
+  formatCurrency,
+  formatBrazilDate,
+  getBrazilDateString,
+} from "../utils/helpers";
+import { Button } from "./ui/Button";
+import { Input } from "./ui/Input";
+import { Card } from "./ui/Card";
 
-import ConfirmationModal from './ConfirmationModal';
-
+import ConfirmationModal from "./ConfirmationModal";
 
 interface SavingsGoalsProps {
   goals: SavingsGoal[];
-  onAdd: (goal: Omit<SavingsGoal, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onAdd: (goal: Omit<SavingsGoal, "id" | "createdAt" | "updatedAt">) => void;
   onUpdate: (id: string, updates: Partial<SavingsGoal>) => void;
   onDelete: (id: string) => void;
   onAddContribution: (goalId: string, amount: number, date?: string) => void;
-  onUpdateContribution: (goalId: string, contributionId: string, updates: Partial<SavingsContribution>) => void;
+  onUpdateContribution: (
+    goalId: string,
+    contributionId: string,
+    updates: Partial<SavingsContribution>,
+  ) => void;
   onDeleteContribution: (goalId: string, contributionId: string) => void;
   onUpdatePaymentStatus: (transactionId: string, isPaid: boolean) => void;
 }
 
-const SavingsGoals: React.FC<SavingsGoalsProps> = ({ 
-  goals, 
-  onAdd, 
-  onUpdate, 
-  onDelete, 
+const SavingsGoals: React.FC<SavingsGoalsProps> = ({
+  goals,
+  onAdd,
+  onUpdate,
+  onDelete,
   onAddContribution,
   onUpdateContribution,
   onDeleteContribution,
-  onUpdatePaymentStatus
+  onUpdatePaymentStatus,
 }) => {
   const { theme } = useTheme();
   const [showForm, setShowForm] = useState(false);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    name: '',
-    deadline: '',
+    name: "",
+    deadline: "",
   });
 
   // Use a separate initial value for the hook to prevent stale data
   const [initialTarget, setInitialTarget] = useState(0);
-  const { inputProps: targetAmountInputProps, numericValue: targetAmountValue } = useCurrencyInput(
-    initialTarget
-  );
+  const {
+    inputProps: targetAmountInputProps,
+    numericValue: targetAmountValue,
+  } = useCurrencyInput(initialTarget);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [goalToDelete, setGoalToDelete] = useState<string | null>(null);
   const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
   const [goalToReactivate, setGoalToReactivate] = useState<string | null>(null);
   const [showDeleted, setShowDeleted] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const activeGoals = (goals || []).filter((g: SavingsGoal) => g.status !== 'deleted');
-  const deletedGoals = (goals || []).filter((g: SavingsGoal) => g.status === 'deleted');
+  const activeGoals = (goals || []).filter(
+    (g: SavingsGoal) => g.status !== "deleted",
+  );
+  const deletedGoals = (goals || []).filter(
+    (g: SavingsGoal) => g.status === "deleted",
+  );
 
   // Filter goals by search term
   const filterBySearch = (list: SavingsGoal[]) => {
     if (!searchTerm) return list;
-    return list.filter(g => g.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    return list.filter((g) =>
+      g.name.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
   };
 
   const filteredActiveGoals = filterBySearch(activeGoals);
@@ -69,7 +96,11 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
 
   // Auto-switch back to active view if no deleted goals remain
   useEffect(() => {
-    if (showDeleted && filteredDeletedGoals.length === 0 && deletedGoals.length === 0) {
+    if (
+      showDeleted &&
+      filteredDeletedGoals.length === 0 &&
+      deletedGoals.length === 0
+    ) {
       setShowDeleted(false);
     }
   }, [deletedGoals.length, filteredDeletedGoals.length, showDeleted]);
@@ -103,14 +134,14 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
 
   const handleReactivateConfirm = () => {
     if (goalToReactivate) {
-      onUpdate(goalToReactivate, { status: 'active' });
+      onUpdate(goalToReactivate, { status: "active" });
     }
     closeReactivateModal();
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name || targetAmountValue === 0) {
       return;
     }
@@ -136,13 +167,15 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
       onAdd(goalData);
     }
 
-    setFormData({ name: '', deadline: '' });
+    setFormData({ name: "", deadline: "" });
     setInitialTarget(0);
     setShowForm(false);
   };
 
   const handleEdit = (goal: SavingsGoal) => {
-    const deadline = goal.deadline ? new Date(goal.deadline).toISOString().split('T')[0] : '';
+    const deadline = goal.deadline
+      ? new Date(goal.deadline).toISOString().split("T")[0]
+      : "";
     setEditingGoalId(goal.id);
     setInitialTarget(goal.targetAmount);
     setFormData({
@@ -152,9 +185,17 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
     setShowForm(true);
   };
 
-  const goalsForDisplay = showDeleted ? filteredDeletedGoals : filteredActiveGoals;
-  const totalGoals = activeGoals.reduce((sum: number, goal: SavingsGoal) => sum + (goal.targetAmount || 0), 0);
-  const totalSaved = activeGoals.reduce((sum: number, goal: SavingsGoal) => sum + (goal.currentAmount || 0), 0);
+  const goalsForDisplay = showDeleted
+    ? filteredDeletedGoals
+    : filteredActiveGoals;
+  const totalGoals = activeGoals.reduce(
+    (sum: number, goal: SavingsGoal) => sum + (goal.targetAmount || 0),
+    0,
+  );
+  const totalSaved = activeGoals.reduce(
+    (sum: number, goal: SavingsGoal) => sum + (goal.currentAmount || 0),
+    0,
+  );
 
   return (
     <div className="space-y-4">
@@ -164,29 +205,42 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
           <h2 className="text-xl font-semibold text-foreground mb-1 truncate">
             Metas de Economia
           </h2>
-          <p className="text-sm font-medium opacity-70 flex items-center flex-wrap gap-y-1" style={{ color: theme.primary }}>
-            <span>Total: {formatCurrency(totalSaved)} / {formatCurrency(totalGoals)}</span>
+          <p
+            className="text-sm font-medium opacity-70 flex items-center flex-wrap gap-y-1"
+            style={{ color: theme.primary }}
+          >
+            <span>
+              Total: {formatCurrency(totalSaved)} / {formatCurrency(totalGoals)}
+            </span>
             {activeGoals.length > 0 && (
               <>
                 <span className="mx-2">•</span>
-                <span className="text-xs opacity-90">{activeGoals.length} {activeGoals.length === 1 ? 'meta' : 'metas'}</span>
+                <span className="text-xs opacity-90">
+                  {activeGoals.length}{" "}
+                  {activeGoals.length === 1 ? "meta" : "metas"}
+                </span>
               </>
             )}
             {deletedGoals.length > 0 && (
               <>
                 <span className="mx-2">•</span>
-                <Button 
+                <Button
                   onClick={() => setShowDeleted(!showDeleted)}
                   variant="ghost"
                   size="sm"
                   className={cn(
                     "text-xs font-bold px-2 py-0.5 rounded-full transition-colors flex items-center gap-1",
-                    showDeleted && "bg-accent text-white"
+                    showDeleted && "bg-accent text-white",
                   )}
-                  style={{ backgroundColor: showDeleted ? theme.accent : undefined }}
+                  style={{
+                    backgroundColor: showDeleted ? theme.accent : undefined,
+                  }}
                 >
-                  {deletedGoals.length} {deletedGoals.length === 1 ? 'excluída' : 'excluídas'}
-                  <span className={`transition-transform ${showDeleted ? 'rotate-180' : ''}`}>
+                  {deletedGoals.length}{" "}
+                  {deletedGoals.length === 1 ? "excluída" : "excluídas"}
+                  <span
+                    className={`transition-transform ${showDeleted ? "rotate-180" : ""}`}
+                  >
                     <ChevronDown className="w-3 h-3" />
                   </span>
                 </Button>
@@ -198,7 +252,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
           onClick={() => {
             setEditingGoalId(null);
             setInitialTarget(0);
-            setFormData({ name: '', deadline: '' });
+            setFormData({ name: "", deadline: "" });
             setShowForm(true);
           }}
           size="icon"
@@ -218,7 +272,21 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search absolute left-3 text-muted-foreground"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="lucide lucide-search absolute left-3 text-muted-foreground"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
         </div>
       )}
 
@@ -226,16 +294,19 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
       <div className="space-y-3">
         {goalsForDisplay.length === 0 ? (
           <div className="text-center py-12">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: theme.cardBorder }}>
+            <div
+              className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: theme.cardBorder }}
+            >
               <Target className="w-8 h-8 text-muted-foreground" />
             </div>
             <p className="text-muted-foreground mb-4">
-              {showDeleted ? 'Nenhuma meta excluída encontrada' : 'Nenhuma meta cadastrada'}
+              {showDeleted
+                ? "Nenhuma meta excluída encontrada"
+                : "Nenhuma meta cadastrada"}
             </p>
             {!showDeleted && (
-              <Button
-                onClick={() => setShowForm(true)}
-              >
+              <Button onClick={() => setShowForm(true)}>
                 Criar primeira meta
               </Button>
             )}
@@ -244,11 +315,12 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
           goalsForDisplay.map((goal) => {
             const currentAmount = goal.currentAmount || 0;
             const targetAmount = goal.targetAmount || 0;
-            const progress = targetAmount > 0 ? (currentAmount / targetAmount) * 100 : 0;
+            const progress =
+              targetAmount > 0 ? (currentAmount / targetAmount) * 100 : 0;
             const isComplete = progress >= 100;
-            
+
             return (
-              <GoalCard 
+              <GoalCard
                 key={goal.id}
                 goal={goal}
                 progress={progress}
@@ -270,16 +342,19 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
       {/* Form Modal - Standardized with TransactionList */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in duration-200" style={{ backgroundColor: theme.cardBackground }}>
+          <div
+            className="rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in duration-200"
+            style={{ backgroundColor: theme.cardBackground }}
+          >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-foreground truncate pr-2">
-                {editingGoalId ? 'Editar Meta' : 'Nova Meta'}
+                {editingGoalId ? "Editar Meta" : "Nova Meta"}
               </h3>
               <button
                 onClick={() => {
                   setShowForm(false);
                   setEditingGoalId(null);
-                  setFormData({ name: '', deadline: '' });
+                  setFormData({ name: "", deadline: "" });
                 }}
                 className="p-2 rounded-full transition-colors hover:bg-muted"
               >
@@ -292,7 +367,9 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 label="Nome da Meta"
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, name: e.target.value }))
+                }
                 placeholder="Ex: Reserva de Emergência"
                 required
               />
@@ -308,7 +385,9 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 label="Prazo Final (Opcional)"
                 type="date"
                 value={formData.deadline}
-                onChange={(e) => setFormData(prev => ({ ...prev, deadline: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, deadline: e.target.value }))
+                }
               />
 
               <div className="flex gap-3 pt-4">
@@ -317,18 +396,15 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                   onClick={() => {
                     setShowForm(false);
                     setEditingGoalId(null);
-                    setFormData({ name: '', deadline: '' });
+                    setFormData({ name: "", deadline: "" });
                   }}
                   variant="outline"
                   className="flex-1"
                 >
                   Cancelar
                 </Button>
-                <Button
-                  type="submit"
-                  className="flex-1"
-                >
-                  {editingGoalId ? 'Salvar' : 'Criar Meta'}
+                <Button type="submit" className="flex-1">
+                  {editingGoalId ? "Salvar" : "Criar Meta"}
                 </Button>
               </div>
             </form>
@@ -364,79 +440,87 @@ interface GoalCardProps {
   onDelete: () => void;
   onReactivate: () => void;
   onAddContribution: (goalId: string, amount: number, date?: string) => void;
-  onUpdateContribution: (goalId: string, contributionId: string, updates: Partial<SavingsContribution>) => void;
+  onUpdateContribution: (
+    goalId: string,
+    contributionId: string,
+    updates: Partial<SavingsContribution>,
+  ) => void;
   onDeleteContribution: (goalId: string, contributionId: string) => void;
   onUpdatePaymentStatus: (transactionId: string, isPaid: boolean) => void;
   showDeleted?: boolean;
 }
 
-const GoalCard: React.FC<GoalCardProps> = ({ 
-  goal, 
-  progress, 
-  isComplete, 
-  onEdit, 
-  onDelete, 
+const GoalCard: React.FC<GoalCardProps> = ({
+  goal,
+  progress,
+  isComplete,
+  onEdit,
+  onDelete,
   onReactivate,
   onAddContribution,
   onUpdateContribution,
   onDeleteContribution,
   onUpdatePaymentStatus,
-  showDeleted = false
+  showDeleted = false,
 }) => {
   const { theme } = useTheme();
   const [showAddAmount, setShowAddAmount] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [contributionDate, setContributionDate] = useState(getBrazilDateString());
-  const [editingContributionId, setEditingContributionId] = useState<string | null>(null);
+  const [contributionDate, setContributionDate] = useState(
+    getBrazilDateString(),
+  );
+  const [editingContributionId, setEditingContributionId] = useState<
+    string | null
+  >(null);
   const [monthlyYield, setMonthlyYield] = useState(1.0);
 
   // useCurrencyInput for Add Aporte
   const [initialAddAmount, setInitialAddAmount] = useState(0);
-  const { inputProps: addAmountInputProps, numericValue: addAmountValue } = useCurrencyInput(
-    initialAddAmount
-  );
+  const { inputProps: addAmountInputProps, numericValue: addAmountValue } =
+    useCurrencyInput(initialAddAmount);
 
   // useCurrencyInput for Edit Aporte
   const [initialEditAmount, setInitialEditAmount] = useState(0);
-  const { inputProps: editAmountInputProps, numericValue: editAmountValue } = useCurrencyInput(
-    initialEditAmount
-  );
+  const { inputProps: editAmountInputProps, numericValue: editAmountValue } =
+    useCurrencyInput(initialEditAmount);
 
   const handleAddAmount = () => {
     if (addAmountValue <= 0) return;
-    
+
     onAddContribution(goal.id, addAmountValue, contributionDate);
     setInitialAddAmount(0);
     setContributionDate(getBrazilDateString());
     setShowAddAmount(false);
   };
 
-  const [editDate, setEditDate] = useState('');
+  const [editDate, setEditDate] = useState("");
 
   const handleEditContribution = (contribution: SavingsContribution) => {
     setEditingContributionId(contribution.id);
     setInitialEditAmount(contribution.amount);
-    const formattedDate = contribution.date ? new Date(contribution.date).toISOString().split('T')[0] : '';
+    const formattedDate = contribution.date
+      ? new Date(contribution.date).toISOString().split("T")[0]
+      : "";
     setEditDate(formattedDate);
   };
 
   const handleUpdateContribution = () => {
     if (!editingContributionId) return;
-    
+
     if (editAmountValue <= 0) return;
-    
+
     onUpdateContribution(goal.id, editingContributionId, {
       amount: editAmountValue,
       date: editDate,
     });
-    
+
     setEditingContributionId(null);
     setInitialEditAmount(0);
-    setEditDate('');
+    setEditDate("");
   };
 
   const handleDeleteContribution = (contributionId: string) => {
-    if (confirm('Tem certeza que deseja excluir este aporte?')) {
+    if (confirm("Tem certeza que deseja excluir este aporte?")) {
       onDeleteContribution(goal.id, contributionId);
     }
   };
@@ -445,7 +529,9 @@ const GoalCard: React.FC<GoalCardProps> = ({
 
   // Sort contributions by date (most recent first) and filter based on showDeleted
   const sortedContributions = (goal.contributions || [])
-    .filter(c => showDeleted ? c.status === 'deleted' : c.status !== 'deleted')
+    .filter((c) =>
+      showDeleted ? c.status === "deleted" : c.status !== "deleted",
+    )
     .sort((a, b) => {
       try {
         return new Date(b.date).getTime() - new Date(a.date).getTime();
@@ -454,12 +540,19 @@ const GoalCard: React.FC<GoalCardProps> = ({
       }
     });
 
-  const isGoalDeleted = goal.status === 'deleted';
+  const isGoalDeleted = goal.status === "deleted";
 
   return (
-    <Card className={cn(`relative no-select ${isGoalDeleted ? 'opacity-50 grayscale cursor-not-allowed' : ''}`)}
-      style={{ 
-        borderColor: isGoalDeleted ? theme.cardBorder : (isComplete ? theme.primary : theme.cardBorder)
+    <Card
+      className={cn(
+        `relative no-select ${isGoalDeleted ? "opacity-50 grayscale cursor-not-allowed" : ""}`,
+      )}
+      style={{
+        borderColor: isGoalDeleted
+          ? theme.cardBorder
+          : isComplete
+            ? theme.primary
+            : theme.cardBorder,
       }}
     >
       <div className="flex items-start justify-between gap-3 mb-4">
@@ -467,9 +560,17 @@ const GoalCard: React.FC<GoalCardProps> = ({
           <div className="flex items-center gap-2 mb-2">
             <div
               className="border shadow-sm rounded-lg px-3 py-1 min-w-0 flex-1"
-              style={{ backgroundColor: theme.primary + '10', borderColor: theme.cardBorder + '80' }}
+              style={{
+                backgroundColor: theme.primary + "10",
+                borderColor: theme.cardBorder + "80",
+              }}
             >
-              <h3 className={cn("font-bold text-base text-foreground break-words", isGoalDeleted && "line-through")}>
+              <h3
+                className={cn(
+                  "font-bold text-base text-foreground break-words",
+                  isGoalDeleted && "line-through",
+                )}
+              >
                 {goal.name}
               </h3>
             </div>
@@ -487,13 +588,19 @@ const GoalCard: React.FC<GoalCardProps> = ({
 
           <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
             {goal.deadline && (
-              <span className="px-2 py-1 rounded-full flex items-center gap-1 whitespace-nowrap" style={{ backgroundColor: theme.cardBorder }}>
+              <span
+                className="px-2 py-1 rounded-full flex items-center gap-1 whitespace-nowrap"
+                style={{ backgroundColor: theme.cardBorder }}
+              >
                 <Calendar className="w-3 h-3 flex-shrink-0" />
                 Prazo: {formatBrazilDate(new Date(goal.deadline))}
               </span>
             )}
             {isGoalDeleted && goal.deletedAt && (
-              <span className="px-2 py-1 rounded-full text-accent font-medium" style={{ backgroundColor: theme.cardBorder }}>
+              <span
+                className="px-2 py-1 rounded-full text-accent font-medium"
+                style={{ backgroundColor: theme.cardBorder }}
+              >
                 Excluída em: {formatBrazilDate(new Date(goal.deletedAt))}
               </span>
             )}
@@ -522,11 +629,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
                   <History className="w-4 h-4" />
                 </Button>
               )}
-              <Button
-                onClick={onEdit}
-                variant="ghost"
-                size="sm"
-              >
+              <Button onClick={onEdit} variant="ghost" size="sm">
                 <Edit3 className="w-4 h-4" />
               </Button>
               <Button
@@ -548,22 +651,30 @@ const GoalCard: React.FC<GoalCardProps> = ({
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Progresso</span>
             <span className="font-bold" style={{ color: theme.text }}>
-              {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}
+              {formatCurrency(goal.currentAmount)} /{" "}
+              {formatCurrency(goal.targetAmount)}
             </span>
           </div>
-          
-          <div className="w-full rounded-full h-2.5 overflow-hidden" style={{ backgroundColor: theme.cardBorder }}>
-            <div 
+
+          <div
+            className="w-full rounded-full h-2.5 overflow-hidden"
+            style={{ backgroundColor: theme.cardBorder }}
+          >
+            <div
               className="h-full rounded-full transition-all duration-700 ease-out"
-              style={{ 
-                backgroundColor: isGoalDeleted ? theme.accent : (isComplete ? theme.primary : theme.accent),
-                width: `${Math.min(progress, 100)}%` 
+              style={{
+                backgroundColor: isGoalDeleted
+                  ? theme.accent
+                  : isComplete
+                    ? theme.primary
+                    : theme.accent,
+                width: `${Math.min(progress, 100)}%`,
               }}
             />
           </div>
-          
+
           <div className="flex justify-between text-[11px] font-bold uppercase tracking-wider">
-            <span className={isComplete ? 'text-primary' : 'text-accent'}>
+            <span className={isComplete ? "text-primary" : "text-accent"}>
               {progress.toFixed(1)}% concluído
             </span>
             {!isComplete && !isGoalDeleted && (
@@ -582,10 +693,12 @@ const GoalCard: React.FC<GoalCardProps> = ({
                 <TrendingUp className="w-3.5 h-3.5" />
                 <span>Rendimento Estimado</span>
               </div>
-              
+
               <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-1 py-0.5 shadow-sm">
-                <button 
-                  onClick={() => setMonthlyYield(prev => Math.max(0, prev - 0.1))}
+                <button
+                  onClick={() =>
+                    setMonthlyYield((prev) => Math.max(0, prev - 0.1))
+                  }
                   className="p-1 hover:bg-muted rounded-md transition-colors"
                 >
                   <Minus className="w-3 h-3 text-muted-foreground" />
@@ -593,17 +706,19 @@ const GoalCard: React.FC<GoalCardProps> = ({
                 <span className="text-[10px] font-mono font-bold text-foreground min-w-[2.5rem] text-center">
                   {monthlyYield.toFixed(1)}%
                 </span>
-                <button 
-                  onClick={() => setMonthlyYield(prev => prev + 0.1)}
+                <button
+                  onClick={() => setMonthlyYield((prev) => prev + 0.1)}
                   className="p-1 hover:bg-muted rounded-md transition-colors"
                 >
                   <Plus className="w-3 h-3 text-muted-foreground" />
                 </button>
               </div>
             </div>
-            
+
             <div className="flex justify-between items-center text-xs">
-              <span className="text-muted-foreground italic">Projeção mensal:</span>
+              <span className="text-muted-foreground italic">
+                Projeção mensal:
+              </span>
               <span className="text-primary font-bold">
                 {formatCurrency(goal.currentAmount * (1 + monthlyYield / 100))}
               </span>
@@ -613,14 +728,24 @@ const GoalCard: React.FC<GoalCardProps> = ({
 
         {/* Contributions History */}
         {showHistory && sortedContributions.length > 0 && (
-          <div className="space-y-3 pt-2 border-t" style={{ borderColor: theme.cardBorder }}>
+          <div
+            className="space-y-3 pt-2 border-t"
+            style={{ borderColor: theme.cardBorder }}
+          >
             <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
               <History className="w-3.5 h-3.5" />
-              {showDeleted ? 'Aportes Excluídos' : 'Histórico de Aportes'}
+              {showDeleted ? "Aportes Excluídos" : "Histórico de Aportes"}
             </h4>
             <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
-              {sortedContributions.map(contribution => (
-                <div key={contribution.id} className="rounded-xl border p-3 transition-all" style={{ backgroundColor: theme.background, borderColor: theme.cardBorder }}>
+              {sortedContributions.map((contribution) => (
+                <div
+                  key={contribution.id}
+                  className="rounded-xl border p-3 transition-all"
+                  style={{
+                    backgroundColor: theme.background,
+                    borderColor: theme.cardBorder,
+                  }}
+                >
                   {editingContributionId === contribution.id ? (
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-2">
@@ -649,7 +774,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
                           onClick={() => {
                             setEditingContributionId(null);
                             setInitialEditAmount(0);
-                            setEditDate('');
+                            setEditDate("");
                           }}
                           variant="outline"
                           size="sm"
@@ -663,58 +788,83 @@ const GoalCard: React.FC<GoalCardProps> = ({
                     <div className="flex justify-between items-center gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className={cn("text-sm font-bold text-foreground", contribution.status === 'deleted' && "line-through opacity-50")}>
+                          <span
+                            className={cn(
+                              "text-sm font-bold text-foreground",
+                              contribution.status === "deleted" &&
+                                "line-through opacity-50",
+                            )}
+                          >
                             {formatBrazilDate(new Date(contribution.date))}
                           </span>
-                          {!isGoalDeleted && contribution.status !== 'deleted' && contribution.isPaid === false && (
-                            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#FFE0B2] text-black">
-                              Pendente
-                            </span>
-                          )}
+                          {!isGoalDeleted &&
+                            contribution.status !== "deleted" &&
+                            contribution.isPaid === false && (
+                              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#FFE0B2] text-black">
+                                Pendente
+                              </span>
+                            )}
                         </div>
                         <div className="flex items-center gap-2 text-[10px] font-bold text-primary/70 uppercase tracking-widest">
                           Aporte
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-3">
-                        <span className={cn("font-bold text-sm text-primary", contribution.status === 'deleted' && "text-accent line-through opacity-50")}>
+                        <span
+                          className={cn(
+                            "font-bold text-sm text-primary",
+                            contribution.status === "deleted" &&
+                              "text-accent line-through opacity-50",
+                          )}
+                        >
                           +{formatCurrency(contribution.amount)}
                         </span>
-                        
-                        {!isGoalDeleted && contribution.status !== 'deleted' && (
-                          <div className="flex items-center gap-1">
-                            {contribution.isPaid === false && contribution.transactionId && (
+
+                        {!isGoalDeleted &&
+                          contribution.status !== "deleted" && (
+                            <div className="flex items-center gap-1">
+                              {contribution.isPaid === false &&
+                                contribution.transactionId && (
+                                  <Button
+                                    onClick={() =>
+                                      onUpdatePaymentStatus(
+                                        contribution.transactionId!,
+                                        true,
+                                      )
+                                    }
+                                    variant="ghost"
+                                    size="sm"
+                                    className="p-1.5"
+                                    title="Marcar como pago"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                  </Button>
+                                )}
                               <Button
-                                onClick={() => onUpdatePaymentStatus(contribution.transactionId!, true)}
+                                onClick={() =>
+                                  handleEditContribution(contribution)
+                                }
                                 variant="ghost"
                                 size="sm"
                                 className="p-1.5"
-                                title="Marcar como pago"
+                                title="Editar aporte"
                               >
-                                <Check className="w-3.5 h-3.5" />
+                                <Edit3 className="w-3.5 h-3.5" />
                               </Button>
-                            )}
-                            <Button
-                              onClick={() => handleEditContribution(contribution)}
-                              variant="ghost"
-                              size="sm"
-                              className="p-1.5"
-                              title="Editar aporte"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              onClick={() => handleDeleteContribution(contribution.id)}
-                              variant="ghost"
-                              size="sm"
-                              className="p-1.5 hover:text-accent"
-                              title="Excluir aporte"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        )}
+                              <Button
+                                onClick={() =>
+                                  handleDeleteContribution(contribution.id)
+                                }
+                                variant="ghost"
+                                size="sm"
+                                className="p-1.5 hover:text-accent"
+                                title="Excluir aporte"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          )}
                       </div>
                     </div>
                   )}
@@ -727,23 +877,27 @@ const GoalCard: React.FC<GoalCardProps> = ({
         {/* Action Section */}
         {isGoalDeleted ? (
           <div className="text-center py-2 bg-accent/5 rounded-xl border border-accent/10">
-            <span className="text-accent text-xs font-bold uppercase tracking-widest">Meta Excluída</span>
+            <span className="text-accent text-xs font-bold uppercase tracking-widest">
+              Meta Excluída
+            </span>
           </div>
         ) : isComplete ? (
           <div className="text-center py-3 bg-primary/10 rounded-xl border border-primary/20 animate-pulse">
-            <span className="text-primary text-sm font-bold">🎉 Meta Concluída com Sucesso!</span>
+            <span className="text-primary text-sm font-bold">
+              🎉 Meta Concluída com Sucesso!
+            </span>
           </div>
         ) : (
           <div className="space-y-3">
             {!showAddAmount ? (
-              <Button
-                onClick={() => setShowAddAmount(true)}
-                className="w-full"
-              >
+              <Button onClick={() => setShowAddAmount(true)} className="w-full">
                 Adicionar Aporte
               </Button>
             ) : (
-              <div className="p-3 rounded-xl border-2 border-dashed space-y-3 animate-in slide-in-from-top-2 duration-200" style={{ borderColor: theme.cardBorder }}>
+              <div
+                className="p-3 rounded-xl border-2 border-dashed space-y-3 animate-in slide-in-from-top-2 duration-200"
+                style={{ borderColor: theme.cardBorder }}
+              >
                 <div className="flex gap-2">
                   <Input
                     {...addAmountInputProps}
@@ -771,7 +925,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
                   <Calendar className="w-4 h-4 text-primary" />
                   <Input
@@ -781,7 +935,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
                     className="py-1.5"
                   />
                 </div>
-                
+
                 <p className="text-[10px] text-muted-foreground font-medium italic">
                   * O aporte será deduzido do saldo do mês selecionado.
                 </p>

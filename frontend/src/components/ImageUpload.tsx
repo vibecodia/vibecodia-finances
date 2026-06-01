@@ -1,47 +1,67 @@
-import axios from 'axios';
-import Cookies from 'js-cookie';
-import { Upload, Loader2, CheckCircle, Camera, Link as LinkIcon, AlertCircle } from 'lucide-react';
-import React, { useState, useRef } from 'react';
+import axios from "axios";
+import Cookies from "js-cookie";
+import {
+  Upload,
+  Loader2,
+  CheckCircle,
+  Camera,
+  Link as LinkIcon,
+  AlertCircle,
+} from "lucide-react";
+import React, { useState, useRef } from "react";
 
-import { Button } from './ui/Button';
-import { Card } from './ui/Card';
-import { Input } from './ui/Input';
-import { cn } from '../lib/utils';
+import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
+import { Input } from "./ui/Input";
+import { cn } from "../lib/utils";
 
-import QRScanner from './QRScanner';
+import QRScanner from "./QRScanner";
 
 type ImageUploadProps = {
   onUploadError?: (error: string) => void;
-  onReceiptDetected?: (data: { description: string; amount: number; date: string }) => void;
+  onReceiptDetected?: (data: {
+    description: string;
+    amount: number;
+    date: string;
+  }) => void;
   disabled?: boolean;
 };
 
-const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetected, disabled }) => {
+const ImageUpload: React.FC<ImageUploadProps> = ({
+  onUploadError,
+  onReceiptDetected,
+  disabled,
+}) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLiveScanning, setIsLiveScanning] = useState(false);
-  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
   const [showManualInput, setShowManualInput] = useState(false);
-  const [manualUrl, setManualUrl] = useState('');
+  const [manualUrl, setManualUrl] = useState("");
 
   const processQRUrl = async (qrUrl: string) => {
-    if (qrUrl && (qrUrl.includes('fazenda') || qrUrl.includes('sefaz'))) {
-      const pin = Cookies.get('pin_code') || '';
+    if (qrUrl && (qrUrl.includes("fazenda") || qrUrl.includes("sefaz"))) {
+      const pin = Cookies.get("pin_code") || "";
       try {
-        const receiptResponse = await axios.get(`/api/fetch-receipt-data?url=${encodeURIComponent(qrUrl)}`, {
-          headers: { 'x-pin': pin }
-        });
+        const receiptResponse = await axios.get(
+          `/api/fetch-receipt-data?url=${encodeURIComponent(qrUrl)}`,
+          {
+            headers: { "x-pin": pin },
+          },
+        );
         if (receiptResponse.data.success && onReceiptDetected) {
           onReceiptDetected(receiptResponse.data.data);
-          setStatus('success');
+          setStatus("success");
           return true;
         }
       } catch (err) {
-        throw new Error('QR Code detectado, mas falha ao buscar dados na SEFAZ.');
+        throw new Error(
+          "QR Code detectado, mas falha ao buscar dados na SEFAZ.",
+        );
       }
     } else {
-      throw new Error('Nenhum QR Code de Nota Fiscal detectado.');
+      throw new Error("Nenhum QR Code de Nota Fiscal detectado.");
     }
     return false;
   };
@@ -50,17 +70,19 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
     if (e) e.preventDefault();
     if (!manualUrl) return;
 
-    setStatus('idle');
+    setStatus("idle");
     try {
       const success = await processQRUrl(manualUrl);
       if (success) {
         setShowManualInput(false);
-        setManualUrl('');
+        setManualUrl("");
       }
     } catch (err: any) {
-      console.error('Manual fetch error:', err);
-      setErrorMessage(err.message || 'Não foi possível ler este link. Verifique a URL.');
-      setStatus('error');
+      console.error("Manual fetch error:", err);
+      setErrorMessage(
+        err.message || "Não foi possível ler este link. Verifique a URL.",
+      );
+      setStatus("error");
     }
   };
 
@@ -72,10 +94,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
         img.onload = async () => {
           // 1. BarcodeDetector (Nativa)
           // @ts-ignore
-          if ('BarcodeDetector' in window) {
+          if ("BarcodeDetector" in window) {
             try {
               // @ts-ignore
-              const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+              const detector = new window.BarcodeDetector({
+                formats: ["qr_code"],
+              });
               const barcodes = await detector.detect(img);
               if (barcodes.length > 0) return resolve(barcodes[0].rawValue);
             } catch (_err) {
@@ -84,8 +108,8 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
           }
 
           // 2. jsQR com Canvas Processado
-          const canvas = document.createElement('canvas');
-          const context = canvas.getContext('2d');
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d");
           if (!context) return resolve(null);
 
           const MAX_SIZE = 2000;
@@ -93,16 +117,25 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
           let height = img.height;
           if (width > MAX_SIZE || height > MAX_SIZE) {
             const ratio = Math.min(MAX_SIZE / width, MAX_SIZE / height);
-            width *= ratio; height *= ratio;
+            width *= ratio;
+            height *= ratio;
           }
 
-          canvas.width = width; canvas.height = height;
-          context.filter = 'grayscale(100%) contrast(150%)';
+          canvas.width = width;
+          canvas.height = height;
+          context.filter = "grayscale(100%) contrast(150%)";
           context.drawImage(img, 0, 0, width, height);
 
-          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+          const imageData = context.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height,
+          );
           // @ts-ignore
-          const code = window.jsQR ? window.jsQR(imageData.data, imageData.width, imageData.height) : null;
+          const code = window.jsQR
+            ? window.jsQR(imageData.data, imageData.width, imageData.height)
+            : null;
           resolve(code ? code.data : null);
         };
         img.src = e.target?.result as string;
@@ -116,19 +149,19 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
     if (!file) return;
 
     setIsProcessing(true);
-    setStatus('idle');
-    setErrorMessage('');
+    setStatus("idle");
+    setErrorMessage("");
 
     try {
       const qrUrl = await scanQRCode(file);
       if (qrUrl) {
         await processQRUrl(qrUrl);
       } else {
-        throw new Error('Nenhum QR Code detectado nesta imagem.');
+        throw new Error("Nenhum QR Code detectado nesta imagem.");
       }
     } catch (error: any) {
-      setStatus('error');
-      const msg = error.message || 'Erro ao processar imagem.';
+      setStatus("error");
+      const msg = error.message || "Erro ao processar imagem.";
       setErrorMessage(msg);
       onUploadError?.(msg);
     } finally {
@@ -139,14 +172,14 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
   const handleLiveScan = async (data: string) => {
     setIsLiveScanning(false);
     setIsProcessing(true);
-    setStatus('idle');
-    setErrorMessage('');
-    
+    setStatus("idle");
+    setErrorMessage("");
+
     try {
       await processQRUrl(data);
     } catch (error: any) {
-      setStatus('error');
-      const msg = error.message || 'Erro ao processar QR Code.';
+      setStatus("error");
+      const msg = error.message || "Erro ao processar QR Code.";
       setErrorMessage(msg);
       onUploadError?.(msg);
     } finally {
@@ -157,19 +190,19 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
   return (
     <div className="space-y-4">
       {isLiveScanning && (
-        <QRScanner 
-          onScan={handleLiveScan} 
+        <QRScanner
+          onScan={handleLiveScan}
           onClose={() => setIsLiveScanning(false)}
           onError={(err) => {
             setErrorMessage(err);
-            setStatus('error');
+            setStatus("error");
             setIsLiveScanning(false);
           }}
         />
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <Button 
+        <Button
           type="button"
           onClick={() => setIsLiveScanning(true)}
           variant="outline"
@@ -177,15 +210,21 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
         >
           <Camera className="w-8 h-8 text-primary" />
           <div className="text-center">
-            <span className="block text-sm font-black uppercase tracking-tight">Escanear ao vivo</span>
-            <span className="text-[10px] opacity-60 font-bold uppercase tracking-widest">Abre a câmera</span>
+            <span className="block text-sm font-black uppercase tracking-tight">
+              Escanear ao vivo
+            </span>
+            <span className="text-[10px] opacity-60 font-bold uppercase tracking-widest">
+              Abre a câmera
+            </span>
           </div>
         </Button>
 
-        <label className={cn(
-          "flex-1",
-          disabled ? "cursor-not-allowed" : "cursor-pointer"
-        )}>
+        <label
+          className={cn(
+            "flex-1",
+            disabled ? "cursor-not-allowed" : "cursor-pointer",
+          )}
+        >
           <input
             type="file"
             accept="image/*"
@@ -193,18 +232,24 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
             className="hidden"
             disabled={disabled || isProcessing}
           />
-          <Card className={cn(
-            "h-full py-6 flex flex-col items-center justify-center gap-2 border-dashed border-2 transition-all",
-            disabled ? "opacity-50" : "hover:bg-card/50"
-          )}>
+          <Card
+            className={cn(
+              "h-full py-6 flex flex-col items-center justify-center gap-2 border-dashed border-2 transition-all",
+              disabled ? "opacity-50" : "hover:bg-card/50",
+            )}
+          >
             {isProcessing ? (
               <Loader2 className="w-8 h-8 text-primary animate-spin" />
             ) : (
               <Upload className="w-8 h-8 text-primary" />
             )}
             <div className="text-center">
-              <span className="block text-sm font-black uppercase tracking-tight">Galeria / Foto</span>
-              <span className="text-[10px] opacity-60 font-bold uppercase tracking-widest">Subir imagem</span>
+              <span className="block text-sm font-black uppercase tracking-tight">
+                Galeria / Foto
+              </span>
+              <span className="text-[10px] opacity-60 font-bold uppercase tracking-widest">
+                Subir imagem
+              </span>
             </div>
           </Card>
         </label>
@@ -228,7 +273,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
             value={manualUrl}
             onChange={(e) => setManualUrl(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === "Enter") {
                 e.preventDefault();
                 handleManualSubmit();
               }
@@ -238,23 +283,23 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
             autoFocus
           />
           <div className="flex gap-2">
-            <Button 
-              type="button" 
+            <Button
+              type="button"
               onClick={() => handleManualSubmit()}
-              size="sm" 
-              className="flex-1" 
+              size="sm"
+              className="flex-1"
               disabled={isProcessing || !manualUrl}
             >
-              {isProcessing ? 'Buscando...' : 'Buscar Nota'}
+              {isProcessing ? "Buscando..." : "Buscar Nota"}
             </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm" 
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => {
                 setShowManualInput(false);
-                setManualUrl('');
-                setStatus('idle');
+                setManualUrl("");
+                setStatus("idle");
               }}
             >
               Cancelar
@@ -263,17 +308,21 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadError, onReceiptDetec
         </div>
       )}
 
-      {status === 'success' && (
+      {status === "success" && (
         <div className="flex items-center gap-2 p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500 animate-in zoom-in-95 duration-200">
           <CheckCircle className="w-4 h-4" />
-          <span className="text-[10px] font-black uppercase tracking-widest">Nota Fiscal detectada com sucesso!</span>
+          <span className="text-[10px] font-black uppercase tracking-widest">
+            Nota Fiscal detectada com sucesso!
+          </span>
         </div>
       )}
 
-      {status === 'error' && (
+      {status === "error" && (
         <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 animate-in shake duration-300">
           <AlertCircle className="w-4 h-4" />
-          <span className="text-[10px] font-black uppercase tracking-widest">{errorMessage}</span>
+          <span className="text-[10px] font-black uppercase tracking-widest">
+            {errorMessage}
+          </span>
         </div>
       )}
     </div>
