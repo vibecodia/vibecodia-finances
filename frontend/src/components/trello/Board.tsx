@@ -13,6 +13,7 @@ import {
   Pencil,
   Clock,
   CheckSquare,
+  CalendarDays,
 } from "lucide-react";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { DragDropContext, DropResult } from "@hello-pangea/dnd";
@@ -111,6 +112,12 @@ export function Board() {
   >("all");
   const [showPendingChecklistOnly, setShowPendingChecklistOnly] =
     useState(false);
+  const [ageFilterDays, setAgeFilterDays] = useState<number>(0);
+  const [ageFilterMode, setAgeFilterMode] = useState<"created" | "column">(
+    "created",
+  );
+  const [ageFilterColumnId, setAgeFilterColumnId] =
+    useState<string>("all");
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
     taskId: string | null;
@@ -177,13 +184,39 @@ export function Board() {
         !showPendingChecklistOnly ||
         (task.checklist?.some((item) => !item.completed) ?? false);
 
-      return flagMatch && labelMatch && hasPendingChecklist;
+      // Age filter
+      let ageMatch = true;
+      if (ageFilterDays > 0) {
+        if (ageFilterMode === "created") {
+          const daysSinceCreation = Math.floor(
+            (Date.now() - new Date(task.createdAt).getTime()) / 86400000,
+          );
+          ageMatch = daysSinceCreation >= ageFilterDays;
+        } else {
+          const daysInColumn = Math.floor(
+            (Date.now() -
+              new Date(task.columnEnteredAt || task.createdAt).getTime()) /
+              86400000,
+          );
+          if (ageFilterColumnId !== "all") {
+            ageMatch =
+              task.columnId === ageFilterColumnId && daysInColumn >= ageFilterDays;
+          } else {
+            ageMatch = daysInColumn >= ageFilterDays;
+          }
+        }
+      }
+
+      return flagMatch && labelMatch && hasPendingChecklist && ageMatch;
     });
   }, [
     filteredTasks,
     selectedFlagFilter,
     selectedLabelFilter,
     showPendingChecklistOnly,
+    ageFilterDays,
+    ageFilterMode,
+    ageFilterColumnId,
   ]);
 
   const totalLoggedHours = useMemo(() => {
@@ -583,10 +616,15 @@ export function Board() {
               <div className="relative flex items-center">
                 <select
                   value={selectedFlagFilter}
-                  onChange={(e) => setSelectedFlagFilter(e.target.value as any)}
+                  onChange={(e) =>
+                    setSelectedFlagFilter(e.target.value as any)
+                  }
                   className="appearance-none bg-transparent text-[11px] font-black uppercase tracking-widest focus:outline-none cursor-pointer pr-5 z-10 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <option value="all" className="bg-background text-foreground">
+                  <option
+                    value="all"
+                    className="bg-background text-foreground"
+                  >
                     Todas as Flags
                   </option>
                   <option
@@ -626,7 +664,10 @@ export function Board() {
                   onChange={(e) => setSelectedLabelFilter(e.target.value)}
                   className="appearance-none bg-transparent text-[11px] font-black uppercase tracking-widest focus:outline-none cursor-pointer pr-5 z-10 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <option value="all" className="bg-background text-foreground">
+                  <option
+                    value="all"
+                    className="bg-background text-foreground"
+                  >
                     Todas as Labels
                   </option>
                   {allLabels.map((label) => (
@@ -665,16 +706,77 @@ export function Board() {
               </span>
             </button>
 
+            {/* Age filter */}
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-foreground/5 hover:bg-foreground/10 rounded-xl border border-border transition-all group/age relative">
+              <CalendarDays className="w-3 h-3 text-muted-foreground group-hover/age:text-primary transition-colors" />
+              <div className="relative flex items-center gap-1">
+                <input
+                  type="number"
+                  min="0"
+                  value={ageFilterDays}
+                  onChange={(e) =>
+                    setAgeFilterDays(Math.max(0, Number(e.target.value)))
+                  }
+                  className="w-8 bg-transparent text-[11px] font-black uppercase tracking-widest focus:outline-none cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+                  placeholder="0"
+                />
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                  dias
+                </span>
+                <div className="flex gap-0.5 border-l border-border/30 pl-1.5 ml-1">
+                  <button
+                    onClick={() => setAgeFilterMode("created")}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded text-[9px] font-black uppercase transition-all",
+                      ageFilterMode === "created"
+                        ? "bg-primary text-white"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    Criado
+                  </button>
+                  <button
+                    onClick={() => setAgeFilterMode("column")}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded text-[9px] font-black uppercase transition-all",
+                      ageFilterMode === "column"
+                        ? "bg-primary text-white"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    Coluna
+                  </button>
+                </div>
+                {ageFilterMode === "column" && ageFilterDays > 0 && (
+                  <select
+                    value={ageFilterColumnId}
+                    onChange={(e) => setAgeFilterColumnId(e.target.value)}
+                    className="appearance-none bg-transparent text-[10px] font-bold focus:outline-none cursor-pointer text-muted-foreground hover:text-foreground transition-colors ml-1 pr-4"
+                  >
+                    <option value="all">Todas</option>
+                    {themeColumns.map((col) => (
+                      <option key={col.id} value={col.id}>
+                        {col.title}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+
             {(selectedFlagFilter !== "all" ||
               selectedLabelFilter !== "all" ||
               searchTerm !== "" ||
-              showPendingChecklistOnly) && (
+              showPendingChecklistOnly ||
+              ageFilterDays > 0) && (
               <button
                 onClick={() => {
                   setSelectedFlagFilter("all");
                   setSelectedLabelFilter("all");
                   setSearchTerm("");
                   setShowPendingChecklistOnly(false);
+                  setAgeFilterDays(0);
+                  setAgeFilterColumnId("all");
                 }}
                 className="flex items-center gap-2 px-3 py-1.5 bg-destructive/10 hover:bg-destructive/20 rounded-xl border border-destructive/20 transition-all text-destructive"
                 title="Limpar Filtros"
