@@ -116,8 +116,7 @@ export function Board() {
   const [ageFilterMode, setAgeFilterMode] = useState<"created" | "column">(
     "created",
   );
-  const [ageFilterColumnId, setAgeFilterColumnId] =
-    useState<string>("all");
+  const [ageFilterColumnId, setAgeFilterColumnId] = useState<string>("all");
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
     taskId: string | null;
@@ -200,7 +199,8 @@ export function Board() {
           );
           if (ageFilterColumnId !== "all") {
             ageMatch =
-              task.columnId === ageFilterColumnId && daysInColumn >= ageFilterDays;
+              task.columnId === ageFilterColumnId &&
+              daysInColumn >= ageFilterDays;
           } else {
             ageMatch = daysInColumn >= ageFilterDays;
           }
@@ -616,15 +616,10 @@ export function Board() {
               <div className="relative flex items-center">
                 <select
                   value={selectedFlagFilter}
-                  onChange={(e) =>
-                    setSelectedFlagFilter(e.target.value as any)
-                  }
+                  onChange={(e) => setSelectedFlagFilter(e.target.value as any)}
                   className="appearance-none bg-transparent text-[11px] font-black uppercase tracking-widest focus:outline-none cursor-pointer pr-5 z-10 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <option
-                    value="all"
-                    className="bg-background text-foreground"
-                  >
+                  <option value="all" className="bg-background text-foreground">
                     Todas as Flags
                   </option>
                   <option
@@ -664,10 +659,7 @@ export function Board() {
                   onChange={(e) => setSelectedLabelFilter(e.target.value)}
                   className="appearance-none bg-transparent text-[11px] font-black uppercase tracking-widest focus:outline-none cursor-pointer pr-5 z-10 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <option
-                    value="all"
-                    className="bg-background text-foreground"
-                  >
+                  <option value="all" className="bg-background text-foreground">
                     Todas as Labels
                   </option>
                   {allLabels.map((label) => (
