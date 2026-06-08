@@ -86,3 +86,5 @@ backend/*.prod.ts
 *~
 .aider*
 public/manifest.json
+
+.kimchi/

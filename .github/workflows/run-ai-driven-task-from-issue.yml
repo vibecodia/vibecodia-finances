@@ -394,7 +394,18 @@ jobs:
 
       - name: "🧹 Cleanup TS"
         run: |
-          cd frontend && npx eslint --fix 'src/**/*.{ts,tsx}' --rule '@typescript-eslint/no-unused-vars: error' || true && npx prettier --write 'src/**/*.{ts,tsx}' || true && (git add . && git diff --staged --quiet || (git commit -m "fix: remove unused" && git push))
+          cd frontend
+          (npx eslint --fix 'src/**/*.{ts,tsx}' --rule '@typescript-eslint/no-unused-vars: error' || true)
+          (npx prettier --write 'src/**/*.{ts,tsx}' || true)
+          
+          git add .
+          if ! git diff --staged --quiet; then
+              git commit -m "style(mascodev): refactor and clean up frontend code"
+              # Faz o push explicitamente para a branch que o dev já está trabalhando
+              git push origin HEAD
+          else
+              echo "Nenhuma alteração pendente detectada pelo Mascodev."
+          fi
 
   validate:
     name: "Validate (${{ matrix.target }})"
