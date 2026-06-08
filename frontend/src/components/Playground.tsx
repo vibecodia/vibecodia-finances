@@ -382,6 +382,7 @@ const Playground: React.FC<PlaygroundProps> = ({
   );
   const [showDeleted, setShowDeleted] = useState(false);
   const [dateField, setDateField] = useState<"date" | "createdAt">("date");
+  const [visibleDatasets, setVisibleDatasets] = useState<string[]>([]);
 
   const getTransactionDateSource = (t: Transaction): string => {
     if (dateField === "createdAt") return t.createdAt || t.date;
@@ -1297,6 +1298,19 @@ INSTRUÇÕES:
         const desc = t.description.toLowerCase();
         if (!searchTerms.some((term) => desc.includes(term))) return false;
 
+        // Filter by global categories/payment methods
+        const isInCategory =
+          selectedCategories.length === 0 ||
+          selectedCategories.includes(t.category);
+        const isInPaymentMethod =
+          selectedPaymentMethods.length === 0 ||
+          (t.paymentMethod &&
+            selectedPaymentMethods.includes(
+              formatPaymentMethod(t.paymentMethod),
+            ));
+
+        if (!isInCategory || !isInPaymentMethod) return false;
+
         // Date match
         const date = parseLocalDate(getExpenseTimelineDateSource(t));
         if (expenseMode === "range") {
@@ -1415,6 +1429,19 @@ INSTRUÇÕES:
         (expenseStatusFilter === "paid" ? t.isPaid : !t.isPaid);
       if (!matchesStatus) return false;
 
+      // Filter by global categories/payment methods
+      const isInCategory =
+        selectedCategories.length === 0 ||
+        selectedCategories.includes(t.category);
+      const isInPaymentMethod =
+        selectedPaymentMethods.length === 0 ||
+        (t.paymentMethod &&
+          selectedPaymentMethods.includes(
+            formatPaymentMethod(t.paymentMethod),
+          ));
+
+      if (!isInCategory || !isInPaymentMethod) return false;
+
       const date = parseLocalDate(getExpenseTimelineDateSource(t));
 
       if (expenseMode === "range") {
@@ -1498,6 +1525,8 @@ INSTRUÇÕES:
     return {
       labels: sortedDates,
       datasets,
+      totalAmount: expenseTransactions.reduce((sum, t) => sum + t.amount, 0),
+      totalCount: expenseTransactions.length,
     };
   }, [
     transactions,
@@ -1513,28 +1542,43 @@ INSTRUÇÕES:
     expenseDateField,
     expenseItemSearch,
     allItems,
+    selectedCategories,
+    selectedPaymentMethods,
   ]);
+
+  // Sync visible datasets when data changes
+  useEffect(() => {
+    if (expenseTimelineChartData.datasets) {
+      setVisibleDatasets(expenseTimelineChartData.datasets.map((d: any) => d.label));
+    }
+  }, [expenseTimelineChartData]);
 
   // ── Average expense calculation for the badge ──
   const totalExpensesWithContext = useMemo(() => {
     const chartData = expenseTimelineChartData as any;
     if (!chartData?.datasets) return 0;
+    
+    // Only sum datasets that are currently visible
     let sum = 0;
     chartData.datasets.forEach((ds: any) => {
-      ds.data.forEach((val: number) => {
-        sum += val;
-      });
+      if (visibleDatasets.includes(ds.label)) {
+        ds.data.forEach((val: number) => {
+          sum += val;
+        });
+      }
     });
     return sum;
-  }, [expenseTimelineChartData]);
+  }, [expenseTimelineChartData, visibleDatasets]);
 
   const monthsCount = expenseTimelineChartData.labels?.length || 1;
   const averageExpense =
     monthsCount > 0 ? totalExpensesWithContext / monthsCount : 0;
 
   const showAverage =
-    (selectedCategories.length >= 1 && selectedCategories.length <= 2) ||
-    (selectedPaymentMethods.length >= 1 && selectedPaymentMethods.length <= 2);
+    visibleDatasets.length >= 1 &&
+    visibleDatasets.length <= 2 &&
+    totalExpensesWithContext > 0 &&
+    monthsCount > 0;
   // ── end average ──
 
   // Price Evolution Chart Data
@@ -1701,15 +1745,18 @@ INSTRUÇÕES:
     weekdaysPtMondayFirst,
   ]);
 
-  const toggleCategory = (cat: string) => {
+  const toggleCategory = (cat: any) => {
+    const name = typeof cat === "string" ? cat : cat?.name || String(cat);
     setSelectedCategories((prev) =>
-      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
+      prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name],
     );
   };
 
-  const togglePaymentMethod = (pm: string) => {
+  const togglePaymentMethod = (pm: any) => {
+    const name =
+      typeof pm === "string" ? pm : pm?.label || pm?.name || String(pm);
     setSelectedPaymentMethods((prev) =>
-      prev.includes(pm) ? prev.filter((p) => p !== pm) : [...prev, pm],
+      prev.includes(name) ? prev.filter((p) => p !== name) : [...prev, name],
     );
   };
 
@@ -2149,6 +2196,22 @@ INSTRUÇÕES:
                 <span className="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs font-bold">
                   {filteredTransactions.length} itens
                 </span>
+              )}
+              {maximizedId === "expense_timeline" && showAverage && (
+                <div
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-primary/10 border border-primary/20 animate-in fade-in zoom-in duration-300"
+                  title="Média simples entre os meses do período filtrado"
+                >
+                  <span className="text-[9px] font-black text-primary uppercase tracking-tighter">
+                    Média mensal
+                  </span>
+                  <span className="text-sm font-black text-primary">
+                    {formatCurrency(averageExpense)}
+                  </span>
+                  <span className="text-[9px] text-muted-foreground font-bold uppercase">
+                    ({monthsCount} {monthsCount === 1 ? "mês" : "meses"})
+                  </span>
+                </div>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -3920,24 +3983,6 @@ INSTRUÇÕES:
                                   </div>
                                 )}
 
-                              {/* Average badge shown when filtering by 1-2 categories or 1-2 payment methods */}
-                              {showAverage && !expenseItemSearch.trim() && (
-                                <div
-                                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-primary/10 border border-primary/20 animate-in fade-in zoom-in duration-300"
-                                  title="Média simples entre os meses do período filtrado"
-                                >
-                                  <span className="text-[9px] font-black text-primary uppercase tracking-tighter">
-                                    Média mensal
-                                  </span>
-                                  <span className="text-xs font-black text-primary">
-                                    {formatCurrency(averageExpense)}
-                                  </span>
-                                  <span className="text-[9px] text-muted-foreground font-bold uppercase">
-                                    ({monthsCount} meses)
-                                  </span>
-                                </div>
-                              )}
-
                               {/* Mode Toggle */}
                               <div
                                 className="flex gap-1 border rounded-lg p-1"
@@ -4236,9 +4281,10 @@ INSTRUÇÕES:
                       </div>
 
                       {!item.collapsed && (
-                        <div className="p-8 h-[500px]">
-                          {transactions.filter((t: any) => t.type === "expense")
-                            .length > 0 ? (
+                        <div className="p-8 h-auto">
+                          <div className="h-[500px]">
+                            {transactions.filter((t: any) => t.type === "expense")
+                              .length > 0 ? (
                             expenseItemSearch.trim().length >= 2 ? (
                               (expenseTimelineChartData as any).noMatch ? (
                                 <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2 animate-in fade-in duration-300">
@@ -4264,6 +4310,25 @@ INSTRUÇÕES:
                                       legend: {
                                         labels: {
                                           color: theme.text,
+                                        },
+                                        onClick: (_e, legendItem, legend) => {
+                                          const index = legendItem.datasetIndex!;
+                                          const ci = legend.chart;
+                                          if (ci.isDatasetVisible(index)) {
+                                            ci.hide(index);
+                                            legendItem.hidden = true;
+                                          } else {
+                                            ci.show(index);
+                                            legendItem.hidden = false;
+                                          }
+                                          // Sync React state
+                                          const labels: string[] = [];
+                                          ci.data.datasets.forEach((ds, i) => {
+                                            if (ci.isDatasetVisible(i)) {
+                                              labels.push(ds.label!);
+                                            }
+                                          });
+                                          setVisibleDatasets(labels);
                                         },
                                       },
                                     },
@@ -4293,6 +4358,25 @@ INSTRUÇÕES:
                                   plugins: {
                                     legend: {
                                       labels: { color: theme.text },
+                                      onClick: (_e, legendItem, legend) => {
+                                        const index = legendItem.datasetIndex!;
+                                        const ci = legend.chart;
+                                        if (ci.isDatasetVisible(index)) {
+                                          ci.hide(index);
+                                          legendItem.hidden = true;
+                                        } else {
+                                          ci.show(index);
+                                          legendItem.hidden = false;
+                                        }
+                                        // Sync React state
+                                        const labels: string[] = [];
+                                        ci.data.datasets.forEach((ds, i) => {
+                                          if (ci.isDatasetVisible(i)) {
+                                            labels.push(ds.label!);
+                                          }
+                                        });
+                                        setVisibleDatasets(labels);
+                                      },
                                     },
                                   },
                                   scales: {
@@ -4319,6 +4403,27 @@ INSTRUÇÕES:
                             <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
                               <TrendingUp className="w-12 h-12 opacity-10" />
                               <span>Nenhuma despesa encontrada</span>
+                            </div>
+                            )}
+                            </div>
+
+                            {/* Average badge at the bottom */}
+                            {showAverage && (
+                            <div className="mt-4 flex justify-end">
+                              <div
+                                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20 animate-in fade-in slide-in-from-bottom-2 duration-500 shadow-sm"
+                                title="Média simples entre os meses do período filtrado"
+                              >
+                                <span className="text-[10px] font-black text-primary uppercase tracking-tighter">
+                                  Média mensal
+                                </span>
+                                <span className="text-sm font-black text-primary">
+                                  {formatCurrency(averageExpense)}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground font-bold uppercase">
+                                  ({monthsCount} {monthsCount === 1 ? "mês" : "meses"})
+                                </span>
+                              </div>
                             </div>
                           )}
                         </div>
