@@ -1529,7 +1529,8 @@ INSTRUÇÕES:
   }, [expenseTimelineChartData]);
 
   const monthsCount = expenseTimelineChartData.labels?.length || 1;
-  const averageExpense = monthsCount > 0 ? totalExpensesWithContext / monthsCount : 0;
+  const averageExpense =
+    monthsCount > 0 ? totalExpensesWithContext / monthsCount : 0;
 
   const showAverage =
     (selectedCategories.length >= 1 && selectedCategories.length <= 2) ||

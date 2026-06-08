@@ -98,7 +98,8 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
         }
       }
 
-      if (!newStream) throw new Error("Não foi possível acessar nenhuma câmera.");
+      if (!newStream)
+        throw new Error("Não foi possível acessar nenhuma câmera.");
 
       clearTimeout(timeoutId);
 
@@ -120,9 +121,9 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
           constraintsToApply.advanced.push({ focusMode: "continuous" });
         }
 
-        // Se o hardware estiver muito perto e não focar, um leve zoom pode ajudar em alguns casos, 
+        // Se o hardware estiver muito perto e não focar, um leve zoom pode ajudar em alguns casos,
         // mas aqui mantemos o padrão ou aplicamos apenas se houver falha de foco conhecida.
-        
+
         if (constraintsToApply.advanced.length > 0) {
           try {
             await videoTrack.applyConstraints(constraintsToApply);
@@ -156,7 +157,8 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
   };
 
   const tick = (time: number) => {
-    if (!videoRef.current || !canvasRef.current || !isMountedRef.current) return;
+    if (!videoRef.current || !canvasRef.current || !isMountedRef.current)
+      return;
 
     if (videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
       // 3. LOOP OTIMIZADO (Throttle)
@@ -231,7 +233,9 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
         {isInitializing && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-white bg-black z-20">
             <RefreshCw className="w-12 h-12 text-primary animate-spin mb-4 opacity-80" />
-            <p className="text-sm font-medium animate-pulse">Otimizando câmera...</p>
+            <p className="text-sm font-medium animate-pulse">
+              Otimizando câmera...
+            </p>
           </div>
         )}
 
@@ -241,7 +245,9 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
               <X className="w-10 h-10 text-red-500" />
             </div>
             <h3 className="text-xl font-bold mb-2">Ops! Algo deu errado</h3>
-            <p className="mb-8 text-zinc-400 max-w-xs leading-relaxed">{cameraError}</p>
+            <p className="mb-8 text-zinc-400 max-w-xs leading-relaxed">
+              {cameraError}
+            </p>
             <button
               onClick={() => {
                 setCameraError(null);
@@ -255,8 +261,8 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
           </div>
         )}
 
-        <video 
-          ref={videoRef} 
+        <video
+          ref={videoRef}
           className="h-full w-full object-cover"
           muted
           playsInline
@@ -267,7 +273,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
           <div className="relative w-72 h-72">
             {/* Area de Leitura (Sombra) */}
             <div className="absolute inset-0 border-2 border-primary/30 rounded-3xl overflow-hidden">
-               {/* Animated Scanning Line */}
+              {/* Animated Scanning Line */}
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-scan-fast shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
             </div>
 
@@ -277,7 +283,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
             <div className="absolute -bottom-2 -left-2 w-10 h-10 border-b-4 border-l-4 border-primary rounded-bl-2xl"></div>
             <div className="absolute -bottom-2 -right-2 w-10 h-10 border-b-4 border-r-4 border-primary rounded-br-2xl"></div>
           </div>
-          
+
           <div className="mt-12 px-6 py-3 bg-black/60 text-white text-sm font-medium rounded-2xl backdrop-blur-xl border border-white/10 shadow-2xl">
             Aponte para o QR Code
           </div>
@@ -304,4 +310,3 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
 };
 
 export default QRScanner;
-
