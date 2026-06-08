@@ -897,9 +897,14 @@ INSTRUÇÕES:
           selectedPaymentMethods.includes(
             formatPaymentMethod(t.paymentMethod),
           ));
-      const matchesSearch = t.description
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
+      const searchTerms = searchTerm
+        .split(",")
+        .map((term) => term.trim().toLowerCase())
+        .filter((term) => term.length >= 1);
+
+      const matchesSearch =
+        searchTerms.length === 0 ||
+        searchTerms.some((term) => t.description.toLowerCase().includes(term));
       const matchesType = typeFilter === "all" || t.type === typeFilter;
       const matchesStatus =
         statusFilter === "all" ||
@@ -3306,7 +3311,7 @@ INSTRUÇÕES:
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <input
                         type="text"
-                        placeholder="Ex: Supermercado..."
+                        placeholder="Ex: Supermercado, Aluguel..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         onKeyDown={handleSearchKeyDown}
