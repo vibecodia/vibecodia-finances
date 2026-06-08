@@ -1515,6 +1515,27 @@ INSTRUÇÕES:
     allItems,
   ]);
 
+  // ── Average expense calculation for the badge ──
+  const totalExpensesWithContext = useMemo(() => {
+    const chartData = expenseTimelineChartData as any;
+    if (!chartData?.datasets) return 0;
+    let sum = 0;
+    chartData.datasets.forEach((ds: any) => {
+      ds.data.forEach((val: number) => {
+        sum += val;
+      });
+    });
+    return sum;
+  }, [expenseTimelineChartData]);
+
+  const monthsCount = expenseTimelineChartData.labels?.length || 1;
+  const averageExpense = monthsCount > 0 ? totalExpensesWithContext / monthsCount : 0;
+
+  const showAverage =
+    (selectedCategories.length >= 1 && selectedCategories.length <= 2) ||
+    (selectedPaymentMethods.length >= 1 && selectedPaymentMethods.length <= 2);
+  // ── end average ──
+
   // Price Evolution Chart Data
   const priceChartData = useMemo(() => {
     if (!selectedItem || !allItems[selectedItem]) return null;
@@ -1947,7 +1968,6 @@ INSTRUÇÕES:
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
               padding: 40px;
               background-color: #fff;
-              text-align: center;
             }
             .print-header {
               margin-bottom: 30px;
@@ -3898,6 +3918,24 @@ INSTRUÇÕES:
                                     </span>
                                   </div>
                                 )}
+
+                              {/* Average badge shown when filtering by 1-2 categories or 1-2 payment methods */}
+                              {showAverage && !expenseItemSearch.trim() && (
+                                <div
+                                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-primary/10 border border-primary/20 animate-in fade-in zoom-in duration-300"
+                                  title="Média simples entre os meses do período filtrado"
+                                >
+                                  <span className="text-[9px] font-black text-primary uppercase tracking-tighter">
+                                    Média mensal
+                                  </span>
+                                  <span className="text-xs font-black text-primary">
+                                    {formatCurrency(averageExpense)}
+                                  </span>
+                                  <span className="text-[9px] text-muted-foreground font-bold uppercase">
+                                    ({monthsCount} meses)
+                                  </span>
+                                </div>
+                              )}
 
                               {/* Mode Toggle */}
                               <div
