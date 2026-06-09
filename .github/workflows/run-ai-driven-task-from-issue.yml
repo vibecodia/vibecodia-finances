@@ -24,7 +24,6 @@ jobs:
       fast_mode: ${{ steps.prepare.outputs.fast_mode }}
       zen_mode: ${{ steps.prepare.outputs.zen_mode }}
       timeless: ${{ steps.prepare.outputs.timeless }}
-      engine: ${{ steps.prepare.outputs.engine }}
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@v4
@@ -84,14 +83,6 @@ jobs:
             TIMELESS=true
           fi
           echo "timeless=$TIMELESS" >> $GITHUB_OUTPUT
-
-          ENGINE="zen"
-          if echo "$ISSUE_LABELS" | grep -q "use-kim"; then
-            ENGINE="kim"
-          elif echo "$ISSUE_LABELS" | grep -q "use-zen"; then
-            ENGINE="zen"
-          fi
-          echo "engine=$ENGINE" >> $GITHUB_OUTPUT
 
           # Use entire issue body to avoid extraction issues
           {
@@ -281,12 +272,16 @@ jobs:
             });
 
   code:
-    name: "AI Coding (${{ needs.initialize.outputs.engine }})"
+    name: "AI Coding (${{ matrix.mode }})"
     runs-on: ubuntu-latest
     needs: [initialize]
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: ["aider"]
     timeout-minutes: ${{ contains(github.event.issue.labels.*.name, 'ai-timeless') && 360 || contains(github.event.issue.labels.*.name, 'ai-zen') && 20 || contains(github.event.issue.labels.*.name, 'ai-fast') && 2 || 4 }}
     outputs:
-      ai_summary: ${{ steps.aider_run.outputs.ai_summary || steps.kimchi_run.outputs.ai_summary }}
+      ai_summary: ${{ steps.aider_run.outputs.ai_summary }}
     steps:
       - name: "🔄 Checkout repository"
         uses: actions/checkout@v4
@@ -307,20 +302,16 @@ jobs:
           python-version: '3.12'
 
       - name: "📥 Install aider and rtk"
-        if: needs.initialize.outputs.engine == 'zen'
         run: |
           pip install aider-chat --quiet
           curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: "🔧 Configure Git"
+      - name: "🔧 Configure Git and RTK Shims"
         run: |
           git config user.name "IA Bot"
           git config user.email "github-actions-bot@users.noreply.github.com"
-
-      - name: "🔧 Configure RTK Shims"
-        if: needs.initialize.outputs.engine == 'zen'
-        run: |
+          
           mkdir -p $HOME/.rtk/shims
           for cmd in git ls grep rg; do
             REAL_PATH=$(which -a $cmd | grep -v "$HOME/.rtk/shims" | head -n 1)
@@ -346,26 +337,7 @@ jobs:
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
 
-      - name: "📥 Install Kimchi"
-        if: needs.initialize.outputs.engine == 'kim'
-        env:
-          KIMCHI_VERSION: v0.1.16
-        run: |
-          echo "::group::Install Kimchi"
-          curl -fsSL "https://github.com/castai/kimchi/releases/download/${KIMCHI_VERSION}/kimchi_linux_amd64.tar.gz" -o /tmp/kimchi.tar.gz
-          mkdir -p "$HOME/.local/bin"
-          tar -xzf /tmp/kimchi.tar.gz -C "$HOME/.local/bin" --strip-components=0 2>/dev/null || true
-          if [ ! -f "$HOME/.local/bin/kimchi" ]; then
-            tar -xzf /tmp/kimchi.tar.gz -C /tmp
-            find /tmp -name 'kimchi' -type f -exec cp {} "$HOME/.local/bin/kimchi" \;
-          fi
-          chmod +x "$HOME/.local/bin/kimchi"
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          kimchi --version
-          echo "::endgroup::"
-
       - name: "🔁 Aider"
-        if: needs.initialize.outputs.engine == 'zen'
         id: aider_run
         env:
           OPENAI_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
@@ -410,60 +382,6 @@ jobs:
           if ! git diff --staged --quiet; then
             git commit -m "feat(ia): apply AI-generated changes"
             git push origin "${{ needs.initialize.outputs.branch_name }}"
-          fi
-
-          {
-            echo "ai_summary<<EOF"
-            git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD | sed 's/^/- /'
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-          echo "::endgroup::"
-
-      - name: "🔁 Kimchi"
-        if: needs.initialize.outputs.engine == 'kim'
-        id: kimchi_run
-        env:
-          KIMCHI_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
-          KIMCHI_PERMISSIONS: auto
-          TASK_FILE: ${{ needs.initialize.outputs.task_file }}
-          FAST_MODE: ${{ needs.initialize.outputs.fast_mode }}
-          BRANCH_NAME: ${{ needs.initialize.outputs.branch_name }}
-        run: |
-          echo "::group::Kimchi"
-
-          RELEVANT_FILES=$(git ls-files 'frontend/src' 'backend' | grep -E '\.(tsx|ts|js)$' | head -n 80 | tr '\n' ' ')
-          echo "📄 Files: $RELEVANT_FILES"
-
-          if [ "$FAST_MODE" = "true" ]; then
-            MESSAGE="$(cat "$TASK_FILE")"
-          else
-            PLAN_FILE="ia/tasks/plan-${{ github.event.issue.number }}.md"
-            if [ -f "$PLAN_FILE" ]; then
-              PLAN_CONTENT=$(cat "$PLAN_FILE")
-              MESSAGE="$(cat "$TASK_FILE")"
-              MESSAGE="$MESSAGE"$'> Implementation Plan:'$'\n'"$PLAN_CONTENT"
-            else
-              MESSAGE="$(cat "$TASK_FILE")"
-            fi
-          fi
-
-          # Build prompt including file list
-          {
-            echo "Context files: $RELEVANT_FILES"
-            echo "$MESSAGE"
-          } > /tmp/kimchi_task.txt
-
-          # Run Kimchi in auto mode, non-interactive, ephemeral
-          kimchi --print --auto --no-session -- "$(cat /tmp/kimchi_task.txt)"
-
-          # Commit changes (same pattern as Aider)
-          git config user.name "IA Bot"
-          git config user.email "github-actions-bot@users.noreply.github.com"
-          git add frontend backend
-          if ! git diff --staged --quiet; then
-            git commit -m "feat(ia): apply AI-generated changes via Kimchi"
-            git push origin "$BRANCH_NAME"
           fi
 
           {
