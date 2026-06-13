@@ -689,20 +689,34 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
               </label>
 
               <div className="flex items-center gap-4">
-                <div className="flex-1">
-                  <Input
-                    type="number"
-                    min="1"
-                    max="60"
-                    value={repeatMonths}
-                    onChange={(e) =>
-                      setRepeatMonths(
-                        Math.max(1, parseInt(e.target.value) || 1),
-                      )
+                <div className="flex-1 flex items-center justify-center gap-2">
+                  <Button
+                    type="button"
+                    onClick={() =>
+                      setRepeatMonths(Math.max(1, repeatMonths - 1))
                     }
-                    disabled={isAnimating}
-                    className="font-black text-lg"
-                  />
+                    disabled={repeatMonths <= 1 || isAnimating}
+                    variant="outline"
+                    size="sm"
+                    className="h-9 w-9 p-0 rounded-xl"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </Button>
+                  <span className="w-10 text-center font-black text-lg text-foreground">
+                    {repeatMonths}
+                  </span>
+                  <Button
+                    type="button"
+                    onClick={() =>
+                      setRepeatMonths(Math.min(60, repeatMonths + 1))
+                    }
+                    disabled={repeatMonths >= 60 || isAnimating}
+                    variant="outline"
+                    size="sm"
+                    className="h-9 w-9 p-0 rounded-xl"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
                 </div>
                 <div className="flex-[2] space-y-0.5">
                   <p className="text-sm font-black text-foreground uppercase tracking-tight">
