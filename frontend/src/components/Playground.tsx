@@ -1554,7 +1554,9 @@ INSTRUÇÕES:
   // Sync visible datasets when data changes
   useEffect(() => {
     if (expenseTimelineChartData.datasets) {
-      setVisibleDatasets(expenseTimelineChartData.datasets.map((d: any) => d.label));
+      setVisibleDatasets(
+        expenseTimelineChartData.datasets.map((d: any) => d.label),
+      );
     }
   }, [expenseTimelineChartData]);
 
@@ -1562,7 +1564,7 @@ INSTRUÇÕES:
   const totalExpensesWithContext = useMemo(() => {
     const chartData = expenseTimelineChartData as any;
     if (!chartData?.datasets) return 0;
-    
+
     // Only sum datasets that are currently visible
     let sum = 0;
     chartData.datasets.forEach((ds: any) => {
@@ -4288,36 +4290,88 @@ INSTRUÇÕES:
                       {!item.collapsed && (
                         <div className="p-8 h-auto">
                           <div className="h-[500px]">
-                            {transactions.filter((t: any) => t.type === "expense")
-                              .length > 0 ? (
-                            expenseItemSearch.trim().length >= 2 ? (
-                              (expenseTimelineChartData as any).noMatch ? (
-                                <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2 animate-in fade-in duration-300">
-                                  <div className="p-4 bg-muted/20 rounded-full">
-                                    <Search className="w-12 h-12 opacity-20" />
+                            {transactions.filter(
+                              (t: any) => t.type === "expense",
+                            ).length > 0 ? (
+                              expenseItemSearch.trim().length >= 2 ? (
+                                (expenseTimelineChartData as any).noMatch ? (
+                                  <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2 animate-in fade-in duration-300">
+                                    <div className="p-4 bg-muted/20 rounded-full">
+                                      <Search className="w-12 h-12 opacity-20" />
+                                    </div>
+                                    <span className="text-base font-bold">
+                                      Nenhum item encontrado para "
+                                      {expenseItemSearch}"
+                                    </span>
+                                    <span className="text-xs opacity-60">
+                                      Tente termos mais genéricos ou verifique
+                                      as datas.
+                                    </span>
                                   </div>
-                                  <span className="text-base font-bold">
-                                    Nenhum item encontrado para "
-                                    {expenseItemSearch}"
-                                  </span>
-                                  <span className="text-xs opacity-60">
-                                    Tente termos mais genéricos ou verifique as
-                                    datas.
-                                  </span>
-                                </div>
+                                ) : (
+                                  <Line
+                                    ref={expenseChartRef}
+                                    data={expenseTimelineChartData}
+                                    options={{
+                                      maintainAspectRatio: false,
+                                      plugins: {
+                                        legend: {
+                                          labels: {
+                                            color: theme.text,
+                                          },
+                                          onClick: (_e, legendItem, legend) => {
+                                            const index =
+                                              legendItem.datasetIndex!;
+                                            const ci = legend.chart;
+                                            if (ci.isDatasetVisible(index)) {
+                                              ci.hide(index);
+                                              legendItem.hidden = true;
+                                            } else {
+                                              ci.show(index);
+                                              legendItem.hidden = false;
+                                            }
+                                            // Sync React state
+                                            const labels: string[] = [];
+                                            ci.data.datasets.forEach(
+                                              (ds, i) => {
+                                                if (ci.isDatasetVisible(i)) {
+                                                  labels.push(ds.label!);
+                                                }
+                                              },
+                                            );
+                                            setVisibleDatasets(labels);
+                                          },
+                                        },
+                                      },
+                                      scales: {
+                                        y: {
+                                          ticks: {
+                                            color: theme.text,
+                                            callback: (value) =>
+                                              formatCurrency(value as number),
+                                          },
+                                          grid: { color: theme.cardBorder },
+                                        },
+                                        x: {
+                                          ticks: { color: theme.text },
+                                          grid: { color: theme.cardBorder },
+                                        },
+                                      },
+                                    }}
+                                  />
+                                )
                               ) : (
-                                <Line
+                                <Bar
                                   ref={expenseChartRef}
                                   data={expenseTimelineChartData}
                                   options={{
                                     maintainAspectRatio: false,
                                     plugins: {
                                       legend: {
-                                        labels: {
-                                          color: theme.text,
-                                        },
+                                        labels: { color: theme.text },
                                         onClick: (_e, legendItem, legend) => {
-                                          const index = legendItem.datasetIndex!;
+                                          const index =
+                                            legendItem.datasetIndex!;
                                           const ci = legend.chart;
                                           if (ci.isDatasetVisible(index)) {
                                             ci.hide(index);
@@ -4339,6 +4393,8 @@ INSTRUÇÕES:
                                     },
                                     scales: {
                                       y: {
+                                        stacked: true,
+                                        grace: "10%",
                                         ticks: {
                                           color: theme.text,
                                           callback: (value) =>
@@ -4347,6 +4403,7 @@ INSTRUÇÕES:
                                         grid: { color: theme.cardBorder },
                                       },
                                       x: {
+                                        stacked: true,
                                         ticks: { color: theme.text },
                                         grid: { color: theme.cardBorder },
                                       },
@@ -4355,65 +4412,15 @@ INSTRUÇÕES:
                                 />
                               )
                             ) : (
-                              <Bar
-                                ref={expenseChartRef}
-                                data={expenseTimelineChartData}
-                                options={{
-                                  maintainAspectRatio: false,
-                                  plugins: {
-                                    legend: {
-                                      labels: { color: theme.text },
-                                      onClick: (_e, legendItem, legend) => {
-                                        const index = legendItem.datasetIndex!;
-                                        const ci = legend.chart;
-                                        if (ci.isDatasetVisible(index)) {
-                                          ci.hide(index);
-                                          legendItem.hidden = true;
-                                        } else {
-                                          ci.show(index);
-                                          legendItem.hidden = false;
-                                        }
-                                        // Sync React state
-                                        const labels: string[] = [];
-                                        ci.data.datasets.forEach((ds, i) => {
-                                          if (ci.isDatasetVisible(i)) {
-                                            labels.push(ds.label!);
-                                          }
-                                        });
-                                        setVisibleDatasets(labels);
-                                      },
-                                    },
-                                  },
-                                  scales: {
-                                    y: {
-                                      stacked: true,
-                                      grace: "10%",
-                                      ticks: {
-                                        color: theme.text,
-                                        callback: (value) =>
-                                          formatCurrency(value as number),
-                                      },
-                                      grid: { color: theme.cardBorder },
-                                    },
-                                    x: {
-                                      stacked: true,
-                                      ticks: { color: theme.text },
-                                      grid: { color: theme.cardBorder },
-                                    },
-                                  },
-                                }}
-                              />
-                            )
-                          ) : (
-                            <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
-                              <TrendingUp className="w-12 h-12 opacity-10" />
-                              <span>Nenhuma despesa encontrada</span>
-                            </div>
+                              <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2">
+                                <TrendingUp className="w-12 h-12 opacity-10" />
+                                <span>Nenhuma despesa encontrada</span>
+                              </div>
                             )}
-                            </div>
+                          </div>
 
-                            {/* Average badge at the bottom */}
-                            {showAverage && (
+                          {/* Average badge at the bottom */}
+                          {showAverage && (
                             <div className="mt-4 flex justify-end">
                               <div
                                 className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20 animate-in fade-in slide-in-from-bottom-2 duration-500 shadow-sm"
@@ -4426,7 +4433,8 @@ INSTRUÇÕES:
                                   {formatCurrency(averageExpense)}
                                 </span>
                                 <span className="text-[10px] text-muted-foreground font-bold uppercase">
-                                  ({monthsCount} {monthsCount === 1 ? "mês" : "meses"})
+                                  ({monthsCount}{" "}
+                                  {monthsCount === 1 ? "mês" : "meses"})
                                 </span>
                               </div>
                             </div>
