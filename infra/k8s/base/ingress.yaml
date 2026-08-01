@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vibecodia
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "false"
+    # Future TLS integration can be enabled with cert-manager via a ClusterIssuer.
+    # Example:
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - vibecodia.local
+      secretName: vibecodia-tls
+  rules:
+    - host: vibecodia.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: vibecodia-backend
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: vibecodia-frontend
+                port:
+                  number: 80

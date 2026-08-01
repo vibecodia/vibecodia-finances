@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vibecodia-backend
+  labels:
+    app: vibecodia-backend
+spec:
+  type: ClusterIP
+  selector:
+    app: vibecodia-backend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3001

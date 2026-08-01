@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vibecodia-backend
+  labels:
+    app: vibecodia-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vibecodia-backend
+  template:
+    metadata:
+      labels:
+        app: vibecodia-backend
+    spec:
+      containers:
+        - name: backend
+          image: vibecodia-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3001
+              name: http
+          envFrom:
+            - configMapRef:
+                name: vibecodia-backend-config
+            - secretRef:
+                name: vibecodia-backend-secret
+          readinessProbe:
+            tcpSocket:
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 3001
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
