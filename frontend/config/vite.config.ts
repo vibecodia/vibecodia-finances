@@ -75,6 +75,11 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       port: 5173,
       strictPort: true,
+      hmr: {
+        host: 'localhost',    // <-- Obriga o cliente no Windows a conectar no localhost exposto
+        port: 5173,           // <-- Porta interna mapeada do WebSocket
+        clientPort: 5173,     // <-- Porta externa vista pelo seu navegador Windows
+      },
       proxy: {
         '/api': {
           target: env.VITE_BACKEND_URL || 'http://localhost:3001',

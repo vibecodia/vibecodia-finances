@@ -374,6 +374,7 @@ const Playground: React.FC<PlaygroundProps> = ({
   >([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [expenseItemSearch, setExpenseItemSearch] = useState("");
+  const [priceEvolutionItemSearch, setPriceEvolutionItemSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "expense" | "income">(
     "all",
   );
@@ -1224,9 +1225,36 @@ INSTRUÇÕES:
     };
   }, [transactions, theme.cardBackground]);
 
-  // Extract Items from Notes for Price Comparison
+  // Helper to normalize item names for better grouping
+  const normalizeItemName = (name: string): string => {
+    if (!name) return "";
+    let normalized = name.toLowerCase().trim();
+    
+    // Remove common weight/volume units and numbers (e.g., "1kg", "500g", "2L", "10un")
+    const unitPatterns = [
+      /\b\d+([.,]\d+)?\s*(kg|g|mg|l|ml|litro(s)?|litro(s)?|un|unidade(s)?|pct|pacote(s)?|pac|kg|g|ml|l)\b/gi,
+      /\b(kg|g|mg|l|ml|litro(s)?|litro(s)?|un|unidade(s)?|pct|pacote(s)?|pac)\s*\d+([.,]\d+)?\b/gi,
+    ];
+    unitPatterns.forEach(pattern => {
+      normalized = normalized.replace(pattern, "");
+    });
+    
+    // Remove extra spaces
+    normalized = normalized.replace(/\s+/g, " ").trim();
+    
+    // Remove common suffixes/prefixes that don't change the product
+    normalized = normalized.replace(/\b(xyz|abc|123|original|novo|novo\s+produto)\b/gi, "");
+    
+    // Remove extra spaces again
+    normalized = normalized.replace(/\s+/g, " ").trim();
+    
+    return normalized;
+  };
+
+  // Extract Items from Notes for Price Comparison with normalization
   const allItems = useMemo(() => {
-    const itemsMap: Record<string, { date: string; price: number }[]> = {};
+    const itemsMap: Record<string, { date: string; price: number; originalName: string }[]> = {};
+    const nameMapping: Record<string, string> = {}; // maps normalized name to a "prettiest" original name
 
     transactions.forEach((t: any) => {
       // Handle soft-deleted status
@@ -1253,11 +1281,22 @@ INSTRUÇÕES:
       }
 
       items.forEach((item) => {
-        const name = item.description || item.name;
+        const originalName = item.description || item.name;
         const price = item.unitPrice || item.price;
-        if (name && typeof price === "number") {
-          if (!itemsMap[name]) itemsMap[name] = [];
-          itemsMap[name].push({ date: t.date, price });
+        if (originalName && typeof price === "number") {
+          const normalized = normalizeItemName(originalName);
+          
+          // Skip discount items
+          if (originalName.toLowerCase().includes("descontos")) return;
+          
+          // Choose the shortest original name as the "pretty" one for display
+          if (!nameMapping[normalized] || originalName.length < nameMapping[normalized].length) {
+            nameMapping[normalized] = originalName;
+          }
+          
+          const displayName = nameMapping[normalized];
+          if (!itemsMap[displayName]) itemsMap[displayName] = [];
+          itemsMap[displayName].push({ date: t.date, price, originalName });
         }
       });
     });
@@ -1267,12 +1306,19 @@ INSTRUÇÕES:
 
   const sortedItemNames = useMemo(() => {
     const keys = Object.keys(allItems);
+    const searchLower = priceEvolutionItemSearch.toLowerCase().trim();
+    
+    let filteredKeys = keys;
+    if (searchLower) {
+      filteredKeys = keys.filter(name => name.toLowerCase().includes(searchLower));
+    }
+    
     // Separate duplicates (items with multiple prices) from unique items
-    const duplicates = keys.filter((name) => allItems[name].length > 1).sort();
-    const unique = keys.filter((name) => allItems[name].length === 1).sort();
+    const duplicates = filteredKeys.filter((name) => allItems[name].length > 1).sort();
+    const unique = filteredKeys.filter((name) => allItems[name].length === 1).sort();
     // Put duplicates on top
     return [...duplicates, ...unique];
-  }, [allItems]);
+  }, [allItems, priceEvolutionItemSearch]);
 
   // Expense Timeline Chart Data
   const expenseTimelineChartData = useMemo(() => {
@@ -2461,35 +2507,78 @@ INSTRUÇÕES:
               </div>
             )}
             {maximizedId === "price_evolution" && (
-              <div className="h-full min-h-[500px]">
+              <div className="h-full min-h-[500px] space-y-6">
                 {priceChartData ? (
-                  <Line
-                    ref={maximizedChartRef}
-                    data={priceChartData}
-                    options={{
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: {
-                          display: true,
-                          labels: { color: theme.text },
-                        },
-                      },
-                      scales: {
-                        y: {
-                          ticks: {
-                            color: theme.text,
-                            callback: (value) =>
-                              formatCurrency(value as number),
+                  <>
+                    {/* Stats Cards */}
+                    {selectedItem && allItems[selectedItem] && (
+                      (() => {
+                        const prices = allItems[selectedItem].map(d => d.price);
+                        const min = Math.min(...prices);
+                        const max = Math.max(...prices);
+                        const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+                        const count = prices.length;
+                        
+                        return (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="p-4 rounded-2xl border bg-muted/20" style={{ borderColor: theme.cardBorder }}>
+                              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Preço Mínimo</p>
+                              <p className="text-2xl font-black text-emerald-600">{formatCurrency(min)}</p>
+                            </div>
+                            <div className="p-4 rounded-2xl border bg-muted/20" style={{ borderColor: theme.cardBorder }}>
+                              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Preço Máximo</p>
+                              <p className="text-2xl font-black text-red-600">{formatCurrency(max)}</p>
+                            </div>
+                            <div className="p-4 rounded-2xl border bg-muted/20" style={{ borderColor: theme.cardBorder }}>
+                              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Preço Médio</p>
+                              <p className="text-2xl font-black text-primary">{formatCurrency(avg)}</p>
+                            </div>
+                            <div className="p-4 rounded-2xl border bg-muted/20" style={{ borderColor: theme.cardBorder }}>
+                              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Compras</p>
+                              <p className="text-2xl font-black text-foreground">{count}</p>
+                            </div>
+                          </div>
+                        );
+                      })()
+                    )}
+                    {/* Chart */}
+                    <div className="h-[400px]">
+                      <Line
+                        ref={maximizedChartRef}
+                        data={priceChartData}
+                        options={{
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              display: true,
+                              labels: { color: theme.text },
+                            },
+                            tooltip: {
+                              callbacks: {
+                                label: (context) => {
+                                  return formatCurrency(context.parsed.y);
+                                }
+                              }
+                            }
                           },
-                          grid: { color: theme.cardBorder },
-                        },
-                        x: {
-                          ticks: { color: theme.text },
-                          grid: { color: theme.cardBorder },
-                        },
-                      },
-                    }}
-                  />
+                          scales: {
+                            y: {
+                              ticks: {
+                                color: theme.text,
+                                callback: (value) =>
+                                  formatCurrency(value as number),
+                              },
+                              grid: { color: theme.cardBorder },
+                            },
+                            x: {
+                              ticks: { color: theme.text },
+                              grid: { color: theme.cardBorder },
+                            },
+                          },
+                        }}
+                      />
+                    </div>
+                  </>
                 ) : (
                   <div className="h-full flex items-center justify-center text-foreground opacity-40 italic text-xl">
                     Nenhum item selecionado para evolução de preços
@@ -4541,7 +4630,18 @@ INSTRUÇÕES:
                     </div>
                   );
 
-                case "price_evolution":
+                case "price_evolution": {
+                  // Calculate stats for selected item
+                  const selectedItemData = selectedItem ? allItems[selectedItem] : null;
+                  const stats = selectedItemData ? (() => {
+                    const prices = selectedItemData.map(d => d.price);
+                    const min = Math.min(...prices);
+                    const max = Math.max(...prices);
+                    const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+                    const count = prices.length;
+                    return { min, max, avg, count };
+                  })() : null;
+
                   return (
                     <div
                       key={item.id}
@@ -4564,31 +4664,48 @@ INSTRUÇÕES:
                             {item.label}
                           </span>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-col md:flex-row items-center gap-3">
                           {!item.collapsed && (
-                            <select
-                              className="p-2 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-primary/20 transition-all outline-none"
-                              style={{
-                                backgroundColor: theme.cardBackground,
-                                borderColor: theme.cardBorder,
-                                color: theme.text,
-                              }}
-                              value={selectedItem || ""}
-                              onChange={(e) => setSelectedItem(e.target.value)}
-                            >
-                              <option value="">
-                                Filtrar Item Específico...
-                              </option>
-                              {sortedItemNames.map((name) => {
-                                const isDuplicate = allItems[name]?.length > 1;
-                                return (
-                                  <option key={name} value={name}>
-                                    {isDuplicate ? "🔴 " : ""}
-                                    {name}
-                                  </option>
-                                );
-                              })}
-                            </select>
+                            <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                              <div className="relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <input
+                                  type="text"
+                                  placeholder="Buscar produto..."
+                                  value={priceEvolutionItemSearch}
+                                  onChange={(e) => setPriceEvolutionItemSearch(e.target.value)}
+                                  className="pl-10 pr-4 py-2 rounded-xl border text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all w-full md:w-64"
+                                  style={{
+                                    backgroundColor: theme.cardBackground,
+                                    borderColor: theme.cardBorder,
+                                    color: theme.text,
+                                  }}
+                                />
+                              </div>
+                              <select
+                                className="p-2 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-primary/20 transition-all outline-none w-full md:w-auto"
+                                style={{
+                                  backgroundColor: theme.cardBackground,
+                                  borderColor: theme.cardBorder,
+                                  color: theme.text,
+                                }}
+                                value={selectedItem || ""}
+                                onChange={(e) => setSelectedItem(e.target.value)}
+                              >
+                                <option value="">
+                                  Filtrar Item Específico...
+                                </option>
+                                {sortedItemNames.map((name) => {
+                                  const isDuplicate = allItems[name]?.length > 1;
+                                  return (
+                                    <option key={name} value={name}>
+                                      {isDuplicate ? "🔴 " : ""}
+                                      {name} ({allItems[name].length}x)
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                            </div>
                           )}
                           <div
                             className="flex items-center gap-1 border-l pl-3"
@@ -4642,33 +4759,68 @@ INSTRUÇÕES:
                         </div>
                       </div>
                       {!item.collapsed && (
-                        <div className="p-8 h-96">
+                        <div className="p-6 h-auto">
                           {priceChartData ? (
-                            <Line
-                              ref={priceChartRef}
-                              data={priceChartData}
-                              options={{
-                                maintainAspectRatio: false,
-                                plugins: { legend: { display: false } },
-                                scales: {
-                                  y: {
-                                    ticks: {
-                                      color: theme.text,
-                                      callback: (value) =>
-                                        formatCurrency(value as number),
+                            <>
+                              {/* Stats Cards */}
+                              {stats && (
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                                  <div className="p-3 rounded-xl border bg-muted/20" style={{ borderColor: theme.cardBorder }}>
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Preço Mínimo</p>
+                                    <p className="text-lg font-black text-emerald-600">{formatCurrency(stats.min)}</p>
+                                  </div>
+                                  <div className="p-3 rounded-xl border bg-muted/20" style={{ borderColor: theme.cardBorder }}>
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Preço Máximo</p>
+                                    <p className="text-lg font-black text-red-600">{formatCurrency(stats.max)}</p>
+                                  </div>
+                                  <div className="p-3 rounded-xl border bg-muted/20" style={{ borderColor: theme.cardBorder }}>
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Preço Médio</p>
+                                    <p className="text-lg font-black text-primary">{formatCurrency(stats.avg)}</p>
+                                  </div>
+                                  <div className="p-3 rounded-xl border bg-muted/20" style={{ borderColor: theme.cardBorder }}>
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Compras</p>
+                                    <p className="text-lg font-black text-foreground">{stats.count}</p>
+                                  </div>
+                                </div>
+                              )}
+                              {/* Chart */}
+                              <div className="h-80">
+                                <Line
+                                  ref={priceChartRef}
+                                  data={priceChartData}
+                                  options={{
+                                    maintainAspectRatio: false,
+                                    plugins: { 
+                                      legend: { display: false },
+                                      tooltip: {
+                                        callbacks: {
+                                          label: (context) => {
+                                            return formatCurrency(context.parsed.y);
+                                          }
+                                        }
+                                      }
                                     },
-                                    grid: { color: theme.cardBorder },
-                                  },
-                                  x: {
-                                    ticks: { color: theme.text },
-                                    grid: { color: theme.cardBorder },
-                                  },
-                                },
-                              }}
-                            />
+                                    scales: {
+                                      y: {
+                                        ticks: {
+                                          color: theme.text,
+                                          callback: (value) =>
+                                            formatCurrency(value as number),
+                                        },
+                                        grid: { color: theme.cardBorder },
+                                      },
+                                      x: {
+                                        ticks: { color: theme.text },
+                                        grid: { color: theme.cardBorder },
+                                      },
+                                    },
+                                  }}
+                                />
+                              </div>
+                            </>
                           ) : (
                             <div
-                              className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-center gap-4 border-2 border-dashed rounded-3xl"
+                              className="h-80 flex flex-col items-center justify-center text-foreground opacity-40 text-center gap-4 border-2 border-dashed rounded-3xl"
                               style={{ borderColor: theme.cardBorder }}
                             >
                               <TrendingUp className="w-16 h-16 opacity-10" />
@@ -4688,6 +4840,7 @@ INSTRUÇÕES:
                       )}
                     </div>
                   );
+                }
 
                 case "discount_analysis":
                   return (

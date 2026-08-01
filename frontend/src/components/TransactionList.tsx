@@ -18,6 +18,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useTheme } from "../contexts/ThemeContext";
+import { useCurrencyInput } from "../hooks/useCurrencyInput";
 import { usePaymentMethods } from "../hooks/usePaymentMethods";
 import { SavingsGoal, Transaction } from "../types";
 import {
@@ -78,6 +79,21 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string[]>([
     "all",
   ]);
+  const [priceFilterMode, setPriceFilterMode] = useState<
+    "none" | "exact" | "min" | "max" | "range"
+  >("none");
+  const {
+    inputProps: exactPriceInputProps,
+    numericValue: exactPriceNumericValue,
+  } = useCurrencyInput(0);
+  const {
+    inputProps: minPriceInputProps,
+    numericValue: minPriceNumericValue,
+  } = useCurrencyInput(0);
+  const {
+    inputProps: maxPriceInputProps,
+    numericValue: maxPriceNumericValue,
+  } = useCurrencyInput(0);
   const [currentMonth, setCurrentMonth] = useState<Date>(
     getCurrentBrazilDate(),
   );
@@ -97,6 +113,40 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(true);
   const [isMarkAllPaidModalOpen, setIsMarkAllPaidModalOpen] = useState(false);
+
+  const getParsedPriceValue = (value: number) => {
+    if (!value || value <= 0) return null;
+    return value;
+  };
+
+  const matchesPriceFilter = (amount: number) => {
+    const exactValue = getParsedPriceValue(exactPriceNumericValue);
+    const minValue = getParsedPriceValue(minPriceNumericValue);
+    const maxValue = getParsedPriceValue(maxPriceNumericValue);
+
+    if (priceFilterMode === "none") return true;
+
+    if (priceFilterMode === "exact") {
+      return exactValue !== null && amount === exactValue;
+    }
+
+    if (priceFilterMode === "min") {
+      return minValue !== null && amount >= minValue;
+    }
+
+    if (priceFilterMode === "max") {
+      return maxValue !== null && amount <= maxValue;
+    }
+
+    if (priceFilterMode === "range") {
+      return (
+        (minValue === null || amount >= minValue) &&
+        (maxValue === null || amount <= maxValue)
+      );
+    }
+
+    return true;
+  };
 
   // Filter and split transactions early so useEffect and body can use them
   const allMonthTransactions = filterTransactionsByMonth(
@@ -124,7 +174,8 @@ const TransactionList: React.FC<TransactionListProps> = ({
           return t.description.toLowerCase().includes(searchTerm.toLowerCase());
         }
         return true;
-      }),
+      })
+      .filter((t) => matchesPriceFilter(t.amount)),
     currentMonth,
     true,
   );
@@ -770,6 +821,93 @@ const TransactionList: React.FC<TransactionListProps> = ({
             </div>
           )}
           {/* ------------------------------------ */}
+
+          {/* Price Filter (expenses only, reusing the same filter chip style) */}
+          {type === "expense" && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <Wallet className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <Button
+                  onClick={() => setPriceFilterMode("none")}
+                  variant={priceFilterMode === "none" ? "primary" : "outline"}
+                  size="sm"
+                  className="rounded-full text-[10px] uppercase h-8 px-4"
+                >
+                  Todos
+                </Button>
+                <Button
+                  onClick={() => setPriceFilterMode("exact")}
+                  variant={priceFilterMode === "exact" ? "primary" : "outline"}
+                  size="sm"
+                  className="rounded-full text-[10px] uppercase h-8 px-4"
+                >
+                  Exato
+                </Button>
+                <Button
+                  onClick={() => setPriceFilterMode("min")}
+                  variant={priceFilterMode === "min" ? "primary" : "outline"}
+                  size="sm"
+                  className="rounded-full text-[10px] uppercase h-8 px-4"
+                >
+                  Mínimo
+                </Button>
+                <Button
+                  onClick={() => setPriceFilterMode("max")}
+                  variant={priceFilterMode === "max" ? "primary" : "outline"}
+                  size="sm"
+                  className="rounded-full text-[10px] uppercase h-8 px-4"
+                >
+                  Máximo
+                </Button>
+                <Button
+                  onClick={() => setPriceFilterMode("range")}
+                  variant={priceFilterMode === "range" ? "primary" : "outline"}
+                  size="sm"
+                  className="rounded-full text-[10px] uppercase h-8 px-4"
+                >
+                  Faixa
+                </Button>
+              </div>
+
+              {priceFilterMode !== "none" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {priceFilterMode === "exact" && (
+                    <Input
+                      {...exactPriceInputProps}
+                      placeholder="Valor exato"
+                    />
+                  )}
+
+                  {priceFilterMode === "min" && (
+                    <Input
+                      {...minPriceInputProps}
+                      placeholder="Valor mínimo"
+                    />
+                  )}
+
+                  {priceFilterMode === "max" && (
+                    <Input
+                      {...maxPriceInputProps}
+                      placeholder="Valor máximo"
+                    />
+                  )}
+
+                  {priceFilterMode === "range" && (
+                    <>
+                      <Input
+                        {...minPriceInputProps}
+                        placeholder="Valor mínimo"
+                      />
+                      <Input
+                        {...maxPriceInputProps}
+                        placeholder="Valor máximo"
+                      />
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Search Input */}
           <div className="flex flex-col sm:flex-row items-center gap-3">

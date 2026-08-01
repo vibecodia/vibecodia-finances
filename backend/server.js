@@ -1232,7 +1232,7 @@ app.use(express.static(path.join(__dirname, 'dist')));
 // Catch-all handler - SEMPRE DEVE SER A ÚLTIMA ROTA
 app.use((req, res) => {
   console.log('🎯 Catch-all handler acionado para:', req.url);
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
 });
 
 app.listen(port, () => {
