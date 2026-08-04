@@ -1,0 +1,219 @@
+import { createLocalDateForStorage } from '../utils/date.js';
+import { httpError } from '../utils/httpError.js';
+import { logger } from '../utils/logger.js';
+
+// Recalcula currentAmount de uma meta a partir das transações ativas pagas.
+// Bloco que estava duplicado em 5 pontos do server.js original.
+export async function recalcGoalCurrentAmount(models, goal) {
+  const { Transaction } = models;
+  const allActiveTransactions = await Transaction.find({
+    savingsGoalId: goal._id,
+    status: 'active',
+    isPaid: true
+  });
+  goal.currentAmount = allActiveTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+}
+
+// Cria uma transação. Para categoria "Aporte", valida a meta, registra a
+// contribuição e mantém goal.currentAmount em sincronia.
+// Lógica copiada do server.js original (POST /api/transactions).
+export async function createTransaction(models, body) {
+  const { Transaction, SavingsGoal } = models;
+
+  const requestedGoalId = body.savingsGoalId || body.goalId;
+  const isAporte = typeof body.category === 'string' && body.category.trim().toLowerCase() === 'aporte';
+  const amount = Number(body.amount);
+
+  const transactionData = {
+    ...body,
+    paymentMethod: body.paymentMethod || 'pix',
+    date: createLocalDateForStorage(body.date),
+    dueDate: body.dueDate ? createLocalDateForStorage(body.dueDate) : undefined,
+  };
+
+  if (isAporte) {
+    if (!requestedGoalId) {
+      throw httpError(400, 'Para categoria "Aporte", o campo goalId/savingsGoalId é obrigatório.');
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw httpError(400, 'Valor do aporte inválido.');
+    }
+  } else {
+    delete transactionData.savingsGoalId;
+    delete transactionData.goalId;
+    delete transactionData.savingsGoalContributionId;
+  }
+
+  if (isAporte) {
+    transactionData.category = 'Aporte';
+    const goal = await SavingsGoal.findById(requestedGoalId);
+    if (!goal || goal.status === 'deleted') {
+      throw httpError(404, 'Meta não encontrada ou inativa.');
+    }
+
+    const aggregate = await Transaction.aggregate([
+      { $match: { category: 'Aporte', status: 'active', savingsGoalId: goal._id } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const plannedAmount = aggregate?.[0]?.total || 0;
+    const remaining = (goal.targetAmount || 0) - plannedAmount;
+
+    const paidAggregate = await Transaction.aggregate([
+      { $match: { category: 'Aporte', status: 'active', savingsGoalId: goal._id, isPaid: true } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const paidAmount = paidAggregate?.[0]?.total || 0;
+
+    if (remaining <= 0) {
+      throw httpError(400, 'Esta meta já atingiu o valor total. Não é possível adicionar novos aportes.');
+    }
+    if (amount > remaining) {
+      throw httpError(400, `Valor do aporte ultrapassa o restante da meta. Restante disponível: ${remaining}.`, { remaining });
+    }
+
+    goal.contributions.push({
+      amount,
+      date: transactionData.date || new Date(),
+      isPaid: transactionData.isPaid === true,
+      status: 'active'
+    });
+
+    await goal.save();
+    const newContribution = goal.contributions[goal.contributions.length - 1];
+
+    transactionData.savingsGoalId = goal._id;
+    transactionData.savingsGoalContributionId = newContribution._id.toString();
+
+    try {
+      const newTransaction = await new Transaction(transactionData).save();
+      goal.currentAmount = paidAmount + (newTransaction.isPaid ? amount : 0);
+      await goal.save();
+      return newTransaction;
+    } catch (err) {
+      goal.contributions = goal.contributions.filter(c => c._id.toString() !== newContribution._id.toString());
+      await goal.save();
+      throw err;
+    }
+  }
+
+  const newTransaction = await new Transaction(transactionData).save();
+  return newTransaction;
+}
+
+// Atualiza uma transação e, se for aporte, sincroniza a contribuição da meta.
+// Retorna null quando não encontrada (rota responde 404).
+export async function updateTransaction(models, id, body) {
+  const { Transaction } = models;
+
+  const updateData = {
+    ...body,
+  };
+
+  if (body.date) {
+    updateData.date = createLocalDateForStorage(body.date);
+  }
+  if (body.dueDate !== undefined) {
+    updateData.dueDate = body.dueDate ? createLocalDateForStorage(body.dueDate) : undefined;
+  }
+
+  const updatedTransaction = await Transaction.findByIdAndUpdate(
+    id,
+    updateData,
+    { new: true, runValidators: true }
+  );
+
+  if (!updatedTransaction) {
+    return null;
+  }
+
+  if (updatedTransaction.category === 'Aporte' && updatedTransaction.savingsGoalId && updatedTransaction.savingsGoalContributionId) {
+    await syncContributionFromTransaction(models, updatedTransaction, body);
+  }
+
+  return updatedTransaction;
+}
+
+// Soft-delete de uma transação e, se for aporte, sincroniza a contribuição.
+// Retorna null quando não encontrada (rota responde 404).
+export async function deleteTransaction(models, id) {
+  const { Transaction } = models;
+  const now = new Date();
+  const deletedTransaction = await Transaction.findByIdAndUpdate(
+    id,
+    { status: 'deleted', deletedAt: now },
+    { new: true }
+  );
+  if (!deletedTransaction) {
+    return null;
+  }
+
+  if (deletedTransaction.category === 'Aporte' && deletedTransaction.savingsGoalId && deletedTransaction.savingsGoalContributionId) {
+    await syncContributionFromTransaction(models, deletedTransaction, { status: 'deleted' });
+  }
+
+  return deletedTransaction;
+}
+
+// Sincroniza a contribuição de uma meta com a transação de aporte
+// correspondente. Centraliza a lógica duplicada de PUT e DELETE
+// /api/transactions/:id (e a busca refinada por .id()/string).
+async function syncContributionFromTransaction(models, updatedTransaction, changes) {
+  const { SavingsGoal } = models;
+
+  const goal = await SavingsGoal.findById(updatedTransaction.savingsGoalId);
+  if (!goal) {
+    logger.debug(`[sync contribution] Goal NOT found with ID: ${updatedTransaction.savingsGoalId}`);
+    return;
+  }
+
+  // Refined search: try both .id() and manual find by string
+  let contribution = goal.contributions.id(updatedTransaction.savingsGoalContributionId);
+  if (!contribution) {
+    contribution = goal.contributions.find(c => c._id.toString() === updatedTransaction.savingsGoalContributionId.toString());
+  }
+
+  if (!contribution) {
+    logger.debug(`[sync contribution] Contribution NOT found in goal. ContribID searched: ${updatedTransaction.savingsGoalContributionId}`);
+    logger.debug(`[sync contribution] Available contrib IDs: ${goal.contributions.map(c => c._id.toString()).join(', ')}`);
+    return;
+  }
+
+  let modified = false;
+
+  if (changes.amount !== undefined && contribution.amount !== updatedTransaction.amount) {
+    contribution.amount = updatedTransaction.amount;
+    modified = true;
+  }
+
+  if (changes.date !== undefined && contribution.date.toISOString() !== updatedTransaction.date.toISOString()) {
+    contribution.date = updatedTransaction.date;
+    modified = true;
+  }
+
+  if (changes.isPaid !== undefined && contribution.isPaid !== updatedTransaction.isPaid) {
+    contribution.isPaid = updatedTransaction.isPaid;
+    modified = true;
+  }
+
+  // Se houve restauração da transação
+  if (changes.status === 'active' && contribution.status === 'deleted') {
+    logger.debug(`[sync contribution] RESTORING contribution in goal.`);
+    contribution.status = 'active';
+    contribution.deletedAt = null;
+    modified = true;
+  }
+
+  // Se houve exclusão via status
+  if (changes.status === 'deleted' && contribution.status !== 'deleted') {
+    logger.debug(`[sync contribution] DELETING contribution in goal via status update.`);
+    contribution.status = 'deleted';
+    contribution.deletedAt = new Date();
+    modified = true;
+  }
+
+  if (modified) {
+    await recalcGoalCurrentAmount(models, goal);
+    await goal.save();
+    logger.debug(`[sync contribution] Goal ${goal.name} updated successfully.`);
+  }
+}
