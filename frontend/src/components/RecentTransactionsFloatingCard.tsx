@@ -157,7 +157,7 @@ const RecentTransactionsFloatingCard: React.FC<
         }`}
         style={{
           backgroundColor: getBackgroundColor(),
-          borderColor: `${theme.cardBorder}44`,
+          borderColor: theme.cardBorder,
         }}
       >
         <div

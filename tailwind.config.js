@@ -45,6 +45,19 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        paper: "hsl(var(--paper))",
+        paperAlt: "hsl(var(--paper-alt))",
+        ink: "hsl(var(--ink))",
+        pencil: "hsl(var(--ink-muted))",
+        pen: "hsl(var(--pen))",
+        rule: "hsl(var(--rule))",
+        ruleStrong: "hsl(var(--rule-strong))",
+        highlight: "hsl(var(--highlight))",
+      },
+      boxShadow: {
+        paper:
+          "0 1px 2px hsl(var(--rule-strong)), 0 12px 28px -16px hsl(var(--ink) / 0.35)",
+        tape: "0 1px 3px hsl(var(--ink) / 0.15)",
       },
       borderRadius: {
         lg: "var(--radius)",

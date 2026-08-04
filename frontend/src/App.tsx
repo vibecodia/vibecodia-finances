@@ -3,9 +3,12 @@ import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import Calendar from "./components/Calendar";
 import Dashboard from "./components/Dashboard";
+import DashboardLegacy from "./components/DashboardLegacy";
 import Header from "./components/Header";
+import HeaderLegacy from "./components/HeaderLegacy";
 import InitialBalanceModal from "./components/InitialBalanceModal";
 import Navigation from "./components/Navigation";
+import NavigationLegacy from "./components/NavigationLegacy";
 import Playground from "./components/Playground";
 import Reports from "./components/Reports";
 import SavingsGoals from "./components/SavingsGoals";
@@ -115,7 +118,15 @@ function App() {
     hasLoaded,
   } = useFinancialData();
 
-  const { theme } = useTheme();
+  const { theme, designVariant } = useTheme();
+
+  // Alternância "testar versão caderno" / "visual antigo"
+  const renderDashboard = () =>
+    designVariant === "legado" ? (
+      <DashboardLegacy transactions={transactions} savingsGoals={savingsGoals} />
+    ) : (
+      <Dashboard transactions={transactions} savingsGoals={savingsGoals} />
+    );
   const [isShoppingListOpen, setIsShoppingListOpen] = useState(false);
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [showInitialBalanceModal, setShowInitialBalanceModal] = useState(false);
@@ -261,18 +272,30 @@ function App() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: theme.background }}>
       <ScrollToTop />
-      {!isFocusMode && !isGuestRoute && (
-        <Header
-          shoppingItemCount={
-            Array.isArray(shoppingList)
-              ? shoppingList.filter((item) => !item.purchased).length
-              : 0
-          }
-          onOpenShoppingList={() => setIsShoppingListOpen(true)}
-          animateShoppingButton={animateCombined}
-        />
-      )}
-      {!isFocusMode && !isGuestRoute && <Navigation />}
+      {!isFocusMode && !isGuestRoute &&
+        (designVariant === "legado" ? (
+          <HeaderLegacy
+            shoppingItemCount={
+              Array.isArray(shoppingList)
+                ? shoppingList.filter((item) => !item.purchased).length
+                : 0
+            }
+            onOpenShoppingList={() => setIsShoppingListOpen(true)}
+            animateShoppingButton={animateCombined}
+          />
+        ) : (
+          <Header
+            shoppingItemCount={
+              Array.isArray(shoppingList)
+                ? shoppingList.filter((item) => !item.purchased).length
+                : 0
+            }
+            onOpenShoppingList={() => setIsShoppingListOpen(true)}
+            animateShoppingButton={animateCombined}
+          />
+        ))}
+      {!isFocusMode && !isGuestRoute &&
+        (designVariant === "legado" ? <NavigationLegacy /> : <Navigation />)}
 
       {!isFocusMode && !isGuestRoute && (
         <ShoppingListModal
@@ -293,15 +316,7 @@ function App() {
         className={`w-full transition-all duration-300 ${isFocusMode ? "p-0" : "px-4 sm:px-6 lg:px-12 pb-20"} ${hideMenuOnDesktop || isFocusMode ? "" : "lg:pl-72"}`}
       >
         <Routes>
-          <Route
-            path="/"
-            element={
-              <Dashboard
-                transactions={transactions}
-                savingsGoals={savingsGoals}
-              />
-            }
-          />
+          <Route path="/" element={renderDashboard()} />
           <Route path="/guest" element={<GuestEntry />} />
           <Route
             path="/expenses"
@@ -384,10 +399,7 @@ function App() {
             path="/playground"
             element={
               isGuest ? (
-                <Dashboard
-                  transactions={transactions}
-                  savingsGoals={savingsGoals}
-                />
+                renderDashboard()
               ) : (
                 <Playground
                   transactions={transactions}

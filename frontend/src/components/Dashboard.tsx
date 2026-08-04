@@ -7,29 +7,22 @@ import {
   endOfMonth,
 } from "date-fns";
 import {
-  Target,
   AlertTriangle,
+  Camera,
+  Check,
   CreditCard,
   Eye,
   EyeOff,
+  Pencil,
   Scissors,
   Sparkles,
-  Trash2,
-  Pencil,
-  Wifi,
-  Check,
-  X,
   Sword,
-  Camera,
-  RotateCcw,
-  Keyboard,
+  Trash2,
+  X,
 } from "lucide-react";
-import React, { useState, useRef, useEffect, useMemo } from "react";
-import Confetti from "react-confetti";
+import React, { useState, useRef } from "react";
 
-import { useTheme } from "../contexts/ThemeContext";
 import { useLocalStorage } from "../hooks/trello/useLocalStorage";
-import useWindowSize from "../hooks/useWindowSize";
 import { Transaction, SavingsGoal } from "../types";
 import { calculateBalances } from "../utils/balanceCalculations";
 import {
@@ -41,6 +34,9 @@ import {
 import { cn } from "../lib/utils";
 import RecentTransactionsFloatingCard from "./RecentTransactionsFloatingCard";
 import MonthSegmentedControl from "./MonthSegmentedControl";
+import PageMargin from "./PageMargin";
+import PencilUnderline from "./PencilUnderline";
+import RuledPaper from "./RuledPaper";
 import {
   Dialog,
   DialogContent,
@@ -52,9 +48,7 @@ import {
 import { useCurrencyInput } from "../hooks/useCurrencyInput";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
-import { Card } from "./ui/Card";
 import { UINinjaOverlay } from "./UINinjaOverlay";
-import { BandaidEasterEgg } from "./BandaidEasterEgg";
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -103,19 +97,17 @@ const AccountSlider: React.FC<AccountSliderProps> = ({
   // Split calculation
   const flexAmount = Math.min(remaining, splitValue);
   const flexPct = hasIncome ? (flexAmount / income) * 100 : 0;
-  // const mercadoPct = Math.max(0, remainingPct - flexPct);
 
-  // Threshold de alerta: 80% utilizado
+  // Threshold de alerta
   const isWarning = spentPct >= 60 && spentPct < 80;
   const isDanger = spentPct >= 80;
 
+  const statusLabel = isDanger ? "vai estourar" : isWarning ? "olha lá" : "ok";
   const statusColor = isDanger
-    ? "text-red-500"
+    ? "text-pen"
     : isWarning
-      ? "text-yellow-500"
-      : "text-green-500";
-
-  const statusLabel = isDanger ? "● crítico" : isWarning ? "● atenção" : "● ok";
+      ? "text-pen/70"
+      : "text-ink/60";
 
   const avgDailySpent = daysPassed > 0 ? spent / daysPassed : 0;
   const daysRemaining = totalDays - daysPassed;
@@ -131,55 +123,44 @@ const AccountSlider: React.FC<AccountSliderProps> = ({
       {/* Header com status */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-muted-foreground">
-            {label}
-          </span>
+          <span className="text-sm font-medium text-ink">{label}</span>
           {spent > 0 && (
-            <span className="text-[10px] text-muted-foreground font-mono italic">
+            <span className="text-xs text-pencil font-mono italic">
               (média diária {formatCurrency(avgDailySpent)})
             </span>
           )}
         </div>
-        <span
-          className={`text-[10px] font-mono font-bold uppercase tracking-wide ${statusColor}`}
-        >
+        <span className={cn("font-handwriting text-xs", statusColor)}>
           {statusLabel}
         </span>
       </div>
 
-      {/* Barra invertida: vermelho da esquerda, verde à direita */}
-      <div className="w-full bg-muted rounded-full h-3 relative overflow-hidden shadow-inner">
-        {/* Vermelho: gasto — da esquerda */}
+      {/* Barra: gasto da esquerda, disponível à direita */}
+      <div className="w-full bg-rule rounded-full h-2.5 relative overflow-hidden">
+        {/* Gasto */}
         <div
-          className="h-3 transition-all duration-700 absolute left-0 rounded-l-full z-20"
-          style={{
-            width: `${spentPct}%`,
-            background: isDanger
-              ? "linear-gradient(90deg, #ef4444, #b91c1c)"
-              : isWarning
-                ? "linear-gradient(90deg, #f59e0b, #d97706)"
-                : "linear-gradient(90deg, #22c55e, #16a34a)",
-          }}
+          className={cn(
+            "absolute left-0 h-2.5 rounded-l-full transition-all duration-700 z-20",
+            isDanger ? "bg-pen" : isWarning ? "bg-pen/60" : "bg-ink",
+          )}
+          style={{ width: `${spentPct}%` }}
         />
-
-        {/* Verde: mercado (disponível — da direita, mas antes do flex) */}
+        {/* Disponível */}
         <div
-          className="bg-primary/40 h-3 transition-all duration-700 absolute right-0 rounded-r-full"
+          className="bg-ink/15 h-2.5 absolute right-0 rounded-r-full transition-all duration-700"
           style={{ width: `${remainingPct}%` }}
         />
-
-        {/* Amber: flex (disponível — da extrema direita) */}
+        {/* Flex (extrema direita) */}
         {flexPct > 0 && (
           <div
-            className="bg-amber-400 h-3 transition-all duration-700 absolute right-0 rounded-r-full z-10"
+            className="bg-highlight h-2.5 absolute right-0 rounded-r-full z-10 transition-all duration-700"
             style={{ width: `${flexPct}%` }}
           />
         )}
-
-        {/* Linha divisória entre gasto e disponível */}
+        {/* Linha divisória */}
         {spentPct > 0 && remainingPct > 0 && (
           <div
-            className="absolute top-0 w-0.5 h-full bg-background/40 z-30"
+            className="absolute top-0 w-0.5 h-full bg-rule-strong z-30"
             style={{ left: `${spentPct}%`, transform: "translateX(-50%)" }}
           />
         )}
@@ -188,60 +169,57 @@ const AccountSlider: React.FC<AccountSliderProps> = ({
       {/* Percentual usado abaixo da barra */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <span className="text-[10px] text-muted-foreground font-mono">
-            {spentPct.toFixed(0)}% utilizado
+          <span className="text-xs text-pencil font-mono">
+            {spentPct.toFixed(0)}% usado
           </span>
           {flexPct > 0 && (
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1 bg-primary/5 px-2 py-0.5 rounded-full border border-primary/10 transition-all hover:bg-primary/10">
-                <div className="w-1.5 h-1.5 bg-primary rounded-full shadow-[0_0_4px_rgba(74,222,128,0.5)]" />
-                <span className="text-[9px] text-muted-foreground font-black uppercase tracking-tighter">
-                  Saldo Mercado: {formatCurrency(remaining - flexAmount)}
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 bg-ink rounded-full" />
+                <span className="text-[11px] text-pencil font-mono">
+                  mercado: {formatCurrency(remaining - flexAmount)}
                 </span>
               </div>
-              <div className="flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 transition-all hover:bg-amber-500/10">
-                <div className="w-1.5 h-1.5 bg-amber-400 rounded-full shadow-[0_0_4px_rgba(251,191,36,0.5)] animate-pulse" />
-                <span className="text-[9px] text-amber-700 dark:text-amber-400 font-black uppercase tracking-tighter">
-                  Saldo {splitLabel || "Flex"}: {formatCurrency(flexAmount)}
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 bg-highlight rounded-full border border-rule" />
+                <span className="text-[11px] text-pencil font-mono">
+                  {splitLabel || "flex"}: {formatCurrency(flexAmount)}
                 </span>
               </div>
             </div>
           )}
         </div>
         {remaining > 0 && daysRemaining > 0 && (
-          <span className="text-[10px] text-primary opacity-60 font-mono font-bold">
-            Sugerido: {formatCurrency(dailyBudget)}/dia
+          <span className="text-[11px] text-pencil font-mono">
+            sugerido: {formatCurrency(dailyBudget)}/dia
           </span>
         )}
       </div>
 
       {/* Valores */}
-      <div className="grid grid-cols-3 gap-2 text-center pt-1">
+      <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-rule">
         <div>
-          <div className="text-xs font-bold text-green-600 dark:text-green-400">
+          <div className="text-sm font-bold text-ink tabular-nums">
             {formatCurrency(income)}
           </div>
-          <div className="text-[10px] text-muted-foreground uppercase">
-            Recebido
-          </div>
+          <div className="text-[10px] text-pencil font-mono">recebido</div>
         </div>
         <div>
-          <div className="text-xs font-bold text-destructive">
+          <div className="text-sm font-bold text-pen tabular-nums">
             {formatCurrency(spent)}
           </div>
-          <div className="text-[10px] text-muted-foreground uppercase">
-            Gasto
-          </div>
+          <div className="text-[10px] text-pencil font-mono">gasto</div>
         </div>
         <div>
           <div
-            className={`text-xs font-bold ${balance >= 0 ? "text-primary" : "text-destructive"}`}
+            className={cn(
+              "text-sm font-bold tabular-nums",
+              balance >= 0 ? "text-ink" : "text-pen",
+            )}
           >
             {formatCurrency(balance)}
           </div>
-          <div className="text-[10px] text-muted-foreground uppercase">
-            Saldo
-          </div>
+          <div className="text-[10px] text-pencil font-mono">saldo</div>
         </div>
       </div>
     </div>
@@ -267,11 +245,9 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
   onSave,
   onRemove,
 }) => {
-  // const { theme } = useTheme();
   const { inputProps, numericValue, setNumericValue } =
     useCurrencyInput(currentFlex);
 
-  // Sync with current value whenever modal opens
   React.useEffect(() => {
     if (isOpen) {
       setNumericValue(currentFlex);
@@ -286,35 +262,35 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Scissors className="w-5 h-5 text-primary" />
-            Split Saldo Flash
+            <Scissors className="w-5 h-5 text-pen" />
+            Split saldo Flash
           </DialogTitle>
           <DialogDescription>
-            Defina quanto do seu saldo Flash será reservado para gastos Flex.
+            Quanto do seu saldo Flash fica reservado para gastos Flex.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          <div className="p-5 rounded-2xl bg-primary/5 dark:bg-primary/10 border-2 border-primary/20 space-y-4 shadow-inner">
-            <div className="flex justify-between items-center text-[10px] text-primary font-black uppercase tracking-[0.2em]">
+          <div className="p-5 rounded-lg bg-paperAlt border border-ruleStrong space-y-4">
+            <div className="flex justify-between items-center text-xs text-pencil font-mono">
               <span className="flex items-center gap-2">
                 <CreditCard className="w-3 h-3" />
-                Saldo Total Flash
+                Saldo total Flash
               </span>
-              <span className="font-mono text-sm">
+              <span className="text-sm tabular-nums text-ink">
                 {formatCurrency(totalBalance)}
               </span>
             </div>
 
-            <div className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shadow-inner relative">
+            <div className="h-3 w-full bg-rule rounded-full overflow-hidden relative">
               <div
-                className="h-full bg-primary transition-all duration-700 ease-out"
+                className="h-full bg-ink transition-all duration-700 ease-out"
                 style={{
                   width: `${Math.min(100, (remainingMercado / totalBalance) * 100)}%`,
                 }}
               />
               <div
-                className="absolute top-0 h-full w-px bg-white/60 z-10"
+                className="absolute top-0 h-full w-px bg-pen z-10"
                 style={{
                   right: `${Math.min(100, (numericValue / totalBalance) * 100)}%`,
                 }}
@@ -323,18 +299,14 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
 
             <div className="flex justify-between items-end">
               <div className="space-y-0.5">
-                <p className="text-[9px] font-bold text-primary/60 uppercase">
-                  Mercado
-                </p>
-                <p className="text-sm font-black text-primary">
+                <p className="text-[10px] text-pencil font-mono">mercado</p>
+                <p className="text-sm font-bold text-ink tabular-nums">
                   {formatCurrency(Math.max(0, remainingMercado))}
                 </p>
               </div>
               <div className="space-y-0.5 text-right">
-                <p className="text-[9px] font-bold text-amber-600 uppercase">
-                  Flex (Seu Input)
-                </p>
-                <p className="text-sm font-black text-amber-500">
+                <p className="text-[10px] text-pencil font-mono">flex</p>
+                <p className="text-sm font-bold text-pen tabular-nums">
                   {formatCurrency(numericValue)}
                 </p>
               </div>
@@ -343,13 +315,10 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
 
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
-              <label className="text-xs font-black text-foreground/80 uppercase tracking-widest flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
-                Informe o Saldo Flex
+              <label className="text-sm text-ink flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-pen" />
+                Informe o saldo Flex
               </label>
-              <span className="text-[10px] font-bold text-amber-600/60 uppercase bg-amber-500/10 px-2 py-0.5 rounded-full">
-                Manual
-              </span>
             </div>
 
             <div className="relative group">
@@ -357,24 +326,19 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
                 {...inputProps}
                 autoFocus
                 className={cn(
-                  "w-full bg-slate-100 dark:bg-slate-800 border-4 rounded-[2rem] p-6 text-4xl font-black text-center transition-all focus:outline-none shadow-xl",
+                  "w-full bg-paperAlt border-2 rounded-lg p-6 text-4xl font-bold text-center transition-all focus:outline-none",
                   isOverLimit
-                    ? "border-red-500/50 text-red-500 ring-4 ring-red-500/10"
-                    : "border-amber-500/30 focus:border-amber-500 focus:ring-8 focus:ring-amber-500/10 text-amber-600 dark:text-amber-400",
+                    ? "border-pen/50 text-pen"
+                    : "border-ruleStrong text-ink focus:border-pen",
                 )}
                 placeholder="R$ 0,00"
               />
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[9px] font-black uppercase px-4 py-1 rounded-full shadow-lg tracking-widest whitespace-nowrap">
-                Ajustando Saldo Flex
-              </div>
             </div>
 
             {isOverLimit && (
-              <div className="flex items-center justify-center gap-2 text-red-500 animate-bounce mt-4">
+              <div className="flex items-center justify-center gap-2 text-pen mt-4">
                 <AlertTriangle className="w-4 h-4" />
-                <p className="text-[10px] font-black uppercase tracking-tighter">
-                  O valor flex não pode superar o saldo total!
-                </p>
+                <p className="text-xs">o valor flex não pode superar o saldo total!</p>
               </div>
             )}
           </div>
@@ -385,16 +349,16 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
             onClick={onRemove}
             variant="ghost"
             size="sm"
-            className="text-[10px] font-black uppercase tracking-widest text-red-500/60 hover:text-red-600"
+            className="text-xs text-pen/70 hover:text-pen"
           >
-            Remover Split
+            Remover split
           </Button>
           <Button
             onClick={() => onSave(numericValue)}
             disabled={isOverLimit || numericValue < 0}
             className="flex-1"
           >
-            Confirmar Saldo
+            Confirmar saldo
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -408,9 +372,6 @@ const Dashboard: React.FC<DashboardProps> = ({
   transactions,
   savingsGoals,
 }) => {
-  const { width, height } = useWindowSize();
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [isPulsing, setIsPulsing] = useState(false);
   const [currentMonth, setCurrentMonth] = useState<Date>(
     getCurrentBrazilDate(),
   );
@@ -432,13 +393,12 @@ const Dashboard: React.FC<DashboardProps> = ({
   );
   const [cardHolderName, setCardHolderName] = useLocalStorage(
     "dashboard_card_holder_name",
-    "alterar aqui",
+    "a nossa família",
   );
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(cardHolderName);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const [isUINinjaActive, setIsUINinjaActive] = useState(false);
-  const [currentShortcutIndex, setCurrentShortcutIndex] = useState(0);
 
   // Dashboard Layout Settings
   const [showIncomeExpenseBar] = useLocalStorage(
@@ -458,34 +418,11 @@ const Dashboard: React.FC<DashboardProps> = ({
     true,
   );
 
-  const shortcuts = useMemo(
-    () => [
-      { key: "D", label: "resumo" },
-      { key: "K", label: "novo gasto" },
-      { key: "I", label: "nova receita" },
-      { key: "T", label: "tarefas" },
-      { key: "C", label: "agenda" },
-      { key: "R", label: "relatórios" },
-      { key: "G", label: "metas" },
-      { key: "P", label: "playground" },
-      { key: "?", label: "ajuda" },
-    ],
-    [],
-  );
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentShortcutIndex((prev) => (prev + 1) % shortcuts.length);
-    }, 5000); // Troca a cada 5 segundos
-    return () => clearInterval(interval);
-  }, [shortcuts.length]);
-
   const [customBg, setCustomBg] = useLocalStorage(
     "dashboard_background_image",
     "",
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { theme } = useTheme();
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -531,7 +468,6 @@ const Dashboard: React.FC<DashboardProps> = ({
   };
 
   const uiNinjaSetting = localStorage.getItem("uiNinjaEnabled") === "true";
-  const backgroundImage = customBg;
 
   const today = getCurrentBrazilDate();
   const isSelectedMonthCurrent =
@@ -661,20 +597,10 @@ const Dashboard: React.FC<DashboardProps> = ({
     0,
   );
 
-  const handleBalanceCardClick = () => {
-    setShowConfetti(true);
-    setIsPulsing(true);
-    setTimeout(() => setShowConfetti(false), 3000);
-    setTimeout(() => setIsPulsing(false), 300);
-  };
-
-  const confettiColors =
-    finalBalance < 0
-      ? ["#FFD700", "#DAA520", "#B8860B", "#8B4513"]
-      : ["#a8e063", "#56ab2f", "#4CAF50", "#8BC34A"];
-
   return (
-    <div className="max-w-6xl mx-auto space-y-4">
+    <div className="relative max-w-6xl mx-auto space-y-6 pt-6 pb-24">
+      <PageMargin />
+
       {uiNinjaSetting && (
         <UINinjaOverlay
           isVisible={isUINinjaActive}
@@ -682,17 +608,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         />
       )}
 
-      {showConfetti && (
-        <Confetti
-          width={width}
-          height={height}
-          recycle={false}
-          numberOfPieces={finalBalance < 0 ? 300 : 200}
-          colors={confettiColors}
-        />
-      )}
-
-      {/* Header */}
+      {/* Seletor de mês */}
       <div
         className="pt-2 pb-0 w-full flex items-center gap-3"
         id="tour-month-selector"
@@ -709,77 +625,51 @@ const Dashboard: React.FC<DashboardProps> = ({
               onClick={() => setIsUINinjaActive(true)}
               variant="ghost"
               size="icon"
-              className="h-10 w-10 rounded-2xl bg-white/50 backdrop-blur-md shadow-sm border border-white/20 text-primary hover:bg-primary hover:text-white transition-all group"
+              className="h-10 w-10 rounded-md border border-rule bg-paperAlt text-pencil hover:text-ink hover:border-ruleStrong transition-colors"
               title="UI Ninja Mode"
             >
-              <Sword className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+              <Sword className="w-5 h-5" />
             </Button>
           )}
         </div>
       </div>
 
-      {/* Subtle Shortcut Hint - Desktop Only */}
+      {/* Dica de atalhos — desktop */}
       <div className="hidden lg:flex justify-end pr-4 -mt-2 mb-2">
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-foreground/5 border border-border/50 animate-in fade-in slide-in-from-top-1 duration-1000 min-w-[180px] justify-center">
-          <Keyboard className="w-3 h-3 text-muted-foreground/60" />
-          <div className="key-rotation-container overflow-hidden h-3 flex items-center">
-            <span
-              key={currentShortcutIndex}
-              className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 animate-in fade-in slide-in-from-bottom-1 duration-500"
-            >
-              Atalho:{" "}
-              <span className="text-primary/60">
-                [{shortcuts[currentShortcutIndex].key}]
-              </span>{" "}
-              {shortcuts[currentShortcutIndex].label}
-            </span>
-          </div>
-          <span className="text-[9px] font-black text-muted-foreground/20 mx-1">
-            •
-          </span>
-          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/40">
-            <span className="text-primary/60">[?]</span> ajuda
-          </span>
-        </div>
+        <p className="font-mono text-[11px] text-pencil/70">
+          atalhos: <span className="text-pen">[d]</span> resumo ·{" "}
+          <span className="text-pen">[?]</span> ajuda
+        </p>
       </div>
 
-      {/* Main Balance Card */}
-      <div
+      {/* Folha do Saldo — elemento-assinatura */}
+      <RuledPaper
         id="tour-balance-card"
-        className={cn(
-          "relative overflow-hidden rounded-[2.5rem] p-8 sm:p-10 cursor-pointer border-t-2 border-l border-white/30 transition-all duration-700 text-white group isolate",
-          isPulsing ? "scale-[1.02]" : "scale-100",
-          finalBalance < -0.001
-            ? "shadow-[0_20px_50px_rgba(239,68,68,0.4),inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.5)] border-red-400/50 hover:shadow-[0_40px_80px_rgba(239,68,68,0.5),inset_0_2px_6px_rgba(255,255,255,0.4),inset_0_-2px_6px_rgba(0,0,0,0.6)]"
-            : "shadow-[0_20px_50px_rgba(0,0,0,0.6),inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.5)] border-white/20 hover:shadow-[0_40px_80px_rgba(0,0,0,0.7),inset_0_2px_6px_rgba(255,255,255,0.4),inset_0_-2px_6px_rgba(0,0,0,0.6)]",
-        )}
-        style={{
-          backgroundColor: finalBalance < -0.001 ? "#7f1d1d" : theme.primary,
-          perspective: "1000px",
-          backfaceVisibility: "hidden",
-          WebkitBackfaceVisibility: "hidden",
-          transform: "translateZ(0)",
-          WebkitTransform: "translateZ(0)",
-          willChange: "transform",
-        }}
-        onClick={handleBalanceCardClick}
+        holes
+        margin
+        rot={0.5}
+        className="p-6 sm:p-8 leading-6"
       >
-        {/* Background Image Layer with slow movement and higher contrast */}
-        {backgroundImage && (
-          <div
-            className={cn(
-              "absolute inset-0 rounded-[2.5rem] bg-cover bg-center mix-blend-overlay z-0 overflow-hidden",
-              finalBalance < -0.001 ? "opacity-20 grayscale" : "opacity-30",
-            )}
-            style={{
-              backgroundImage: `url(${backgroundImage})`,
-              clipPath: "inset(0 round 2.5rem)",
-              WebkitClipPath: "inset(0 round 2.5rem)",
-            }}
-          />
-        )}
+        <div className="pl-6 flex items-start justify-between mb-6">
+          <p className="font-handwriting text-pencil">saldo do mês</p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-10 h-10 flex items-center justify-center rounded-md border border-rule bg-paperAlt text-pencil hover:text-ink hover:border-ruleStrong transition-colors"
+              title="Colar foto"
+            >
+              <Camera className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setShowBalance(!showBalance)}
+              className="w-10 h-10 flex items-center justify-center rounded-md border border-rule bg-paperAlt text-pencil hover:text-ink hover:border-ruleStrong transition-colors"
+              title={showBalance ? "Esconder saldo" : "Mostrar saldo"}
+            >
+              {showBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
 
-        {/* Input de Arquivo Oculto */}
         <input
           type="file"
           ref={fileInputRef}
@@ -788,299 +678,193 @@ const Dashboard: React.FC<DashboardProps> = ({
           className="hidden"
         />
 
-        {/* Glossy/Metallic Gradient Overlay */}
-        <div
-          className="absolute inset-0 opacity-80 rounded-[2.5rem] overflow-hidden"
-          style={{
-            backgroundImage:
-              finalBalance < -0.001
-                ? `linear-gradient(135deg, #7f1d1d 0%, #ef4444aa 40%, rgba(255,255,255,0.1) 50%, #ef4444aa 60%, #7f1d1d 100%)`
-                : `linear-gradient(135deg, ${theme.primary} 0%, ${theme.primary}aa 40%, rgba(255,255,255,0.1) 50%, ${theme.primary}aa 60%, ${theme.primary} 100%)`,
-            clipPath: "inset(0 round 2.5rem)",
-            WebkitClipPath: "inset(0 round 2.5rem)",
-          }}
-        />
+        <div className="pl-6 mb-8">
+          <p
+            className={cn(
+              "font-handwriting font-bold text-5xl sm:text-7xl tabular-nums -rotate-[1deg]",
+              finalBalance < -0.001 ? "text-pen" : "text-ink",
+            )}
+          >
+            {showBalance ? formatCurrency(displayBalance) : "••••••"}
+          </p>
+          <PencilUnderline className="mt-2 max-w-[360px]" />
+          {finalBalance < -0.001 && (
+            <p className="font-handwriting text-pen mt-3">
+              não pode esquecer disso
+            </p>
+          )}
+        </div>
 
-        {/* Holographic effect on hover */}
-        <div
-          className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-1000 bg-gradient-to-tr from-transparent via-white to-transparent -translate-x-full group-hover:translate-x-full rotate-12 scale-150 pointer-events-none rounded-[2.5rem] overflow-hidden"
-          style={{
-            clipPath: "inset(0 round 2.5rem)",
-            WebkitClipPath: "inset(0 round 2.5rem)",
-          }}
-        />
-
-        <div className="relative z-10 flex flex-col h-full justify-between min-h-[220px]">
-          {/* Card Top: Branding & Controls */}
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-7 rounded-md bg-gradient-to-br from-yellow-400 via-yellow-200 to-yellow-600 border border-black/10 shadow-inner flex items-center justify-center relative overflow-hidden">
-                  <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 gap-px opacity-20">
-                    {[...Array(9)].map((_, i) => (
-                      <div key={i} className="border border-black/20" />
-                    ))}
-                  </div>
-                </div>
-                <Wifi className="w-5 h-5 opacity-40 rotate-90" />
-                <div className="flex items-center gap-1 ml-2 transition-opacity">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      fileInputRef.current?.click();
-                    }}
-                    className="p-1.5 bg-white/10 hover:bg-white/20 active:bg-white/30 rounded-lg border border-white/10 transition-all"
-                    title="Alterar fundo"
-                  >
-                    <Camera className="w-3.5 h-3.5 text-white/80" />
-                  </button>
-                  {customBg && (
-                    <button
-                      onClick={resetBackground}
-                      className="p-1.5 bg-white/10 hover:bg-white/20 active:bg-white/30 rounded-lg border border-white/10 transition-all"
-                      title="Resetar fundo"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5 text-white/80" />
-                    </button>
-                  )}
-                </div>
-              </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-60 mt-4">
-                Vibecodia Premium
-              </p>
-            </div>
+        <div className="pl-6 flex items-end justify-between border-t border-rule pt-4 gap-4">
+          <div className="space-y-3">
+            <button
+              onClick={() => {
+                if (!isSelectedMonthCurrent) return;
+                setIncludeBenefits(!includeBenefits);
+              }}
+              disabled={!isSelectedMonthCurrent}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-md border border-rule bg-paperAlt text-xs text-pencil hover:text-ink hover:border-ruleStrong transition-colors",
+                !isSelectedMonthCurrent && "opacity-50 cursor-not-allowed",
+              )}
+              title={
+                !isSelectedMonthCurrent
+                  ? "Só no mês atual"
+                  : includeBenefits
+                    ? "Não contar os vales"
+                    : "Contar os vales"
+              }
+            >
+              <span>
+                {includeBenefits
+                  ? "contando os vales"
+                  : "só dinheiro da conta"}
+              </span>
+            </button>
 
             <div className="flex items-center gap-2">
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowBalance(!showBalance);
-                }}
-                variant="ghost"
-                size="icon"
-                className="bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20 h-10 w-10 rounded-full"
-              >
-                {showBalance ? (
-                  <EyeOff className="w-4 h-4" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
-              </Button>
-
-              <div
-                className={`flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 shadow-lg transition-all ${
-                  isSelectedMonthCurrent
-                    ? "hover:bg-white/20 group cursor-pointer active:scale-95"
-                    : "opacity-40 grayscale cursor-not-allowed"
-                }`}
-                onClick={(e) => {
-                  if (!isSelectedMonthCurrent) return;
-                  e.stopPropagation();
-                  setIncludeBenefits(!includeBenefits);
-                }}
-              >
-                <span className="text-[9px] font-black uppercase tracking-widest opacity-80">
-                  {includeBenefits ? "VALES" : "SALDO PURO"}
-                </span>
-                <div
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 ${
-                    includeBenefits && isSelectedMonthCurrent
-                      ? "bg-green-400"
-                      : "bg-white/20"
-                  }`}
+              <p className="font-handwriting text-xs text-pencil">assinatura</p>
+              {!isEditingName && (
+                <button
+                  onClick={() => {
+                    setIsEditingName(true);
+                    setTempName(cardHolderName);
+                  }}
+                  className="p-1 hover:bg-ink/5 rounded-full transition-colors"
+                  title="Editar nome"
                 >
-                  <span
-                    className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-md transition-transform duration-300 ease-in-out ${
-                      includeBenefits && isSelectedMonthCurrent
-                        ? "translate-x-5"
-                        : "translate-x-1"
-                    }`}
-                  />
-                </div>
-              </div>
+                  <Pencil className="w-3 h-3 text-pencil" />
+                </button>
+              )}
             </div>
-          </div>
 
-          {/* Card Middle: Main Balance */}
-          <div className="my-4">
-            <div className="flex flex-col">
-              <span
-                className={cn(
-                  "text-[10px] font-black uppercase tracking-[0.3em] mb-2 transition-colors duration-500",
-                  finalBalance < -0.001
-                    ? "text-rose-200 animate-pulse"
-                    : "opacity-50",
-                )}
-              >
-                {finalBalance < -0.001
-                  ? "Atenção • Saldo Devedor"
-                  : "Saldo Disponível"}
-              </span>
-              <p
-                className={cn(
-                  "text-4xl sm:text-6xl font-black tracking-tighter tabular-nums drop-shadow-lg transition-colors duration-500",
-                  finalBalance < -0.001 ? "text-rose-100" : "text-white",
-                )}
-              >
-                {showBalance ? formatCurrency(displayBalance) : "R$ ••••••"}
-              </p>
-            </div>
-          </div>
-
-          {/* Card Bottom: Info & Type */}
-          <div
-            className="flex items-end justify-between border-t border-white/10 pt-6"
-            id="tour-card-customization"
-          >
-            <div className="space-y-1 group/titular relative">
-              <div className="flex items-center gap-2">
-                <p className="text-[10px] font-bold opacity-50 uppercase tracking-widest">
-                  Titular
-                </p>
-                {!isEditingName && (
-                  <button
-                    key="edit-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsEditingName(true);
-                      setTempName(cardHolderName);
-                    }}
-                    className="p-1 hover:bg-white/10 rounded-full transition-colors"
-                    title="Editar nome"
-                  >
-                    <Pencil className="w-3 h-3 text-white/70" />
-                  </button>
-                )}
-              </div>
-
-              <div className="min-h-[24px] flex items-center">
-                {isEditingName ? (
-                  <div
-                    key="edit-mode"
-                    className="flex items-center gap-2"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <input
-                      id="card-holder-input"
-                      type="text"
-                      value={tempName}
-                      onChange={(e) =>
-                        setTempName(e.target.value.slice(0, 100))
-                      }
-                      className="bg-white/10 border border-white/20 rounded px-2 py-0.5 text-sm font-black uppercase tracking-widest focus:outline-none focus:border-white/40 w-full max-w-[200px]"
-                      autoFocus
-                      onFocus={(e) => e.target.select()}
-                      maxLength={100}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          setCardHolderName(tempName);
-                          setIsEditingName(false);
-                        } else if (e.key === "Escape") {
-                          setIsEditingName(false);
-                        }
-                      }}
-                    />
-                    <button
-                      key="save-btn"
-                      onClick={() => {
+            <div className="min-h-[24px] flex items-center">
+              {isEditingName ? (
+                <div
+                  className="flex items-center gap-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    id="card-holder-input"
+                    type="text"
+                    value={tempName}
+                    onChange={(e) => setTempName(e.target.value.slice(0, 100))}
+                    className="bg-paperAlt border border-rule rounded px-2 py-0.5 text-sm font-handwriting text-ink focus:outline-none focus:border-pen w-full max-w-[200px]"
+                    autoFocus
+                    onFocus={(e) => e.target.select()}
+                    maxLength={100}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
                         setCardHolderName(tempName);
                         setIsEditingName(false);
-                      }}
-                      className="p-1 hover:bg-green-500/20 rounded-full text-green-400"
-                    >
-                      <Check className="w-4 h-4" />
-                    </button>
-                    <button
-                      key="cancel-btn"
-                      onClick={() => setIsEditingName(false)}
-                      className="p-1 hover:bg-red-500/20 rounded-full text-red-400"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <p
-                    key="view-mode"
-                    className="text-sm font-black uppercase tracking-widest drop-shadow-md"
+                      } else if (e.key === "Escape") {
+                        setIsEditingName(false);
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      setCardHolderName(tempName);
+                      setIsEditingName(false);
+                    }}
+                    className="p-1 hover:bg-pen/10 rounded-full text-pen"
                   >
-                    {cardHolderName}
-                  </p>
-                )}
-              </div>
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setIsEditingName(false)}
+                    className="p-1 hover:bg-ink/5 rounded-full text-pencil"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <p className="font-handwriting text-sm text-ink">
+                  {cardHolderName}
+                </p>
+              )}
             </div>
-            <div className="text-right">
-              <h2 className="text-xl font-black tracking-tighter uppercase italic opacity-90 italic">
-                {finalBalance < -0.001 ? "DÉBITO" : "CRÉDITO"}
-              </h2>
-              <p className="text-[8px] font-black opacity-40 uppercase tracking-widest mt-1">
-                Exp: 12/30
-              </p>
-            </div>
+          </div>
+
+          <div className="text-right shrink-0">
+            <p className="font-mono text-xs text-pencil tabular-nums">
+              {format(currentMonth, "MM/yyyy")}
+            </p>
           </div>
         </div>
 
-        {/* Status Indicator */}
-        {finalBalance < -0.001 && (
-          <div className="absolute top-6 right-6">
-            <div className="animate-ping bg-rose-500 w-3 h-3 rounded-full absolute opacity-75" />
-            <div className="relative bg-rose-500 w-3 h-3 rounded-full shadow-[0_0_15px_#ef4444]" />
+        {/* Foto grampeada */}
+        {customBg && (
+          <div className="absolute top-16 right-6 z-10 rotate-2 hidden sm:block">
+            <div className="relative bg-paperAlt p-2 pb-7 border border-ruleStrong shadow-paper">
+              <img
+                src={customBg}
+                alt="foto do caderno"
+                className="w-24 h-24 object-cover"
+              />
+              <svg
+                className="absolute -top-1 left-1/2 -translate-x-1/2 w-5 h-5 text-pencil"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
+                <path d="M3 8 L12 2 L21 8" />
+              </svg>
+              <button
+                onClick={resetBackground}
+                className="absolute -bottom-1 right-1 text-[10px] text-pencil hover:text-pen"
+              >
+                remover
+              </button>
+            </div>
           </div>
         )}
-      </div>
+      </RuledPaper>
 
-      {/* Barra receitas vs despesas */}
+      {/* Entradas e saídas */}
       {showIncomeExpenseBar && (
-        <Card
-          className="relative p-6 shadow-[2px_2px_10px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker"
+        <RuledPaper
           id="tour-income-expense-bar"
+          className="p-6 leading-6"
         >
-          {/* Adesivo Band-Aid Central */}
-          <BandaidEasterEgg
-            type="slugs"
-            className="absolute -top-3 left-1/2 -translate-x-1/2 z-20"
-          >
-            <div className="w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] flex items-center justify-center group-hover/sticker:-translate-y-1 transition-transform overflow-hidden">
-              <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
-                {[...Array(12)].map((_, i) => (
-                  <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />
-                ))}
-              </div>
-              <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
-            </div>
-          </BandaidEasterEgg>
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-green-400 rounded-full" />
-              <span className="text-foreground font-medium">Receitas</span>
+            <div>
+              <h2 className="font-handwriting text-lg text-ink">
+                entradas e saídas
+              </h2>
+              <PencilUnderline className="mt-1 max-w-[160px]" />
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-red-600 rounded-full" />
-                <span className="text-foreground text-sm">Gastos Pagos</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-red-400 rounded-full" />
-                <span className="text-foreground text-sm">Não Pagos</span>
-              </div>
+            <div className="hidden sm:flex items-center gap-4 font-mono text-xs text-pencil">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 bg-ink rounded-full" /> receitas
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 bg-pen rounded-full" /> pagas
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 bg-pencil rounded-full" /> a pagar
+              </span>
             </div>
           </div>
 
-          <div className="w-full bg-muted rounded-full h-5 relative overflow-hidden shadow-inner">
+          <div className="w-full bg-rule rounded-full h-3 relative overflow-hidden">
             <div
-              className="bg-green-400 h-5 transition-all duration-700 absolute left-0 shadow-lg"
+              className="bg-ink h-3 transition-all duration-700 absolute left-0"
               style={{
                 width: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
               }}
             />
             <div
-              className="bg-red-600 h-5 transition-all duration-700 absolute shadow-lg"
+              className="bg-pen h-3 transition-all duration-700 absolute"
               style={{
                 left: `${currentIncome > 0 ? (currentIncome / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
                 width: `${expensesPaid > 0 ? (expensesPaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
               }}
             />
             <div
-              className="bg-red-400 h-5 transition-all duration-700 absolute shadow-lg"
+              className="bg-pencil h-3 transition-all duration-700 absolute"
               style={{
                 left: `${currentIncome + expensesPaid > 0 ? ((currentIncome + expensesPaid) / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
                 width: `${expensesUnpaid > 0 ? (expensesUnpaid / (currentIncome + expensesPaid + expensesUnpaid)) * 100 : 0}%`,
@@ -1090,7 +874,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
           <div className="grid grid-cols-3 gap-4 mt-4">
             <div className="text-center">
-              <div className="text-lg font-bold text-green-600 dark:text-green-400">
+              <div className="text-lg font-bold text-ink tabular-nums">
                 {currentIncome > 0
                   ? (
                       (currentIncome /
@@ -1100,13 +884,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                   : "0"}
                 %
               </div>
-              <div className="text-xs text-muted-foreground">Receitas</div>
-              <div className="text-xs text-muted-foreground font-medium">
+              <div className="text-xs text-pencil font-mono">
                 {formatCurrency(currentIncome)}
               </div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-red-600 dark:text-red-400">
+              <div className="text-lg font-bold text-pen tabular-nums">
                 {expensesPaid > 0
                   ? (
                       (expensesPaid /
@@ -1116,13 +899,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                   : "0"}
                 %
               </div>
-              <div className="text-xs text-muted-foreground">Pagos</div>
-              <div className="text-xs text-muted-foreground font-medium">
+              <div className="text-xs text-pencil font-mono">
                 {formatCurrency(expensesPaid)}
               </div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-red-400 dark:text-red-300">
+              <div className="text-lg font-bold text-pencil tabular-nums">
                 {expensesUnpaid > 0
                   ? (
                       (expensesUnpaid /
@@ -1132,105 +914,117 @@ const Dashboard: React.FC<DashboardProps> = ({
                   : "0"}
                 %
               </div>
-              <div className="text-xs text-muted-foreground">Não Pagos</div>
-              <div className="text-xs text-muted-foreground font-medium">
+              <div className="text-xs text-pencil font-mono">
                 {formatCurrency(expensesUnpaid)}
               </div>
             </div>
           </div>
-        </Card>
+        </RuledPaper>
       )}
 
-      {/* Benefícios — Flash / Vero Card */}
-      {showBenefitsCard && (
-        <Card className="relative p-6 space-y-6 shadow-[2px_2px_12px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker">
-          {/* Adesivo Band-Aid Lateral */}
-          <BandaidEasterEgg
-            type="coins"
-            className="absolute -top-4 -right-2 z-20"
-          >
-            <div className="w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] rotate-[30deg] flex items-center justify-center group-hover/sticker:rotate-[25deg] transition-transform overflow-hidden">
-              <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
-                {[...Array(12)].map((_, i) => (
-                  <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />
-                ))}
+      {/* Vales do mês + Metas */}
+      {(showBenefitsCard || (showSavingsGoalsCard && savingsGoals.length > 0)) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {showBenefitsCard && (
+            <RuledPaper className="p-6 leading-6">
+              <h2 className="font-handwriting text-lg text-ink mb-4">
+                vales do mês
+              </h2>
+              <div className="space-y-4">
+                <AccountSlider
+                  label="Flash"
+                  income={flashIncome}
+                  spent={flashSpent}
+                  formatCurrency={formatCurrency}
+                  daysPassed={daysPassed}
+                  totalDays={totalDays}
+                  splitValue={isFlashSplit ? flashFlexAmount : 0}
+                  splitLabel="Flex"
+                />
+
+                <div className="flex justify-end items-center gap-4 px-1">
+                  {isFlashSplit && (
+                    <Button
+                      onClick={() => setIsSplitModalOpen(true)}
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-pencil hover:text-ink"
+                      title="Ajustar Split"
+                    >
+                      <Pencil className="w-3 h-3 mr-1.5" />
+                      ajustar
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => {
+                      if (isFlashSplit) {
+                        setFlashFlexAmount(0);
+                        setIsFlashSplit(false);
+                      } else {
+                        setIsSplitModalOpen(true);
+                      }
+                    }}
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "text-xs transition-colors",
+                      isFlashSplit
+                        ? "text-pen hover:text-pen"
+                        : "text-pencil hover:text-ink",
+                    )}
+                  >
+                    {isFlashSplit ? (
+                      <Trash2 className="w-3 h-3 mr-1.5" />
+                    ) : (
+                      <Scissors className="w-3 h-3 mr-1.5" />
+                    )}
+                    {isFlashSplit ? "remover split" : "split flex"}
+                  </Button>
+                </div>
+
+                <div className="border-t border-rule" />
+
+                <AccountSlider
+                  label="Vero Card"
+                  income={veroIncome}
+                  spent={veroSpent}
+                  formatCurrency={formatCurrency}
+                  daysPassed={daysPassed}
+                  totalDays={totalDays}
+                />
               </div>
-              <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
-            </div>
-          </BandaidEasterEgg>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-primary" />
-              <span className="text-foreground font-bold">
-                Saldo Benefícios
-              </span>
-            </div>
-          </div>
+            </RuledPaper>
+          )}
 
-          <div className="space-y-4">
-            <AccountSlider
-              label="Flash"
-              income={flashIncome}
-              spent={flashSpent}
-              formatCurrency={formatCurrency}
-              daysPassed={daysPassed}
-              totalDays={totalDays}
-              splitValue={isFlashSplit ? flashFlexAmount : 0}
-              splitLabel="Flex"
-            />
-
-            <div className="flex justify-end items-center gap-4 px-1">
-              {isFlashSplit && (
-                <Button
-                  onClick={() => setIsSplitModalOpen(true)}
-                  variant="ghost"
-                  size="sm"
-                  className="text-[10px] font-black uppercase tracking-widest text-foreground/40"
-                  title="Ajustar Split"
-                >
-                  <Pencil className="w-3 h-3 mr-1.5" />
-                  Ajustar
-                </Button>
-              )}
-              <Button
-                onClick={() => {
-                  if (isFlashSplit) {
-                    setFlashFlexAmount(0);
-                    setIsFlashSplit(false);
-                  } else {
-                    setIsSplitModalOpen(true);
-                  }
-                }}
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "text-[10px] font-black uppercase tracking-widest transition-colors",
-                  isFlashSplit
-                    ? "text-red-500/60 hover:text-red-600"
-                    : "text-foreground/40 hover:text-primary",
-                )}
-              >
-                {isFlashSplit ? (
-                  <Trash2 className="w-3 h-3 mr-1.5" />
-                ) : (
-                  <Scissors className="w-3 h-3 mr-1.5" />
-                )}
-                {isFlashSplit ? "Remover Split" : "Split Flex"}
-              </Button>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-200 dark:border-slate-700" />
-
-          <AccountSlider
-            label="Vero Card"
-            income={veroIncome}
-            spent={veroSpent}
-            formatCurrency={formatCurrency}
-            daysPassed={daysPassed}
-            totalDays={totalDays}
-          />
-        </Card>
+          {showSavingsGoalsCard && savingsGoals.length > 0 && (
+            <RuledPaper className="p-6 leading-6">
+              <h2 className="font-handwriting text-lg text-ink mb-4">metas</h2>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-ink">progresso total</span>
+                  <span className="font-mono text-pencil tabular-nums">
+                    {formatCurrency(totalSaved)} /{" "}
+                    {formatCurrency(totalSavingsGoals)}
+                  </span>
+                </div>
+                <div className="w-full bg-rule rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="h-2.5 bg-ink rounded-full transition-all duration-500"
+                    style={{
+                      width: `${totalSavingsGoals > 0 ? (totalSaved / totalSavingsGoals) * 100 : 0}%`,
+                    }}
+                  />
+                </div>
+                <div className="text-xs text-pencil font-mono">
+                  {totalSavingsGoals > 0
+                    ? Math.round((totalSaved / totalSavingsGoals) * 100)
+                    : 0}
+                  % concluído
+                </div>
+              </div>
+            </RuledPaper>
+          )}
+        </div>
       )}
 
       {/* Modal de Split do Flash */}
@@ -1250,61 +1044,6 @@ const Dashboard: React.FC<DashboardProps> = ({
           setIsSplitModalOpen(false);
         }}
       />
-
-      {/* Progresso das Metas */}
-      {showSavingsGoalsCard && savingsGoals.length > 0 && (
-        <Card className="relative cursor-default shadow-[2px_2px_15px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker">
-          {/* Adesivo Band-Aid Canto */}
-          <BandaidEasterEgg
-            type="hearts"
-            className="absolute -top-3 -left-2 z-20"
-          >
-            <div className="w-16 h-6 bg-[#E8C08A] rounded-full shadow-md border border-[#D4A76A] -rotate-[15deg] flex items-center justify-center group-hover/sticker:-rotate-[10deg] transition-transform overflow-hidden">
-              <div className="absolute inset-0 opacity-20 grid grid-cols-6 gap-1 p-1">
-                {[...Array(12)].map((_, i) => (
-                  <div key={i} className="w-0.5 h-0.5 bg-black rounded-full" />
-                ))}
-              </div>
-              <div className="w-6 h-4 bg-[#F3D5B5] border-x border-[#D4A76A]/30 z-10" />
-            </div>
-          </BandaidEasterEgg>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-foreground truncate pr-2">
-              Progresso das Metas
-            </h3>
-            <Target className="w-4 h-4 text-primary flex-shrink-0" />
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-foreground truncate pr-2">
-                Progresso Total
-              </span>
-              <span className="font-medium text-foreground flex-shrink-0">
-                {formatCurrency(totalSaved)} /{" "}
-                {formatCurrency(totalSavingsGoals)}
-              </span>
-            </div>
-            <div
-              className="w-full rounded-full h-2"
-              style={{ backgroundColor: theme.cardBorder }}
-            >
-              <div
-                className="h-2 rounded-full transition-all duration-500"
-                style={{
-                  backgroundColor: theme.primary,
-                  width: `${totalSavingsGoals > 0 ? (totalSaved / totalSavingsGoals) * 100 : 0}%`,
-                }}
-              />
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {totalSavingsGoals > 0
-                ? Math.round((totalSaved / totalSavingsGoals) * 100)
-                : 0}
-              % concluído
-            </div>
-          </div>
-        </Card>
-      )}
 
       {recentTransactionsEnabled && (
         <RecentTransactionsFloatingCard transactions={transactions} />

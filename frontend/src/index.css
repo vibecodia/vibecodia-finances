@@ -4,65 +4,87 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 41 50% 94%;
+    --foreground: 215 28% 17%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 45 60% 97%;
+    --card-foreground: 215 28% 17%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 45 60% 97%;
+    --popover-foreground: 215 28% 17%;
 
-    --primary: 161 94% 30%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 215 28% 17%;
+    --primary-foreground: 41 50% 94%;
 
-    --secondary: 161 94% 20%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 45 35% 92%;
+    --secondary-foreground: 215 28% 17%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 41 40% 91%;
+    --muted-foreground: 218 11% 65%;
 
-    --accent: 161 84% 39%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 347 77% 50%;
+    --accent-foreground: 41 50% 94%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 41 50% 94%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 161 94% 30%;
+    --border: 215 20% 22% / 0.18;
+    --input: 215 20% 22% / 0.18;
+    --ring: 347 77% 50%;
 
-    --radius: 0.75rem;
+    --radius: 0.375rem;
+
+    /* Caderno de contas */
+    --paper: 41 50% 94%;
+    --paper-alt: 45 60% 97%;
+    --ink: 215 28% 17%;
+    --ink-muted: 218 11% 65%;
+    --pen: 347 77% 50%;
+    --rule: 215 20% 22% / 0.14;
+    --rule-strong: 215 20% 22% / 0.24;
+    --highlight: 48 96% 77%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 38 15% 10%;
+    --foreground: 44 43% 93%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 38 15% 13%;
+    --card-foreground: 44 43% 93%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 38 15% 13%;
+    --popover-foreground: 44 43% 93%;
 
-    --primary: 161 84% 39%;
-    --primary-foreground: 222.2 84% 4.9%;
+    --primary: 44 43% 93%;
+    --primary-foreground: 38 15% 10%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 38 12% 16%;
+    --secondary-foreground: 44 43% 93%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 38 12% 16%;
+    --muted-foreground: 24 5% 64%;
 
-    --accent: 161 84% 39%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 350 90% 60%;
+    --accent-foreground: 38 15% 10%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 38 15% 10%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 161 84% 39%;
+    --border: 44 30% 90% / 0.16;
+    --input: 44 30% 90% / 0.16;
+    --ring: 350 90% 60%;
+
+    --radius: 0.375rem;
+
+    /* Caderno de contas */
+    --paper: 38 15% 10%;
+    --paper-alt: 38 15% 13%;
+    --ink: 44 43% 93%;
+    --ink-muted: 24 5% 64%;
+    --pen: 350 90% 60%;
+    --rule: 44 30% 90% / 0.16;
+    --rule-strong: 44 30% 90% / 0.26;
+    --highlight: 48 60% 30%;
   }
 }
 
@@ -241,4 +263,85 @@
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* ── Caderno de contas ─────────────────────────────────────────── */
+
+/* Régua do caderno — ritmo de 1.5rem (leading-6) */
+.ruled {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent calc(1.5rem - 1px),
+    hsl(var(--rule)) calc(1.5rem - 1px),
+    hsl(var(--rule)) 1.5rem
+  );
+}
+
+/* Fita adesiva (header / etiqueta colada) */
+.tape {
+  background: linear-gradient(
+    105deg,
+    hsl(var(--paper-alt) / 0.92),
+    hsl(var(--paper-alt) / 0.68)
+  );
+  box-shadow: 0 1px 3px hsl(var(--ink) / 0.15);
+  clip-path: polygon(
+    0 6%,
+    4% 0,
+    96% 2%,
+    100% 8%,
+    100% 92%,
+    96% 100%,
+    4% 98%,
+    0 94%
+  );
+}
+
+/* Foco visível global = caneta vermelha */
+:focus-visible {
+  outline: 2px solid hsl(var(--pen));
+  outline-offset: 2px;
+}
+
+/* Motion orquestrada: folha entra, margem se desenha */
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) rotate(var(--sheet-rot, 0deg));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(var(--sheet-rot, 0deg));
+  }
+}
+
+.animate-sheet-in {
+  animation: sheet-in 0.5s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes margin-draw {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.animate-margin-draw {
+  transform-origin: top;
+  animation: margin-draw 0.4s ease-out 0.25s both;
+}
+
+/* Reduced motion global */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
