@@ -1,17 +1,41 @@
 export type PaymentMethod = string;
 
+// Categoria / meio de pagamento gerenciável. No modo autenticado vem do banco
+// (coleção Category); no modo guest é persistido em localStorage. As flags
+// substituem os checks por string ("Aporte" → isSavingsContribution, etc.).
+export interface Category {
+  _id?: string;
+  id?: string;
+  name: string;
+  code: string;
+  type: "expense" | "income" | "payment_method";
+  isSavingsContribution?: boolean;
+  isPassiveIncome?: boolean;
+  isBenefit?: boolean;
+  includeInBalance?: boolean; // Cartão de benefício: contar no saldo quando o mestre global está desligado?
+  isSystem?: boolean;
+  emoji?: string;
+  color?: string;
+  descriptionTemplate?: string;
+  descriptionSuggestions?: string[];
+  order?: number;
+  status?: "active" | "deleted";
+}
+
+// `category` e `paymentMethod` podem ser o nome legado (string, modo guest /
+// dados antigos) ou o documento populado (modo autenticado).
 export interface Transaction {
   _id?: string; // Adicionado para o MongoDB
   id: string; // Mantido para compatibilidade
   type: "expense" | "income";
   amount: number;
   description: string;
-  category: string;
+  category: string | Category;
   date: string;
   dueDate?: string; // Data de vencimento para gastos pendentes
   isPaid: boolean; // Status de pagamento
   recurrence: "none" | "weekly" | "monthly" | "yearly";
-  paymentMethod?: PaymentMethod; // Adicionado para despesas
+  paymentMethod?: string | Category; // Adicionado para despesas
   createdAt: string;
   updatedAt: string;
   notes?: any; // Adicionado para o campo de notas (pode ser string ou objeto estruturado)
@@ -67,6 +91,7 @@ export interface MonthlyBalance {
 
 export interface CategoryData {
   category: string;
+  code?: string;
   amount: number;
   percentage: number;
   color: string;

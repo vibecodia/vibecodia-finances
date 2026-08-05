@@ -1,3 +1,4 @@
+import { categorySchema } from './category.js';
 import { pushSubscriptionSchema } from './pushSubscription.js';
 import { savingsGoalSchema } from './savingsGoal.js';
 import { shoppingItemSchema } from './shoppingItem.js';
@@ -13,6 +14,7 @@ export function getModels(conn) {
   if (modelsCache.has(conn)) return modelsCache.get(conn);
 
   const models = {
+    Category: conn.model('Category', categorySchema),
     Transaction: conn.model('Transaction', transactionSchema),
     SavingsGoal: conn.model('SavingsGoal', savingsGoalSchema),
     ShoppingItem: conn.model('ShoppingItem', shoppingItemSchema),

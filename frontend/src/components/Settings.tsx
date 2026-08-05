@@ -12,7 +12,7 @@ import {
   Wallet,
   Gamepad,
   CreditCard,
-  Scissors,
+  Gift,
   Check,
   Eye,
   EyeOff,
@@ -29,8 +29,8 @@ import { useVerification } from "../contexts/VerificationContext";
 import { useCategories } from "../hooks/useCategories";
 import { usePaymentMethods } from "../hooks/usePaymentMethods";
 import { useLocalStorage } from "../hooks/trello/useLocalStorage";
-import { useCurrencyInput } from "../hooks/useCurrencyInput";
-import { Transaction, SavingsGoal } from "../types";
+import { Transaction, SavingsGoal, Category } from "../types";
+import { getBenefitPaymentMethods } from "../utils/categoryUtils";
 import {
   exportFinancialData,
   validateImportData,
@@ -73,6 +73,7 @@ const Settings: React.FC<SettingsProps> = ({
   const {
     paymentMethods,
     addPaymentMethod,
+    updatePaymentMethod,
     removePaymentMethod,
     resetToDefaults: resetPaymentMethodsToDefaults,
   } = usePaymentMethods();
@@ -82,20 +83,8 @@ const Settings: React.FC<SettingsProps> = ({
     "dashboard_card_holder_name",
     "alterar aqui",
   );
-  const [flashFlexAmount, setFlashFlexAmount] = useLocalStorage(
-    "dashboard_flash_flex_amount",
-    0,
-  );
-  const [isFlashSplit, setIsFlashSplit] = useLocalStorage(
-    "dashboard_flash_is_split",
-    false,
-  );
   const [showBalance, setShowBalance] = useLocalStorage(
     "dashboard_show_balance",
-    true,
-  );
-  const [includeBenefits, setIncludeBenefits] = useLocalStorage(
-    "dashboard_include_benefits",
     true,
   );
   const [recentTransactionsDuration, setRecentTransactionsDuration] =
@@ -123,8 +112,6 @@ const Settings: React.FC<SettingsProps> = ({
     true,
   );
 
-  const { inputProps: flexAmountProps, numericValue: flexAmountValue } =
-    useCurrencyInput(flashFlexAmount);
   const [tempName, setTempName] = useState(cardHolderName);
 
   const [importText, setImportText] = useState("");
@@ -151,6 +138,17 @@ const Settings: React.FC<SettingsProps> = ({
     text: "",
     type: "idle" as "idle" | "success" | "error",
   });
+
+  // Cartões de Benefício State
+  const [newBenefitCardName, setNewBenefitCardName] = useState("");
+  const [newBenefitCardEmoji, setNewBenefitCardEmoji] = useState("");
+  const [benefitCardMessage, setBenefitCardMessage] = useState({
+    text: "",
+    type: "idle" as "idle" | "success" | "error",
+  });
+
+  // Cartões de benefício = meios de pagamento com a flag isBenefit.
+  const benefitCards = getBenefitPaymentMethods(paymentMethods);
 
   // Ninja Game State
   const [ninjaGameEnabled, setNinjaGameEnabled] = useState<boolean>(() => {
@@ -287,9 +285,10 @@ const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  const confirmAddCategory = () => {
+  const confirmAddCategory = async () => {
     if (pendingCategory) {
-      if (addCategory(pendingCategory.type, pendingCategory.name)) {
+      const ok = await addCategory(pendingCategory.type, pendingCategory.name);
+      if (ok) {
         setNewCategoryName("");
       }
       setShowAddCategoryModal(false);
@@ -302,9 +301,9 @@ const Settings: React.FC<SettingsProps> = ({
     setShowDeleteCategoryModal(true);
   };
 
-  const confirmRemoveCategory = () => {
+  const confirmRemoveCategory = async () => {
     if (pendingCategory) {
-      const result = removeCategory(
+      const result = await removeCategory(
         pendingCategory.type,
         pendingCategory.name,
         transactions,
@@ -325,8 +324,8 @@ const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  const handleResetCategories = () => {
-    const result = resetCategoriesToDefaults(categoryType, transactions);
+  const handleResetCategories = async () => {
+    const result = await resetCategoriesToDefaults(categoryType, transactions);
     setCategoryMessage({
       text: `Padrões restaurados! ${result.restored} categorias base carregadas. ${result.preserved > 0 ? `${result.preserved} categorias em uso foram preservadas.` : ""}`,
       type: "success",
@@ -343,9 +342,10 @@ const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  const confirmAddPaymentMethod = () => {
+  const confirmAddPaymentMethod = async () => {
     if (pendingPaymentMethod) {
-      if (addPaymentMethod(pendingPaymentMethod)) {
+      const ok = await addPaymentMethod(pendingPaymentMethod);
+      if (ok) {
         setNewPaymentMethodName("");
       }
       setShowAddPaymentMethodModal(false);
@@ -358,9 +358,12 @@ const Settings: React.FC<SettingsProps> = ({
     setShowDeletePaymentMethodModal(true);
   };
 
-  const confirmRemovePaymentMethod = () => {
+  const confirmRemovePaymentMethod = async () => {
     if (pendingPaymentMethod) {
-      const result = removePaymentMethod(pendingPaymentMethod, transactions);
+      const result = await removePaymentMethod(
+        pendingPaymentMethod,
+        transactions,
+      );
       if (!result.success) {
         setErrorModalMessage(
           result.message || "Erro ao excluir meio de pagamento.",
@@ -382,13 +385,81 @@ const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  const handleResetPaymentMethods = () => {
-    const result = resetPaymentMethodsToDefaults(transactions);
+  const handleResetPaymentMethods = async () => {
+    const result = await resetPaymentMethodsToDefaults(transactions);
     setPaymentMethodMessage({
       text: `Padrões restaurados! ${result.restored} meios de pagamento carregados. ${result.preserved > 0 ? `${result.preserved} meios em uso foram preservados.` : ""}`,
       type: "success",
     });
     setTimeout(() => setPaymentMethodMessage({ text: "", type: "idle" }), 4000);
+  };
+
+  // ── Cartões de Benefício ────────────────────────────────────────────────────
+
+  const handleAddBenefitCard = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newBenefitCardName.trim();
+    if (!name) return;
+    const ok = await addPaymentMethod(name, {
+      emoji: newBenefitCardEmoji.trim(),
+      isBenefit: true,
+      includeInBalance: true,
+    });
+    setBenefitCardMessage({
+      text: ok
+        ? `Cartão "${name}" adicionado como benefício.`
+        : `Não foi possível adicionar o cartão "${name}".`,
+      type: ok ? "success" : "error",
+    });
+    if (ok) {
+      setNewBenefitCardName("");
+      setNewBenefitCardEmoji("");
+    }
+    setTimeout(() => setBenefitCardMessage({ text: "", type: "idle" }), 3000);
+  };
+
+  // Alterna o toggle "contar no saldo?" (includeInBalance) do cartão.
+  const handleToggleBenefitCardBalance = async (card: Category) => {
+    const next = card.includeInBalance === false; // nega o valor atual
+    const ok = await updatePaymentMethod(card.code, {
+      includeInBalance: next,
+    });
+    setBenefitCardMessage({
+      text: ok
+        ? `"${card.name}" ${next ? "passa a contar" : "não conta mais"} no saldo quando o mestre estiver desligado.`
+        : `Não foi possível atualizar "${card.name}".`,
+      type: ok ? "success" : "error",
+    });
+    setTimeout(() => setBenefitCardMessage({ text: "", type: "idle" }), 3000);
+  };
+
+  // Alterna o toggle "é benefício?" (isBenefit). Desligar move o cartão para
+  // meio de pagamento normal.
+  const handleToggleBenefitCardFlag = async (card: Category) => {
+    const next = !card.isBenefit;
+    const ok = await updatePaymentMethod(card.code, { isBenefit: next });
+    setBenefitCardMessage({
+      text: ok
+        ? `"${card.name}" ${next ? "voltou a ser" : "deixou de ser"} cartão de benefício.`
+        : `Não foi possível atualizar "${card.name}".`,
+      type: ok ? "success" : "error",
+    });
+    setTimeout(() => setBenefitCardMessage({ text: "", type: "idle" }), 3000);
+  };
+
+  // Mesmo toggle, mas acionado da seção "Pagamento" (permite promover qualquer
+  // meio de pagamento a cartão de benefício e reverter um cartão desligado).
+  // Mensagem exibida no banner da seção "Pagamento".
+  const handleTogglePaymentMethodBenefit = async (method: Category) => {
+    const next = !method.isBenefit;
+    const ok = await updatePaymentMethod(method.code, { isBenefit: next });
+    setPaymentMethodMessage({
+      text: ok
+        ? `"${method.name}" ${next ? "passou a ser" : "deixou de ser"} cartão de benefício.`
+        : `Não foi possível atualizar "${method.name}".`,
+      type: ok ? "success" : "error",
+    });
+    setTimeout(() => setPaymentMethodMessage({ text: "", type: "idle" }), 3000);
   };
 
   const totalTransactions = transactions.length;
@@ -555,6 +626,10 @@ const Settings: React.FC<SettingsProps> = ({
                       typeof cat === "string"
                         ? cat
                         : (cat && (cat as any).name) || "Categoria";
+                    const catEmoji =
+                      typeof cat === "string"
+                        ? ""
+                        : (cat && (cat as any).emoji) || "";
                     return (
                       <div
                         key={`${catName}-${idx}`}
@@ -564,7 +639,10 @@ const Settings: React.FC<SettingsProps> = ({
                           backgroundColor: theme.cardBackground,
                         }}
                       >
-                        <span style={{ color: theme.text }}>{catName}</span>
+                        <span style={{ color: theme.text }}>
+                          {catEmoji ? `${catEmoji} ` : ""}
+                          {catName}
+                        </span>
                         <button
                           onClick={() =>
                             handleRemoveCategory("expense", catName)
@@ -590,6 +668,10 @@ const Settings: React.FC<SettingsProps> = ({
                       typeof cat === "string"
                         ? cat
                         : (cat && (cat as any).name) || "Categoria";
+                    const catEmoji =
+                      typeof cat === "string"
+                        ? ""
+                        : (cat && (cat as any).emoji) || "";
                     return (
                       <div
                         key={`${catName}-${idx}`}
@@ -599,7 +681,10 @@ const Settings: React.FC<SettingsProps> = ({
                           backgroundColor: theme.cardBackground,
                         }}
                       >
-                        <span style={{ color: theme.text }}>{catName}</span>
+                        <span style={{ color: theme.text }}>
+                          {catEmoji ? `${catEmoji} ` : ""}
+                          {catName}
+                        </span>
                         <button
                           onClick={() =>
                             handleRemoveCategory("income", catName)
@@ -688,26 +773,226 @@ const Settings: React.FC<SettingsProps> = ({
                   Meios Disponíveis ({paymentMethods.length})
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {paymentMethods.map((method) => (
-                    <div
-                      key={method}
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 font-bold text-xs group hover:border-primary transition-all shadow-sm"
-                      style={{
-                        borderColor: theme.cardBorder,
-                        backgroundColor: theme.cardBackground,
-                      }}
-                    >
-                      <span style={{ color: theme.text }}>{method}</span>
-                      <button
-                        onClick={() => handleRemovePaymentMethod(method)}
-                        className="opacity-0 group-hover:opacity-100 text-accent hover:scale-125 transition-all"
+                  {paymentMethods.map((method) => {
+                    const methodName =
+                      typeof method === "string"
+                        ? method
+                        : (method && (method as any).name) || "Cartão";
+                    const methodEmoji =
+                      typeof method === "string"
+                        ? ""
+                        : (method && (method as any).emoji) || "";
+                    return (
+                      <div
+                        key={methodName}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 font-bold text-xs group hover:border-primary transition-all shadow-sm"
+                        style={{
+                          borderColor: theme.cardBorder,
+                          backgroundColor: theme.cardBackground,
+                        }}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                        <span style={{ color: theme.text }}>
+                          {methodEmoji ? `${methodEmoji} ` : ""}
+                          {methodName}
+                        </span>
+                        {method.code && (
+                          <button
+                            onClick={() =>
+                              handleTogglePaymentMethodBenefit(method)
+                            }
+                            className={cn(
+                              "transition-all",
+                              method.isBenefit
+                                ? "text-primary opacity-100"
+                                : "opacity-0 group-hover:opacity-50 text-muted-foreground hover:opacity-100 hover:scale-125",
+                            )}
+                            title={
+                              method.isBenefit
+                                ? "Cartão de benefício. Clique para voltar a meio de pagamento normal."
+                                : "Marcar como cartão de benefício"
+                            }
+                          >
+                            <Gift className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleRemovePaymentMethod(methodName)}
+                          className="opacity-0 group-hover:opacity-100 text-accent hover:scale-125 transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+            </div>
+          </Card>
+
+          {/* Cartões de Benefícios Section */}
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-primary text-white shadow-lg">
+                  <Wallet className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-foreground uppercase tracking-wider">
+                    Cartões de Benefícios
+                  </h2>
+                  <p className="text-xs text-muted-foreground font-bold uppercase">
+                    Vale alimentação, refeição e outros
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {benefitCardMessage.type !== "idle" && (
+              <div
+                className={cn(
+                  "mb-6 p-4 rounded-2xl border-2 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300",
+                  benefitCardMessage.type === "success"
+                    ? "bg-primary/10 border-primary/20 text-primary"
+                    : "bg-accent/10 border-accent/20 text-accent",
+                )}
+              >
+                {benefitCardMessage.type === "success" ? (
+                  <CheckCircle className="w-5 h-5" />
+                ) : (
+                  <AlertTriangle className="w-5 h-5" />
+                )}
+                <p className="text-xs font-bold uppercase tracking-tight">
+                  {benefitCardMessage.text}
+                </p>
+              </div>
+            )}
+
+            <form onSubmit={handleAddBenefitCard} className="space-y-4 mb-8">
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  value={newBenefitCardName}
+                  onChange={(e) => setNewBenefitCardName(e.target.value)}
+                  placeholder="Novo cartão (ex: Ticket Restaurante)..."
+                  className="flex-1"
+                />
+                <Input
+                  type="text"
+                  value={newBenefitCardEmoji}
+                  onChange={(e) => setNewBenefitCardEmoji(e.target.value)}
+                  placeholder="Emoji"
+                  className="w-24 text-center"
+                />
+                <Button
+                  type="submit"
+                  disabled={!newBenefitCardName.trim()}
+                  size="icon"
+                  title="Adicionar cartão de benefício"
+                >
+                  <PlusCircle className="w-6 h-6" />
+                </Button>
+              </div>
+            </form>
+
+            <div className="space-y-3">
+              {benefitCards.length === 0 ? (
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest text-center py-4">
+                  Nenhum cartão de benefício configurado
+                </p>
+              ) : (
+                benefitCards.map((card) => {
+                  const includeInBalance = card.includeInBalance !== false;
+                  return (
+                    <div
+                      key={card.code}
+                      className="flex items-center justify-between gap-3 p-3 rounded-2xl border-2 bg-card flex-wrap"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-xl">
+                          {card.emoji || "💳"}
+                        </span>
+                        <span className="text-sm font-black text-foreground truncate">
+                          {card.name}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-5">
+                        <div
+                          className="flex flex-col items-center gap-1 cursor-pointer select-none"
+                          onClick={() => handleToggleBenefitCardFlag(card)}
+                          title="É cartão de benefício? Desligar move para meio de pagamento normal."
+                        >
+                          <span
+                            className={cn(
+                              "text-[8px] font-black uppercase tracking-widest",
+                              card.isBenefit
+                                ? "text-primary"
+                                : "text-muted-foreground/60",
+                            )}
+                          >
+                            Benefício
+                          </span>
+                          <div
+                            className={cn(
+                              "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative",
+                              card.isBenefit ? "bg-primary" : "bg-muted",
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
+                                card.isBenefit
+                                  ? "translate-x-6"
+                                  : "translate-x-0",
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        <div
+                          className="flex flex-col items-center gap-1 cursor-pointer select-none"
+                          onClick={() => handleToggleBenefitCardBalance(card)}
+                          title="Contar no saldo quando o interruptor VALES/SALDO PURO estiver desligado?"
+                        >
+                          <span
+                            className={cn(
+                              "text-[8px] font-black uppercase tracking-widest",
+                              includeInBalance
+                                ? "text-primary"
+                                : "text-muted-foreground/60",
+                            )}
+                          >
+                            Contar no saldo
+                          </span>
+                          <div
+                            className={cn(
+                              "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative",
+                              includeInBalance ? "bg-primary" : "bg-muted",
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
+                                includeInBalance
+                                  ? "translate-x-6"
+                                  : "translate-x-0",
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleRemovePaymentMethod(card.name)}
+                          className="text-accent hover:scale-125 transition-all opacity-60 hover:opacity-100"
+                          title="Remover cartão"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </Card>
 
@@ -728,56 +1013,29 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
 
             <div className="space-y-6">
-              {/* Visibility & Benefits Toggles */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div
-                  className={cn(
-                    "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
-                    showBalance
-                      ? "bg-primary/5 border-primary shadow-sm"
-                      : "bg-card border-border",
-                  )}
-                  onClick={() => setShowBalance(!showBalance)}
-                >
-                  <div className="flex-1">
-                    <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
-                      Mostrar Saldo
-                    </p>
-                    <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">
-                      Privacidade no Dashboard
-                    </p>
-                  </div>
-                  {showBalance ? (
-                    <Eye className="w-5 h-5 text-primary" />
-                  ) : (
-                    <EyeOff className="w-5 h-5 opacity-40" />
-                  )}
+              {/* Visibility Toggle */}
+              <div
+                className={cn(
+                  "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
+                  showBalance
+                    ? "bg-primary/5 border-primary shadow-sm"
+                    : "bg-card border-border",
+                )}
+                onClick={() => setShowBalance(!showBalance)}
+              >
+                <div className="flex-1">
+                  <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
+                    Mostrar Saldo
+                  </p>
+                  <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">
+                    Privacidade no Dashboard
+                  </p>
                 </div>
-
-                <div
-                  className={cn(
-                    "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group",
-                    includeBenefits
-                      ? "bg-primary/5 border-primary shadow-sm"
-                      : "bg-card border-border",
-                  )}
-                  onClick={() => setIncludeBenefits(!includeBenefits)}
-                >
-                  <div className="flex-1">
-                    <p className="text-[10px] font-black text-foreground uppercase tracking-tight">
-                      Incluir Benefícios
-                    </p>
-                    <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">
-                      Somar Flash/Vero no total
-                    </p>
-                  </div>
-                  <Wallet
-                    className={cn(
-                      "w-5 h-5 transition-colors",
-                      includeBenefits ? "text-primary" : "opacity-40",
-                    )}
-                  />
-                </div>
+                {showBalance ? (
+                  <Eye className="w-5 h-5 text-primary" />
+                ) : (
+                  <EyeOff className="w-5 h-5 opacity-40" />
+                )}
               </div>
 
               <div className="h-px bg-muted my-2"></div>
@@ -803,57 +1061,6 @@ const Settings: React.FC<SettingsProps> = ({
                     <Check className="w-5 h-5" />
                   </Button>
                 </div>
-              </div>
-
-              <div className="h-px bg-muted my-4"></div>
-
-              {/* Flash Split */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-black text-muted-foreground uppercase tracking-widest ml-1 flex items-center gap-2">
-                    <Scissors className="w-4 h-4" />
-                    Split Flash (Flex)
-                  </label>
-                  <div
-                    className={cn(
-                      "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative cursor-pointer",
-                      isFlashSplit ? "bg-primary" : "bg-muted",
-                    )}
-                    onClick={() => setIsFlashSplit(!isFlashSplit)}
-                  >
-                    <div
-                      className={cn(
-                        "w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out",
-                        isFlashSplit ? "translate-x-6" : "translate-x-0",
-                      )}
-                    />
-                  </div>
-                </div>
-
-                {isFlashSplit && (
-                  <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
-                    <div className="flex gap-2">
-                      <Input
-                        {...flexAmountProps}
-                        label="Saldo Flex (R$)"
-                        className="font-bold"
-                      />
-                      <Button
-                        onClick={() => setFlashFlexAmount(flexAmountValue)}
-                        size="icon"
-                        className="mt-auto h-12 w-12"
-                        disabled={flexAmountValue === flashFlexAmount}
-                        title="Salvar Saldo Flex"
-                      >
-                        <Check className="w-5 h-5" />
-                      </Button>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground font-bold italic ml-1">
-                      * Este valor será reservado do saldo total Flash para
-                      gastos Flex.
-                    </p>
-                  </div>
-                )}
               </div>
 
               <div className="h-px bg-muted my-4"></div>
@@ -906,7 +1113,7 @@ const Settings: React.FC<SettingsProps> = ({
                         Cartões de Benefícios
                       </p>
                       <p className="text-[8px] text-foreground opacity-40 font-bold uppercase">
-                        Flash e Vero Card
+                        Cartões configuráveis
                       </p>
                     </div>
                     {showBenefitsCard ? (

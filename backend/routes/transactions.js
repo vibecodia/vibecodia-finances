@@ -18,7 +18,9 @@ export function transactionsRouter(connectionManager) {
     if (type) query.type = type;
     if (search) query.description = { $regex: search, $options: 'i' };
 
-    const transactions = await Transaction.find(query);
+    const transactions = await Transaction.find(query)
+      .populate('category')
+      .populate('paymentMethod');
     res.json(transactions);
   });
 

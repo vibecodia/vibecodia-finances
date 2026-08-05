@@ -1,6 +1,7 @@
 import { createLocalDateForStorage } from '../utils/date.js';
 import { httpError } from '../utils/httpError.js';
 import { logger } from '../utils/logger.js';
+import { resolveCategory } from './categories.js';
 
 // Recalcula currentAmount de uma meta a partir das transações ativas pagas.
 // Bloco que estava duplicado em 5 pontos do server.js original.
@@ -14,26 +15,36 @@ export async function recalcGoalCurrentAmount(models, goal) {
   goal.currentAmount = allActiveTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
 }
 
-// Cria uma transação. Para categoria "Aporte", valida a meta, registra a
-// contribuição e mantém goal.currentAmount em sincronia.
-// Lógica copiada do server.js original (POST /api/transactions).
+// Cria uma transação. Se a categoria resolvida for uma contribuição de meta
+// (flag isSavingsContribution — antes era a string "Aporte"), valida a meta,
+// registra a contribuição e mantém goal.currentAmount em sincronia.
 export async function createTransaction(models, body) {
   const { Transaction, SavingsGoal } = models;
 
   const requestedGoalId = body.savingsGoalId || body.goalId;
-  const isAporte = typeof body.category === 'string' && body.category.trim().toLowerCase() === 'aporte';
   const amount = Number(body.amount);
+
+  // Resolve categoria e meio de pagamento para ObjectId. Aceita _id, code ou
+  // name (legado) — preserva compatibilidade com clientes antigos.
+  const category = await resolveCategory(models, body.category, body.type);
+  const paymentMethod = await resolveCategory(
+    models,
+    body.paymentMethod || 'pix',
+    'payment_method',
+  );
+  const isAporte = category?.isSavingsContribution === true;
 
   const transactionData = {
     ...body,
-    paymentMethod: body.paymentMethod || 'pix',
+    category: category ? category._id : undefined,
+    paymentMethod: paymentMethod ? paymentMethod._id : undefined,
     date: createLocalDateForStorage(body.date),
     dueDate: body.dueDate ? createLocalDateForStorage(body.dueDate) : undefined,
   };
 
   if (isAporte) {
     if (!requestedGoalId) {
-      throw httpError(400, 'Para categoria "Aporte", o campo goalId/savingsGoalId é obrigatório.');
+      throw httpError(400, 'Para a categoria de aporte, o campo goalId/savingsGoalId é obrigatório.');
     }
     if (!Number.isFinite(amount) || amount <= 0) {
       throw httpError(400, 'Valor do aporte inválido.');
@@ -45,21 +56,35 @@ export async function createTransaction(models, body) {
   }
 
   if (isAporte) {
-    transactionData.category = 'Aporte';
     const goal = await SavingsGoal.findById(requestedGoalId);
     if (!goal || goal.status === 'deleted') {
       throw httpError(404, 'Meta não encontrada ou inativa.');
     }
 
+    // Casa o ObjectId (pós-migração) e a string legada "Aporte" (pré-migração)
+    // para o limite da meta valer também com dados antigos. Usa $expr/$toString
+    // (em vez de { category: 'Aporte' }) para evitar o CastError do Mongoose:
+    // category é ObjectId no schema e a string legada não pode ser castada.
+    const aporteMatch = {
+      $expr: {
+        $in: [
+          { $toString: '$category' },
+          [category._id.toString(), 'Aporte'],
+        ],
+      },
+      status: 'active',
+      savingsGoalId: goal._id,
+    };
+
     const aggregate = await Transaction.aggregate([
-      { $match: { category: 'Aporte', status: 'active', savingsGoalId: goal._id } },
+      { $match: aporteMatch },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
     const plannedAmount = aggregate?.[0]?.total || 0;
     const remaining = (goal.targetAmount || 0) - plannedAmount;
 
     const paidAggregate = await Transaction.aggregate([
-      { $match: { category: 'Aporte', status: 'active', savingsGoalId: goal._id, isPaid: true } },
+      { $match: { ...aporteMatch, isPaid: true } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
     const paidAmount = paidAggregate?.[0]?.total || 0;
@@ -88,7 +113,8 @@ export async function createTransaction(models, body) {
       const newTransaction = await new Transaction(transactionData).save();
       goal.currentAmount = paidAmount + (newTransaction.isPaid ? amount : 0);
       await goal.save();
-      return newTransaction;
+      // Document.populate() retorna uma Promise (não encadeável como Query).
+      return newTransaction.populate(['category', 'paymentMethod']);
     } catch (err) {
       goal.contributions = goal.contributions.filter(c => c._id.toString() !== newContribution._id.toString());
       await goal.save();
@@ -97,17 +123,26 @@ export async function createTransaction(models, body) {
   }
 
   const newTransaction = await new Transaction(transactionData).save();
-  return newTransaction;
+  return newTransaction.populate(['category', 'paymentMethod']);
 }
 
-// Atualiza uma transação e, se for aporte, sincroniza a contribuição da meta.
-// Retorna null quando não encontrada (rota responde 404).
+// Atualiza uma transação e, se a categoria for contribuição de meta, sincroniza
+// a contribuição. Retorna null quando não encontrada (rota responde 404).
 export async function updateTransaction(models, id, body) {
   const { Transaction } = models;
 
   const updateData = {
     ...body,
   };
+
+  if (body.category !== undefined) {
+    const category = await resolveCategory(models, body.category, body.type);
+    if (category) updateData.category = category._id;
+  }
+  if (body.paymentMethod !== undefined) {
+    const paymentMethod = await resolveCategory(models, body.paymentMethod, 'payment_method');
+    if (paymentMethod) updateData.paymentMethod = paymentMethod._id;
+  }
 
   if (body.date) {
     updateData.date = createLocalDateForStorage(body.date);
@@ -120,20 +155,45 @@ export async function updateTransaction(models, id, body) {
     id,
     updateData,
     { new: true, runValidators: true }
-  );
+  ).populate('category').populate('paymentMethod');
 
   if (!updatedTransaction) {
     return null;
   }
 
-  if (updatedTransaction.category === 'Aporte' && updatedTransaction.savingsGoalId && updatedTransaction.savingsGoalContributionId) {
+  const isContribution =
+    updatedTransaction.category?.isSavingsContribution === true;
+  const hasGoalLinks =
+    updatedTransaction.savingsGoalId && updatedTransaction.savingsGoalContributionId;
+
+  if (isContribution && hasGoalLinks) {
     await syncContributionFromTransaction(models, updatedTransaction, body);
+  } else if (!isContribution && hasGoalLinks) {
+    // Categoria deixou de ser aporte → remove a contribuição da meta e os
+    // vínculos da transação, evitando o dinheiro contado 2× (despesa normal +
+    // impacto de meta). Ordem importa: limpa savingsGoalId na transação ANTES
+    // do recalc, para o valor sair do currentAmount.
+    const goalId = updatedTransaction.savingsGoalId;
+    const contributionId = updatedTransaction.savingsGoalContributionId;
+
+    await Transaction.updateOne(
+      { _id: id },
+      { $set: { savingsGoalId: null, savingsGoalContributionId: null } },
+    );
+    updatedTransaction.savingsGoalId = null;
+    updatedTransaction.savingsGoalContributionId = null;
+
+    await syncContributionFromTransaction(
+      models,
+      { savingsGoalId: goalId, savingsGoalContributionId: contributionId },
+      { status: 'deleted' },
+    );
   }
 
   return updatedTransaction;
 }
 
-// Soft-delete de uma transação e, se for aporte, sincroniza a contribuição.
+// Soft-delete de uma transação e, se for contribuição de meta, sincroniza.
 // Retorna null quando não encontrada (rota responde 404).
 export async function deleteTransaction(models, id) {
   const { Transaction } = models;
@@ -142,12 +202,17 @@ export async function deleteTransaction(models, id) {
     id,
     { status: 'deleted', deletedAt: now },
     { new: true }
-  );
+  ).populate('category');
+
   if (!deletedTransaction) {
     return null;
   }
 
-  if (deletedTransaction.category === 'Aporte' && deletedTransaction.savingsGoalId && deletedTransaction.savingsGoalContributionId) {
+  if (
+    deletedTransaction.category?.isSavingsContribution === true &&
+    deletedTransaction.savingsGoalId &&
+    deletedTransaction.savingsGoalContributionId
+  ) {
     await syncContributionFromTransaction(models, deletedTransaction, { status: 'deleted' });
   }
 

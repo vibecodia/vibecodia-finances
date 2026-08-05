@@ -54,7 +54,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useLocalStorage } from "../hooks/trello/useLocalStorage";
 import { useCurrencyInput } from "../hooks/useCurrencyInput";
 import { cn } from "../lib/utils";
-import { SavingsGoal, Transaction } from "../types";
+import { SavingsGoal, Transaction, Category } from "../types";
 import {
   formatCurrency,
   formatBrazilDate,
@@ -63,6 +63,23 @@ import {
   getBrazilDateString,
 } from "../utils/helpers";
 import TransactionForm from "./TransactionForm";
+
+// Categoria/meio de pagamento podem ser objeto populado (modo autenticado) ou
+// string (modo guest / dados legados). Esses helpers extraem o texto em
+// minúsculas para os heurísticos do simulador sem quebrar com Category.
+const categoryText = (c?: string | Category): string => {
+  if (!c) return "";
+  if (typeof c === "object")
+    return `${c.name || ""} ${c.code || ""}`.toLowerCase();
+  return String(c).toLowerCase();
+};
+
+const paymentMethodText = (p?: string | Category): string => {
+  if (!p) return "";
+  if (typeof p === "object")
+    return `${p.name || ""} ${p.code || ""}`.toLowerCase();
+  return String(p).toLowerCase();
+};
 import DateRangePicker from "./DateRangePicker";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
@@ -222,7 +239,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
           const paidTransactionsBefore = transactions.filter((t) => {
             if (
               t.status === "deleted" ||
-              t.category?.toLowerCase().includes("aporte") ||
+              categoryText(t.category).includes("aporte") ||
               !t.isPaid
             )
               return false;
@@ -266,9 +283,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
                 tDateStr >= startDate &&
                 tDateStr <= endDate &&
                 !t.description?.toLowerCase().includes("vero") &&
-                !t.category?.toLowerCase().includes("vero") &&
+                !categoryText(t.category).includes("vero") &&
                 !t.description?.toLowerCase().includes("flash") &&
-                !t.category?.toLowerCase().includes("flash")
+                !categoryText(t.category).includes("flash")
               );
             })
             .reduce((sum, t) => sum + t.amount, 0);
@@ -279,9 +296,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
               return (
                 t.type === "expense" &&
                 t.status === "active" &&
-                !t.category?.toLowerCase().includes("aporte") &&
-                !t.paymentMethod?.toLowerCase().includes("vero") &&
-                !t.paymentMethod?.toLowerCase().includes("flash") &&
+                !categoryText(t.category).includes("aporte") &&
+                !paymentMethodText(t.paymentMethod).includes("vero") &&
+                !paymentMethodText(t.paymentMethod).includes("flash") &&
                 tDateStr >= startDate &&
                 tDateStr <= endDate
               );
@@ -297,7 +314,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
                 t.status === "active" &&
                 tDateStr >= startDate &&
                 tDateStr <= endDate &&
-                t.category?.toLowerCase().includes("aporte")
+                categoryText(t.category).includes("aporte")
               );
             })
             .reduce((sum, t) => sum + t.amount, 0);
@@ -344,8 +361,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             const divergingTransactions = transactions.filter((t) => {
               const tDateStr = t.date.slice(0, 10);
               const desc = t.description?.toLowerCase() || "";
-              const cat = t.category?.toLowerCase() || "";
-              const pm = t.paymentMethod?.toLowerCase() || "";
+              const cat = categoryText(t.category) || "";
+              const pm = paymentMethodText(t.paymentMethod) || "";
 
               return (
                 tDateStr === currentDayStr &&
@@ -370,8 +387,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
               .filter((t) => {
                 const tDateStr = t.date.slice(0, 10);
                 const desc = t.description?.toLowerCase() || "";
-                const cat = t.category?.toLowerCase() || "";
-                const pm = t.paymentMethod?.toLowerCase() || "";
+                const cat = categoryText(t.category) || "";
+                const pm = paymentMethodText(t.paymentMethod) || "";
 
                 return (
                   t.type === "income" &&
@@ -390,8 +407,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             const dayExpenses = transactions
               .filter((t) => {
                 const tDateStr = t.date.slice(0, 10);
-                const cat = t.category?.toLowerCase() || "";
-                const pm = t.paymentMethod?.toLowerCase() || "";
+                const cat = categoryText(t.category) || "";
+                const pm = paymentMethodText(t.paymentMethod) || "";
                 const desc = t.description?.toLowerCase() || "";
 
                 return (
@@ -417,7 +434,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
                   t.isPaid === true &&
                   t.status === "active" &&
                   tDateStr === currentDayStr &&
-                  t.category?.toLowerCase().includes("aporte")
+                  categoryText(t.category).includes("aporte")
                 );
               })
               .reduce((sum, t) => sum + t.amount, 0);
@@ -973,7 +990,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
     const paidTransactionsBefore = transactions.filter((t) => {
       if (
         t.status === "deleted" ||
-        t.category?.toLowerCase().includes("aporte") ||
+        categoryText(t.category).includes("aporte") ||
         !t.isPaid
       )
         return false;
@@ -1031,9 +1048,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
           tDateStr >= startDate &&
           tDateStr <= endDate &&
           !t.description?.toLowerCase().includes("vero") &&
-          !t.category?.toLowerCase().includes("vero") &&
+          !categoryText(t.category).includes("vero") &&
           !t.description?.toLowerCase().includes("flash") &&
-          !t.category?.toLowerCase().includes("flash") &&
+          !categoryText(t.category).includes("flash") &&
           isBeforeCutoff
         );
       })
@@ -1049,9 +1066,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
         return (
           t.type === "expense" &&
           t.status === "active" &&
-          !t.category?.toLowerCase().includes("aporte") &&
-          !t.paymentMethod?.toLowerCase().includes("vero") &&
-          !t.paymentMethod?.toLowerCase().includes("flash") &&
+          !categoryText(t.category).includes("aporte") &&
+          !paymentMethodText(t.paymentMethod).includes("vero") &&
+          !paymentMethodText(t.paymentMethod).includes("flash") &&
           tDateStr >= startDate &&
           tDateStr <= endDate &&
           isBeforeCutoff
@@ -1072,7 +1089,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
           t.status === "active" &&
           tDateStr >= startDate &&
           tDateStr <= endDate &&
-          t.category?.toLowerCase().includes("aporte") &&
+          categoryText(t.category).includes("aporte") &&
           isBeforeCutoff
         );
       })
@@ -1125,9 +1142,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             t.status === "active" &&
             tDateStr === currentDayStr &&
             !t.description?.toLowerCase().includes("vero") &&
-            !t.category?.toLowerCase().includes("vero") &&
+            !categoryText(t.category).includes("vero") &&
             !t.description?.toLowerCase().includes("flash") &&
-            !t.category?.toLowerCase().includes("flash") &&
+            !categoryText(t.category).includes("flash") &&
             isBeforeCutoff
           );
         })
@@ -1143,9 +1160,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             t.type === "expense" &&
             t.status === "active" &&
             tDateStr === currentDayStr &&
-            !t.category?.toLowerCase().includes("aporte") &&
-            !t.paymentMethod?.toLowerCase().includes("vero") &&
-            !t.paymentMethod?.toLowerCase().includes("flash") &&
+            !categoryText(t.category).includes("aporte") &&
+            !paymentMethodText(t.paymentMethod).includes("vero") &&
+            !paymentMethodText(t.paymentMethod).includes("flash") &&
             isBeforeCutoff
           );
         })
@@ -1162,7 +1179,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             t.isPaid === true &&
             t.status === "active" &&
             tDateStr === currentDayStr &&
-            t.category?.toLowerCase().includes("aporte") &&
+            categoryText(t.category).includes("aporte") &&
             isBeforeCutoff
           );
         })
@@ -1243,9 +1260,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             t.status === "active" &&
             tDateStr === currentDayStr &&
             !t.description?.toLowerCase().includes("vero") &&
-            !t.category?.toLowerCase().includes("vero") &&
+            !categoryText(t.category).includes("vero") &&
             !t.description?.toLowerCase().includes("flash") &&
-            !t.category?.toLowerCase().includes("flash") &&
+            !categoryText(t.category).includes("flash") &&
             isBeforeCutoff
           );
         })
@@ -1261,9 +1278,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             t.type === "expense" &&
             t.status === "active" &&
             tDateStr === currentDayStr &&
-            !t.category?.toLowerCase().includes("aporte") &&
-            !t.paymentMethod?.toLowerCase().includes("vero") &&
-            !t.paymentMethod?.toLowerCase().includes("flash") &&
+            !categoryText(t.category).includes("aporte") &&
+            !paymentMethodText(t.paymentMethod).includes("vero") &&
+            !paymentMethodText(t.paymentMethod).includes("flash") &&
             isBeforeCutoff
           );
         })
@@ -1280,7 +1297,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             t.isPaid === true &&
             t.status === "active" &&
             tDateStr === currentDayStr &&
-            t.category?.toLowerCase().includes("aporte") &&
+            categoryText(t.category).includes("aporte") &&
             isBeforeCutoff
           );
         })

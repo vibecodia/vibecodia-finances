@@ -20,7 +20,12 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useTheme } from "../contexts/ThemeContext";
 import { useCurrencyInput } from "../hooks/useCurrencyInput";
 import { usePaymentMethods } from "../hooks/usePaymentMethods";
+import { useCategoriesContext } from "../contexts/CategoriesContext";
 import { SavingsGoal, Transaction } from "../types";
+import {
+  getCategoryName,
+  isSavingsContribution,
+} from "../utils/categoryUtils";
 import {
   formatBrazilDate,
   formatCurrency,
@@ -154,7 +159,8 @@ const TransactionList: React.FC<TransactionListProps> = ({
       .filter((t) => t.type === type)
       .filter(
         (t) =>
-          categoryFilter.includes("all") || categoryFilter.includes(t.category),
+          categoryFilter.includes("all") ||
+          categoryFilter.includes(getCategoryName(undefined, t.category)),
       )
       .filter((t) => {
         if (paymentFilter === "all") return true;
@@ -260,6 +266,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
   };
   const { theme } = useTheme();
   const { paymentMethods } = usePaymentMethods();
+  const { categories: allCategories } = useCategoriesContext();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -384,7 +391,9 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
   const categories = [
     ...new Set(
-      transactions.filter((t) => t.type === type).map((t) => t.category),
+      transactions
+        .filter((t) => t.type === type)
+        .map((t) => getCategoryName(undefined, t.category)),
     ),
   ];
 
@@ -434,7 +443,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
           setAnimatedTransactionId(newTransaction.id);
         }
         if (
-          newTransaction?.category === "Aporte" &&
+          isSavingsContribution(newTransaction?.category, allCategories) &&
           newTransaction?.savingsGoalId
         ) {
           const goal = savingsGoals.find(
@@ -707,7 +716,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
         <div className="space-y-4 relative z-30 animate-in fade-in duration-300">
           {/* Category Filter */}
           {categories.length > 0 && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <div className="flex items-center flex-wrap gap-2">
               <Filter className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <Button
                 onClick={() => handleCategoryFilterChange("all")}
@@ -738,7 +747,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
           {/* Payment Status Filter (only for expenses) */}
           {type === "expense" && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <div className="flex items-center flex-wrap gap-2">
               <CreditCard className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <Button
                 onClick={() => setPaymentFilter("all")}
@@ -775,7 +784,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
           {/* Payment Method Filter (only for expenses) */}
           {type === "expense" && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <div className="flex items-center flex-wrap gap-2">
               <Wallet className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <Button
                 onClick={() => handlePaymentMethodFilterChange("all")}
@@ -787,22 +796,25 @@ const TransactionList: React.FC<TransactionListProps> = ({
               >
                 Todos
               </Button>
-              {paymentMethods.map((method) => (
-                <Button
-                  key={method}
-                  onClick={() => handlePaymentMethodFilterChange(method)}
-                  variant={
-                    paymentMethodFilter.includes(method) &&
-                    !paymentMethodFilter.includes("all")
-                      ? "primary"
-                      : "outline"
-                  }
-                  size="sm"
-                  className="rounded-full text-[10px] uppercase h-8 px-4"
-                >
-                  {method}
-                </Button>
-              ))}
+              {paymentMethods.map((method) => {
+                const methodName = getCategoryName(paymentMethods, method);
+                return (
+                  <Button
+                    key={methodName}
+                    onClick={() => handlePaymentMethodFilterChange(methodName)}
+                    variant={
+                      paymentMethodFilter.includes(methodName) &&
+                      !paymentMethodFilter.includes("all")
+                        ? "primary"
+                        : "outline"
+                    }
+                    size="sm"
+                    className="rounded-full text-[10px] uppercase h-8 px-4"
+                  >
+                    {methodName}
+                  </Button>
+                );
+              })}
             </div>
           )}
 
@@ -825,7 +837,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
           {/* Price Filter (expenses only, reusing the same filter chip style) */}
           {type === "expense" && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              <div className="flex items-center flex-wrap gap-2">
                 <Wallet className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 <Button
                   onClick={() => setPriceFilterMode("none")}
@@ -1095,7 +1107,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
                     <div className="flex flex-wrap gap-2">
                       <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-muted/30 text-foreground/60">
-                        {transaction.category}
+                        {getCategoryName(undefined, transaction.category)}
                       </span>
 
                       {type === "expense" && transaction.paymentMethod && (

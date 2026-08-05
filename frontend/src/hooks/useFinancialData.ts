@@ -1,6 +1,7 @@
 import { format, endOfMonth } from "date-fns";
 import { useState, useEffect, useMemo } from "react";
 
+import { useCategoriesContext } from "../contexts/CategoriesContext";
 import { useVerification } from "../contexts/VerificationContext";
 import {
   Transaction,
@@ -8,12 +9,14 @@ import {
   SavingsContribution,
   MonthlyBalance,
 } from "../types";
+import { isSavingsContribution } from "../utils/categoryUtils";
 import { getCurrentBrazilDate, getBrazilDateString } from "../utils/helpers";
 
 const API_BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || "/api";
 
 export const useFinancialData = () => {
   const { pin, isGuest, isInitializing } = useVerification();
+  const { categories } = useCategoriesContext();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [monthlyBalances, setMonthlyBalances] = useState<MonthlyBalance[]>([]);
@@ -193,7 +196,7 @@ export const useFinancialData = () => {
       );
 
       if (
-        newTransaction.category === "Aporte" &&
+        isSavingsContribution(newTransaction.category, categories) &&
         newTransaction.savingsGoalId
       ) {
         refreshGoals();
@@ -223,7 +226,7 @@ export const useFinancialData = () => {
       const newTransaction = await response.json();
       setTransactions((prev) => [newTransaction, ...prev]);
       if (
-        newTransaction?.category === "Aporte" &&
+        isSavingsContribution(newTransaction?.category, categories) &&
         newTransaction?.savingsGoalId
       ) {
         refreshGoals();
@@ -352,7 +355,7 @@ export const useFinancialData = () => {
         ),
       );
       if (
-        updatedTransaction?.category === "Aporte" &&
+        isSavingsContribution(updatedTransaction?.category, categories) &&
         updatedTransaction?.savingsGoalId
       ) {
         fetchData();

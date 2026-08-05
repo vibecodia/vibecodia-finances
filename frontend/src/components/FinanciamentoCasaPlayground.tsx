@@ -16,8 +16,9 @@ import React, { useState, useMemo } from "react";
 
 import { ColorPalette } from "../contexts/ThemeContext";
 import { useLocalStorage } from "../hooks/trello/useLocalStorage";
-import { Transaction } from "../types";
+import { Transaction, Category } from "../types";
 import { formatCurrency, formatBrazilDate } from "../utils/helpers";
+import { toCode } from "../utils/categoryUtils";
 import { Select } from "./ui/Select";
 import { Card } from "./ui/Card";
 import { Input } from "./ui/Input";
@@ -721,7 +722,9 @@ const FinanciamentoCasaPlayground: React.FC<
         (t: any) =>
           t.type === "expense" &&
           t.status !== "deleted" &&
-          t.category === "Patrimônio" &&
+          (typeof t.category === "object"
+            ? (t.category as Category).code === "patrimonio"
+            : toCode(t.category || "") === "patrimonio") &&
           /Financiamento casa \d+\/\d+/i.test(t.description || ""),
       )
       .map((t: any): any => {
