@@ -163,19 +163,19 @@ export async function updateTransaction(models, id, body) {
 
   const isContribution =
     updatedTransaction.category?.isSavingsContribution === true;
-  const hasGoalLinks =
-    updatedTransaction.savingsGoalId && updatedTransaction.savingsGoalContributionId;
+  const goalId = updatedTransaction.savingsGoalId;
+  const contributionId = updatedTransaction.savingsGoalContributionId;
 
-  if (isContribution && hasGoalLinks) {
+  if (isContribution && goalId && contributionId) {
     await syncContributionFromTransaction(models, updatedTransaction, body);
-  } else if (!isContribution && hasGoalLinks) {
-    // Categoria deixou de ser aporte → remove a contribuição da meta e os
-    // vínculos da transação, evitando o dinheiro contado 2× (despesa normal +
-    // impacto de meta). Ordem importa: limpa savingsGoalId na transação ANTES
-    // do recalc, para o valor sair do currentAmount.
-    const goalId = updatedTransaction.savingsGoalId;
-    const contributionId = updatedTransaction.savingsGoalContributionId;
-
+  } else if (!isContribution && (goalId || contributionId)) {
+    // Categoria deixou de ser aporte (ou nunca foi e sobraram vínculos) →
+    // remove a contribuição da meta e TODOS os vínculos da transação, evitando
+    // o dinheiro contado 2× (despesa normal + impacto de meta) e vínculos
+    // órfãos (savingsGoalId sem savingsGoalContributionId — F7). Ordem
+    // importa: limpa savingsGoalId na transação ANTES do recalc, para o valor
+    // sair do currentAmount. A contribuição da meta só é removida quando o
+    // vínculo está completo (há contributionId para localizá-la).
     await Transaction.updateOne(
       { _id: id },
       { $set: { savingsGoalId: null, savingsGoalContributionId: null } },
@@ -183,11 +183,13 @@ export async function updateTransaction(models, id, body) {
     updatedTransaction.savingsGoalId = null;
     updatedTransaction.savingsGoalContributionId = null;
 
-    await syncContributionFromTransaction(
-      models,
-      { savingsGoalId: goalId, savingsGoalContributionId: contributionId },
-      { status: 'deleted' },
-    );
+    if (goalId && contributionId) {
+      await syncContributionFromTransaction(
+        models,
+        { savingsGoalId: goalId, savingsGoalContributionId: contributionId },
+        { status: 'deleted' },
+      );
+    }
   }
 
   return updatedTransaction;
