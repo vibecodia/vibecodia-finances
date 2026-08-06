@@ -11,9 +11,9 @@
 // vira undefined — é a causa raiz das categorias "undefined" e do saldo
 // −100k). Com .lean() enxergamos o valor cru gravado no Mongo.
 //
-// Uso:
-//   node backend/scripts/migrate-categories.js [nome_do_banco] [--dry-run]
-//   node backend/scripts/migrate-categories.js household_db_dodo --dry-run
+// Uso (credenciais do cluster via ambiente — NUNCA hardcode a senha no repo):
+//   DB_USER=... DB_PASS=... node backend/scripts/migrate-categories.js [nome_do_banco] [--dry-run]
+//   DB_USER=... DB_PASS=... node backend/scripts/migrate-categories.js household_db_dodo --dry-run
 import { pathToFileURL } from 'node:url';
 
 import mongoose from 'mongoose';
@@ -24,12 +24,20 @@ import {
   resolveCategory,
 } from '../services/categories.js';
 
-// Mesmos defaults do clone_db.sh (podem ser sobrescritos via env).
+// Credenciais do cluster via ambiente (DB_USER/DB_PASS obrigatórios; DB_CLUSTER
+// opcional). A senha NUNCA fica hardcoded no código — se entrar no arquivo, vai
+// parar no git (o .gitignore só cobre .env).
 const USER = process.env.DB_USER;
 const SENHA = process.env.DB_PASS;
 const CLUSTER = process.env.DB_CLUSTER || 'cluster0.u8x8t.mongodb.net';
 const DB = process.argv[2] || 'household_db_dodo';
 const DRY_RUN = process.argv.includes('--dry-run');
+
+if (!USER || !SENHA) {
+  console.error('Faltam credenciais: defina DB_USER e DB_PASS no ambiente (DB_CLUSTER opcional).');
+  console.error('Não hardcode a senha do banco no código — ela iria para o git.');
+  process.exit(1);
+}
 
 const uri = `mongodb+srv://${USER}:${SENHA}@${CLUSTER}/${DB}?retryWrites=true&w=majority`;
 const isObjectIdStr = (v) =>
