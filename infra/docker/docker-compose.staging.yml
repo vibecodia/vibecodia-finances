@@ -1,0 +1,53 @@
+# Stack de STAGING — staging.finances.vibecodia.com.br
+#
+# Stack isolado para validar a huge refactoring antes de produção. Espelha o
+# docker-compose.prod.yml mas com diferenças críticas:
+#   - imagens com tag `:staging` (prod puxa `:latest` — nunca colide)
+#   - SEM portas 80/443 (o edge financial-app-frontend termina TLS e faz proxy)
+#   - env_file `.env.staging` (MONGO_CONN_MAP aponta para o banco DEV
+#     household_db_dodo — risco zero para o banco de produção)
+#   - `rede-global-proxy` como `external: true` (rede criada pelo stack de prod)
+#   - container_names próprios: staging-backend / staging-frontend
+#
+# O edge (financial-app-frontend, nginx.conf do repo) resolve esses nomes via
+# Docker DNS na rede compartilhada e roteia:
+#   location /api/ -> http://staging-backend:3001/api/
+#   location /     -> http://staging-frontend/
+
+services:
+  staging-frontend:
+    image: ghcr.io/vibecodia/vibecodia-finances-frontend:staging
+    networks:
+      - default
+      - rede-global-proxy
+    volumes:
+      - ./nginx.staging.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      staging-backend:
+        condition: service_healthy
+    restart: unless-stopped
+    container_name: staging-frontend
+
+  staging-backend:
+    image: ghcr.io/vibecodia/vibecodia-finances-backend:staging
+    networks:
+      - default
+      - rede-global-proxy
+    env_file:
+      - .env.staging
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    container_name: staging-backend
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/health-check', r => { process.exit(r.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+networks:
+  default:
+    driver: bridge
+  rede-global-proxy:
+    external: true
