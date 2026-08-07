@@ -1,0 +1,136 @@
+# Staging Deploy — staging.finances.vibecodia.com.br
+#
+# Dispara ao pushar para a branch `staging` (ou manualmente). Constrói e
+# publica as imagens com tag `:staging` (NUNCA `:latest` — prod fica intacto)
+# e dispara o deploy do stack isolado em vibecodia/vibecodia-pipelines.
+#
+# Frontend: NÃO passa VITE_API_BASE_URL → o vite.config.ts substitui por
+# '/api' (same-origin) → o SPA chama /api no próprio domínio staging e o edge
+# roteia para o staging-backend. Mesmo comportamento do build de prod, que
+# também não declara VITE_API_BASE_URL no Dockerfile.
+#
+# Não faz cleanup de versões no ghcr.io: a tag `:staging` é mutável de propósito
+# e o cleanup do build-push.yml (prod) mantém as 3 versões mais recentes.
+
+name: Staging Deploy (staging.finances.vibecodia.com.br)
+
+on:
+  push:
+    branches:
+      - staging
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch/ref para construir (default: staging)'
+        required: false
+        default: 'staging'
+
+# Deploys em sequência: um push novo espera o deploy anterior terminar
+# (imagens e stack não devem trocar no meio de um deploy).
+concurrency:
+  group: deploy-finances-staging
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref_name }}
+
+      - name: Login ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.MY_PAT }}
+
+      - name: Build e push backend :staging
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: infra/docker/Dockerfile.backend
+          push: true
+          tags: |
+            ghcr.io/vibecodia/vibecodia-finances-backend:staging
+
+      - name: Build e push frontend :staging
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: infra/docker/Dockerfile.frontend
+          push: true
+          build-args: |
+            VITE_VERIFICATION_COOKIE_NAME=${{ vars.VITE_VERIFICATION_COOKIE_NAME }}
+            VITE_VERIFICATION_TIMEOUT_MS=${{ vars.VITE_VERIFICATION_TIMEOUT_MS }}
+          tags: |
+            ghcr.io/vibecodia/vibecodia-finances-frontend:staging
+
+  deploy-and-wait:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger deploy-finances-staging e aguardar
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.MY_PAT }}
+          script: |
+            // 1. Disparar o workflow de deploy no repo de pipelines
+            await github.rest.actions.createWorkflowDispatch({
+              owner: 'vibecodia',
+              repo: 'vibecodia-pipelines',
+              workflow_id: 'deploy-finances-staging.yml',
+              ref: 'main',
+              inputs: {
+                branch: '${{ inputs.ref || github.ref_name }}'
+              }
+            });
+
+            console.log('🚀 deploy-finances-staging.yml disparado em vibecodia/vibecodia-pipelines');
+
+            // 2. Aguardar o GitHub registrar a nova execução
+            await new Promise(resolve => setTimeout(resolve, 15000));
+
+            // 3. Loop de verificação (~10 minutos: 40 * 15s)
+            let completed = false;
+            let attempts = 0;
+            const maxAttempts = 40;
+
+            while (!completed && attempts < maxAttempts) {
+              attempts++;
+
+              const { data: runs } = await github.rest.actions.listWorkflowRuns({
+                owner: 'vibecodia',
+                repo: 'vibecodia-pipelines',
+                workflow_id: 'deploy-finances-staging.yml',
+                per_page: 1
+              });
+
+              if (runs.workflow_runs.length === 0) {
+                console.log('Nenhuma execução encontrada ainda...');
+                await new Promise(resolve => setTimeout(resolve, 15000));
+                continue;
+              }
+
+              const run = runs.workflow_runs[0];
+              console.log(`Tentativa ${attempts}: Status=${run.status} | Conclusão=${run.conclusion} | URL=${run.html_url}`);
+
+              if (run.status === 'completed') {
+                completed = true;
+                if (run.conclusion === 'success') {
+                  console.log('✅ Deploy staging concluído com sucesso!');
+                } else {
+                  core.setFailed(`❌ O deploy staging falhou com status: ${run.conclusion}`);
+                }
+              } else {
+                await new Promise(resolve => setTimeout(resolve, 15000));
+              }
+            }
+
+            if (!completed) {
+              core.setFailed('⚠️ Timeout aguardando deploy staging em vibecodia-pipelines');
+            }

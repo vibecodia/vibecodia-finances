@@ -1,0 +1,482 @@
+
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DevOps Sênior — vibecodia-finances</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #ffffff;
+    padding: 32px 16px 48px;
+  }
+  .wrapper { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; color: #1f2328; }
+  .subtitle { font-size: 13px; color: #57606a; margin-bottom: 28px; }
+  h2 { font-size: 16px; font-weight: 700; margin: 32px 0 12px; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; color: #1f2328; }
+  h3 { font-size: 14px; font-weight: 600; margin: 18px 0 6px; color: #1f2328; }
+  p { margin-bottom: 10px; }
+  ul { padding-left: 20px; margin-bottom: 10px; }
+  li { margin-bottom: 4px; }
+  code {
+    font-family: "Consolas", "SF Mono", monospace;
+    font-size: 12px;
+    background: #f7f8fa;
+    border: 1px solid #e5e7eb;
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: #1f2328;
+  }
+  pre {
+    background: #f7f8fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    font-size: 12px;
+    font-family: "Consolas", "SF Mono", monospace;
+    margin-bottom: 12px;
+    color: #1f2328;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .badge-critical  { background: #fee2e2; color: #b91c1c; }
+  .badge-high      { background: #fef3c7; color: #92400e; }
+  .badge-medium    { background: #dbeafe; color: #1d4ed8; }
+  .badge-low       { background: #d1fae5; color: #065f46; }
+  .badge-info      { background: #f3e8ff; color: #6b21a8; }
+  .badge-ok        { background: #d1fae5; color: #065f46; }
+
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
+  th { background: #f7f8fa; font-weight: 600; text-align: left; padding: 8px 10px; border: 1px solid #e5e7eb; }
+  td { padding: 7px 10px; border: 1px solid #e5e7eb; vertical-align: top; }
+  tr:nth-child(even) td { background: #fafafa; }
+
+  .card {
+    background: #f7f8fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .card-title { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+  .severity-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .sev-block {
+    flex: 1; min-width: 120px;
+    border-radius: 6px;
+    padding: 12px 14px;
+    text-align: center;
+    border: 1px solid #e5e7eb;
+  }
+  .sev-num { font-size: 28px; font-weight: 800; }
+  .sev-label { font-size: 11px; color: #57606a; margin-top: 2px; }
+  .sev-critical { background: #fee2e2; }
+  .sev-high { background: #fef3c7; }
+  .sev-medium { background: #dbeafe; }
+  .sev-low { background: #d1fae5; }
+
+  .pipeline-flow {
+    display: flex; flex-wrap: wrap; gap: 0;
+    align-items: center;
+    margin: 12px 0 18px;
+    font-size: 12px;
+  }
+  .pipe-step {
+    background: #f7f8fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .pipe-arrow { padding: 0 6px; color: #57606a; font-size: 14px; }
+
+  .footer {
+    text-align: center;
+    font-size: 12px;
+    color: #57606a;
+    border-top: 1px solid #e5e7eb;
+    margin-top: 48px;
+    padding-top: 16px;
+  }
+  .section-intro { color: #57606a; font-size: 13px; margin-bottom: 14px; }
+  .highlight { color: #3b82d4; font-weight: 600; }
+  .warn { color: #92400e; font-weight: 600; }
+  .danger { color: #b91c1c; font-weight: 600; }
+  .ok { color: #065f46; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <h1>vibecodia-finances — Análise DevOps Sênior</h1>
+  <div class="subtitle">Repositório: github.com/vibecodia/vibecodia-finances  |  Branch padrão: <code>develop</code>  |  Versão atual: <code>0.112.0</code></div>
+
+  
+  <h2>1. Sumário Executivo</h2>
+  <p class="section-intro">
+    O que o README original descreve como <em>"aplicativo web para gerenciamento financeiro doméstico"</em> é, na realidade, uma aplicação <strong>full-stack de produção ativa</strong> com múltiplos domínios, banco de dados multi-tenant via PIN, pipeline CI/CD orquestrada em repositório externo, PWA com push notifications, OCR de comprovantes via IA, sistema Kanban embutido e infraestrutura Nginx multi-vhost servindo pelo menos 6 aplicações distintas.
+  </p>
+  <p>Esta análise cobre <strong>arquitetura</strong>, <strong>pipeline CI/CD</strong>, <strong>containers/Docker</strong>, <strong>Kubernetes (scaffold)</strong>, <strong>segurança</strong> e <strong>gaps operacionais críticos</strong>.</p>
+
+  <div class="severity-bar">
+    <div class="sev-block sev-critical"><div class="sev-num">5</div><div class="sev-label">CRÍTICO</div></div>
+    <div class="sev-block sev-high"><div class="sev-num">7</div><div class="sev-label">ALTO</div></div>
+    <div class="sev-block sev-medium"><div class="sev-num">6</div><div class="sev-label">MÉDIO</div></div>
+    <div class="sev-block sev-low"><div class="sev-num">4</div><div class="sev-label">POSITIVO</div></div>
+  </div>
+
+  
+  <h2>2. Arquitetura Real da Aplicação</h2>
+  <p class="section-intro">A aplicação é consideravelmente mais complexa do que o README sugere. Componentes identificados:</p>
+
+  <table>
+    <tr><th>Camada</th><th>Tecnologia</th><th>Observação</th></tr>
+    <tr><td><strong>Frontend</strong></td><td>React 18 + TypeScript + Vite 5 + TailwindCSS</td><td>PWA completo com Service Worker customizado e push notifications</td></tr>
+    <tr><td><strong>Backend</strong></td><td>Express 5 + Node 20 + Mongoose 8</td><td>API REST com +20 endpoints, cron jobs, web-push, proxy OCR para IA</td></tr>
+    <tr><td><strong>Banco de Dados</strong></td><td>MongoDB Atlas (multi-tenant)</td><td>Cada PIN mapeia para uma connection string distinta via <code>MONGO_CONN_MAP</code></td></tr>
+    <tr><td><strong>Auth</strong></td><td>PIN numérico + cookie</td><td>Sem JWT, sem session store — autenticação frágil</td></tr>
+    <tr><td><strong>Reverse Proxy</strong></td><td>Nginx (multi-vhost)</td><td>Serve ao menos 6 domínios: vibecodia, finances, atelie, webids, playground, api</td></tr>
+    <tr><td><strong>Notificações</strong></td><td>Web Push (VAPID)</td><td>Cron jobs às 02h e 09h (timezone SP)</td></tr>
+    <tr><td><strong>IA / OCR</strong></td><td>Proxy para API externa (Google Gemini)</td><td>Leitura de comprovantes via <code>/api/fetch-receipt-data</code> e <code>/api/ai-proxy</code></td></tr>
+    <tr><td><strong>Kanban</strong></td><td>Trello-clone embutido no frontend</td><td>Board completo com drag-and-drop (<code>@hello-pangea/dnd</code>)</td></tr>
+    <tr><td><strong>CI/CD</strong></td><td>GitHub Actions multi-repo</td><td>Orquestração cross-repo para <code>vibecodia-pipelines</code></td></tr>
+    <tr><td><strong>Container</strong></td><td>Docker + GHCR</td><td>Multi-stage build frontend/backend separados</td></tr>
+    <tr><td><strong>K8s</strong></td><td>Kustomize (scaffold)</td><td>Base + overlays dev/prod — ainda não aplicado em produção</td></tr>
+  </table>
+
+  
+  <h2>3. Pipeline CI/CD — Análise Detalhada</h2>
+  <p class="section-intro">A pipeline é composta por <strong>5 workflows</strong> com orquestração cross-repo. É o aspecto mais sofisticado do projeto.</p>
+
+  <div class="pipeline-flow">
+    <div class="pipe-step">push feature/*</div><div class="pipe-arrow">→</div>
+    <div class="pipe-step">CI Build (lint+build)</div><div class="pipe-arrow">→</div>
+    <div class="pipe-step">Auto PR → develop</div><div class="pipe-arrow">→</div>
+    <div class="pipe-step">Check Conflicts</div><div class="pipe-arrow">→</div>
+    <div class="pipe-step">Detect Change Type</div><div class="pipe-arrow">→</div>
+    <div class="pipe-step">Semver + Tag</div><div class="pipe-arrow">→</div>
+    <div class="pipe-step">Build &amp; Push GHCR</div><div class="pipe-arrow">→</div>
+    <div class="pipe-step">Trigger vibecodia-pipelines</div><div class="pipe-arrow">→</div>
+    <div class="pipe-step">Update Pods (K8s/Docker)</div><div class="pipe-arrow">→</div>
+    <div class="pipe-step">Cria release branch</div>
+  </div>
+
+  <table>
+    <tr><th>Workflow</th><th>Trigger</th><th>Função</th><th>Status</th></tr>
+    <tr>
+      <td><code>vibecodia-finances-build.yml</code></td>
+      <td>push em feature/*, fix/*, hotfix/*, chore/*</td>
+      <td>CI: lint + build + auto PR para develop</td>
+      <td><span class="badge badge-ok">OK</span></td>
+    </tr>
+    <tr>
+      <td><code>vibecodia-finances-wip.yml</code></td>
+      <td>push em wip/*</td>
+      <td>CI dry-run + release dry-run + docker config validate</td>
+      <td><span class="badge badge-ok">OK</span></td>
+    </tr>
+    <tr>
+      <td><code>vibecodia-pipeline-call.yml</code></td>
+      <td>PR opened/reopened/edited → develop/main</td>
+      <td>Orquestrador principal: conflict check → detect change → semver → build → deploy → release branch</td>
+      <td><span class="badge badge-high">GAPs</span></td>
+    </tr>
+    <tr>
+      <td><code>build-push.yml</code></td>
+      <td>workflow_dispatch (chamado por vibecodia-pipeline-call)</td>
+      <td>Build e push das imagens Docker para GHCR com cleanup de versões antigas</td>
+      <td><span class="badge badge-ok">OK</span></td>
+    </tr>
+    <tr>
+      <td><code>run-ai-driven-task-from-issue.yml</code></td>
+      <td>issues (labeled)</td>
+      <td>Pipeline de 6 jobs que usa IA para implementar tarefas a partir de issues (planner → code → validate → deliver → report)</td>
+      <td><span class="badge badge-info">Avançado</span></td>
+    </tr>
+  </table>
+
+  <h3>3.1 Pontos Positivos da Pipeline</h3>
+  <ul>
+    <li><span class="badge badge-ok">✓</span> Semver automático baseado no tipo de branch (<code>feature→minor</code>, <code>fix/hotfix/chore→patch</code>, <code>BREAKING CHANGE→major</code>)</li>
+    <li><span class="badge badge-ok">✓</span> Detecção inteligente de mudança: separa <em>app change</em> de <em>build/infra change</em></li>
+    <li><span class="badge badge-ok">✓</span> Verificação de conflito antes de qualquer build/deploy</li>
+    <li><span class="badge badge-ok">✓</span> Cleanup automático de imagens antigas no GHCR (mantém 3)</li>
+    <li><span class="badge badge-ok">✓</span> Polling com timeout para workflows externos (máx ~10 min)</li>
+    <li><span class="badge badge-ok">✓</span> AI-driven pipeline de tasks via GitHub Issues — design inovador</li>
+  </ul>
+
+  <h3>3.2 Gaps Críticos da Pipeline</h3>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-critical">CRÍTICO</span> Sem testes automatizados — zero coverage</div>
+    <p>Os workflows executam <code>npm run lint</code> e <code>npm run build</code>, mas <strong>não há nenhum passo de teste</strong> (<code>npm test</code>). Não existe diretório <code>__tests__</code>, <code>*.test.ts</code> ou <code>*.spec.ts</code> no repositório. Qualquer lógica de negócio financeira pode regredir sem detecção.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-critical">CRÍTICO</span> Poll de workflow externo é frágil — race condition</div>
+    <p>Em <code>vibecodia-pipeline-call.yml</code>, o job <code>trigger-and-wait</code> aguarda 15s após o dispatch e então consulta <code>listWorkflowRuns per_page: 1</code>. Se outro run do mesmo workflow foi criado por outro PR concorrente, o polling pode monitorar a execução errada e considerar o deploy concluído quando não foi.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-high">ALTO</span> Semver aplicado na branch de feature, não em develop/main</div>
+    <p>O bump de versão e o <code>git push --tags</code> ocorrem na <strong>branch do PR</strong> (<code>github.head_ref</code>), antes do merge. Se o PR for fechado sem merge, a tag fica órfã. Se dois PRs forem abertos simultaneamente, pode haver conflito de tag.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-high">ALTO</span> <code>vibecodia-pipeline-call.yml</code> dispara em PR <code>edited</code></div>
+    <p>Qualquer edição no título ou corpo do PR dispara toda a pipeline — incluindo build de imagens e update de pods. Uma simples correção de typo no PR body pode gerar um deploy não intencional em produção.</p>
+  </div>
+
+  
+  <h2>4. Containers e Docker</h2>
+
+  <h3>4.1 Dockerfile.backend</h3>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-critical">CRÍTICO</span> Stage 2 copia todo o contexto do projeto</div>
+    <p>A linha <code>COPY . .</code> no stage de produção inclui <strong>todo o código-fonte</strong> (frontend, infra, .github, ia/, etc.) na imagem final do backend — inflando a imagem desnecessariamente e expondo arquivos sensíveis. Deveria copiar apenas <code>backend/</code>.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-high">ALTO</span> Backend roda como root</div>
+    <p>Nenhum dos Dockerfiles define um usuário não-privilegiado (<code>USER node</code>). O processo Node roda como <code>root</code> dentro do container, o que amplia a superfície de ataque em caso de vulnerabilidade RCE.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-medium">MÉDIO</span> Frontend usa <code>npm install</code> em vez de <code>npm ci</code></div>
+    <p>O <code>Dockerfile.frontend</code> usa <code>RUN npm install</code> no stage de build. Deveria usar <code>npm ci</code> para garantir builds determinísticos e evitar instalação de versões diferentes do <code>package-lock.json</code>.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-medium">MÉDIO</span> <code>docker-compose.yml</code> dev usa target incorreto</div>
+    <p>O compose de desenvolvimento usa <code>target: build</code> no stage do frontend mas roda <code>npm run dev</code>, enquanto o Dockerfile foi projetado para Nginx em produção. O dev mode funciona por acidente via volume mount, não por design correto.</p>
+  </div>
+
+  <h3>4.2 Nginx (multi-vhost)</h3>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-high">ALTO</span> nginx.conf gerencia 6 aplicações distintas em um único arquivo</div>
+    <p>O arquivo inclui vhosts para <code>vibecodia.com.br</code>, <code>finances.vibecodia.com.br</code>, <code>atelie.vibecodia.com.br</code>, <code>webids.vibecodia.com.br</code>, <code>playground.vibecodia.com.br</code> e <code>api.vibecodia.com.br</code>. Isso significa que <strong>uma única imagem frontend</strong> é ponto único de falha para todos esses serviços. Qualquer erro de configuração pode derrubar tudo.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-medium">MÉDIO</span> Sem rate limiting no Nginx para <code>/api/</code></div>
+    <p>O Nginx não tem diretivas <code>limit_req_zone</code> nem <code>limit_conn_zone</code>. Os endpoints da API — incluindo <code>/api/verify-pin</code> — estão expostos a força-bruta sem throttling.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-low">POSITIVO</span> TLS bem configurado</div>
+    <p>TLSv1.2/1.3 com cipher suite moderna, HSTS implícito via redirect HTTP→HTTPS e suporte a ACME challenge para renovação automática de Let's Encrypt. Configuração sólida.</p>
+  </div>
+
+  
+  <h2>5. Kubernetes — Scaffold Kustomize</h2>
+  <p class="section-intro">O scaffold K8s está bem estruturado mas é apenas ponto de partida. Vários gaps precisam ser resolvidos antes de poder ser aplicado em produção.</p>
+
+  <table>
+    <tr><th>Componente</th><th>Estado</th><th>Gap Identificado</th></tr>
+    <tr>
+      <td>Backend Deployment</td>
+      <td><span class="badge badge-medium">Parcial</span></td>
+      <td>Probes usam <code>tcpSocket</code> em vez de HTTP GET no <code>/api/health-check</code>. Não valida se a aplicação responde, apenas se a porta está aberta.</td>
+    </tr>
+    <tr>
+      <td>Frontend Manifests</td>
+      <td><span class="badge badge-critical">Ausente</span></td>
+      <td><code>base/frontend/kustomization.yaml</code> tem <code>resources: []</code>. Não existe Deployment nem Service para o frontend. O cluster K8s não consegue servir o frontend.</td>
+    </tr>
+    <tr>
+      <td>Secret</td>
+      <td><span class="badge badge-critical">Placeholder</span></td>
+      <td><code>secret.yaml</code> contém valores placeholder em texto claro no repositório. Precisa de solução como Sealed Secrets, External Secrets Operator ou Vault.</td>
+    </tr>
+    <tr>
+      <td>Ingress</td>
+      <td><span class="badge badge-medium">Parcial</span></td>
+      <td>Aponta para <code>vibecodia.local</code>. Não há patch de overlay para produção com o domínio real. cert-manager está scaffoldado mas sem ClusterIssuer real.</td>
+    </tr>
+    <tr>
+      <td>Overlays dev/prod</td>
+      <td><span class="badge badge-high">Vazio</span></td>
+      <td>Ambos os overlays herdam apenas a base sem nenhum patch. Prod roda com <code>NODE_ENV: development</code> (do configmap base).</td>
+    </tr>
+    <tr>
+      <td>HPA / PDB</td>
+      <td><span class="badge badge-high">Ausente</span></td>
+      <td>Sem HorizontalPodAutoscaler nem PodDisruptionBudget. Sem estratégia de deploy (RollingUpdate está no default implícito, mas não explicitado).</td>
+    </tr>
+    <tr>
+      <td>Resource Limits</td>
+      <td><span class="badge badge-low">Presente</span></td>
+      <td>Backend tem requests/limits definidos (100m/500m CPU, 128Mi/512Mi RAM). Boa prática mantida.</td>
+    </tr>
+  </table>
+
+  
+  <h2>6. Segurança</h2>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-critical">CRÍTICO</span> Autenticação via PIN: sem rate-limit, sem lockout, sem MFA</div>
+    <p>O endpoint <code>POST /api/verify-pin</code> apenas verifica se o PIN existe em <code>DB_CONN_MAP</code>. Não há: rate limiting, bloqueio após tentativas falhas, expiração de sessão no servidor, ou rotação de PIN. Um atacante pode fazer força-bruta ilimitada.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-critical">CRÍTICO</span> <code>app.use(cors())</code> sem restrição de origem</div>
+    <p>O CORS está configurado como <code>cors()</code> sem opções, o que permite qualquer origem (<code>Access-Control-Allow-Origin: *</code>). Qualquer site malicioso pode fazer chamadas autenticadas à API se o usuário tiver um cookie válido.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-high">ALTO</span> Segredo de banco multi-tenant em variável de ambiente única</div>
+    <p><code>MONGO_CONN_MAP</code> é um JSON com todas as connection strings de todos os tenants (usuários) em uma única variável. Um vazamento dessa variável expõe <strong>todos os bancos de todos os usuários</strong> simultaneamente.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-high">ALTO</span> PIN passado em header/query não criptografado</div>
+    <p>O middleware <code>dbMiddleware</code> aceita o PIN via <code>x-pin</code> header ou <code>?pin=</code> query string. Passar credenciais em query string as coloca em logs de servidor, histórico de browser e intermediários.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-high">ALTO</span> <code>MY_PAT</code> com escopo amplo usado em múltiplos workflows</div>
+    <p>O mesmo Personal Access Token (<code>MY_PAT</code>) é usado para: push de tags, criação de PRs, dispatch de workflows em repositório externo (<code>vibecodia-pipelines</code>), release no GitHub, login no GHCR. Não há separação de privilégios. Um vazamento compromete toda a pipeline.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-medium">MÉDIO</span> <code>source maps: true</code> habilitado em produção</div>
+    <p>O <code>vite.config.ts</code> tem <code>sourcemap: true</code> para todos os builds. Source maps são excelentes para debug mas expõem o código-fonte original aos usuários finais em produção.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-medium">MÉDIO</span> Sem Content Security Policy (CSP) no Nginx</div>
+    <p>Nenhum header de segurança HTTP está configurado: sem <code>Content-Security-Policy</code>, sem <code>X-Frame-Options</code>, sem <code>X-Content-Type-Options</code>, sem <code>Referrer-Policy</code>. A aplicação está vulnerável a XSS, clickjacking e MIME-sniffing.</p>
+  </div>
+
+  
+  <h2>7. Gaps Operacionais</h2>
+
+  <table>
+    <tr><th>Gap</th><th>Severidade</th><th>Impacto</th></tr>
+    <tr>
+      <td>Sem estratégia de backup do MongoDB</td>
+      <td><span class="badge badge-critical">CRÍTICO</span></td>
+      <td>Dados financeiros sem backup automatizado. O script <code>export_import.sh</code> é manual e copia apenas a coleção <code>transactions</code>.</td>
+    </tr>
+    <tr>
+      <td>Sem observabilidade (logs estruturados, métricas, tracing)</td>
+      <td><span class="badge badge-high">ALTO</span></td>
+      <td>Nenhum APM, nenhum log aggregator (ELK/Loki), nenhuma métrica de negócio. Falhas silenciosas nos cron jobs não são alertadas.</td>
+    </tr>
+    <tr>
+      <td>Sem ambiente de staging dedicado</td>
+      <td><span class="badge badge-high">ALTO</span></td>
+      <td>A pipeline vai de <code>feature/*</code> direto para produção após merge. Não há validação em ambiente idêntico ao prod.</td>
+    </tr>
+    <tr>
+      <td>Cron jobs acoplados no servidor Express</td>
+      <td><span class="badge badge-medium">MÉDIO</span></td>
+      <td>Se o servidor reiniciar às 09h, o lembrete do dia é perdido. Cron jobs deveriam ser um worker separado ou usar CronJob do K8s.</td>
+    </tr>
+    <tr>
+      <td>Sem strategy de rollback documentada</td>
+      <td><span class="badge badge-medium">MÉDIO</span></td>
+      <td>Imagens são mantidas (3 versões no GHCR), mas não há <code>kubectl rollout undo</code> ou equivalente Docker documentado.</td>
+    </tr>
+    <tr>
+      <td>README desatualizado e incompleto</td>
+      <td><span class="badge badge-low">BAIXO</span></td>
+      <td>O README descreve a estrutura original de <code>src/</code> (monorepo flat), mas o projeto usa <code>frontend/src/</code>. Onboarding de novos devs é prejudicado.</td>
+    </tr>
+  </table>
+
+  
+  <h2>8. Pontos Positivos e Boas Práticas</h2>
+  <ul>
+    <li><span class="badge badge-ok">✓</span> <strong>Multi-stage Docker builds</strong> — imagem de build separada da de produção para ambos os serviços.</li>
+    <li><span class="badge badge-ok">✓</span> <strong>Healthcheck no Docker Compose prod</strong> — backend tem healthcheck funcional com <code>depends_on: condition: service_healthy</code>.</li>
+    <li><span class="badge badge-ok">✓</span> <strong>Semver totalmente automatizado</strong> — eliminação de versioning manual com bumps baseados em convenção de branch.</li>
+    <li><span class="badge badge-ok">✓</span> <strong>Kustomize com overlays</strong> — separação correta de base e overlays, mesmo que os overlays ainda estejam vazios.</li>
+    <li><span class="badge badge-ok">✓</span> <strong>Gerenciamento de conexões multi-tenant</strong> — o padrão de ConnectionManager com cache por PIN é elegante e evita reconexões desnecessárias.</li>
+    <li><span class="badge badge-ok">✓</span> <strong>Timezone explícito</strong> — TZ=America/Sao_Paulo definido nos containers e nos cron jobs, evitando erros sutis de horário.</li>
+    <li><span class="badge badge-ok">✓</span> <strong>AI-driven tasks via Issues</strong> — pipeline inovadora de 790 linhas que usa IA como co-desenvolvedor via GitHub Issues.</li>
+    <li><span class="badge badge-ok">✓</span> <strong>Limpeza automática de imagens GHCR</strong> — evita acúmulo ilimitado de artefatos no registry.</li>
+  </ul>
+
+  
+  <h2>9. Roadmap de Remediação Priorizado</h2>
+
+  <table>
+    <tr><th>Prioridade</th><th>Ação</th><th>Esforço</th></tr>
+    <tr>
+      <td><span class="badge badge-critical">CRÍTICO 1</span></td>
+      <td>Adicionar rate limiting no <code>/api/verify-pin</code> + lockout após N tentativas</td>
+      <td>Baixo (middleware express-rate-limit)</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-critical">CRÍTICO 2</span></td>
+      <td>Restringir CORS para domínios conhecidos (<code>vibecodia.com.br</code>)</td>
+      <td>Muito baixo (1 linha)</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-critical">CRÍTICO 3</span></td>
+      <td>Corrigir <code>Dockerfile.backend</code>: remover <code>COPY . .</code> e copiar apenas <code>backend/</code></td>
+      <td>Muito baixo</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-critical">CRÍTICO 4</span></td>
+      <td>Adicionar <code>USER node</code> em ambos os Dockerfiles</td>
+      <td>Muito baixo</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-critical">CRÍTICO 5</span></td>
+      <td>Estratégia de backup MongoDB Atlas (snapshots automáticos ou mongodump agendado)</td>
+      <td>Médio</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-high">ALTO 1</span></td>
+      <td>Implementar testes unitários/integração mínimos e adicionar <code>npm test</code> na pipeline CI</td>
+      <td>Alto</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-high">ALTO 2</span></td>
+      <td>Separar <code>MY_PAT</code> em tokens com escopos mínimos (deploy, packages, contents)</td>
+      <td>Médio</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-high">ALTO 3</span></td>
+      <td>Adicionar CSP, X-Frame-Options e outros security headers no Nginx</td>
+      <td>Baixo</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-high">ALTO 4</span></td>
+      <td>Completar manifests K8s de frontend + patches de overlay prod</td>
+      <td>Médio</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-high">ALTO 5</span></td>
+      <td>Remover trigger de pipeline em PR <code>edited</code> — manter apenas <code>opened</code> e <code>synchronize</code></td>
+      <td>Muito baixo</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-medium">MÉDIO 1</span></td>
+      <td>Mover cron jobs para worker separado ou K8s CronJob</td>
+      <td>Médio</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-medium">MÉDIO 2</span></td>
+      <td>Desabilitar <code>sourcemap: true</code> em builds de produção</td>
+      <td>Muito baixo</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-medium">MÉDIO 3</span></td>
+      <td>Implementar log aggregation (Loki + Grafana ou Datadog) e alertas para cron failures</td>
+      <td>Alto</td>
+    </tr>
+  </table>
+
+  
+  <h2>10. Conclusão</h2>
+  <p>
+    O <strong>vibecodia-finances</strong> é uma aplicação de produção ativa com nível de complexidade significativamente maior do que sua documentação indica. A pipeline CI/CD tem design sofisticado e demonstra maturidade em automação. Contudo, a ausência de testes, os gaps de segurança na autenticação e na configuração CORS, e a imaturidade da infraestrutura K8s (overlays vazios, frontend sem manifests, secret com placeholders em texto claro) representam riscos reais para um sistema que lida com dados financeiros pessoais.
+  </p>
+  <p>
+    A base é sólida. Com as remediações de <span class="danger">CRÍTICO</span> e <span class="warn">ALTO</span> aplicadas, a aplicação atinge um nível adequado de maturidade DevOps para produção.
+  </p>
+
+  <div class="footer">Made with IBM Bob</div>
+</div>
+</body>
+</html>

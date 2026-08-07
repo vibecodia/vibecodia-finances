@@ -121,19 +121,22 @@ export async function fetchReceiptData(rawUrl) {
     }
   }
 
-  // 5. Categorização
-  let category = 'Outros';
+  // 5. Categorização.
+  // O matching loja → categoria é um heurístico (lógica, não dado). A categoria
+  // em si agora é um registro no banco (coleção Category) identificado pelo
+  // `code` — o frontend resolve o code para o documento completo.
+  let categoryCode = 'outros';
   const storeUpper = storeName.toUpperCase();
   if (storeUpper.match(/MERCADO|SUPERMERCADO|ATACAREJO|REDE MARIAS|PAO DE ACUCAR|CARREFOUR|ASSAI|ZAFFARI|CONFIANCA|DALBEN|CONFIANÇA/)) {
-    category = 'Mercado';
+    categoryCode = 'mercado';
   } else if (storeUpper.match(/POSTO|SHELL|IPIRANGA|BR|PETROBRAS|COMBUSTIVEL/)) {
-    category = 'Transporte';
+    categoryCode = 'transporte';
   } else if (storeUpper.match(/FARMACIA|DROGARIA|RAIA|DROGASIL|SAO PAULO|PANVEL/)) {
-    category = 'Saúde';
+    categoryCode = 'saude';
   } else if (storeUpper.match(/RESTAURANTE|LANCHONETE|IFOOD|BURGER KING|MC DONALDS|PIZZA|CAFE/)) {
-    category = 'Alimentação';
+    categoryCode = 'alimentacao';
   } else if (storeUpper.match(/PET|VETERINARIA|COBASI|PETZ/)) {
-    category = 'Pets';
+    categoryCode = 'pets';
   }
 
   const notes = itemsList.length > 0
@@ -142,6 +145,6 @@ export async function fetchReceiptData(rawUrl) {
 
   return {
     success: true,
-    data: { description: storeName, amount: totalAmount, date: date, category: category, notes: notes, type: 'expense' }
+    data: { description: storeName, amount: totalAmount, date: date, category: categoryCode, notes: notes, type: 'expense' }
   };
 }

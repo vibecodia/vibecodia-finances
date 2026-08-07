@@ -28,6 +28,12 @@ import { Select } from "./ui/Select";
 import { Card } from "./ui/Card";
 import { Textarea } from "./ui/Textarea";
 import { cn } from "../lib/utils";
+import {
+  getCategoryName,
+  getPassiveIncomeCategory,
+  isPassiveIncome,
+  isSavingsContribution,
+} from "../utils/categoryUtils";
 
 import ImageUpload from "./ImageUpload";
 import { FallingItems } from "./FallingItems";
@@ -54,12 +60,14 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   onClose,
 }) => {
   const { theme } = useTheme();
-  const { expenseCategories, incomeCategories } = useCategories();
-  const { paymentMethods } = usePaymentMethods();
+  const { expenseCategories, incomeCategories, addCategory } = useCategories();
+  const { paymentMethods, addPaymentMethod } = usePaymentMethods();
 
-  const defaultPaymentMethod = paymentMethods.includes("PIX")
+  const categories = type === "expense" ? expenseCategories : incomeCategories;
+
+  const defaultPaymentMethod = paymentMethods.some((p) => p.name === "PIX")
     ? "PIX"
-    : paymentMethods[0] || "";
+    : paymentMethods[0]?.name || "";
   const submitErrorRef = useRef<HTMLDivElement | null>(null);
 
   const [formData, setFormData] = useState<{
@@ -93,6 +101,20 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   );
   const [repeatMonths, setRepeatMonths] = useState(1);
 
+  // Criação on the fly de categoria / meio de pagamento a partir do dropdown.
+  const CREATE_CATEGORY_OPTION = "__create_category__";
+  const CREATE_PAYMENT_METHOD_OPTION = "__create_payment_method__";
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryCreateError, setCategoryCreateError] = useState<string | null>(
+    null,
+  );
+  const [creatingPaymentMethod, setCreatingPaymentMethod] = useState(false);
+  const [newPaymentMethodName, setNewPaymentMethodName] = useState("");
+  const [paymentCreateError, setPaymentCreateError] = useState<string | null>(
+    null,
+  );
+
   const [initialAmount, setInitialAmount] = useState<number>(
     transaction?.amount ?? replicateTransaction?.amount ?? 0,
   );
@@ -124,14 +146,16 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     if (transaction) {
       setFormData({
         description: transaction.description,
-        category: transaction.category,
+        category: getCategoryName(categories, transaction.category),
         savingsGoalId: transaction.savingsGoalId || "",
         date: getBrazilDateString(new Date(transaction.date)),
         dueDate: transaction.dueDate
           ? getBrazilDateString(new Date(transaction.dueDate))
           : "",
         isPaid: transaction.isPaid,
-        paymentMethod: transaction.paymentMethod || defaultPaymentMethod,
+        paymentMethod:
+          getCategoryName(categories, transaction.paymentMethod) ||
+          defaultPaymentMethod,
         notes: transaction.notes || "",
       });
       setInitialAmount(transaction.amount);
@@ -154,13 +178,14 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
       setFormData({
         description: replicateTransaction.description,
-        category: replicateTransaction.category,
+        category: getCategoryName(categories, replicateTransaction.category),
         savingsGoalId: replicateTransaction.savingsGoalId || "",
         date: nextMonthDateString,
         dueDate: nextMonthDueDateString,
         isPaid: isSimulated ? replicateTransaction.isPaid : false,
         paymentMethod:
-          replicateTransaction.paymentMethod || defaultPaymentMethod,
+          getCategoryName(categories, replicateTransaction.paymentMethod) ||
+          defaultPaymentMethod,
         notes: replicateTransaction.notes || "",
       });
       setInitialAmount(replicateTransaction.amount);
@@ -184,7 +209,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
   useEffect(() => {
     if (
-      formData.category === "Aporte" &&
+      isSavingsContribution(formData.category, categories) &&
       formData.savingsGoalId &&
       amountValue > 0
     ) {
@@ -205,13 +230,24 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     } else {
       setLocalError(null);
     }
-  }, [amountValue, formData.category, formData.savingsGoalId, savingsGoals]);
+  }, [amountValue, formData.category, formData.savingsGoalId, savingsGoals, categories]);
 
-  const categories = type === "expense" ? expenseCategories : incomeCategories;
-  const showGoalSelect = type === "expense" && formData.category === "Aporte";
+  const showGoalSelect =
+    type === "expense" &&
+    isSavingsContribution(formData.category, categories);
   const activeGoals = savingsGoals
     .filter((g) => (g.status || "active") !== "deleted")
     .filter((g) => (g.currentAmount || 0) < (g.targetAmount || 0));
+
+  const passiveIncomeSuggestions =
+    getPassiveIncomeCategory(categories)?.descriptionSuggestions?.length
+      ? getPassiveIncomeCategory(categories)!.descriptionSuggestions!
+      : [
+          "Rendimentos simples",
+          "Rendimento semanal cofrinhos",
+          "Rendimento quinzenal cofrinhos",
+          "Rendimento mensal cofrinhos",
+        ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -332,16 +368,61 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     >,
   ) => {
     const { name, value, type: inputType } = e.target;
+
+    // Opções especiais do dropdown → abre o formulário de criação on the fly.
+    // (Não altera o valor do campo; o select volta ao valor anterior.)
+    if (name === "category" && value === CREATE_CATEGORY_OPTION) {
+      setCreatingCategory(true);
+      return;
+    }
+    if (name === "paymentMethod" && value === CREATE_PAYMENT_METHOD_OPTION) {
+      setCreatingPaymentMethod(true);
+      return;
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]:
         inputType === "checkbox"
           ? (e.target as HTMLInputElement).checked
           : value,
-      ...(name === "category" && value !== "Aporte"
+      ...(name === "category" &&
+      !isSavingsContribution(value, categories)
         ? { savingsGoalId: "" }
         : {}),
     }));
+  };
+
+  const handleCreateCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    const ok = await addCategory(type, name);
+    if (ok) {
+      setFormData((prev) => ({ ...prev, category: name, savingsGoalId: "" }));
+      setNewCategoryName("");
+      setCategoryCreateError(null);
+      setCreatingCategory(false);
+    } else {
+      setCategoryCreateError(
+        "Já existe uma categoria com esse nome. Escolha outro.",
+      );
+    }
+  };
+
+  const handleCreatePaymentMethod = async () => {
+    const name = newPaymentMethodName.trim();
+    if (!name) return;
+    const ok = await addPaymentMethod(name);
+    if (ok) {
+      setFormData((prev) => ({ ...prev, paymentMethod: name }));
+      setNewPaymentMethodName("");
+      setPaymentCreateError(null);
+      setCreatingPaymentMethod(false);
+    } else {
+      setPaymentCreateError(
+        "Já existe um meio de pagamento com esse nome. Escolha outro.",
+      );
+    }
   };
 
   const handleAddNumber = () => {
@@ -371,6 +452,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         isVisible={isAnimating}
         category={animationCategory}
         mode={animationMode}
+        categories={categories}
         onComplete={() => {
           setIsAnimating(false);
           if (animationMode === "zen") {
@@ -525,17 +607,64 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
           >
             <option value="">Selecione uma categoria</option>
             {categories.map((category) => {
-              const catName =
+              const catName = getCategoryName(categories, category);
+              const emoji =
                 typeof category === "string"
-                  ? category
-                  : (category && (category as any).name) || "Categoria";
+                  ? ""
+                  : (category && (category as any).emoji) || "";
               return (
                 <option key={catName} value={catName}>
+                  {emoji ? `${emoji} ` : ""}
                   {catName}
                 </option>
               );
             })}
+            <option value={CREATE_CATEGORY_OPTION}>
+              ➕ Criar nova categoria...
+            </option>
           </Select>
+
+          {creatingCategory && (
+            <div className="space-y-2 animate-in fade-in duration-200">
+              <Input
+                label="Nome da nova categoria"
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => {
+                  setNewCategoryName(e.target.value);
+                  setCategoryCreateError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleCreateCategory();
+                  }
+                }}
+                placeholder={`Ex: ${type === "expense" ? "Pets" : "Freelance"}`}
+                error={categoryCreateError ?? undefined}
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  onClick={handleCreateCategory}
+                  variant="primary"
+                  size="sm"
+                  disabled={isAnimating}
+                >
+                  Criar categoria
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setCreatingCategory(false)}
+                  variant="ghost"
+                  size="sm"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Input
@@ -548,14 +677,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
               disabled={isAnimating}
               required
             />
-            {type === "income" && formData.category === "Rendimentos" && (
+            {type === "income" &&
+              isPassiveIncome(formData.category, categories) && (
               <div className="flex flex-wrap gap-2 pt-1">
-                {[
-                  "Rendimentos simples",
-                  "Rendimento semanal cofrinhos",
-                  "Rendimento quinzenal cofrinhos",
-                  "Rendimento mensal cofrinhos",
-                ].map((suggestion) => (
+                {passiveIncomeSuggestions.map((suggestion) => (
                   <Button
                     key={suggestion}
                     type="button"
@@ -600,6 +725,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
           )}
 
           {type === "expense" && (
+            <>
             <Select
               label="Meio de Pagamento"
               name="paymentMethod"
@@ -609,12 +735,63 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
               required
             >
               <option value="">Selecione um meio de pagamento</option>
-              {paymentMethods.map((method) => (
-                <option key={method} value={method}>
-                  {method}
-                </option>
-              ))}
+              {paymentMethods.map((method) => {
+                const methodName = getCategoryName(paymentMethods, method);
+                const methodEmoji = (method as any).emoji || "";
+                return (
+                  <option key={methodName} value={methodName}>
+                    {methodEmoji ? `${methodEmoji} ` : ""}
+                    {methodName}
+                  </option>
+                );
+              })}
+              <option value={CREATE_PAYMENT_METHOD_OPTION}>
+                ➕ Criar novo meio de pagamento...
+              </option>
             </Select>
+
+            {creatingPaymentMethod && (
+              <div className="space-y-2 animate-in fade-in duration-200">
+                <Input
+                  label="Nome do novo meio de pagamento"
+                  type="text"
+                  value={newPaymentMethodName}
+                  onChange={(e) => {
+                    setNewPaymentMethodName(e.target.value);
+                    setPaymentCreateError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleCreatePaymentMethod();
+                    }
+                  }}
+                  placeholder="Ex: Itaú"
+                  error={paymentCreateError ?? undefined}
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    onClick={handleCreatePaymentMethod}
+                    variant="primary"
+                    size="sm"
+                    disabled={isAnimating}
+                  >
+                    Criar meio de pagamento
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => setCreatingPaymentMethod(false)}
+                    variant="ghost"
+                    size="sm"
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            )}
+            </>
           )}
 
           {type === "income" && (

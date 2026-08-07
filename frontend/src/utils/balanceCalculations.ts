@@ -1,6 +1,7 @@
 import { format, startOfMonth, endOfMonth, isBefore } from "date-fns";
 
-import { Transaction, SavingsGoal } from "../types";
+import { Transaction, SavingsGoal, Category } from "../types";
+import { isSavingsContribution } from "./categoryUtils";
 
 import { getCurrentBrazilDate } from "./helpers";
 
@@ -48,6 +49,7 @@ export const calculateBalances = (
   transactions: Transaction[],
   savingsGoals: SavingsGoal[] = [],
   currentMonth: Date = getCurrentBrazilDate(),
+  categories: Category[] = [],
 ): BalanceData => {
   const now = getCurrentBrazilDate();
   const todayStr = format(now, "yyyy-MM-dd");
@@ -67,10 +69,10 @@ export const calculateBalances = (
     // Ignora transações deletadas
     if (t.status === "deleted") return false;
 
-    // CRITICAL: Exclude 'Aporte' category from the "real" balance calculation
-    // because it will be accounted for in adjustedBalance/totalGoalsImpact.
+    // CRITICAL: Exclude savings contributions (Aporte) from the "real" balance
+    // because they are accounted for in adjustedBalance/totalGoalsImpact.
     // This avoids double-counting since contributions are now also transactions.
-    if (t.category === "Aporte") return false;
+    if (isSavingsContribution(t.category, categories)) return false;
 
     const tDate = t.date.slice(0, 10);
     return t.isPaid && tDate <= effectiveDate;
@@ -91,8 +93,8 @@ export const calculateBalances = (
     // Ignora transações deletadas
     if (t.status === "deleted") return false;
 
-    // Exclude Aporte to avoid double-counting with adjustedBalance
-    if (t.category === "Aporte") return false;
+    // Exclude savings contributions to avoid double-counting with adjustedBalance
+    if (isSavingsContribution(t.category, categories)) return false;
 
     const tDate = t.date.slice(0, 10);
     return (
@@ -152,6 +154,8 @@ export const calculateBalances = (
 export const calculateRemainingBalance = (
   transactions: Transaction[],
   currentMonth: Date = getCurrentBrazilDate(),
+  categories: Category[] = [],
 ): number => {
-  return calculateBalances(transactions, [], currentMonth).totalBalance;
+  return calculateBalances(transactions, [], currentMonth, categories)
+    .totalBalance;
 };

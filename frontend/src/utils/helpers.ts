@@ -9,7 +9,15 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-import { Transaction, MonthlyData, CategoryData, SavingsGoal } from "../types";
+import {
+  Transaction,
+  MonthlyData,
+  CategoryData,
+  SavingsGoal,
+  Category,
+} from "../types";
+import { DEFAULT_CATEGORY_BY_CODE } from "../data/defaultCategories";
+import { getCategory, isSavingsContribution, toCode } from "./categoryUtils";
 
 export const generateId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -355,11 +363,12 @@ export const calculateGoalsImpact = (
 export const calculateMonthlyBalance = (
   transactions: Transaction[],
   date?: Date,
+  categories?: Category[] | null,
 ): number => {
   // If date is provided, get all transactions for that month including recurring ones
   if (date) {
     const monthTransactions = filterTransactionsByMonth(transactions, date);
-    return calculateBalanceFromTransactionList(monthTransactions);
+    return calculateBalanceFromTransactionList(monthTransactions, categories);
   }
 
   // If no date provided, calculate for current month
@@ -368,19 +377,23 @@ export const calculateMonthlyBalance = (
     transactions,
     currentDate,
   );
-  return calculateBalanceFromTransactionList(monthTransactions);
+  return calculateBalanceFromTransactionList(monthTransactions, categories);
 };
 
 // FIXED: Helper function to calculate balance from a list of transactions
 const calculateBalanceFromTransactionList = (
   transactions: Transaction[],
+  categories?: Category[] | null,
 ): number => {
   return transactions.reduce((balance, transaction) => {
     // Ignora transações deletadas no saldo
     if (transaction.status === "deleted") return balance;
 
-    // Ignora 'Aporte' no saldo real, pois é calculado separadamente como impacto de metas
-    if (transaction.category === "Aporte") return balance;
+    // Ignora contribuições de metas (Aporte) no saldo real, pois são calculadas
+    // separadamente como impacto de metas. Resolve a flag `isSavingsContribution`
+    // tanto para o documento populado quanto para o nome/código legado em string
+    // (dados antigos / modo guest), sem depender do texto "Aporte".
+    if (isSavingsContribution(transaction.category, categories)) return balance;
 
     if (transaction.type === "income") {
       return balance + transaction.amount;
@@ -401,6 +414,7 @@ export const getMonthlyData = (
   savingsGoals: SavingsGoal[] = [],
   months: number = 6,
   endDate: Date = getCurrentBrazilDate(), // Parameter is now actually used
+  categories?: Category[] | null,
 ): MonthlyData[] => {
   const data: MonthlyData[] = [];
   // Use the provided endDate instead of getting a new current date
@@ -410,12 +424,26 @@ export const getMonthlyData = (
     const date = new Date(end.getFullYear(), end.getMonth() - i, 1);
     const monthTransactions = filterTransactionsByMonth(transactions, date);
 
+    // Aportes são excluídos de income/expenses: já entram no balance via
+    // goalsImpact. Sem isso o aporte é subtraído 2× no gráfico mensal.
     const income = monthTransactions
-      .filter((t) => t.type === "income" && t.isPaid && t.status !== "deleted")
+      .filter(
+        (t) =>
+          t.type === "income" &&
+          t.isPaid &&
+          t.status !== "deleted" &&
+          !isSavingsContribution(t.category, categories),
+      )
       .reduce((sum, t) => sum + t.amount, 0);
 
     const expenses = monthTransactions
-      .filter((t) => t.type === "expense" && t.isPaid && t.status !== "deleted")
+      .filter(
+        (t) =>
+          t.type === "expense" &&
+          t.isPaid &&
+          t.status !== "deleted" &&
+          !isSavingsContribution(t.category, categories),
+      )
       .reduce((sum, t) => sum + t.amount, 0);
 
     const unpaidExpenses = monthTransactions
@@ -442,6 +470,7 @@ export const getMonthlyData = (
 export const getCategoryData = (
   transactions: Transaction[],
   date: Date = getCurrentBrazilDate(),
+  categories: Category[] = [],
 ): CategoryData[] => {
   // Get current month transactions with recurrence
   const start = startOfMonth(date);
@@ -462,11 +491,21 @@ export const getCategoryData = (
 
   const categoryTotals = expenses.reduce(
     (acc, transaction) => {
-      const category = transaction.category;
-      acc[category] = (acc[category] || 0) + transaction.amount;
+      // Resolve a categoria (objeto populado | nome legado | code) para exibição.
+      const cat = getCategory(categories, transaction.category);
+      const name =
+        cat?.name ??
+        (typeof transaction.category === "object"
+          ? (transaction.category as Category).name
+          : transaction.category) ??
+        "Outros";
+      const code = cat?.code ?? toCode(name);
+      const key = code || name;
+      if (!acc[key]) acc[key] = { name, code, amount: 0 };
+      acc[key].amount += transaction.amount;
       return acc;
     },
-    {} as Record<string, number>,
+    {} as Record<string, { name: string; code?: string; amount: number }>,
   );
 
   const colors = [
@@ -488,10 +527,11 @@ export const getCategoryData = (
   ];
 
   return Object.entries(categoryTotals)
-    .map(([category, amount], index) => ({
-      category,
-      amount,
-      percentage: totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0,
+    .map(([, value], index) => ({
+      category: value.name,
+      code: value.code,
+      amount: value.amount,
+      percentage: totalExpenses > 0 ? (value.amount / totalExpenses) * 100 : 0,
       color: colors[index % colors.length],
     }))
     .sort((a, b) => b.amount - a.amount);
@@ -602,52 +642,31 @@ export const validateImportData = (
   }
 };
 
-export const EXPENSE_CATEGORIES = [
-  "Moradia",
-  "Dívidas",
-  "Educação",
-  "Serviços",
-  "Saúde",
-  "Internet",
-  "Transporte",
-  "Entretenimento",
-  "Alimentação",
-  "Utilidades",
-  "Beleza",
-  "Compras",
-  "Consumo",
-  "Aporte",
-  "Outros",
-  "Patrimônio",
-];
+// NOTA: as listas hardcoded de categorias e meios de pagamento foram movidas
+// para a fonte de dados gerenciável — `defaultCategories.ts` (bootstrap do modo
+// guest e cache) e a coleção `Category` no backend (modo autenticado).
 
-export const INCOME_CATEGORIES = [
-  "Salário",
-  "Vale",
-  "Reembolsos",
-  "Aluguéis",
-  "Premiação",
-  "Déc.Terceiro",
-  "Férias",
-  "Rendimentos",
-];
+// Mapeia ids legados de meios de pagamento (gravados por versões antigas) para
+// os `code`s atuais — usado apenas pelo formatador de exibição.
+const LEGACY_PAYMENT_ID_TO_CODE: Record<string, string> = {
+  pix: "pix",
+  xp: "xp",
+  c6: "c6_bank",
+  bradesco_t: "bradesco_t",
+  bradesco_r: "bradesco_r",
+  nubank: "nubank",
+  vero_card: "vero_card",
+  flash: "flash",
+  saldo_conta: "saldo_conta",
+};
 
-export const PAYMENT_METHODS = [
-  { id: "pix", label: "PIX" },
-  { id: "xp", label: "XP" },
-  { id: "c6", label: "C6 Bank" },
-  { id: "bradesco_t", label: "Bradesco T" },
-  { id: "bradesco_r", label: "Bradesco R" },
-  { id: "nubank", label: "Nubank" },
-  { id: "vero_card", label: "Vero Card" },
-  { id: "flash", label: "Flash" },
-  { id: "saldo_conta", label: "Saldo em Conta" },
-] as const;
-
-export const formatPaymentMethod = (method?: string): string => {
+export const formatPaymentMethod = (
+  method?: string | { name?: string } | null,
+): string => {
   if (!method) return "Não informado";
-  const found = PAYMENT_METHODS.find(
-    (m) => m.id === method || m.label === method,
-  );
-  return found ? found.label : method;
+  if (typeof method === "object") return method.name || "Não informado";
+  const code = LEGACY_PAYMENT_ID_TO_CODE[method] || method;
+  const byCode = DEFAULT_CATEGORY_BY_CODE.get(code);
+  if (byCode && byCode.type === "payment_method") return byCode.name;
+  return method;
 };

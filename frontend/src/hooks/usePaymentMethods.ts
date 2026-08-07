@@ -1,92 +1,27 @@
-import { useEffect } from "react";
+import { useCategoriesContext } from "../contexts/CategoriesContext";
+import { Category } from "../types";
 
-import { PAYMENT_METHODS, formatPaymentMethod } from "../utils/helpers";
-
-import { useLocalStorage } from "./trello/useLocalStorage";
-
-const DEFAULT_PAYMENT_METHODS = PAYMENT_METHODS.map((m) => m.label as string);
-
+// Hook de meios de pagamento. Wrapper sobre o CategoriesContext — meios de
+// pagamento são Category com type === "payment_method". Mesma assinatura
+// usada pelos componentes (Settings, TransactionForm).
 export const usePaymentMethods = () => {
-  const [paymentMethods, setPaymentMethods] = useLocalStorage<string[]>(
-    "manageable_payment_methods",
-    DEFAULT_PAYMENT_METHODS,
-  );
-
-  // Ensure 'Saldo em Conta' is always in payment methods for existing users
-  useEffect(() => {
-    if (!paymentMethods.includes("Saldo em Conta")) {
-      setPaymentMethods((prev) => [...prev, "Saldo em Conta"]);
-    }
-  }, [paymentMethods, setPaymentMethods]);
-
-  // Automatically normalize the list to labels (migrates legacy IDs to Labels in local storage)
-  useEffect(() => {
-    const normalized = paymentMethods.map((m) => formatPaymentMethod(m));
-    const uniqueNormalized = Array.from(new Set(normalized));
-
-    // Check if we actually need to update to avoid infinite loops
-    if (
-      uniqueNormalized.length !== paymentMethods.length ||
-      uniqueNormalized.some((m, i) => m !== paymentMethods[i])
-    ) {
-      setPaymentMethods(uniqueNormalized);
-    }
-  }, [paymentMethods, setPaymentMethods]);
-
-  const addPaymentMethod = (newMethod: string) => {
-    const trimmed = newMethod.trim();
-    if (!trimmed || paymentMethods.includes(trimmed)) return false;
-
-    setPaymentMethods([...paymentMethods, trimmed]);
-    return true;
-  };
-
-  const removePaymentMethod = (methodToRemove: string, transactions: any[]) => {
-    // Check if payment method is in use (normalized)
-    const isInUse = transactions.some(
-      (t) => formatPaymentMethod(t.paymentMethod) === methodToRemove,
-    );
-
-    if (isInUse) {
-      return {
-        success: false,
-        message: `Não é possível excluir o meio de pagamento "${methodToRemove}" pois ele está sendo usado em transações existentes.`,
-      };
-    }
-
-    setPaymentMethods(paymentMethods.filter((m) => m !== methodToRemove));
-    return { success: true };
-  };
-
-  const resetToDefaults = (transactions: any[]) => {
-    // Get all payment methods currently in use, normalized to their labels
-    const usedMethods = Array.from(
-      new Set(
-        transactions
-          .filter((t) => t.paymentMethod)
-          .map((t) => formatPaymentMethod(t.paymentMethod as string)),
-      ),
-    );
-
-    // Combine defaults with used methods that might not be in the default list
-    const newList = Array.from(
-      new Set([...DEFAULT_PAYMENT_METHODS, ...usedMethods]),
-    );
-
-    setPaymentMethods(newList);
-
-    return {
-      restored: DEFAULT_PAYMENT_METHODS.length,
-      preserved: usedMethods.filter(
-        (m) => !(DEFAULT_PAYMENT_METHODS as string[]).includes(m),
-      ).length,
-    };
-  };
+  const {
+    paymentMethods,
+    addCategory,
+    updateCategory,
+    removeCategory,
+    resetToDefaults,
+  } = useCategoriesContext();
 
   return {
     paymentMethods,
-    addPaymentMethod,
-    removePaymentMethod,
-    resetToDefaults,
+    addPaymentMethod: (name: string, data?: Partial<Category>) =>
+      addCategory("payment_method", { name, ...data }),
+    updatePaymentMethod: (nameOrCode: string, data: Partial<Category>) =>
+      updateCategory("payment_method", nameOrCode, data),
+    removePaymentMethod: (nameOrCode: string, transactions?: any[]) =>
+      removeCategory("payment_method", nameOrCode, transactions),
+    resetToDefaults: (transactions?: any[]) =>
+      resetToDefaults("payment_method", transactions),
   };
 };

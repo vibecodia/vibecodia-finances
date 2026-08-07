@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 
 import App from "./App.tsx";
 import "./index.css";
+import { CategoriesProvider } from "./contexts/CategoriesContext.tsx";
 import { ThemeProvider } from "./contexts/ThemeContext.tsx";
 import { VerificationProvider } from "./contexts/VerificationContext.tsx";
 import "@fontsource/kalam/400.css";
@@ -16,7 +17,9 @@ createRoot(document.getElementById("root")!).render(
     >
       <ThemeProvider>
         <VerificationProvider>
-          <App />
+          <CategoriesProvider>
+            <App />
+          </CategoriesProvider>
         </VerificationProvider>
       </ThemeProvider>
     </BrowserRouter>

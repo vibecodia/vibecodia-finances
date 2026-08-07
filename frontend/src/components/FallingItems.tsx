@@ -1,5 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 
+import { Category } from "../types";
+import { getCategory, toCode } from "../utils/categoryUtils";
+import { DEFAULT_CATEGORY_BY_CODE } from "../data/defaultCategories";
+
 // --- Tipagens e Constantes ---
 
 interface FallingItemsProps {
@@ -7,33 +11,23 @@ interface FallingItemsProps {
   isVisible: boolean;
   onComplete: () => void;
   mode?: "10s" | "15s" | "zen";
+  categories?: Category[];
 }
 
-const CATEGORY_EMOJIS: Record<string, string[]> = {
-  Moradia: ["🏠", "🏡", "🏢", "🏘️", "🔑"],
-  Patrimônio: ["🏠", "🏡", "🏢", "🏘️", "🔑"],
-  Dívidas: ["💸", "🧾", "💳", "📉", "💰"],
-  Educação: ["📚", "🎓", "✏️", "📓", "🏫"],
-  Serviços: ["🛠️", "🔌", "⚙️", "🔩", "🔧"],
-  Saúde: ["🏥", "💊", "🍎", "🚑", "🩺", "💉"],
-  Internet: ["🌐", "📶", "💻", "🖱️", "📡"],
-  Transporte: ["🚗", "🚌", "🚲", "🚇", "🛞", "⛽", "🛵"],
-  Entretenimento: ["🎬", "🎮", "🍿", "🎟️", "🎭", "🎧"],
-  Alimentação: ["🍎", "🥦", "🍔", "🍕", "🥕", "🍇", "🥑", "🍳", "🍉"],
-  Utilidades: ["💡", "🚰", "🔌", "🔋", "🔥"],
-  Beleza: ["💄", "💅", "💇", "🧴", "💈", "👗"],
-  Compras: ["🛍️", "🛒", "🏷️", "🎁", "👜"],
-  Consumo: ["🛒", "🥛", "🍞", "🥤", "🍱"],
-  Aporte: ["📈", "💰", "🏦", "💹", "💎", "💸"],
-  Outros: ["✨", "📦", "🌀", "🎯", "🌈"],
-  Salário: ["💵", "💰", "🏦", "💸", "🤑"],
-  Vale: ["🎟️", "🎫", "🍔", "🍕"],
-  Reembolsos: ["🔙", "💵", "💰", "💸"],
-  Aluguéis: ["🏠", "🔑", "🏢", "🏗️"],
-  Premiação: ["🏆", "🥇", "🏅", "✨", "🎉"],
-  "Déc.Terceiro": ["🎄", "🎁", "💰", "🥂", "🎅"],
-  Férias: ["🏖️", "✈️", "🌴", "🍹", "👙", "🌊"],
-  Rendimentos: ["📊", "💹", "📈", "💎", "🚀"],
+// Emojis genéricos que complementam o emoji da categoria no jogo.
+const GENERIC_EMOJIS = ["✨", "🎉", "💫", "⭐"];
+
+// Resolve o(s) emoji(s) de animação a partir da categoria. Prefere o emoji
+// definido no documento Category (personalizado/default), com fallback genérico.
+const getEmojisForCategory = (
+  categoryName: string,
+  categories?: Category[],
+): string[] => {
+  const cat =
+    getCategory(categories, categoryName) ||
+    DEFAULT_CATEGORY_BY_CODE.get(toCode(categoryName));
+  const emoji = cat?.emoji || "";
+  return emoji ? [emoji, ...GENERIC_EMOJIS] : GENERIC_EMOJIS;
 };
 
 const GRAVITY = 0.15;
@@ -173,12 +167,14 @@ export const FallingItems: React.FC<FallingItemsProps> = ({
   isVisible,
   onComplete,
   mode = "10s",
+  categories,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Usar refs para evitar que mudanças nas props resetem o game loop
   const onCompleteRef = useRef(onComplete);
   const categoryRef = useRef(category);
+  const categoriesRef = useRef(categories);
   const modeRef = useRef(mode);
 
   useEffect(() => {
@@ -187,6 +183,9 @@ export const FallingItems: React.FC<FallingItemsProps> = ({
   useEffect(() => {
     categoryRef.current = category;
   }, [category]);
+  useEffect(() => {
+    categoriesRef.current = categories;
+  }, [categories]);
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
@@ -233,8 +232,10 @@ export const FallingItems: React.FC<FallingItemsProps> = ({
     // Spawn Interval
     const spawnInterval = setInterval(() => {
       const currentCategory = categoryRef.current;
-      const emojis =
-        CATEGORY_EMOJIS[currentCategory] || CATEGORY_EMOJIS["Outro"];
+      const emojis = getEmojisForCategory(
+        currentCategory,
+        categoriesRef.current,
+      );
       const count = Math.floor(Math.random() * 2) + 1;
       for (let i = 0; i < count; i++) {
         fruitsRef.current.push(

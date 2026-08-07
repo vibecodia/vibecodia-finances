@@ -66,6 +66,7 @@ import {
   getCurrentBrazilDate,
   getTransactionsWithRecurrence,
 } from "../utils/helpers";
+import { getCategoryName, isPassiveIncome } from "../utils/categoryUtils";
 
 import SavingsGoalsPlayground from "./SavingsGoalsPlayground";
 import FinanciamentoCasaPlayground from "./FinanciamentoCasaPlayground";
@@ -663,7 +664,7 @@ const Playground: React.FC<PlaygroundProps> = ({
         ? `⚠️ ATENÇÃO: Os dados estão FILTRADOS por: ${activeFilters.join(" | ")}. Analise APENAS o que está visível e não considere a ausência de receitas/despesas como um erro se o filtro for específico.`
         : "Análise de visão geral (sem filtros ativos).";
 
-    const categories =
+    const categorySummary =
       categoryChartData.labels?.map(
         (label: string, i: number) =>
           `${label}: ${formatCurrency(categoryChartData.datasets[0].data[i] as number)}`,
@@ -681,7 +682,7 @@ const Playground: React.FC<PlaygroundProps> = ({
       .slice(0, 5)
       .map(
         (t: Transaction) =>
-          `- ${t.description}: ${formatCurrency(t.amount)} (${t.category})`,
+          `- ${t.description}: ${formatCurrency(t.amount)} (${getCategoryName(categories, t.category)})`,
       );
 
     const expenseRatio =
@@ -698,7 +699,7 @@ DADOS:
 - SALDO: ${formatCurrency(balance)} ${totalIncome > 0 ? `(${expenseRatio.toFixed(1)}% comprometido)` : ""}
 
 CATEGORIAS:
-${categories.join("\n")}
+${categorySummary.join("\n")}
 
 PAGAMENTOS:
 ${payments.join("\n")}
@@ -891,7 +892,7 @@ INSTRUÇÕES:
       const isInDateRange = isWithinInterval(date, { start, end });
       const isInCategory =
         selectedCategories.length === 0 ||
-        selectedCategories.includes(t.category);
+        selectedCategories.includes(getCategoryName(categories, t.category));
       const isInPaymentMethod =
         selectedPaymentMethods.length === 0 ||
         (t.paymentMethod &&
@@ -987,7 +988,8 @@ INSTRUÇÕES:
   const categoryChartData = useMemo(() => {
     const categoryTotals: Record<string, number> = {};
     filteredTransactions.forEach((t) => {
-      categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+      const catName = getCategoryName(categories, t.category);
+      categoryTotals[catName] = (categoryTotals[catName] || 0) + t.amount;
     });
 
     const labels = Object.keys(categoryTotals);
@@ -1108,7 +1110,9 @@ INSTRUÇÕES:
             ? formatBrazilDate(t.date, "dd/MM/yy")
             : format(date, "MMM/yy");
         const groupKey =
-          incomeGroupBy === "category" ? t.category : t.description;
+          incomeGroupBy === "category"
+            ? getCategoryName(categories, t.category)
+            : t.description;
 
         if (!groupedData[dateStr]) {
           groupedData[dateStr] = {};
@@ -1182,7 +1186,7 @@ INSTRUÇÕES:
       (t) =>
         t.type === "income" &&
         t.status !== "deleted" &&
-        t.category === "Rendimentos",
+        isPassiveIncome(t.category, categories),
     );
 
     const groupedData: Record<string, number> = {};
@@ -1352,7 +1356,7 @@ INSTRUÇÕES:
         // Filter by global categories/payment methods
         const isInCategory =
           selectedCategories.length === 0 ||
-          selectedCategories.includes(t.category);
+          selectedCategories.includes(getCategoryName(categories, t.category));
         const isInPaymentMethod =
           selectedPaymentMethods.length === 0 ||
           (t.paymentMethod &&
@@ -1483,7 +1487,7 @@ INSTRUÇÕES:
       // Filter by global categories/payment methods
       const isInCategory =
         selectedCategories.length === 0 ||
-        selectedCategories.includes(t.category);
+        selectedCategories.includes(getCategoryName(categories, t.category));
       const isInPaymentMethod =
         selectedPaymentMethods.length === 0 ||
         (t.paymentMethod &&
@@ -1522,7 +1526,7 @@ INSTRUÇÕES:
         const dateStr = format(date, "MMM/yy"); // e.g., Jan/26
         const groupKey =
           expenseGroupBy === "category"
-            ? t.category
+            ? getCategoryName(categories, t.category)
             : t.paymentMethod
               ? formatPaymentMethod(t.paymentMethod)
               : "Sem Pagamento";
@@ -2869,7 +2873,7 @@ INSTRUÇÕES:
                           style={{ borderColor: theme.cardBorder }}
                         >
                           <span className="px-3 py-1 rounded-full text-xs font-bold bg-muted/50">
-                            {t.category}
+                            {getCategoryName(categories, t.category)}
                           </span>
                         </td>
                         <td
@@ -3439,17 +3443,17 @@ INSTRUÇÕES:
                             <button
                               onClick={() => toggleCategory(cat)}
                               className={`px-2.5 py-1.5 rounded-md text-[10px] transition-all border font-medium ${
-                                selectedCategories.includes(cat)
+                                selectedCategories.includes(catName)
                                   ? "bg-primary text-white border-primary shadow-sm scale-105"
                                   : "bg-transparent text-muted-foreground border-border"
                               }`}
                               style={{
                                 backgroundColor: selectedCategories.includes(
-                                  cat,
+                                  catName,
                                 )
                                   ? theme.primary
                                   : "transparent",
-                                color: selectedCategories.includes(cat)
+                                color: selectedCategories.includes(catName)
                                   ? "#fff"
                                   : theme.text,
                               }}
@@ -3467,27 +3471,39 @@ INSTRUÇÕES:
                       Cartões
                     </label>
                     <div className="flex flex-wrap gap-1">
-                      {paymentMethods.map((pm) => (
-                        <button
-                          key={pm}
-                          onClick={() => togglePaymentMethod(pm)}
-                          className={`px-2.5 py-1.5 rounded-md text-[10px] transition-all border font-medium ${
-                            selectedPaymentMethods.includes(pm)
-                              ? "bg-primary text-white border-primary shadow-sm scale-105"
-                              : "bg-transparent text-muted-foreground border-border"
-                          }`}
-                          style={{
-                            backgroundColor: selectedPaymentMethods.includes(pm)
-                              ? theme.primary
-                              : "transparent",
-                            color: selectedPaymentMethods.includes(pm)
-                              ? "#fff"
-                              : theme.text,
-                          }}
-                        >
-                          {pm}
-                        </button>
-                      ))}
+                      {paymentMethods.map((pm) => {
+                        const pmName =
+                          typeof pm === "string"
+                            ? pm
+                            : (pm && (pm as any).name) || "Cartão";
+                        const pmEmoji =
+                          typeof pm === "string"
+                            ? ""
+                            : (pm && (pm as any).emoji) || "";
+                        return (
+                          <button
+                            key={pmName}
+                            onClick={() => togglePaymentMethod(pm)}
+                            className={`px-2.5 py-1.5 rounded-md text-[10px] transition-all border font-medium ${
+                              selectedPaymentMethods.includes(pmName)
+                                ? "bg-primary text-white border-primary shadow-sm scale-105"
+                                : "bg-transparent text-muted-foreground border-border"
+                            }`}
+                            style={{
+                              backgroundColor:
+                                selectedPaymentMethods.includes(pmName)
+                                  ? theme.primary
+                                  : "transparent",
+                              color: selectedPaymentMethods.includes(pmName)
+                                ? "#fff"
+                                : theme.text,
+                            }}
+                          >
+                            {pmEmoji ? `${pmEmoji} ` : ""}
+                            {pmName}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -3561,7 +3577,9 @@ INSTRUÇÕES:
               (() => {
                 const passiveIncomeSum = filteredTransactions
                   .filter(
-                    (t) => t.type === "income" && t.category === "Rendimentos",
+                    (t) =>
+                      t.type === "income" &&
+                      isPassiveIncome(t.category, categories),
                   )
                   .reduce((acc, t) => acc + t.amount, 0);
 
@@ -3587,7 +3605,7 @@ INSTRUÇÕES:
                             .filter(
                               (t) =>
                                 t.type === "income" &&
-                                t.category !== "Rendimentos",
+                                !isPassiveIncome(t.category, categories),
                             )
                             .reduce((acc, t) => acc + t.amount, 0),
                         )}
@@ -3940,7 +3958,7 @@ INSTRUÇÕES:
                     (t) =>
                       t.type === "income" &&
                       t.status !== "deleted" &&
-                      t.category === "Rendimentos",
+                      isPassiveIncome(t.category, categories),
                   ).length;
 
                   return (
@@ -5316,7 +5334,7 @@ INSTRUÇÕES:
                                       className="px-3 py-1 rounded-full text-[10px] font-bold bg-muted/50"
                                       style={{ color: theme.text }}
                                     >
-                                      {t.category}
+                                      {getCategoryName(categories, t.category)}
                                     </span>
                                   </td>
                                   <td

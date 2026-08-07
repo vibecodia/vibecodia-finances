@@ -82,7 +82,11 @@ const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
             <span className="font-medium flex items-center gap-1 text-foreground">
               <Tag className="w-4 h-4" /> Categoria:
             </span>
-            <span className="text-foreground">{transaction.category}</span>
+            <span className="text-foreground">
+              {typeof transaction.category === "object"
+                ? transaction.category.name
+                : transaction.category}
+            </span>
           </div>
           <div className="flex items-center justify-between">
             <span className="font-medium flex items-center gap-1 text-foreground">

@@ -28,14 +28,19 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import Confetti from "react-confetti";
 
 import { useTheme } from "../contexts/ThemeContext";
+import { useCategoriesContext } from "../contexts/CategoriesContext";
 import { useLocalStorage } from "../hooks/trello/useLocalStorage";
 import useWindowSize from "../hooks/useWindowSize";
 import { Transaction, SavingsGoal } from "../types";
 import { calculateBalances } from "../utils/balanceCalculations";
 import {
+  getBenefitCode,
+  getBenefitPaymentMethods,
+  isSavingsContribution,
+} from "../utils/categoryUtils";
+import {
   formatCurrency,
   filterTransactionsByMonth,
-  formatPaymentMethod,
   getCurrentBrazilDate,
 } from "../utils/helpers";
 import { cn } from "../lib/utils";
@@ -248,20 +253,22 @@ const AccountSlider: React.FC<AccountSliderProps> = ({
   );
 };
 
-// ─── FlashSplitModal ──────────────────────────────────────────────────────────
+// ─── BenefitSplitModal ────────────────────────────────────────────────────────
 
-interface FlashSplitModalProps {
+interface BenefitSplitModalProps {
   isOpen: boolean;
   onClose: () => void;
+  cardName: string;
   totalBalance: number;
   currentFlex: number;
   onSave: (amount: number) => void;
   onRemove: () => void;
 }
 
-const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
+const BenefitSplitModal: React.FC<BenefitSplitModalProps> = ({
   isOpen,
   onClose,
+  cardName,
   totalBalance,
   currentFlex,
   onSave,
@@ -287,10 +294,11 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Scissors className="w-5 h-5 text-primary" />
-            Split Saldo Flash
+            Split {cardName}
           </DialogTitle>
           <DialogDescription>
-            Defina quanto do seu saldo Flash será reservado para gastos Flex.
+            Defina quanto do seu saldo {cardName} será reservado para gastos
+            Flex.
           </DialogDescription>
         </DialogHeader>
 
@@ -299,7 +307,7 @@ const FlashSplitModal: React.FC<FlashSplitModalProps> = ({
             <div className="flex justify-between items-center text-[10px] text-primary font-black uppercase tracking-[0.2em]">
               <span className="flex items-center gap-2">
                 <CreditCard className="w-3 h-3" />
-                Saldo Total Flash
+                Saldo Total {cardName}
               </span>
               <span className="font-mono text-sm">
                 {formatCurrency(totalBalance)}
@@ -409,6 +417,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   savingsGoals,
 }) => {
   const { width, height } = useWindowSize();
+  const { categories } = useCategoriesContext();
   const [showConfetti, setShowConfetti] = useState(false);
   const [isPulsing, setIsPulsing] = useState(false);
   const [currentMonth, setCurrentMonth] = useState<Date>(
@@ -422,21 +431,17 @@ const Dashboard: React.FC<DashboardProps> = ({
     "dashboard_include_benefits",
     true,
   );
-  const [isFlashSplit, setIsFlashSplit] = useLocalStorage(
-    "dashboard_flash_is_split",
-    false,
-  );
-  const [flashFlexAmount, setFlashFlexAmount] = useLocalStorage(
-    "dashboard_flash_flex_amount",
-    0,
-  );
+  const [splitConfig, setSplitConfig] = useLocalStorage<
+    Record<string, { enabled: boolean; amount: number }>
+  >("dashboard_split_config", {});
+  // Código do cartão cujo modal de split está aberto (null = fechado).
+  const [splitCardCode, setSplitCardCode] = useState<string | null>(null);
   const [cardHolderName, setCardHolderName] = useLocalStorage(
     "dashboard_card_holder_name",
     "alterar aqui",
   );
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(cardHolderName);
-  const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const [isUINinjaActive, setIsUINinjaActive] = useState(false);
   const [currentShortcutIndex, setCurrentShortcutIndex] = useState(0);
 
@@ -457,6 +462,26 @@ const Dashboard: React.FC<DashboardProps> = ({
     "recent_transactions_enabled",
     true,
   );
+
+  // Migração 1×: chaves antigas do split (exclusivas do Flash) → config por
+  // cartão (dashboard_split_config). Idempotente: some a chave legada.
+  useEffect(() => {
+    const legacyEnabled = localStorage.getItem("dashboard_flash_is_split");
+    if (legacyEnabled !== null) {
+      const legacyAmount = Number(
+        localStorage.getItem("dashboard_flash_flex_amount") || "0",
+      );
+      setSplitConfig((prev) => ({
+        ...prev,
+        flash: { enabled: legacyEnabled === "true", amount: legacyAmount || 0 },
+      }));
+      localStorage.removeItem("dashboard_flash_is_split");
+      localStorage.removeItem("dashboard_flash_flex_amount");
+    }
+  }, [setSplitConfig]);
+
+  const splitFor = (code: string) =>
+    splitConfig[code] ?? { enabled: false, amount: 0 };
 
   const shortcuts = useMemo(
     () => [
@@ -556,38 +581,52 @@ const Dashboard: React.FC<DashboardProps> = ({
     transactions,
     savingsGoals,
     currentMonth,
+    categories,
   );
 
-  // --- Lógica para incluir ou não benefícios (Flash/Vero Card) no saldo total ---
-  const isBenefitTransaction = (t: Transaction) => {
-    const desc = t.description.toLowerCase();
-    const cat = t.category.toLowerCase();
-    const pm = t.paymentMethod ? formatPaymentMethod(t.paymentMethod) : "";
-
-    if (t.type === "income") {
-      return (
-        desc.includes("flash") ||
-        cat.includes("flash") ||
-        pm === "Flash" ||
-        desc.includes("vero") ||
-        cat.includes("vero") ||
-        pm === "Vero Card"
-      );
-    } else {
-      return pm === "Flash" || pm === "Vero Card";
-    }
-  };
-
-  const benefitTransactions = transactionsForSelectedMonth.filter((t) => {
-    if (t.status === "deleted" || t.category === "Aporte" || !t.isPaid)
-      return false;
-    return isBenefitTransaction(t);
+  // --- Cartões de benefício configuráveis: saldo por cartão e soma líquida ---
+  // Os cartões são os meios de pagamento com isBenefit. Cada um tem um saldo
+  // líquido (receitas − despesas pagas no mês) e um toggle "contar no saldo?"
+  // (includeInBalance). O mestre global (VALES/SALDO PURO) subtrai do total
+  // apenas o líquido dos cartões marcados.
+  const benefitCards = getBenefitPaymentMethods(categories).map((pm) => {
+    const income = transactionsForSelectedMonth
+      .filter(
+        (t) =>
+          t.type === "income" &&
+          t.status !== "deleted" &&
+          t.isPaid &&
+          !isSavingsContribution(t.category, categories) &&
+          getBenefitCode(t, categories) === pm.code,
+      )
+      .reduce((sum, t) => sum + t.amount, 0);
+    const spent = transactionsForSelectedMonth
+      .filter(
+        (t) =>
+          t.type === "expense" &&
+          t.status !== "deleted" &&
+          t.isPaid &&
+          !isSavingsContribution(t.category, categories) &&
+          getBenefitCode(t, categories) === pm.code,
+      )
+      .reduce((sum, t) => sum + t.amount, 0);
+    return {
+      pm,
+      income,
+      spent,
+      net: income - spent,
+      includeInBalance: pm.includeInBalance !== false,
+    };
   });
 
-  const totalBenefitBalance = benefitTransactions.reduce(
-    (acc, t) => acc + (t.type === "income" ? t.amount : -t.amount),
-    0,
-  );
+  const totalBenefitBalance = benefitCards
+    .filter((c) => c.includeInBalance)
+    .reduce((acc, c) => acc + c.net, 0);
+
+  // Cartão cujo modal de split está aberto (derivado do código selecionado).
+  const activeSplitCard = splitCardCode
+    ? benefitCards.find((c) => c.pm.code === splitCardCode) ?? null
+    : null;
 
   const baseBalance = balanceData.adjustedBalance;
   // Apenas subtrai os benefícios se for o mês atual E o toggle estiver desligado
@@ -607,48 +646,6 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   const expensesUnpaid = transactionsForSelectedMonth
     .filter((t) => t.type === "expense" && !t.isPaid)
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const flashIncome = transactionsForSelectedMonth
-    .filter(
-      (t) =>
-        t.type === "income" &&
-        (t.description.toLowerCase().includes("flash") ||
-          t.category.toLowerCase().includes("flash") ||
-          (t.paymentMethod &&
-            formatPaymentMethod(t.paymentMethod) === "Flash")),
-    )
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const flashSpent = transactionsForSelectedMonth
-    .filter(
-      (t) =>
-        t.type === "expense" &&
-        t.paymentMethod &&
-        formatPaymentMethod(t.paymentMethod) === "Flash",
-    )
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const currentFlashBalance = flashIncome - flashSpent;
-
-  const veroIncome = transactionsForSelectedMonth
-    .filter(
-      (t) =>
-        t.type === "income" &&
-        (t.description.toLowerCase().includes("vero") ||
-          t.category.toLowerCase().includes("vero") ||
-          (t.paymentMethod &&
-            formatPaymentMethod(t.paymentMethod) === "Vero Card")),
-    )
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const veroSpent = transactionsForSelectedMonth
-    .filter(
-      (t) =>
-        t.type === "expense" &&
-        t.paymentMethod &&
-        formatPaymentMethod(t.paymentMethod) === "Vero Card",
-    )
     .reduce((sum, t) => sum + t.amount, 0);
 
   const activeGoals = savingsGoals.filter((goal) => goal.status !== "deleted");
@@ -1141,8 +1138,8 @@ const Dashboard: React.FC<DashboardProps> = ({
         </Card>
       )}
 
-      {/* Benefícios — Flash / Vero Card */}
-      {showBenefitsCard && (
+      {/* Benefícios — cartões configuráveis */}
+      {showBenefitsCard && benefitCards.length > 0 && (
         <Card className="relative p-6 space-y-6 shadow-[2px_2px_12px_rgba(0,0,0,0.05)] border-slate-200/50 dark:border-slate-800/50 overflow-visible group/sticker">
           {/* Adesivo Band-Aid Lateral */}
           <BandaidEasterEgg
@@ -1167,87 +1164,94 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
 
-          <div className="space-y-4">
-            <AccountSlider
-              label="Flash"
-              income={flashIncome}
-              spent={flashSpent}
-              formatCurrency={formatCurrency}
-              daysPassed={daysPassed}
-              totalDays={totalDays}
-              splitValue={isFlashSplit ? flashFlexAmount : 0}
-              splitLabel="Flex"
-            />
+          <div className="space-y-6">
+            {benefitCards.map(({ pm, income, spent }) => {
+              const split = splitFor(pm.code);
+              return (
+                <div key={pm.code} className="space-y-2">
+                  <AccountSlider
+                    label={pm.name}
+                    income={income}
+                    spent={spent}
+                    formatCurrency={formatCurrency}
+                    daysPassed={daysPassed}
+                    totalDays={totalDays}
+                    splitValue={split.enabled ? split.amount : 0}
+                    splitLabel="Flex"
+                  />
 
-            <div className="flex justify-end items-center gap-4 px-1">
-              {isFlashSplit && (
-                <Button
-                  onClick={() => setIsSplitModalOpen(true)}
-                  variant="ghost"
-                  size="sm"
-                  className="text-[10px] font-black uppercase tracking-widest text-foreground/40"
-                  title="Ajustar Split"
-                >
-                  <Pencil className="w-3 h-3 mr-1.5" />
-                  Ajustar
-                </Button>
-              )}
-              <Button
-                onClick={() => {
-                  if (isFlashSplit) {
-                    setFlashFlexAmount(0);
-                    setIsFlashSplit(false);
-                  } else {
-                    setIsSplitModalOpen(true);
-                  }
-                }}
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "text-[10px] font-black uppercase tracking-widest transition-colors",
-                  isFlashSplit
-                    ? "text-red-500/60 hover:text-red-600"
-                    : "text-foreground/40 hover:text-primary",
-                )}
-              >
-                {isFlashSplit ? (
-                  <Trash2 className="w-3 h-3 mr-1.5" />
-                ) : (
-                  <Scissors className="w-3 h-3 mr-1.5" />
-                )}
-                {isFlashSplit ? "Remover Split" : "Split Flex"}
-              </Button>
-            </div>
+                  <div className="flex justify-end items-center gap-4 px-1">
+                    {split.enabled && (
+                      <Button
+                        onClick={() => setSplitCardCode(pm.code)}
+                        variant="ghost"
+                        size="sm"
+                        className="text-[10px] font-black uppercase tracking-widest text-foreground/40"
+                        title="Ajustar Split"
+                      >
+                        <Pencil className="w-3 h-3 mr-1.5" />
+                        Ajustar
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => {
+                        if (split.enabled) {
+                          setSplitConfig((prev) => ({
+                            ...prev,
+                            [pm.code]: { enabled: false, amount: 0 },
+                          }));
+                        } else {
+                          setSplitCardCode(pm.code);
+                        }
+                      }}
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "text-[10px] font-black uppercase tracking-widest transition-colors",
+                        split.enabled
+                          ? "text-red-500/60 hover:text-red-600"
+                          : "text-foreground/40 hover:text-primary",
+                      )}
+                    >
+                      {split.enabled ? (
+                        <Trash2 className="w-3 h-3 mr-1.5" />
+                      ) : (
+                        <Scissors className="w-3 h-3 mr-1.5" />
+                      )}
+                      {split.enabled ? "Remover Split" : "Split Flex"}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-
-          <div className="border-t border-slate-200 dark:border-slate-700" />
-
-          <AccountSlider
-            label="Vero Card"
-            income={veroIncome}
-            spent={veroSpent}
-            formatCurrency={formatCurrency}
-            daysPassed={daysPassed}
-            totalDays={totalDays}
-          />
         </Card>
       )}
 
-      {/* Modal de Split do Flash */}
-      <FlashSplitModal
-        isOpen={isSplitModalOpen}
-        onClose={() => setIsSplitModalOpen(false)}
-        totalBalance={currentFlashBalance}
-        currentFlex={flashFlexAmount}
+      {/* Modal de Split do cartão de benefício */}
+      <BenefitSplitModal
+        isOpen={!!activeSplitCard}
+        onClose={() => setSplitCardCode(null)}
+        cardName={activeSplitCard?.pm.name ?? ""}
+        totalBalance={activeSplitCard?.net ?? 0}
+        currentFlex={
+          activeSplitCard ? splitFor(activeSplitCard.pm.code).amount : 0
+        }
         onSave={(amount: number) => {
-          setFlashFlexAmount(amount);
-          setIsFlashSplit(true);
-          setIsSplitModalOpen(false);
+          if (!activeSplitCard) return;
+          setSplitConfig((prev) => ({
+            ...prev,
+            [activeSplitCard.pm.code]: { enabled: true, amount },
+          }));
+          setSplitCardCode(null);
         }}
         onRemove={() => {
-          setFlashFlexAmount(0);
-          setIsFlashSplit(false);
-          setIsSplitModalOpen(false);
+          if (!activeSplitCard) return;
+          setSplitConfig((prev) => ({
+            ...prev,
+            [activeSplitCard.pm.code]: { enabled: false, amount: 0 },
+          }));
+          setSplitCardCode(null);
         }}
       />
 

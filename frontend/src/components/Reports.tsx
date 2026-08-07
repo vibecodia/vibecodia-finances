@@ -15,6 +15,7 @@ import React, { useState, useEffect } from "react";
 import { Bar, Doughnut } from "react-chartjs-2";
 
 import { useTheme } from "../contexts/ThemeContext";
+import { useCategoriesContext } from "../contexts/CategoriesContext";
 import { Transaction, SavingsGoal } from "../types";
 import {
   getMonthlyData,
@@ -51,14 +52,16 @@ const Reports: React.FC<ReportsProps> = ({
     getCurrentBrazilDate(),
   );
   const { theme } = useTheme();
+  const { categories } = useCategoriesContext();
 
   const monthlyData = getMonthlyData(
     transactions,
     savingsGoals,
     6,
     currentMonth,
+    categories,
   );
-  const categoryData = getCategoryData(transactions, currentMonth);
+  const categoryData = getCategoryData(transactions, currentMonth, categories);
 
   const barChartData = {
     labels: monthlyData.map((data) => data.month),
@@ -206,25 +209,23 @@ const Reports: React.FC<ReportsProps> = ({
       );
 
       let message = "";
-      if (
-        predominantCategory.category === "Dívidas" &&
-        predominantCategory.percentage > 50
-      ) {
+      const predominantCode = predominantCategory.code || "";
+      if (predominantCode === "dividas" && predominantCategory.percentage > 50) {
         message = "Cuidado, suas dívidas estão altas! Priorize o pagamento.";
       } else if (
-        predominantCategory.category === "Alimentação" &&
+        predominantCode === "alimentacao" &&
         predominantCategory.percentage > 40
       ) {
         message =
           "Seus gastos com alimentação estão elevados. Que tal cozinhar mais?";
       } else if (
-        predominantCategory.category === "Transporte" &&
+        predominantCode === "transporte" &&
         predominantCategory.percentage > 30
       ) {
         message =
           "Gastos com transporte significativos. Considere alternativas.";
       } else if (
-        predominantCategory.category === "Lazer" &&
+        predominantCode === "lazer" &&
         predominantCategory.percentage > 20
       ) {
         message = "Aproveite o lazer, mas com moderação para suas finanças.";

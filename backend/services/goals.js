@@ -1,20 +1,39 @@
 import { createLocalDateForStorage } from '../utils/date.js';
 import { httpError } from '../utils/httpError.js';
+import { resolveCategory } from './categories.js';
 import { recalcGoalCurrentAmount } from './transactions.js';
 
+// Código da categoria padrão de contribuição (era a string "Aporte").
+const CONTRIBUTION_CODE = 'aporte';
+
 // Lista metas calculando currentAmount dinamicamente a partir das transações
-// de aporte e injetando transactionId/isPaid nas contribuições (contrato
-// consumido pelo frontend). Lógica copiada do server.js original.
+// de contribuição (aporte) e injetando transactionId/isPaid nas contribuições
+// (contrato consumido pelo frontend). Lógica copiada do server.js original,
+// com a busca por categoria agora baseada no ObjectId resolvido da categoria
+// de contribuição (em vez da string "Aporte").
 export async function listGoals(models) {
   const { SavingsGoal, Transaction } = models;
   const goals = await SavingsGoal.find();
 
-  // Get all contribution transactions to calculate currentAmount dynamically
-  const allAportes = await Transaction.find({
-    category: 'Aporte',
-    status: 'active',
-    savingsGoalId: { $exists: true }
-  });
+  // Categoria de contribuição (isSavingsContribution) — resolve/seed por code.
+  const aporteCategory = await resolveCategory(models, CONTRIBUTION_CODE, 'expense');
+
+  // Get all contribution transactions to calculate currentAmount dynamically.
+  // Casa tanto o ObjectId (pós-migração) quanto a string legada "Aporte"
+  // (pré-migração, banco ainda não migrado). Usa $expr/$toString porque a
+  // cláusula literal { category: 'Aporte' } lança CastError — category é
+  // ObjectId no schema e o Mongoose casta a string no build da query.
+  const allAportes = aporteCategory
+    ? await Transaction.find({
+        $expr: {
+          $in: [
+            { $toString: '$category' },
+            [aporteCategory._id.toString(), 'Aporte'],
+          ],
+        },
+        status: 'active',
+      })
+    : [];
 
   const aporteByContributionId = new Map();
   allAportes.forEach(t => {
@@ -130,6 +149,16 @@ export async function deleteGoal(models, id) {
   return goal;
 }
 
+// Descrição padrão de uma transação de contribuição, usando o
+// descriptionTemplate da categoria quando disponível.
+async function contributionDescription(models, goalName) {
+  const aporteCategory = await resolveCategory(models, CONTRIBUTION_CODE, 'expense');
+  if (aporteCategory?.descriptionTemplate) {
+    return aporteCategory.descriptionTemplate.replace('${goal.name}', goalName);
+  }
+  return `Aporte: ${goalName}`;
+}
+
 // Adiciona uma contribuição manual e cria a transação de aporte correspondente.
 export async function addContribution(models, goalId, body) {
   const { SavingsGoal, Transaction } = models;
@@ -154,15 +183,20 @@ export async function addContribution(models, goalId, body) {
   // Get the newly created contribution ID
   const newContrib = savedGoal.contributions[savedGoal.contributions.length - 1];
 
+  // Categoria de contribuição e meio de pagamento resolvidos por code (não
+  // mais strings hardcoded "Aporte"/"Saldo em Conta").
+  const aporteCategory = await resolveCategory(models, CONTRIBUTION_CODE, 'expense');
+  const paymentMethod = await resolveCategory(models, 'saldo_conta', 'payment_method');
+
   // Create a corresponding transaction
   const newTransaction = new Transaction({
-    description: `Aporte: ${goal.name}`,
+    description: await contributionDescription(models, goal.name),
     amount: amount,
     type: 'expense',
-    category: 'Aporte',
+    category: aporteCategory ? aporteCategory._id : undefined,
     date: contributionDate,
     isPaid: true,
-    paymentMethod: 'Saldo em Conta',
+    paymentMethod: paymentMethod ? paymentMethod._id : undefined,
     savingsGoalId: goal._id,
     savingsGoalContributionId: newContrib._id.toString(),
     status: 'active'
@@ -202,7 +236,7 @@ export async function updateContribution(models, goalId, contributionId, body) {
     {
       amount: newAmount,
       date: newDate,
-      description: `Aporte: ${goal.name}`
+      description: await contributionDescription(models, goal.name)
     }
   );
 

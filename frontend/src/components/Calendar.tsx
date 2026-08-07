@@ -107,7 +107,8 @@ const Calendar: React.FC<CalendarProps> = ({
           description: t.description,
           amount: t.amount,
           dueDate: t.dueDate!,
-          category: t.category,
+          category:
+            typeof t.category === "object" ? t.category.name : t.category,
           isOverdue: isTransactionOverdue(t),
           daysUntilDue,
         };
@@ -163,13 +164,17 @@ const Calendar: React.FC<CalendarProps> = ({
           date: getBrazilDateString(
             t.dueDate ? parseLocalDate(t.dueDate) : parseLocalDate(t.date),
           ),
-          category: t.category,
+          category:
+            typeof t.category === "object" ? t.category.name : t.category,
           type: "expense" as const,
           isPaid: t.isPaid,
           isOverdue: !t.isPaid && isTransactionOverdue(t),
           daysUntilDue,
           isRecurring,
-          paymentMethod: t.paymentMethod,
+          paymentMethod:
+            typeof t.paymentMethod === "object"
+              ? t.paymentMethod.name
+              : t.paymentMethod,
           originalId: t.id.includes("_") ? t.id.split("_")[0] : undefined,
         };
       });
@@ -188,11 +193,15 @@ const Calendar: React.FC<CalendarProps> = ({
           description: t.description,
           amount: t.amount,
           date: getBrazilDateString(parseLocalDate(t.date)),
-          category: t.category,
+          category:
+            typeof t.category === "object" ? t.category.name : t.category,
           type: "income" as const,
           isPaid: t.isPaid,
           isRecurring,
-          paymentMethod: t.paymentMethod,
+          paymentMethod:
+            typeof t.paymentMethod === "object"
+              ? t.paymentMethod.name
+              : t.paymentMethod,
           originalId: t.id.includes("_") ? t.id.split("_")[0] : undefined,
         };
       });
