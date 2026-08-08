@@ -16,6 +16,7 @@ import {
   Sparkles,
   Trash2,
   Pencil,
+  Plus,
   Wifi,
   Check,
   X,
@@ -26,6 +27,7 @@ import {
 } from "lucide-react";
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import Confetti from "react-confetti";
+import { useNavigate } from "react-router-dom";
 
 import { useTheme } from "../contexts/ThemeContext";
 import { useCategoriesContext } from "../contexts/CategoriesContext";
@@ -416,6 +418,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   transactions,
   savingsGoals,
 }) => {
+  const navigate = useNavigate();
   const { width, height } = useWindowSize();
   const { categories } = useCategoriesContext();
   const [showConfetti, setShowConfetti] = useState(false);
@@ -740,289 +743,306 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Main Balance Card */}
-      <div
-        id="tour-balance-card"
-        className={cn(
-          "relative overflow-hidden rounded-[2.5rem] p-8 sm:p-10 cursor-pointer border-t-2 border-l border-white/30 transition-all duration-700 text-white group isolate",
-          isPulsing ? "scale-[1.02]" : "scale-100",
-          finalBalance < -0.001
-            ? "shadow-[0_20px_50px_rgba(239,68,68,0.4),inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.5)] border-red-400/50 hover:shadow-[0_40px_80px_rgba(239,68,68,0.5),inset_0_2px_6px_rgba(255,255,255,0.4),inset_0_-2px_6px_rgba(0,0,0,0.6)]"
-            : "shadow-[0_20px_50px_rgba(0,0,0,0.6),inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.5)] border-white/20 hover:shadow-[0_40px_80px_rgba(0,0,0,0.7),inset_0_2px_6px_rgba(255,255,255,0.4),inset_0_-2px_6px_rgba(0,0,0,0.6)]",
-        )}
-        style={{
-          backgroundColor: finalBalance < -0.001 ? "#7f1d1d" : theme.primary,
-          perspective: "1000px",
-          backfaceVisibility: "hidden",
-          WebkitBackfaceVisibility: "hidden",
-          transform: "translateZ(0)",
-          WebkitTransform: "translateZ(0)",
-          willChange: "transform",
-        }}
-        onClick={handleBalanceCardClick}
-      >
-        {/* Background Image Layer with slow movement and higher contrast */}
-        {backgroundImage && (
+      {/* Main Balance Card + Quick Add FAB */}
+      <div className="relative">
+        <div
+          id="tour-balance-card"
+          className={cn(
+            "relative overflow-hidden rounded-[2.5rem] p-8 sm:p-10 cursor-pointer border-t-2 border-l border-white/30 transition-all duration-700 text-white group isolate",
+            isPulsing ? "scale-[1.02]" : "scale-100",
+            finalBalance < -0.001
+              ? "shadow-[0_20px_50px_rgba(239,68,68,0.4),inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.5)] border-red-400/50 hover:shadow-[0_40px_80px_rgba(239,68,68,0.5),inset_0_2px_6px_rgba(255,255,255,0.4),inset_0_-2px_6px_rgba(0,0,0,0.6)]"
+              : "shadow-[0_20px_50px_rgba(0,0,0,0.6),inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.5)] border-white/20 hover:shadow-[0_40px_80px_rgba(0,0,0,0.7),inset_0_2px_6px_rgba(255,255,255,0.4),inset_0_-2px_6px_rgba(0,0,0,0.6)]",
+          )}
+          style={{
+            backgroundColor: finalBalance < -0.001 ? "#7f1d1d" : theme.primary,
+            perspective: "1000px",
+            backfaceVisibility: "hidden",
+            WebkitBackfaceVisibility: "hidden",
+            transform: "translateZ(0)",
+            WebkitTransform: "translateZ(0)",
+            willChange: "transform",
+          }}
+          onClick={handleBalanceCardClick}
+        >
+          {/* Background Image Layer with slow movement and higher contrast */}
+          {backgroundImage && (
+            <div
+              className={cn(
+                "absolute inset-0 rounded-[2.5rem] bg-cover bg-center mix-blend-overlay z-0 overflow-hidden",
+                finalBalance < -0.001 ? "opacity-20 grayscale" : "opacity-30",
+              )}
+              style={{
+                backgroundImage: `url(${backgroundImage})`,
+                clipPath: "inset(0 round 2.5rem)",
+                WebkitClipPath: "inset(0 round 2.5rem)",
+              }}
+            />
+          )}
+
+          {/* Input de Arquivo Oculto */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageChange}
+            accept="image/*"
+            className="hidden"
+          />
+
+          {/* Glossy/Metallic Gradient Overlay */}
           <div
-            className={cn(
-              "absolute inset-0 rounded-[2.5rem] bg-cover bg-center mix-blend-overlay z-0 overflow-hidden",
-              finalBalance < -0.001 ? "opacity-20 grayscale" : "opacity-30",
-            )}
+            className="absolute inset-0 opacity-80 rounded-[2.5rem] overflow-hidden"
             style={{
-              backgroundImage: `url(${backgroundImage})`,
+              backgroundImage:
+                finalBalance < -0.001
+                  ? `linear-gradient(135deg, #7f1d1d 0%, #ef4444aa 40%, rgba(255,255,255,0.1) 50%, #ef4444aa 60%, #7f1d1d 100%)`
+                  : `linear-gradient(135deg, ${theme.primary} 0%, ${theme.primary}aa 40%, rgba(255,255,255,0.1) 50%, ${theme.primary}aa 60%, ${theme.primary} 100%)`,
               clipPath: "inset(0 round 2.5rem)",
               WebkitClipPath: "inset(0 round 2.5rem)",
             }}
           />
-        )}
 
-        {/* Input de Arquivo Oculto */}
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleImageChange}
-          accept="image/*"
-          className="hidden"
-        />
+          {/* Holographic effect on hover */}
+          <div
+            className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-1000 bg-gradient-to-tr from-transparent via-white to-transparent -translate-x-full group-hover:translate-x-full rotate-12 scale-150 pointer-events-none rounded-[2.5rem] overflow-hidden"
+            style={{
+              clipPath: "inset(0 round 2.5rem)",
+              WebkitClipPath: "inset(0 round 2.5rem)",
+            }}
+          />
 
-        {/* Glossy/Metallic Gradient Overlay */}
-        <div
-          className="absolute inset-0 opacity-80 rounded-[2.5rem] overflow-hidden"
-          style={{
-            backgroundImage:
-              finalBalance < -0.001
-                ? `linear-gradient(135deg, #7f1d1d 0%, #ef4444aa 40%, rgba(255,255,255,0.1) 50%, #ef4444aa 60%, #7f1d1d 100%)`
-                : `linear-gradient(135deg, ${theme.primary} 0%, ${theme.primary}aa 40%, rgba(255,255,255,0.1) 50%, ${theme.primary}aa 60%, ${theme.primary} 100%)`,
-            clipPath: "inset(0 round 2.5rem)",
-            WebkitClipPath: "inset(0 round 2.5rem)",
-          }}
-        />
-
-        {/* Holographic effect on hover */}
-        <div
-          className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-1000 bg-gradient-to-tr from-transparent via-white to-transparent -translate-x-full group-hover:translate-x-full rotate-12 scale-150 pointer-events-none rounded-[2.5rem] overflow-hidden"
-          style={{
-            clipPath: "inset(0 round 2.5rem)",
-            WebkitClipPath: "inset(0 round 2.5rem)",
-          }}
-        />
-
-        <div className="relative z-10 flex flex-col h-full justify-between min-h-[220px]">
-          {/* Card Top: Branding & Controls */}
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-7 rounded-md bg-gradient-to-br from-yellow-400 via-yellow-200 to-yellow-600 border border-black/10 shadow-inner flex items-center justify-center relative overflow-hidden">
-                  <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 gap-px opacity-20">
-                    {[...Array(9)].map((_, i) => (
-                      <div key={i} className="border border-black/20" />
-                    ))}
+          <div className="relative z-10 flex flex-col h-full justify-between min-h-[220px]">
+            {/* Card Top: Branding & Controls */}
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-7 rounded-md bg-gradient-to-br from-yellow-400 via-yellow-200 to-yellow-600 border border-black/10 shadow-inner flex items-center justify-center relative overflow-hidden">
+                    <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 gap-px opacity-20">
+                      {[...Array(9)].map((_, i) => (
+                        <div key={i} className="border border-black/20" />
+                      ))}
+                    </div>
+                  </div>
+                  <Wifi className="w-5 h-5 opacity-40 rotate-90" />
+                  <div className="flex items-center gap-1 ml-2 transition-opacity">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        fileInputRef.current?.click();
+                      }}
+                      className="p-1.5 bg-white/10 hover:bg-white/20 active:bg-white/30 rounded-lg border border-white/10 transition-all"
+                      title="Alterar fundo"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-white/80" />
+                    </button>
+                    {customBg && (
+                      <button
+                        onClick={resetBackground}
+                        className="p-1.5 bg-white/10 hover:bg-white/20 active:bg-white/30 rounded-lg border border-white/10 transition-all"
+                        title="Resetar fundo"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5 text-white/80" />
+                      </button>
+                    )}
                   </div>
                 </div>
-                <Wifi className="w-5 h-5 opacity-40 rotate-90" />
-                <div className="flex items-center gap-1 ml-2 transition-opacity">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      fileInputRef.current?.click();
-                    }}
-                    className="p-1.5 bg-white/10 hover:bg-white/20 active:bg-white/30 rounded-lg border border-white/10 transition-all"
-                    title="Alterar fundo"
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-60 mt-4">
+                  Vibecodia Premium
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowBalance(!showBalance);
+                  }}
+                  variant="ghost"
+                  size="icon"
+                  className="bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20 h-10 w-10 rounded-full"
+                >
+                  {showBalance ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </Button>
+
+                <div
+                  className={`flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 shadow-lg transition-all ${
+                    isSelectedMonthCurrent
+                      ? "hover:bg-white/20 group cursor-pointer active:scale-95"
+                      : "opacity-40 grayscale cursor-not-allowed"
+                  }`}
+                  onClick={(e) => {
+                    if (!isSelectedMonthCurrent) return;
+                    e.stopPropagation();
+                    setIncludeBenefits(!includeBenefits);
+                  }}
+                >
+                  <span className="text-[9px] font-black uppercase tracking-widest opacity-80">
+                    {includeBenefits ? "VALES" : "SALDO PURO"}
+                  </span>
+                  <div
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 ${
+                      includeBenefits && isSelectedMonthCurrent
+                        ? "bg-green-400"
+                        : "bg-white/20"
+                    }`}
                   >
-                    <Camera className="w-3.5 h-3.5 text-white/80" />
-                  </button>
-                  {customBg && (
+                    <span
+                      className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-md transition-transform duration-300 ease-in-out ${
+                        includeBenefits && isSelectedMonthCurrent
+                          ? "translate-x-5"
+                          : "translate-x-1"
+                      }`}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card Middle: Main Balance */}
+            <div className="my-4">
+              <div className="flex flex-col">
+                <span
+                  className={cn(
+                    "text-[10px] font-black uppercase tracking-[0.3em] mb-2 transition-colors duration-500",
+                    finalBalance < -0.001
+                      ? "text-rose-200 animate-pulse"
+                      : "opacity-50",
+                  )}
+                >
+                  {finalBalance < -0.001
+                    ? "Atenção • Saldo Devedor"
+                    : "Saldo Disponível"}
+                </span>
+                <p
+                  className={cn(
+                    "text-4xl sm:text-6xl font-black tracking-tighter tabular-nums drop-shadow-lg transition-colors duration-500",
+                    finalBalance < -0.001 ? "text-rose-100" : "text-white",
+                  )}
+                >
+                  {showBalance ? formatCurrency(displayBalance) : "R$ ••••••"}
+                </p>
+              </div>
+            </div>
+
+            {/* Card Bottom: Info & Type */}
+            <div
+              className="flex items-end justify-between border-t border-white/10 pt-6"
+              id="tour-card-customization"
+            >
+              <div className="space-y-1 group/titular relative">
+                <div className="flex items-center gap-2">
+                  <p className="text-[10px] font-bold opacity-50 uppercase tracking-widest">
+                    Titular
+                  </p>
+                  {!isEditingName && (
                     <button
-                      onClick={resetBackground}
-                      className="p-1.5 bg-white/10 hover:bg-white/20 active:bg-white/30 rounded-lg border border-white/10 transition-all"
-                      title="Resetar fundo"
+                      key="edit-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsEditingName(true);
+                        setTempName(cardHolderName);
+                      }}
+                      className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                      title="Editar nome"
                     >
-                      <RotateCcw className="w-3.5 h-3.5 text-white/80" />
+                      <Pencil className="w-3 h-3 text-white/70" />
                     </button>
                   )}
                 </div>
-              </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-60 mt-4">
-                Vibecodia Premium
-              </p>
-            </div>
 
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowBalance(!showBalance);
-                }}
-                variant="ghost"
-                size="icon"
-                className="bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20 h-10 w-10 rounded-full"
-              >
-                {showBalance ? (
-                  <EyeOff className="w-4 h-4" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
-              </Button>
-
-              <div
-                className={`flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 shadow-lg transition-all ${
-                  isSelectedMonthCurrent
-                    ? "hover:bg-white/20 group cursor-pointer active:scale-95"
-                    : "opacity-40 grayscale cursor-not-allowed"
-                }`}
-                onClick={(e) => {
-                  if (!isSelectedMonthCurrent) return;
-                  e.stopPropagation();
-                  setIncludeBenefits(!includeBenefits);
-                }}
-              >
-                <span className="text-[9px] font-black uppercase tracking-widest opacity-80">
-                  {includeBenefits ? "VALES" : "SALDO PURO"}
-                </span>
-                <div
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 ${
-                    includeBenefits && isSelectedMonthCurrent
-                      ? "bg-green-400"
-                      : "bg-white/20"
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-md transition-transform duration-300 ease-in-out ${
-                      includeBenefits && isSelectedMonthCurrent
-                        ? "translate-x-5"
-                        : "translate-x-1"
-                    }`}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Card Middle: Main Balance */}
-          <div className="my-4">
-            <div className="flex flex-col">
-              <span
-                className={cn(
-                  "text-[10px] font-black uppercase tracking-[0.3em] mb-2 transition-colors duration-500",
-                  finalBalance < -0.001
-                    ? "text-rose-200 animate-pulse"
-                    : "opacity-50",
-                )}
-              >
-                {finalBalance < -0.001
-                  ? "Atenção • Saldo Devedor"
-                  : "Saldo Disponível"}
-              </span>
-              <p
-                className={cn(
-                  "text-4xl sm:text-6xl font-black tracking-tighter tabular-nums drop-shadow-lg transition-colors duration-500",
-                  finalBalance < -0.001 ? "text-rose-100" : "text-white",
-                )}
-              >
-                {showBalance ? formatCurrency(displayBalance) : "R$ ••••••"}
-              </p>
-            </div>
-          </div>
-
-          {/* Card Bottom: Info & Type */}
-          <div
-            className="flex items-end justify-between border-t border-white/10 pt-6"
-            id="tour-card-customization"
-          >
-            <div className="space-y-1 group/titular relative">
-              <div className="flex items-center gap-2">
-                <p className="text-[10px] font-bold opacity-50 uppercase tracking-widest">
-                  Titular
-                </p>
-                {!isEditingName && (
-                  <button
-                    key="edit-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsEditingName(true);
-                      setTempName(cardHolderName);
-                    }}
-                    className="p-1 hover:bg-white/10 rounded-full transition-colors"
-                    title="Editar nome"
-                  >
-                    <Pencil className="w-3 h-3 text-white/70" />
-                  </button>
-                )}
-              </div>
-
-              <div className="min-h-[24px] flex items-center">
-                {isEditingName ? (
-                  <div
-                    key="edit-mode"
-                    className="flex items-center gap-2"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <input
-                      id="card-holder-input"
-                      type="text"
-                      value={tempName}
-                      onChange={(e) =>
-                        setTempName(e.target.value.slice(0, 100))
-                      }
-                      className="bg-white/10 border border-white/20 rounded px-2 py-0.5 text-sm font-black uppercase tracking-widest focus:outline-none focus:border-white/40 w-full max-w-[200px]"
-                      autoFocus
-                      onFocus={(e) => e.target.select()}
-                      maxLength={100}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
+                <div className="min-h-[24px] flex items-center">
+                  {isEditingName ? (
+                    <div
+                      key="edit-mode"
+                      className="flex items-center gap-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        id="card-holder-input"
+                        type="text"
+                        value={tempName}
+                        onChange={(e) =>
+                          setTempName(e.target.value.slice(0, 100))
+                        }
+                        className="bg-white/10 border border-white/20 rounded px-2 py-0.5 text-sm font-black uppercase tracking-widest focus:outline-none focus:border-white/40 w-full max-w-[200px]"
+                        autoFocus
+                        onFocus={(e) => e.target.select()}
+                        maxLength={100}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            setCardHolderName(tempName);
+                            setIsEditingName(false);
+                          } else if (e.key === "Escape") {
+                            setIsEditingName(false);
+                          }
+                        }}
+                      />
+                      <button
+                        key="save-btn"
+                        onClick={() => {
                           setCardHolderName(tempName);
                           setIsEditingName(false);
-                        } else if (e.key === "Escape") {
-                          setIsEditingName(false);
-                        }
-                      }}
-                    />
-                    <button
-                      key="save-btn"
-                      onClick={() => {
-                        setCardHolderName(tempName);
-                        setIsEditingName(false);
-                      }}
-                      className="p-1 hover:bg-green-500/20 rounded-full text-green-400"
+                        }}
+                        className="p-1 hover:bg-green-500/20 rounded-full text-green-400"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button
+                        key="cancel-btn"
+                        onClick={() => setIsEditingName(false)}
+                        className="p-1 hover:bg-red-500/20 rounded-full text-red-400"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <p
+                      key="view-mode"
+                      className="text-sm font-black uppercase tracking-widest drop-shadow-md"
                     >
-                      <Check className="w-4 h-4" />
-                    </button>
-                    <button
-                      key="cancel-btn"
-                      onClick={() => setIsEditingName(false)}
-                      className="p-1 hover:bg-red-500/20 rounded-full text-red-400"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <p
-                    key="view-mode"
-                    className="text-sm font-black uppercase tracking-widest drop-shadow-md"
-                  >
-                    {cardHolderName}
-                  </p>
-                )}
+                      {cardHolderName}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="text-right">
+                <h2 className="text-xl font-black tracking-tighter uppercase italic opacity-90 italic">
+                  {finalBalance < -0.001 ? "DÉBITO" : "CRÉDITO"}
+                </h2>
+                <p className="text-[8px] font-black opacity-40 uppercase tracking-widest mt-1">
+                  Exp: 12/30
+                </p>
               </div>
             </div>
-            <div className="text-right">
-              <h2 className="text-xl font-black tracking-tighter uppercase italic opacity-90 italic">
-                {finalBalance < -0.001 ? "DÉBITO" : "CRÉDITO"}
-              </h2>
-              <p className="text-[8px] font-black opacity-40 uppercase tracking-widest mt-1">
-                Exp: 12/30
-              </p>
-            </div>
           </div>
+
+          {/* Status Indicator */}
+          {finalBalance < -0.001 && (
+            <div className="absolute top-6 right-6">
+              <div className="animate-ping bg-rose-500 w-3 h-3 rounded-full absolute opacity-75" />
+              <div className="relative bg-rose-500 w-3 h-3 rounded-full shadow-[0_0_15px_#ef4444]" />
+            </div>
+          )}
         </div>
 
-        {/* Status Indicator */}
-        {finalBalance < -0.001 && (
-          <div className="absolute top-6 right-6">
-            <div className="animate-ping bg-rose-500 w-3 h-3 rounded-full absolute opacity-75" />
-            <div className="relative bg-rose-500 w-3 h-3 rounded-full shadow-[0_0_15px_#ef4444]" />
+        <button
+          onClick={() => navigate("/expenses/new")}
+          className="group absolute top-1/2 -translate-y-1/2 right-2 sm:-right-6 z-30 flex items-center gap-2 rounded-full bg-gradient-to-br from-primary via-primary to-primary/80 text-white pl-3 pr-3 sm:pr-4 py-3 shadow-[0_8px_25px_rgba(0,0,0,0.35)] ring-1 ring-white/20 backdrop-blur-md hover:shadow-[0_12px_35px_rgba(0,0,0,0.45)] hover:ring-white/30 active:scale-95 transition-all duration-300"
+          title="Adicionar gasto rápido"
+          aria-label="Adicionar gasto rápido"
+        >
+          <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none">
+            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
           </div>
-        )}
+          <Plus className="w-5 h-5 relative transition-transform duration-300 group-hover:rotate-90" />
+          <span className="hidden sm:inline relative text-[10px] font-black uppercase tracking-widest drop-shadow">
+            Quick Add
+          </span>
+        </button>
       </div>
 
       {/* Barra receitas vs despesas */}
