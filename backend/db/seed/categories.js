@@ -51,6 +51,11 @@ const INCOME_DEFAULTS = [
       'Rendimento mensal cofrinhos',
     ],
   },
+  {
+    name: 'Resgate de Meta', code: 'resgate_meta', emoji: '🎯', color: '#10B981', order: 8,
+    isSavingsWithdrawal: true, isSystem: true,
+    descriptionTemplate: 'Resgate: ${goal.name}',
+  },
 ];
 
 const PAYMENT_METHOD_DEFAULTS = [

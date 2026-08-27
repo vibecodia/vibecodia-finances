@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 import { getModels } from '../db/models/index.js';
 import { dbMiddleware } from '../middleware/dbMiddleware.js';
+import { autoMigrateLegacyCategories } from '../services/categories.js';
 import { createTransaction, deleteTransaction, updateTransaction } from '../services/transactions.js';
 
 export function transactionsRouter(connectionManager) {
@@ -12,7 +13,10 @@ export function transactionsRouter(connectionManager) {
   // Transações
   router.get('/', requireDb, async (req, res) => {
     const { search, type } = req.query;
-    const { Transaction } = getModels(req.conn);
+    const models = getModels(req.conn);
+    const { Transaction } = models;
+
+    await autoMigrateLegacyCategories(models, req.conn);
 
     let query = {};
     if (type) query.type = type;

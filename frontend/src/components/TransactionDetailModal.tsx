@@ -11,7 +11,7 @@ import {
 import React from "react";
 
 import { useTheme } from "../contexts/ThemeContext";
-import { Transaction } from "../types";
+import { Transaction, Category } from "../types";
 import {
   formatCurrency,
   formatBrazilDate,
@@ -83,9 +83,9 @@ const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
               <Tag className="w-4 h-4" /> Categoria:
             </span>
             <span className="text-foreground">
-              {typeof transaction.category === "object"
-                ? transaction.category.name
-                : transaction.category}
+              {typeof transaction.category === "object" && transaction.category !== null
+                ? (transaction.category as Category).name
+                : (transaction.category || "")}
             </span>
           </div>
           <div className="flex items-center justify-between">

@@ -463,18 +463,19 @@ export const useFinancialData = () => {
     goalId: string,
     amount: number,
     date?: string,
+    type: "deposit" | "withdrawal" = "deposit",
+    notes?: string,
   ) => {
     if (!pin) throw new Error("PIN not verified");
     try {
       const goalToUpdate = savingsGoals.find((g) => g.id === goalId);
       if (!goalToUpdate) throw new Error("Goal not found");
 
-      const contribution: Omit<
-        SavingsContribution,
-        "id" | "createdAt" | "updatedAt"
-      > = {
+      const contribution = {
         amount,
         date: date || getBrazilDateString(),
+        type,
+        notes,
       };
 
       const response = await fetch(
@@ -486,15 +487,48 @@ export const useFinancialData = () => {
         },
       );
 
-      if (!response.ok) throw new Error("Failed to add savings contribution");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to add savings contribution");
+      }
       const updatedGoal = await response.json();
       setSavingsGoals((prev) =>
         prev.map((goal) => (goal.id === goalId ? updatedGoal : goal)),
       );
       // Refresh transactions since a new one was created
       fetchData();
+      return updatedGoal;
     } catch (error) {
       console.error("Error adding savings contribution:", error);
+      throw error;
+    }
+  };
+
+  const restoreSavingsContribution = async (
+    goalId: string,
+    contributionId: string,
+  ) => {
+    if (!pin) throw new Error("PIN not verified");
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/goals/${goalId}/contributions/${contributionId}/restore`,
+        {
+          method: "POST",
+          headers,
+        },
+      );
+
+      if (!response.ok)
+        throw new Error("Failed to restore savings contribution");
+      const updatedGoal = await response.json();
+      setSavingsGoals((prev) =>
+        prev.map((goal) => (goal.id === goalId ? updatedGoal : goal)),
+      );
+      fetchData();
+      return updatedGoal;
+    } catch (error) {
+      console.error("Error restoring savings contribution:", error);
+      throw error;
     }
   };
 
@@ -623,6 +657,7 @@ export const useFinancialData = () => {
     addSavingsContribution,
     updateSavingsContribution,
     deleteSavingsContribution,
+    restoreSavingsContribution,
     deleteSavingsGoal,
     importData,
     clearAllData,

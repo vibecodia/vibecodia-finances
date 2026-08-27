@@ -51,6 +51,10 @@ const INCOME_DEFAULTS: DefaultSeed[] = [
       "Rendimento mensal cofrinhos",
     ],
   },
+  {
+    name: "Resgate de Meta", code: "resgate_meta", type: "income", emoji: "🎯", color: "#10B981", order: 8,
+    isSavingsWithdrawal: true, isSystem: true, descriptionTemplate: "Resgate: ${goal.name}",
+  },
 ];
 
 const PAYMENT_METHOD_DEFAULTS: DefaultSeed[] = [

@@ -33,6 +33,7 @@ import {
   getPassiveIncomeCategory,
   isPassiveIncome,
   isSavingsContribution,
+  isSavingsWithdrawal,
 } from "../utils/categoryUtils";
 
 import ImageUpload from "./ImageUpload";
@@ -208,21 +209,28 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   }, [transaction, replicateTransaction, type, defaultPaymentMethod]);
 
   useEffect(() => {
-    if (
-      isSavingsContribution(formData.category, categories) &&
-      formData.savingsGoalId &&
-      amountValue > 0
-    ) {
+    if (formData.savingsGoalId && amountValue > 0) {
       const goal = savingsGoals.find(
         (g) => (g.id || g._id) === formData.savingsGoalId,
       );
       if (goal) {
-        const remaining = goal.targetAmount - goal.currentAmount;
-        if (amountValue > remaining + 0.01) {
-          // Small buffer for rounding
-          setLocalError(
-            `Valor do aporte ultrapassa o restante da meta. Restante disponível: ${remaining.toFixed(2)}.`,
-          );
+        if (isSavingsContribution(formData.category, categories)) {
+          const remaining = goal.targetAmount - goal.currentAmount;
+          if (amountValue > remaining + 0.01) {
+            setLocalError(
+              `Valor do aporte ultrapassa o restante da meta. Restante disponível: ${remaining.toFixed(2)}.`,
+            );
+          } else {
+            setLocalError(null);
+          }
+        } else if (isSavingsWithdrawal(formData.category, categories)) {
+          if (amountValue > goal.currentAmount + 0.01) {
+            setLocalError(
+              `Valor do resgate ultrapassa o saldo disponível na meta. Disponível: ${goal.currentAmount.toFixed(2)}.`,
+            );
+          } else {
+            setLocalError(null);
+          }
         } else {
           setLocalError(null);
         }
@@ -233,11 +241,16 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   }, [amountValue, formData.category, formData.savingsGoalId, savingsGoals, categories]);
 
   const showGoalSelect =
-    type === "expense" &&
-    isSavingsContribution(formData.category, categories);
+    (type === "expense" && isSavingsContribution(formData.category, categories)) ||
+    (type === "income" && isSavingsWithdrawal(formData.category, categories));
+
   const activeGoals = savingsGoals
     .filter((g) => (g.status || "active") !== "deleted")
-    .filter((g) => (g.currentAmount || 0) < (g.targetAmount || 0));
+    .filter((g) =>
+      type === "income"
+        ? (g.currentAmount || 0) > 0
+        : (g.currentAmount || 0) < (g.targetAmount || 0),
+    );
 
   const passiveIncomeSuggestions =
     getPassiveIncomeCategory(categories)?.descriptionSuggestions?.length

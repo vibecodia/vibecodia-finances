@@ -1,10 +1,14 @@
 import mongoose from 'mongoose';
 
-// Schema de contribuições de meta (subdocumento) — copiado do server.js original.
+import { SAVINGS_CONTRIBUTION_TYPES } from '../constants.js';
+
+// Schema de contribuições de meta (subdocumento)
 export const savingsContributionSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   date: { type: Date, required: true },
+  type: { type: String, enum: SAVINGS_CONTRIBUTION_TYPES, default: 'deposit' },
   isPaid: { type: Boolean, default: true },
+  notes: { type: String },
   status: { type: String, enum: ['active', 'deleted'], default: 'active' },
   deletedAt: { type: Date }
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });

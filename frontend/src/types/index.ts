@@ -10,6 +10,7 @@ export interface Category {
   code: string;
   type: "expense" | "income" | "payment_method";
   isSavingsContribution?: boolean;
+  isSavingsWithdrawal?: boolean;
   isPassiveIncome?: boolean;
   isBenefit?: boolean;
   includeInBalance?: boolean; // Cartão de benefício: contar no saldo quando o mestre global está desligado?
@@ -47,11 +48,14 @@ export interface Transaction {
 }
 
 export interface SavingsContribution {
+  _id?: string;
   id: string;
   amount: number;
-  date: string; // Data do aporte
+  date: string; // Data da movimentação
+  type?: "deposit" | "withdrawal"; // "deposit" = aporte, "withdrawal" = resgate
   isPaid?: boolean;
   transactionId?: string;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
   status?: "active" | "deleted"; // Adicionado para Soft Delete

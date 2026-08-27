@@ -108,6 +108,7 @@ function App() {
     addSavingsContribution,
     updateSavingsContribution,
     deleteSavingsContribution,
+    restoreSavingsContribution,
     deleteSavingsGoal,
     importData,
     clearAllData,
@@ -408,6 +409,7 @@ function App() {
                 onAddContribution={addSavingsContribution}
                 onUpdateContribution={updateSavingsContribution}
                 onDeleteContribution={deleteSavingsContribution}
+                onRestoreContribution={restoreSavingsContribution}
                 onUpdatePaymentStatus={updatePaymentStatus}
               />
             }

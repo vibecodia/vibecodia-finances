@@ -8,6 +8,7 @@ import {
   deleteContribution,
   deleteGoal,
   listGoals,
+  restoreContribution,
   updateContribution,
   updateGoal,
 } from '../services/goals.js';
@@ -57,6 +58,11 @@ export function goalsRouter(connectionManager) {
 
   router.delete('/:goalId/contributions/:contributionId', requireDb, async (req, res) => {
     const goal = await deleteContribution(getModels(req.conn), req.params.goalId, req.params.contributionId);
+    res.json(goal);
+  });
+
+  router.post('/:goalId/contributions/:contributionId/restore', requireDb, async (req, res) => {
+    const goal = await restoreContribution(getModels(req.conn), req.params.goalId, req.params.contributionId);
     res.json(goal);
   });
 

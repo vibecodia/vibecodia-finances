@@ -34,13 +34,20 @@ interface SavingsGoalsProps {
   onAdd: (goal: Omit<SavingsGoal, "id" | "createdAt" | "updatedAt">) => void;
   onUpdate: (id: string, updates: Partial<SavingsGoal>) => void;
   onDelete: (id: string) => void;
-  onAddContribution: (goalId: string, amount: number, date?: string) => void;
+  onAddContribution: (
+    goalId: string,
+    amount: number,
+    date?: string,
+    type?: "deposit" | "withdrawal",
+    notes?: string,
+  ) => void;
   onUpdateContribution: (
     goalId: string,
     contributionId: string,
     updates: Partial<SavingsContribution>,
   ) => void;
   onDeleteContribution: (goalId: string, contributionId: string) => void;
+  onRestoreContribution?: (goalId: string, contributionId: string) => void;
   onUpdatePaymentStatus: (transactionId: string, isPaid: boolean) => void;
 }
 
@@ -52,6 +59,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
   onAddContribution,
   onUpdateContribution,
   onDeleteContribution,
+  onRestoreContribution,
   onUpdatePaymentStatus,
 }) => {
   const { theme } = useTheme();
@@ -331,6 +339,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 onAddContribution={onAddContribution}
                 onUpdateContribution={onUpdateContribution}
                 onDeleteContribution={onDeleteContribution}
+                onRestoreContribution={onRestoreContribution}
                 onUpdatePaymentStatus={onUpdatePaymentStatus}
                 showDeleted={showDeleted}
               />
@@ -439,13 +448,20 @@ interface GoalCardProps {
   onEdit: () => void;
   onDelete: () => void;
   onReactivate: () => void;
-  onAddContribution: (goalId: string, amount: number, date?: string) => void;
+  onAddContribution: (
+    goalId: string,
+    amount: number,
+    date?: string,
+    type?: "deposit" | "withdrawal",
+    notes?: string,
+  ) => void;
   onUpdateContribution: (
     goalId: string,
     contributionId: string,
     updates: Partial<SavingsContribution>,
   ) => void;
   onDeleteContribution: (goalId: string, contributionId: string) => void;
+  onRestoreContribution?: (goalId: string, contributionId: string) => void;
   onUpdatePaymentStatus: (transactionId: string, isPaid: boolean) => void;
   showDeleted?: boolean;
 }
@@ -460,37 +476,45 @@ const GoalCard: React.FC<GoalCardProps> = ({
   onAddContribution,
   onUpdateContribution,
   onDeleteContribution,
+  onRestoreContribution,
   onUpdatePaymentStatus,
   showDeleted = false,
 }) => {
   const { theme } = useTheme();
-  const [showAddAmount, setShowAddAmount] = useState(false);
+  const [movementMode, setMovementMode] = useState<"deposit" | "withdrawal" | null>(null);
   const [showHistory, setShowHistory] = useState(false);
-  const [contributionDate, setContributionDate] = useState(
-    getBrazilDateString(),
-  );
-  const [editingContributionId, setEditingContributionId] = useState<
-    string | null
-  >(null);
+  const [movementDate, setMovementDate] = useState(getBrazilDateString());
+  const [editingContributionId, setEditingContributionId] = useState<string | null>(null);
   const [monthlyYield, setMonthlyYield] = useState(1.0);
 
-  // useCurrencyInput for Add Aporte
-  const [initialAddAmount, setInitialAddAmount] = useState(0);
-  const { inputProps: addAmountInputProps, numericValue: addAmountValue } =
-    useCurrencyInput(initialAddAmount);
+  // useCurrencyInput for Add Movement (Aporte ou Resgate)
+  const [initialMovementAmount, setInitialMovementAmount] = useState(0);
+  const {
+    inputProps: movementAmountInputProps,
+    numericValue: movementAmountValue,
+  } = useCurrencyInput(initialMovementAmount);
 
-  // useCurrencyInput for Edit Aporte
+  // useCurrencyInput for Edit Movement
   const [initialEditAmount, setInitialEditAmount] = useState(0);
   const { inputProps: editAmountInputProps, numericValue: editAmountValue } =
     useCurrencyInput(initialEditAmount);
 
-  const handleAddAmount = () => {
-    if (addAmountValue <= 0) return;
+  const remainingAmount = Math.max(0, goal.targetAmount - goal.currentAmount);
 
-    onAddContribution(goal.id, addAmountValue, contributionDate);
-    setInitialAddAmount(0);
-    setContributionDate(getBrazilDateString());
-    setShowAddAmount(false);
+  const handleSaveMovement = () => {
+    if (movementAmountValue <= 0 || !movementMode) return;
+
+    if (movementMode === "withdrawal" && movementAmountValue > goal.currentAmount) {
+      return;
+    }
+    if (movementMode === "deposit" && movementAmountValue > remainingAmount + 0.01) {
+      return;
+    }
+
+    onAddContribution(goal.id, movementAmountValue, movementDate, movementMode);
+    setInitialMovementAmount(0);
+    setMovementDate(getBrazilDateString());
+    setMovementMode(null);
   };
 
   const [editDate, setEditDate] = useState("");
@@ -519,13 +543,15 @@ const GoalCard: React.FC<GoalCardProps> = ({
     setEditDate("");
   };
 
-  const handleDeleteContribution = (contributionId: string) => {
-    if (confirm("Tem certeza que deseja excluir este aporte?")) {
-      onDeleteContribution(goal.id, contributionId);
+  const handleDeleteContribution = (contribution: SavingsContribution) => {
+    const isWithdrawal = contribution.type === "withdrawal";
+    const msg = isWithdrawal
+      ? "Tem certeza de que deseja excluir este resgate?"
+      : "Tem certeza de que deseja excluir este aporte?";
+    if (confirm(msg)) {
+      onDeleteContribution(goal.id, contribution.id);
     }
   };
-
-  const remainingAmount = goal.targetAmount - goal.currentAmount;
 
   // Sort contributions by date (most recent first) and filter based on showDeleted
   const sortedContributions = (goal.contributions || [])
@@ -805,21 +831,46 @@ const GoalCard: React.FC<GoalCardProps> = ({
                               </span>
                             )}
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-primary/70 uppercase tracking-widest">
-                          Aporte
+                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest">
+                          <span
+                            className={cn(
+                              "px-1.5 py-0.5 rounded",
+                              contribution.type === "withdrawal"
+                                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                : "bg-primary/15 text-primary",
+                            )}
+                          >
+                            {contribution.type === "withdrawal" ? "Resgate" : "Aporte"}
+                          </span>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-3">
                         <span
                           className={cn(
-                            "font-bold text-sm text-primary",
+                            "font-bold text-sm",
+                            contribution.type === "withdrawal"
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-primary",
                             contribution.status === "deleted" &&
                               "text-accent line-through opacity-50",
                           )}
                         >
-                          +{formatCurrency(contribution.amount)}
+                          {contribution.type === "withdrawal" ? "-" : "+"}
+                          {formatCurrency(contribution.amount)}
                         </span>
+
+                        {showDeleted && contribution.status === "deleted" && onRestoreContribution && (
+                          <Button
+                            onClick={() => onRestoreContribution(goal.id, contribution.id)}
+                            variant="ghost"
+                            size="sm"
+                            className="p-1.5 hover:text-primary"
+                            title="Restaurar movimentação"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
 
                         {!isGoalDeleted &&
                           contribution.status !== "deleted" && (
@@ -848,18 +899,26 @@ const GoalCard: React.FC<GoalCardProps> = ({
                                 variant="ghost"
                                 size="sm"
                                 className="p-1.5"
-                                title="Editar aporte"
+                                title={
+                                  contribution.type === "withdrawal"
+                                    ? "Editar resgate"
+                                    : "Editar aporte"
+                                }
                               >
                                 <Edit3 className="w-3.5 h-3.5" />
                               </Button>
                               <Button
                                 onClick={() =>
-                                  handleDeleteContribution(contribution.id)
+                                  handleDeleteContribution(contribution)
                                 }
                                 variant="ghost"
                                 size="sm"
                                 className="p-1.5 hover:text-accent"
-                                title="Excluir aporte"
+                                title={
+                                  contribution.type === "withdrawal"
+                                    ? "Excluir resgate"
+                                    : "Excluir aporte"
+                                }
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </Button>
@@ -881,42 +940,98 @@ const GoalCard: React.FC<GoalCardProps> = ({
               Meta Excluída
             </span>
           </div>
-        ) : isComplete ? (
-          <div className="text-center py-3 bg-primary/10 rounded-xl border border-primary/20 animate-pulse">
-            <span className="text-primary text-sm font-bold">
-              🎉 Meta Concluída com Sucesso!
-            </span>
-          </div>
         ) : (
           <div className="space-y-3">
-            {!showAddAmount ? (
-              <Button onClick={() => setShowAddAmount(true)} className="w-full">
-                Adicionar Aporte
-              </Button>
+            {isComplete && (
+              <div className="text-center py-2.5 bg-primary/10 rounded-xl border border-primary/20 animate-pulse">
+                <span className="text-primary text-sm font-bold">
+                  🎉 Meta Concluída com Sucesso!
+                </span>
+              </div>
+            )}
+
+            {!movementMode ? (
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  onClick={() => {
+                    setMovementMode("deposit");
+                    setInitialMovementAmount(0);
+                    setMovementDate(getBrazilDateString());
+                  }}
+                  disabled={isComplete}
+                  className="w-full"
+                >
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Aporte
+                </Button>
+
+                <Button
+                  onClick={() => {
+                    setMovementMode("withdrawal");
+                    setInitialMovementAmount(0);
+                    setMovementDate(getBrazilDateString());
+                  }}
+                  disabled={goal.currentAmount <= 0}
+                  variant="outline"
+                  className="w-full hover:border-amber-500 hover:text-amber-500"
+                >
+                  <Minus className="w-4 h-4 mr-1.5" />
+                  Resgatar
+                </Button>
+              </div>
             ) : (
               <div
                 className="p-3 rounded-xl border-2 border-dashed space-y-3 animate-in slide-in-from-top-2 duration-200"
                 style={{ borderColor: theme.cardBorder }}
               >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    {movementMode === "deposit" ? (
+                      <>
+                        <Plus className="w-3.5 h-3.5 text-primary" />
+                        Novo Aporte (Guardar)
+                      </>
+                    ) : (
+                      <>
+                        <Minus className="w-3.5 h-3.5 text-amber-500" />
+                        Novo Resgate (Sacar)
+                      </>
+                    )}
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-muted-foreground">
+                    {movementMode === "deposit"
+                      ? `Restante: ${formatCurrency(remainingAmount)}`
+                      : `Disponível: ${formatCurrency(goal.currentAmount)}`}
+                  </span>
+                </div>
+
                 <div className="flex gap-2">
                   <Input
-                    {...addAmountInputProps}
+                    {...movementAmountInputProps}
                     placeholder="Valor"
                     className="py-2"
+                    autoFocus
                   />
                   <Button
-                    onClick={handleAddAmount}
-                    disabled={addAmountValue <= 0}
+                    onClick={handleSaveMovement}
+                    disabled={
+                      movementAmountValue <= 0 ||
+                      (movementMode === "withdrawal" && movementAmountValue > goal.currentAmount) ||
+                      (movementMode === "deposit" && movementAmountValue > remainingAmount + 0.01)
+                    }
                     size="sm"
-                    className="h-10 w-10 p-0"
+                    className={cn(
+                      "px-3",
+                      movementMode === "withdrawal" && "bg-amber-600 hover:bg-amber-700 text-white",
+                    )}
                   >
-                    +
+                    Confirmar
                   </Button>
                   <Button
                     onClick={() => {
-                      setShowAddAmount(false);
-                      setInitialAddAmount(0);
-                      setContributionDate(getBrazilDateString());
+                      setMovementMode(null);
+                      setInitialMovementAmount(0);
+                      setMovementDate(getBrazilDateString());
                     }}
                     variant="outline"
                     size="sm"
@@ -930,14 +1045,28 @@ const GoalCard: React.FC<GoalCardProps> = ({
                   <Calendar className="w-4 h-4 text-primary" />
                   <Input
                     type="date"
-                    value={contributionDate}
-                    onChange={(e) => setContributionDate(e.target.value)}
+                    value={movementDate}
+                    onChange={(e) => setMovementDate(e.target.value)}
                     className="py-1.5"
                   />
                 </div>
 
+                {movementMode === "deposit" && movementAmountValue > remainingAmount + 0.01 && (
+                  <p className="text-[11px] text-rose-500 font-medium">
+                    Valor ultrapassa o restante da meta ({formatCurrency(remainingAmount)}).
+                  </p>
+                )}
+
+                {movementMode === "withdrawal" && movementAmountValue > goal.currentAmount && (
+                  <p className="text-[11px] text-rose-500 font-medium">
+                    Valor ultrapassa o saldo disponível na meta ({formatCurrency(goal.currentAmount)}).
+                  </p>
+                )}
+
                 <p className="text-[10px] text-muted-foreground font-medium italic">
-                  * O aporte será deduzido do saldo do mês selecionado.
+                  {movementMode === "deposit"
+                    ? "* O aporte será deduzido do saldo do mês selecionado e guardado nesta meta."
+                    : "* O valor resgatado sairá da meta e entrará no saldo disponível do mês selecionado."}
                 </p>
               </div>
             )}

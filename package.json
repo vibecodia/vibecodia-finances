@@ -12,6 +12,7 @@
     "serve": "serve -s dist -l 5173",
     "release": "release-it",
     "release:dry-run": "release-it --dry-run",
+    "test": "node --test backend/tests/*.test.js",
     "test-connection": "node backend/test_connection.js"
   },
   "dependencies": {

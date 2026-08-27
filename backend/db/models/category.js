@@ -18,6 +18,7 @@ export const categorySchema = new mongoose.Schema({
   type: { type: String, enum: CATEGORY_TYPES, required: true },    // expense | income | payment_method
 
   isSavingsContribution: { type: Boolean, default: false },
+  isSavingsWithdrawal: { type: Boolean, default: false },
   isPassiveIncome: { type: Boolean, default: false },
   isBenefit: { type: Boolean, default: false },
   // Para cartões de benefício: se o saldo líquido do cartão participa da

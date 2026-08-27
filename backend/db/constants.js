@@ -10,3 +10,6 @@ export const TRANSACTION_STATUS = ['active', 'deleted'];
 // categoria de receita ou meio de pagamento.
 export const CATEGORY_TYPES = ['expense', 'income', 'payment_method'];
 export const CATEGORY_STATUS = ['active', 'deleted'];
+
+// Tipos de movimentação vinculada à meta (aporte / resgate)
+export const SAVINGS_CONTRIBUTION_TYPES = ['deposit', 'withdrawal'];
