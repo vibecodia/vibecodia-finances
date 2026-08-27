@@ -543,20 +543,31 @@ const GoalCard: React.FC<GoalCardProps> = ({
     setEditDate("");
   };
 
+  const [contributionToDelete, setContributionToDelete] =
+    useState<SavingsContribution | null>(null);
+
   const handleDeleteContribution = (contribution: SavingsContribution) => {
-    const isWithdrawal = contribution.type === "withdrawal";
-    const msg = isWithdrawal
-      ? "Tem certeza de que deseja excluir este resgate?"
-      : "Tem certeza de que deseja excluir este aporte?";
-    if (confirm(msg)) {
-      onDeleteContribution(goal.id, contribution.id);
+    setContributionToDelete(contribution);
+  };
+
+  const handleConfirmDeleteContribution = () => {
+    if (contributionToDelete) {
+      onDeleteContribution(goal.id, contributionToDelete.id);
+      setContributionToDelete(null);
     }
   };
+
+  const [showDeletedLocal, setShowDeletedLocal] = useState(false);
+  const shouldShowDeleted = showDeleted || showDeletedLocal;
+  const deletedCount = (goal.contributions || []).filter(
+    (c) => c.status === "deleted",
+  ).length;
+  const hasDeletedMovements = deletedCount > 0;
 
   // Sort contributions by date (most recent first) and filter based on showDeleted
   const sortedContributions = (goal.contributions || [])
     .filter((c) =>
-      showDeleted ? c.status === "deleted" : c.status !== "deleted",
+      shouldShowDeleted ? c.status === "deleted" : c.status !== "deleted",
     )
     .sort((a, b) => {
       try {
@@ -758,10 +769,26 @@ const GoalCard: React.FC<GoalCardProps> = ({
             className="space-y-3 pt-2 border-t"
             style={{ borderColor: theme.cardBorder }}
           >
-            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-              <History className="w-3.5 h-3.5" />
-              {showDeleted ? "Aportes Excluídos" : "Histórico de Aportes"}
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                <History className="w-3.5 h-3.5" />
+                {shouldShowDeleted
+                  ? "Movimentações Revertidas / Excluídas"
+                  : "Histórico de Movimentações"}
+              </h4>
+              {hasDeletedMovements && !showDeleted && (
+                <Button
+                  onClick={() => setShowDeletedLocal(!showDeletedLocal)}
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[10px] uppercase font-bold text-muted-foreground hover:text-primary px-2"
+                >
+                  {showDeletedLocal
+                    ? "Ver ativas"
+                    : `Ver revertidas (${deletedCount})`}
+                </Button>
+              )}
+            </div>
             <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
               {sortedContributions.map((contribution) => (
                 <div
@@ -860,13 +887,17 @@ const GoalCard: React.FC<GoalCardProps> = ({
                           {formatCurrency(contribution.amount)}
                         </span>
 
-                        {showDeleted && contribution.status === "deleted" && onRestoreContribution && (
+                        {shouldShowDeleted && contribution.status === "deleted" && onRestoreContribution && (
                           <Button
                             onClick={() => onRestoreContribution(goal.id, contribution.id)}
                             variant="ghost"
                             size="sm"
-                            className="p-1.5 hover:text-primary"
-                            title="Restaurar movimentação"
+                            className="p-1.5 hover:text-primary text-muted-foreground"
+                            title={
+                              contribution.type === "withdrawal"
+                                ? "Restaurar resgate (debitar da meta novamente)"
+                                : "Restaurar aporte"
+                            }
                           >
                             <RotateCcw className="w-3.5 h-3.5" />
                           </Button>
@@ -913,14 +944,23 @@ const GoalCard: React.FC<GoalCardProps> = ({
                                 }
                                 variant="ghost"
                                 size="sm"
-                                className="p-1.5 hover:text-accent"
+                                className={cn(
+                                  "p-1.5",
+                                  contribution.type === "withdrawal"
+                                    ? "text-amber-600 hover:text-amber-700 dark:text-amber-400"
+                                    : "hover:text-accent",
+                                )}
                                 title={
                                   contribution.type === "withdrawal"
-                                    ? "Excluir resgate"
+                                    ? "Reverter resgate (devolver o valor para a meta)"
                                     : "Excluir aporte"
                                 }
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                {contribution.type === "withdrawal" ? (
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                ) : (
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                )}
                               </Button>
                             </div>
                           )}
@@ -1073,6 +1113,30 @@ const GoalCard: React.FC<GoalCardProps> = ({
           </div>
         )}
       </div>
+
+      <ConfirmationModal
+        isOpen={Boolean(contributionToDelete)}
+        onClose={() => setContributionToDelete(null)}
+        onConfirm={handleConfirmDeleteContribution}
+        title={
+          contributionToDelete?.type === "withdrawal"
+            ? "Reverter Resgate"
+            : "Confirmar Exclusão"
+        }
+        message={
+          contributionToDelete?.type === "withdrawal"
+            ? `Deseja reverter este resgate de ${formatCurrency(contributionToDelete.amount)}? O valor será devolvido à meta e a receita correspondente será cancelada.`
+            : `Tem certeza de que deseja excluir este aporte de ${formatCurrency(contributionToDelete?.amount || 0)}?`
+        }
+        confirmText={
+          contributionToDelete?.type === "withdrawal"
+            ? "Reverter Resgate"
+            : "Confirmar Exclusão"
+        }
+        confirmVariant={
+          contributionToDelete?.type === "withdrawal" ? "accent" : "danger"
+        }
+      />
     </Card>
   );
 };

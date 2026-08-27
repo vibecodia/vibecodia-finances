@@ -118,6 +118,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(true);
   const [isMarkAllPaidModalOpen, setIsMarkAllPaidModalOpen] = useState(false);
+  const { categories: allCategories } = useCategoriesContext();
 
   const getParsedPriceValue = (value: number) => {
     if (!value || value <= 0) return null;
@@ -160,7 +161,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
       .filter(
         (t) =>
           categoryFilter.includes("all") ||
-          categoryFilter.includes(getCategoryName(undefined, t.category)),
+          categoryFilter.includes(getCategoryName(allCategories, t.category)),
       )
       .filter((t) => {
         if (paymentFilter === "all") return true;
@@ -266,7 +267,6 @@ const TransactionList: React.FC<TransactionListProps> = ({
   };
   const { theme } = useTheme();
   const { paymentMethods } = usePaymentMethods();
-  const { categories: allCategories } = useCategoriesContext();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -393,7 +393,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
     ...new Set(
       transactions
         .filter((t) => t.type === type)
-        .map((t) => getCategoryName(undefined, t.category)),
+        .map((t) => getCategoryName(allCategories, t.category)),
     ),
   ];
 
@@ -1107,7 +1107,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
                     <div className="flex flex-wrap gap-2">
                       <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-muted/30 text-foreground/60">
-                        {getCategoryName(undefined, transaction.category)}
+                        {getCategoryName(allCategories, transaction.category)}
                       </span>
 
                       {type === "expense" && transaction.paymentMethod && (
@@ -1232,8 +1232,21 @@ const TransactionList: React.FC<TransactionListProps> = ({
         isOpen={isDeleteModalOpen}
         onClose={closeDeleteModal}
         onConfirm={handleDeleteConfirm}
-        title="Confirmar Exclusão"
-        message="Tem certeza de que deseja excluir esta transação?"
+        title={
+          transactions.find((t) => t.id === transactionToDelete)?.savingsGoalId && type === "income"
+            ? "Reverter Resgate de Meta"
+            : "Confirmar Exclusão"
+        }
+        message={
+          transactions.find((t) => t.id === transactionToDelete)?.savingsGoalId && type === "income"
+            ? "Esta receita foi gerada por um resgate de meta. Ao excluí-la, o resgate será revertido e o valor voltará para o saldo da meta."
+            : "Tem certeza de que deseja excluir esta transação?"
+        }
+        confirmText={
+          transactions.find((t) => t.id === transactionToDelete)?.savingsGoalId && type === "income"
+            ? "Reverter Resgate"
+            : "Confirmar Exclusão"
+        }
       />
 
       {/* Reactivate Confirmation Modal */}
