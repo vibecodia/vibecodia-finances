@@ -12,7 +12,7 @@ import {
 import React, { useState } from "react";
 
 import { useTheme } from "../contexts/ThemeContext";
-import { Transaction, PendingPayment } from "../types";
+import { Transaction, PendingPayment, Category } from "../types";
 import {
   formatCurrency,
   getCurrentBrazilDate,
@@ -24,8 +24,8 @@ import {
   getBrazilDateString,
   formatPaymentMethod,
 } from "../utils/helpers";
-import MonthSegmentedControl from "./MonthSegmentedControl";
 
+import MonthSegmentedControl from "./MonthSegmentedControl";
 import TransactionDetailModal from "./TransactionDetailModal";
 
 interface CalendarProps {
@@ -165,16 +165,18 @@ const Calendar: React.FC<CalendarProps> = ({
             t.dueDate ? parseLocalDate(t.dueDate) : parseLocalDate(t.date),
           ),
           category:
-            typeof t.category === "object" ? t.category.name : t.category,
+            typeof t.category === "object" && t.category !== null
+              ? (t.category as Category).name
+              : (t.category || ""),
           type: "expense" as const,
           isPaid: t.isPaid,
           isOverdue: !t.isPaid && isTransactionOverdue(t),
           daysUntilDue,
           isRecurring,
           paymentMethod:
-            typeof t.paymentMethod === "object"
-              ? t.paymentMethod.name
-              : t.paymentMethod,
+            typeof t.paymentMethod === "object" && t.paymentMethod !== null
+              ? (t.paymentMethod as Category).name
+              : (t.paymentMethod || ""),
           originalId: t.id.includes("_") ? t.id.split("_")[0] : undefined,
         };
       });
@@ -194,14 +196,16 @@ const Calendar: React.FC<CalendarProps> = ({
           amount: t.amount,
           date: getBrazilDateString(parseLocalDate(t.date)),
           category:
-            typeof t.category === "object" ? t.category.name : t.category,
+            typeof t.category === "object" && t.category !== null
+              ? (t.category as Category).name
+              : (t.category || ""),
           type: "income" as const,
           isPaid: t.isPaid,
           isRecurring,
           paymentMethod:
-            typeof t.paymentMethod === "object"
-              ? t.paymentMethod.name
-              : t.paymentMethod,
+            typeof t.paymentMethod === "object" && t.paymentMethod !== null
+              ? (t.paymentMethod as Category).name
+              : (t.paymentMethod || ""),
           originalId: t.id.includes("_") ? t.id.split("_")[0] : undefined,
         };
       });

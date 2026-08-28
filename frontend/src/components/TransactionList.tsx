@@ -17,11 +17,12 @@ import {
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import { useCategoriesContext } from "../contexts/CategoriesContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useCurrencyInput } from "../hooks/useCurrencyInput";
 import { usePaymentMethods } from "../hooks/usePaymentMethods";
-import { useCategoriesContext } from "../contexts/CategoriesContext";
-import { SavingsGoal, Transaction } from "../types";
+import { cn } from "../lib/utils";
+import { SavingsGoal, Transaction, StructuredNotes, ReceiptItem } from "../types";
 import {
   getCategoryName,
   isSavingsContribution,
@@ -36,15 +37,15 @@ import {
   isTransactionOverdue,
   parseLocalDate,
 } from "../utils/helpers";
-import { Button } from "./ui/Button";
-import { Input } from "./ui/Input";
-import { Card } from "./ui/Card";
-import { cn } from "../lib/utils";
 
 import ConfirmationModal from "./ConfirmationModal";
 import DailyDateSlider from "./DailyDateSlider";
-import TransactionForm from "./TransactionForm";
 import MonthSegmentedControl from "./MonthSegmentedControl";
+import TransactionForm from "./TransactionForm";
+import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
+import { Input } from "./ui/Input";
+
 
 interface TransactionListProps {
   type: "expense" | "income";
@@ -118,6 +119,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(true);
   const [isMarkAllPaidModalOpen, setIsMarkAllPaidModalOpen] = useState(false);
+  const { categories: allCategories } = useCategoriesContext();
 
   const getParsedPriceValue = (value: number) => {
     if (!value || value <= 0) return null;
@@ -160,7 +162,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
       .filter(
         (t) =>
           categoryFilter.includes("all") ||
-          categoryFilter.includes(getCategoryName(undefined, t.category)),
+          categoryFilter.includes(getCategoryName(allCategories, t.category)),
       )
       .filter((t) => {
         if (paymentFilter === "all") return true;
@@ -230,16 +232,19 @@ const TransactionList: React.FC<TransactionListProps> = ({
     }));
   };
 
-  const formatNotes = (notes: any) => {
+  const formatNotes = (
+    notes: string | StructuredNotes | Record<string, unknown> | null | undefined,
+  ) => {
     if (!notes) return "";
 
     // Se já for um objeto (nova estrutura de Map/Mixed no banco)
     if (typeof notes === "object" && notes !== null) {
-      if (notes.items && Array.isArray(notes.items)) {
-        return `ITENS DA NOTA:\n${notes.items
+      const structured = notes as StructuredNotes;
+      if (structured.items && Array.isArray(structured.items)) {
+        return `ITENS DA NOTA:\n${structured.items
           .map(
-            (item: any) =>
-              `${item.qty}x ${item.description} - R$ ${item.unitPrice.toFixed(2).replace(".", ",")}`,
+            (item: ReceiptItem) =>
+              `${item.qty ?? 1}x ${item.description || item.name || ""} - R$ ${(Number(item.unitPrice || item.price) || 0).toFixed(2).replace(".", ",")}`,
           )
           .join("\n")}`;
       }
@@ -249,24 +254,23 @@ const TransactionList: React.FC<TransactionListProps> = ({
     // Fallback para legado (string que pode ser JSON)
     try {
       if (typeof notes === "string" && notes.startsWith("{")) {
-        const parsed = JSON.parse(notes);
+        const parsed = JSON.parse(notes) as StructuredNotes;
         if (parsed.items && Array.isArray(parsed.items)) {
           return `ITENS DA NOTA:\n${parsed.items
             .map(
-              (item: any) =>
-                `${item.qty}x ${item.description} - R$ ${item.unitPrice.toFixed(2).replace(".", ",")}`,
+              (item: ReceiptItem) =>
+                `${item.qty ?? 1}x ${item.description || item.name || ""} - R$ ${(Number(item.unitPrice || item.price) || 0).toFixed(2).replace(".", ",")}`,
             )
             .join("\n")}`;
         }
       }
-    } catch (e) {
+    } catch {
       // Ignora erro e retorna texto puro
     }
-    return notes;
+    return String(notes);
   };
   const { theme } = useTheme();
   const { paymentMethods } = usePaymentMethods();
-  const { categories: allCategories } = useCategoriesContext();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -393,7 +397,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
     ...new Set(
       transactions
         .filter((t) => t.type === type)
-        .map((t) => getCategoryName(undefined, t.category)),
+        .map((t) => getCategoryName(allCategories, t.category)),
     ),
   ];
 
@@ -1107,7 +1111,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
                     <div className="flex flex-wrap gap-2">
                       <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-muted/30 text-foreground/60">
-                        {getCategoryName(undefined, transaction.category)}
+                        {getCategoryName(allCategories, transaction.category)}
                       </span>
 
                       {type === "expense" && transaction.paymentMethod && (
@@ -1232,8 +1236,21 @@ const TransactionList: React.FC<TransactionListProps> = ({
         isOpen={isDeleteModalOpen}
         onClose={closeDeleteModal}
         onConfirm={handleDeleteConfirm}
-        title="Confirmar Exclusão"
-        message="Tem certeza de que deseja excluir esta transação?"
+        title={
+          transactions.find((t) => t.id === transactionToDelete)?.savingsGoalId && type === "income"
+            ? "Reverter Resgate de Meta"
+            : "Confirmar Exclusão"
+        }
+        message={
+          transactions.find((t) => t.id === transactionToDelete)?.savingsGoalId && type === "income"
+            ? "Esta receita foi gerada por um resgate de meta. Ao excluí-la, o resgate será revertido e o valor voltará para o saldo da meta."
+            : "Tem certeza de que deseja excluir esta transação?"
+        }
+        confirmText={
+          transactions.find((t) => t.id === transactionToDelete)?.savingsGoalId && type === "income"
+            ? "Reverter Resgate"
+            : "Confirmar Exclusão"
+        }
       />
 
       {/* Reactivate Confirmation Modal */}

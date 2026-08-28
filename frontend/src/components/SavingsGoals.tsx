@@ -11,6 +11,9 @@ import {
   ChevronDown,
   RotateCcw,
   Check,
+  Archive,
+  ArchiveRestore,
+  AlertTriangle,
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 
@@ -23,24 +26,33 @@ import {
   formatBrazilDate,
   getBrazilDateString,
 } from "../utils/helpers";
-import { Button } from "./ui/Button";
-import { Input } from "./ui/Input";
-import { Card } from "./ui/Card";
 
 import ConfirmationModal from "./ConfirmationModal";
+import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
+import { Input } from "./ui/Input";
 
 interface SavingsGoalsProps {
   goals: SavingsGoal[];
   onAdd: (goal: Omit<SavingsGoal, "id" | "createdAt" | "updatedAt">) => void;
   onUpdate: (id: string, updates: Partial<SavingsGoal>) => void;
+  onArchive?: (id: string) => void;
+  onUnarchive?: (id: string) => void;
   onDelete: (id: string) => void;
-  onAddContribution: (goalId: string, amount: number, date?: string) => void;
+  onAddContribution: (
+    goalId: string,
+    amount: number,
+    date?: string,
+    type?: "deposit" | "withdrawal",
+    notes?: string,
+  ) => void;
   onUpdateContribution: (
     goalId: string,
     contributionId: string,
     updates: Partial<SavingsContribution>,
   ) => void;
   onDeleteContribution: (goalId: string, contributionId: string) => void;
+  onRestoreContribution?: (goalId: string, contributionId: string) => void;
   onUpdatePaymentStatus: (transactionId: string, isPaid: boolean) => void;
 }
 
@@ -48,10 +60,13 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
   goals,
   onAdd,
   onUpdate,
+  onArchive,
+  onUnarchive,
   onDelete,
   onAddContribution,
   onUpdateContribution,
   onDeleteContribution,
+  onRestoreContribution,
   onUpdatePaymentStatus,
 }) => {
   const { theme } = useTheme();
@@ -73,11 +88,18 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
   const [goalToDelete, setGoalToDelete] = useState<string | null>(null);
   const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
   const [goalToReactivate, setGoalToReactivate] = useState<string | null>(null);
-  const [showDeleted, setShowDeleted] = useState(false);
+  const [viewFilter, setViewFilter] = useState<"active" | "archived" | "deleted">(
+    "active",
+  );
   const [searchTerm, setSearchTerm] = useState("");
 
   const activeGoals = (goals || []).filter(
-    (g: SavingsGoal) => g.status !== "deleted",
+    (g: SavingsGoal) =>
+      g.status === "active" ||
+      (!g.status && g.status !== "deleted" && g.status !== "archived"),
+  );
+  const archivedGoals = (goals || []).filter(
+    (g: SavingsGoal) => g.status === "archived",
   );
   const deletedGoals = (goals || []).filter(
     (g: SavingsGoal) => g.status === "deleted",
@@ -92,18 +114,32 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
   };
 
   const filteredActiveGoals = filterBySearch(activeGoals);
+  const filteredArchivedGoals = filterBySearch(archivedGoals);
   const filteredDeletedGoals = filterBySearch(deletedGoals);
 
-  // Auto-switch back to active view if no deleted goals remain
+  // Auto-switch back to active view if no goals remain in the current filter
   useEffect(() => {
     if (
-      showDeleted &&
+      viewFilter === "deleted" &&
       filteredDeletedGoals.length === 0 &&
       deletedGoals.length === 0
     ) {
-      setShowDeleted(false);
+      setViewFilter("active");
     }
-  }, [deletedGoals.length, filteredDeletedGoals.length, showDeleted]);
+    if (
+      viewFilter === "archived" &&
+      filteredArchivedGoals.length === 0 &&
+      archivedGoals.length === 0
+    ) {
+      setViewFilter("active");
+    }
+  }, [
+    deletedGoals.length,
+    filteredDeletedGoals.length,
+    archivedGoals.length,
+    filteredArchivedGoals.length,
+    viewFilter,
+  ]);
 
   const openDeleteModal = (id: string) => {
     setGoalToDelete(id);
@@ -185,9 +221,12 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
     setShowForm(true);
   };
 
-  const goalsForDisplay = showDeleted
-    ? filteredDeletedGoals
-    : filteredActiveGoals;
+  const goalsForDisplay =
+    viewFilter === "archived"
+      ? filteredArchivedGoals
+      : viewFilter === "deleted"
+        ? filteredDeletedGoals
+        : filteredActiveGoals;
   const totalGoals = activeGoals.reduce(
     (sum: number, goal: SavingsGoal) => sum + (goal.targetAmount || 0),
     0,
@@ -221,25 +260,59 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 </span>
               </>
             )}
-            {deletedGoals.length > 0 && (
+            {archivedGoals.length > 0 && (
               <>
                 <span className="mx-2">•</span>
                 <Button
-                  onClick={() => setShowDeleted(!showDeleted)}
+                  onClick={() =>
+                    setViewFilter(
+                      viewFilter === "archived" ? "active" : "archived",
+                    )
+                  }
                   variant="ghost"
                   size="sm"
                   className={cn(
                     "text-xs font-bold px-2 py-0.5 rounded-full transition-colors flex items-center gap-1",
-                    showDeleted && "bg-accent text-white",
+                    viewFilter === "archived"
+                      ? "bg-primary text-primary-foreground"
+                      : "opacity-80 hover:opacity-100",
                   )}
                   style={{
-                    backgroundColor: showDeleted ? theme.accent : undefined,
+                    backgroundColor:
+                      viewFilter === "archived" ? theme.primary : undefined,
+                    color: viewFilter === "archived" ? "#fff" : undefined,
+                  }}
+                >
+                  <Archive className="w-3 h-3" />
+                  {archivedGoals.length}{" "}
+                  {archivedGoals.length === 1 ? "arquivada" : "arquivadas"}
+                </Button>
+              </>
+            )}
+            {deletedGoals.length > 0 && (
+              <>
+                <span className="mx-2">•</span>
+                <Button
+                  onClick={() =>
+                    setViewFilter(
+                      viewFilter === "deleted" ? "active" : "deleted",
+                    )
+                  }
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "text-xs font-bold px-2 py-0.5 rounded-full transition-colors flex items-center gap-1",
+                    viewFilter === "deleted" && "bg-accent text-white",
+                  )}
+                  style={{
+                    backgroundColor:
+                      viewFilter === "deleted" ? theme.accent : undefined,
                   }}
                 >
                   {deletedGoals.length}{" "}
                   {deletedGoals.length === 1 ? "excluída" : "excluídas"}
                   <span
-                    className={`transition-transform ${showDeleted ? "rotate-180" : ""}`}
+                    className={`transition-transform ${viewFilter === "deleted" ? "rotate-180" : ""}`}
                   >
                     <ChevronDown className="w-3 h-3" />
                   </span>
@@ -301,11 +374,13 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
               <Target className="w-8 h-8 text-muted-foreground" />
             </div>
             <p className="text-muted-foreground mb-4">
-              {showDeleted
-                ? "Nenhuma meta excluída encontrada"
-                : "Nenhuma meta cadastrada"}
+              {viewFilter === "archived"
+                ? "Nenhuma meta arquivada encontrada"
+                : viewFilter === "deleted"
+                  ? "Nenhuma meta excluída encontrada"
+                  : "Nenhuma meta de economia cadastrada"}
             </p>
-            {!showDeleted && (
+            {viewFilter === "active" && (
               <Button onClick={() => setShowForm(true)}>
                 Criar primeira meta
               </Button>
@@ -326,13 +401,22 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 progress={progress}
                 isComplete={isComplete}
                 onEdit={() => handleEdit(goal)}
+                onArchive={() => {
+                  if (onArchive) onArchive(goal.id);
+                  else onUpdate(goal.id, { status: "archived" });
+                }}
+                onUnarchive={() => {
+                  if (onUnarchive) onUnarchive(goal.id);
+                  else onUpdate(goal.id, { status: "active" });
+                }}
                 onDelete={() => openDeleteModal(goal.id)}
                 onReactivate={() => openReactivateModal(goal.id)}
                 onAddContribution={onAddContribution}
                 onUpdateContribution={onUpdateContribution}
                 onDeleteContribution={onDeleteContribution}
+                onRestoreContribution={onRestoreContribution}
                 onUpdatePaymentStatus={onUpdatePaymentStatus}
-                showDeleted={showDeleted}
+                showDeleted={viewFilter === "deleted"}
               />
             );
           })
@@ -412,13 +496,90 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
         </div>
       )}
 
-      <ConfirmationModal
-        isOpen={isDeleteModalOpen}
-        onClose={closeDeleteModal}
-        onConfirm={handleDeleteConfirm}
-        title="Confirmar Exclusão"
-        message="Tem certeza de que deseja excluir esta meta de economia? Todos os aportes associados também serão marcados como excluídos."
-      />
+      {/* Modal Inteligente de Exclusão / Arquivamento */}
+      {isDeleteModalOpen &&
+      goals.find((g) => g.id === goalToDelete)?.contributions?.some(
+        (c) => c.status !== "deleted",
+      ) ? (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-300">
+          <Card className="w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200 p-0 overflow-hidden">
+            <div className="p-6 sm:p-8">
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500 flex-shrink-0">
+                  <AlertTriangle className="w-8 h-8" />
+                </div>
+                <div className="space-y-3 flex-1 min-w-0">
+                  <h3 className="text-lg sm:text-xl font-black text-foreground">
+                    Meta com Histórico Financeiro
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    A meta{" "}
+                    <strong>
+                      {goals.find((g) => g.id === goalToDelete)?.name}
+                    </strong>{" "}
+                    possui movimentações financeiras registradas em meses anteriores.
+                  </p>
+                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-1.5 text-foreground">
+                    <p className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                      ⚠️ Atenção aos saldos dos meses anteriores:
+                    </p>
+                    <p className="opacity-90 leading-relaxed">
+                      Se você <strong>Excluir Definitivamente</strong>, todas as
+                      transações passadas desta meta serão apagadas, o que{" "}
+                      <strong>alterará os saldos congelados</strong> dos meses em
+                      que o dinheiro esteve guardado.
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    <strong>Recomendação:</strong> Escolha{" "}
+                    <strong>Arquivar Meta</strong> para ocultá-la da tela
+                    inicial mantendo seus saldos passados 100% protegidos e
+                    intactos.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 sm:px-8 sm:py-5 flex flex-col sm:flex-row gap-3 bg-muted/50 border-t border-border">
+              <Button
+                variant="primary"
+                onClick={() => {
+                  if (goalToDelete) {
+                    if (onArchive) onArchive(goalToDelete);
+                    else onUpdate(goalToDelete, { status: "archived" });
+                  }
+                  closeDeleteModal();
+                }}
+                className="flex-1 flex items-center justify-center gap-2 font-bold"
+              >
+                <Archive className="w-4 h-4" />
+                Arquivar (Recomendado)
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleDeleteConfirm}
+                className="text-xs text-accent hover:text-accent hover:bg-accent/10 border-border"
+              >
+                Excluir e Apagar Histórico
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={closeDeleteModal}
+                className="text-xs"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </Card>
+        </div>
+      ) : (
+        <ConfirmationModal
+          isOpen={isDeleteModalOpen}
+          onClose={closeDeleteModal}
+          onConfirm={handleDeleteConfirm}
+          title="Confirmar Exclusão"
+          message="Tem certeza de que deseja excluir esta meta de economia?"
+        />
+      )}
 
       <ConfirmationModal
         isOpen={isReactivateModalOpen}
@@ -437,15 +598,24 @@ interface GoalCardProps {
   progress: number;
   isComplete: boolean;
   onEdit: () => void;
+  onArchive?: () => void;
+  onUnarchive?: () => void;
   onDelete: () => void;
   onReactivate: () => void;
-  onAddContribution: (goalId: string, amount: number, date?: string) => void;
+  onAddContribution: (
+    goalId: string,
+    amount: number,
+    date?: string,
+    type?: "deposit" | "withdrawal",
+    notes?: string,
+  ) => void;
   onUpdateContribution: (
     goalId: string,
     contributionId: string,
     updates: Partial<SavingsContribution>,
   ) => void;
   onDeleteContribution: (goalId: string, contributionId: string) => void;
+  onRestoreContribution?: (goalId: string, contributionId: string) => void;
   onUpdatePaymentStatus: (transactionId: string, isPaid: boolean) => void;
   showDeleted?: boolean;
 }
@@ -455,42 +625,52 @@ const GoalCard: React.FC<GoalCardProps> = ({
   progress,
   isComplete,
   onEdit,
+  onArchive,
+  onUnarchive,
   onDelete,
   onReactivate,
   onAddContribution,
   onUpdateContribution,
   onDeleteContribution,
+  onRestoreContribution,
   onUpdatePaymentStatus,
   showDeleted = false,
 }) => {
   const { theme } = useTheme();
-  const [showAddAmount, setShowAddAmount] = useState(false);
+  const [movementMode, setMovementMode] = useState<"deposit" | "withdrawal" | null>(null);
   const [showHistory, setShowHistory] = useState(false);
-  const [contributionDate, setContributionDate] = useState(
-    getBrazilDateString(),
-  );
-  const [editingContributionId, setEditingContributionId] = useState<
-    string | null
-  >(null);
+  const [movementDate, setMovementDate] = useState(getBrazilDateString());
+  const [editingContributionId, setEditingContributionId] = useState<string | null>(null);
   const [monthlyYield, setMonthlyYield] = useState(1.0);
 
-  // useCurrencyInput for Add Aporte
-  const [initialAddAmount, setInitialAddAmount] = useState(0);
-  const { inputProps: addAmountInputProps, numericValue: addAmountValue } =
-    useCurrencyInput(initialAddAmount);
+  // useCurrencyInput for Add Movement (Aporte ou Resgate)
+  const [initialMovementAmount, setInitialMovementAmount] = useState(0);
+  const {
+    inputProps: movementAmountInputProps,
+    numericValue: movementAmountValue,
+  } = useCurrencyInput(initialMovementAmount);
 
-  // useCurrencyInput for Edit Aporte
+  // useCurrencyInput for Edit Movement
   const [initialEditAmount, setInitialEditAmount] = useState(0);
   const { inputProps: editAmountInputProps, numericValue: editAmountValue } =
     useCurrencyInput(initialEditAmount);
 
-  const handleAddAmount = () => {
-    if (addAmountValue <= 0) return;
+  const remainingAmount = Math.max(0, goal.targetAmount - goal.currentAmount);
 
-    onAddContribution(goal.id, addAmountValue, contributionDate);
-    setInitialAddAmount(0);
-    setContributionDate(getBrazilDateString());
-    setShowAddAmount(false);
+  const handleSaveMovement = () => {
+    if (movementAmountValue <= 0 || !movementMode) return;
+
+    if (movementMode === "withdrawal" && movementAmountValue > goal.currentAmount) {
+      return;
+    }
+    if (movementMode === "deposit" && movementAmountValue > remainingAmount + 0.01) {
+      return;
+    }
+
+    onAddContribution(goal.id, movementAmountValue, movementDate, movementMode);
+    setInitialMovementAmount(0);
+    setMovementDate(getBrazilDateString());
+    setMovementMode(null);
   };
 
   const [editDate, setEditDate] = useState("");
@@ -519,18 +699,31 @@ const GoalCard: React.FC<GoalCardProps> = ({
     setEditDate("");
   };
 
-  const handleDeleteContribution = (contributionId: string) => {
-    if (confirm("Tem certeza que deseja excluir este aporte?")) {
-      onDeleteContribution(goal.id, contributionId);
+  const [contributionToDelete, setContributionToDelete] =
+    useState<SavingsContribution | null>(null);
+
+  const handleDeleteContribution = (contribution: SavingsContribution) => {
+    setContributionToDelete(contribution);
+  };
+
+  const handleConfirmDeleteContribution = () => {
+    if (contributionToDelete) {
+      onDeleteContribution(goal.id, contributionToDelete.id);
+      setContributionToDelete(null);
     }
   };
 
-  const remainingAmount = goal.targetAmount - goal.currentAmount;
+  const [showDeletedLocal, setShowDeletedLocal] = useState(false);
+  const shouldShowDeleted = showDeleted || showDeletedLocal;
+  const deletedCount = (goal.contributions || []).filter(
+    (c) => c.status === "deleted",
+  ).length;
+  const hasDeletedMovements = deletedCount > 0;
 
   // Sort contributions by date (most recent first) and filter based on showDeleted
   const sortedContributions = (goal.contributions || [])
     .filter((c) =>
-      showDeleted ? c.status === "deleted" : c.status !== "deleted",
+      shouldShowDeleted ? c.status === "deleted" : c.status !== "deleted",
     )
     .sort((a, b) => {
       try {
@@ -541,6 +734,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
     });
 
   const isGoalDeleted = goal.status === "deleted";
+  const isGoalArchived = goal.status === "archived";
 
   return (
     <Card
@@ -550,9 +744,11 @@ const GoalCard: React.FC<GoalCardProps> = ({
       style={{
         borderColor: isGoalDeleted
           ? theme.cardBorder
-          : isComplete
-            ? theme.primary
-            : theme.cardBorder,
+          : isGoalArchived
+            ? theme.cardBorder
+            : isComplete
+              ? theme.primary
+              : theme.cardBorder,
       }}
     >
       <div className="flex items-start justify-between gap-3 mb-4">
@@ -574,7 +770,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
                 {goal.name}
               </h3>
             </div>
-            {!isGoalDeleted && isComplete && (
+            {!isGoalDeleted && !isGoalArchived && isComplete && (
               <div className="p-1 rounded-full bg-[#D4EDDA] flex-shrink-0">
                 <Check className="w-4 h-4 text-black" />
               </div>
@@ -582,6 +778,12 @@ const GoalCard: React.FC<GoalCardProps> = ({
             {isGoalDeleted && (
               <span className="text-[10px] font-bold uppercase tracking-wider text-accent bg-accent/10 px-1.5 py-0.5 rounded">
                 Excluída
+              </span>
+            )}
+            {isGoalArchived && (
+              <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                <Archive className="w-3 h-3" />
+                Arquivada
               </span>
             )}
           </div>
@@ -594,6 +796,14 @@ const GoalCard: React.FC<GoalCardProps> = ({
               >
                 <Calendar className="w-3 h-3 flex-shrink-0" />
                 Prazo: {formatBrazilDate(new Date(goal.deadline))}
+              </span>
+            )}
+            {isGoalArchived && goal.archivedAt && (
+              <span
+                className="px-2 py-1 rounded-full text-primary font-medium"
+                style={{ backgroundColor: theme.cardBorder }}
+              >
+                Arquivada em: {formatBrazilDate(new Date(goal.archivedAt))}
               </span>
             )}
             {isGoalDeleted && goal.deletedAt && (
@@ -617,6 +827,40 @@ const GoalCard: React.FC<GoalCardProps> = ({
             >
               <RotateCcw className="w-4 h-4" />
             </Button>
+          ) : isGoalArchived ? (
+            <div className="flex items-center gap-1.5">
+              {sortedContributions.length > 0 && (
+                <Button
+                  onClick={() => setShowHistory(!showHistory)}
+                  variant="ghost"
+                  size="sm"
+                  title="Ver histórico de aportes"
+                >
+                  <History className="w-4 h-4" />
+                </Button>
+              )}
+              {onUnarchive && (
+                <Button
+                  onClick={onUnarchive}
+                  size="sm"
+                  variant="outline"
+                  className="text-xs flex items-center gap-1 shadow-sm font-semibold"
+                  title="Desarquivar meta (voltar para ativas)"
+                >
+                  <ArchiveRestore className="w-3.5 h-3.5" />
+                  <span>Desarquivar</span>
+                </Button>
+              )}
+              <Button
+                onClick={onDelete}
+                variant="ghost"
+                size="sm"
+                className="hover:text-accent"
+                title="Excluir meta"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
           ) : (
             <>
               {sortedContributions.length > 0 && (
@@ -629,7 +873,22 @@ const GoalCard: React.FC<GoalCardProps> = ({
                   <History className="w-4 h-4" />
                 </Button>
               )}
-              <Button onClick={onEdit} variant="ghost" size="sm">
+              {onArchive && (
+                <Button
+                  onClick={onArchive}
+                  variant="ghost"
+                  size="sm"
+                  title="Arquivar meta (preserva histórico de saldos congelados)"
+                >
+                  <Archive className="w-4 h-4" />
+                </Button>
+              )}
+              <Button
+                onClick={onEdit}
+                variant="ghost"
+                size="sm"
+                title="Editar meta"
+              >
                 <Edit3 className="w-4 h-4" />
               </Button>
               <Button
@@ -637,6 +896,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
                 variant="ghost"
                 size="sm"
                 className="hover:text-accent"
+                title="Excluir meta"
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
@@ -732,10 +992,26 @@ const GoalCard: React.FC<GoalCardProps> = ({
             className="space-y-3 pt-2 border-t"
             style={{ borderColor: theme.cardBorder }}
           >
-            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-              <History className="w-3.5 h-3.5" />
-              {showDeleted ? "Aportes Excluídos" : "Histórico de Aportes"}
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                <History className="w-3.5 h-3.5" />
+                {shouldShowDeleted
+                  ? "Movimentações Revertidas / Excluídas"
+                  : "Histórico de Movimentações"}
+              </h4>
+              {hasDeletedMovements && !showDeleted && (
+                <Button
+                  onClick={() => setShowDeletedLocal(!showDeletedLocal)}
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[10px] uppercase font-bold text-muted-foreground hover:text-primary px-2"
+                >
+                  {showDeletedLocal
+                    ? "Ver ativas"
+                    : `Ver revertidas (${deletedCount})`}
+                </Button>
+              )}
+            </div>
             <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
               {sortedContributions.map((contribution) => (
                 <div
@@ -805,21 +1081,50 @@ const GoalCard: React.FC<GoalCardProps> = ({
                               </span>
                             )}
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-primary/70 uppercase tracking-widest">
-                          Aporte
+                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest">
+                          <span
+                            className={cn(
+                              "px-1.5 py-0.5 rounded",
+                              contribution.type === "withdrawal"
+                                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                : "bg-primary/15 text-primary",
+                            )}
+                          >
+                            {contribution.type === "withdrawal" ? "Resgate" : "Aporte"}
+                          </span>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-3">
                         <span
                           className={cn(
-                            "font-bold text-sm text-primary",
+                            "font-bold text-sm",
+                            contribution.type === "withdrawal"
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-primary",
                             contribution.status === "deleted" &&
                               "text-accent line-through opacity-50",
                           )}
                         >
-                          +{formatCurrency(contribution.amount)}
+                          {contribution.type === "withdrawal" ? "-" : "+"}
+                          {formatCurrency(contribution.amount)}
                         </span>
+
+                        {shouldShowDeleted && contribution.status === "deleted" && onRestoreContribution && (
+                          <Button
+                            onClick={() => onRestoreContribution(goal.id, contribution.id)}
+                            variant="ghost"
+                            size="sm"
+                            className="p-1.5 hover:text-primary text-muted-foreground"
+                            title={
+                              contribution.type === "withdrawal"
+                                ? "Restaurar resgate (debitar da meta novamente)"
+                                : "Restaurar aporte"
+                            }
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
 
                         {!isGoalDeleted &&
                           contribution.status !== "deleted" && (
@@ -848,20 +1153,37 @@ const GoalCard: React.FC<GoalCardProps> = ({
                                 variant="ghost"
                                 size="sm"
                                 className="p-1.5"
-                                title="Editar aporte"
+                                title={
+                                  contribution.type === "withdrawal"
+                                    ? "Editar resgate"
+                                    : "Editar aporte"
+                                }
                               >
                                 <Edit3 className="w-3.5 h-3.5" />
                               </Button>
                               <Button
                                 onClick={() =>
-                                  handleDeleteContribution(contribution.id)
+                                  handleDeleteContribution(contribution)
                                 }
                                 variant="ghost"
                                 size="sm"
-                                className="p-1.5 hover:text-accent"
-                                title="Excluir aporte"
+                                className={cn(
+                                  "p-1.5",
+                                  contribution.type === "withdrawal"
+                                    ? "text-amber-600 hover:text-amber-700 dark:text-amber-400"
+                                    : "hover:text-accent",
+                                )}
+                                title={
+                                  contribution.type === "withdrawal"
+                                    ? "Reverter resgate (devolver o valor para a meta)"
+                                    : "Excluir aporte"
+                                }
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                {contribution.type === "withdrawal" ? (
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                ) : (
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                )}
                               </Button>
                             </div>
                           )}
@@ -881,42 +1203,139 @@ const GoalCard: React.FC<GoalCardProps> = ({
               Meta Excluída
             </span>
           </div>
-        ) : isComplete ? (
-          <div className="text-center py-3 bg-primary/10 rounded-xl border border-primary/20 animate-pulse">
-            <span className="text-primary text-sm font-bold">
-              🎉 Meta Concluída com Sucesso!
-            </span>
+        ) : isGoalArchived ? (
+          <div className="flex items-center justify-between p-3 bg-primary/5 rounded-xl border border-primary/20">
+            <div className="flex items-center gap-2 text-primary">
+              <Archive className="w-4 h-4 flex-shrink-0" />
+              <span className="text-xs font-medium">
+                Meta Arquivada — Histórico e saldos protegidos.
+              </span>
+            </div>
+            {onUnarchive && (
+              <Button
+                onClick={onUnarchive}
+                variant="outline"
+                size="sm"
+                className="text-xs flex items-center gap-1 font-semibold"
+              >
+                <ArchiveRestore className="w-3.5 h-3.5" />
+                Desarquivar
+              </Button>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
-            {!showAddAmount ? (
-              <Button onClick={() => setShowAddAmount(true)} className="w-full">
-                Adicionar Aporte
-              </Button>
+            {goal.currentAmount === 0 &&
+              (goal.contributions || []).some(
+                (c) => c.status !== "deleted",
+              ) && (
+                <div className="p-3 bg-primary/5 rounded-xl border border-primary/20 flex items-center justify-between gap-2">
+                  <span className="text-xs text-foreground/80">
+                    Saldo zerado após resgate total.
+                  </span>
+                  {onArchive && (
+                    <Button
+                      onClick={onArchive}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs flex items-center gap-1.5 font-bold flex-shrink-0"
+                    >
+                      <Archive className="w-3.5 h-3.5" />
+                      Arquivar Meta
+                    </Button>
+                  )}
+                </div>
+              )}
+            {isComplete && (
+              <div className="text-center py-2.5 bg-primary/10 rounded-xl border border-primary/20 animate-pulse">
+                <span className="text-primary text-sm font-bold">
+                  🎉 Meta Concluída com Sucesso!
+                </span>
+              </div>
+            )}
+
+            {!movementMode ? (
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  onClick={() => {
+                    setMovementMode("deposit");
+                    setInitialMovementAmount(0);
+                    setMovementDate(getBrazilDateString());
+                  }}
+                  disabled={isComplete}
+                  className="w-full"
+                >
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Aporte
+                </Button>
+
+                <Button
+                  onClick={() => {
+                    setMovementMode("withdrawal");
+                    setInitialMovementAmount(0);
+                    setMovementDate(getBrazilDateString());
+                  }}
+                  disabled={goal.currentAmount <= 0}
+                  variant="outline"
+                  className="w-full hover:border-amber-500 hover:text-amber-500"
+                >
+                  <Minus className="w-4 h-4 mr-1.5" />
+                  Resgatar
+                </Button>
+              </div>
             ) : (
               <div
                 className="p-3 rounded-xl border-2 border-dashed space-y-3 animate-in slide-in-from-top-2 duration-200"
                 style={{ borderColor: theme.cardBorder }}
               >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    {movementMode === "deposit" ? (
+                      <>
+                        <Plus className="w-3.5 h-3.5 text-primary" />
+                        Novo Aporte (Guardar)
+                      </>
+                    ) : (
+                      <>
+                        <Minus className="w-3.5 h-3.5 text-amber-500" />
+                        Novo Resgate (Sacar)
+                      </>
+                    )}
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-muted-foreground">
+                    {movementMode === "deposit"
+                      ? `Restante: ${formatCurrency(remainingAmount)}`
+                      : `Disponível: ${formatCurrency(goal.currentAmount)}`}
+                  </span>
+                </div>
+
                 <div className="flex gap-2">
                   <Input
-                    {...addAmountInputProps}
+                    {...movementAmountInputProps}
                     placeholder="Valor"
                     className="py-2"
+                    autoFocus
                   />
                   <Button
-                    onClick={handleAddAmount}
-                    disabled={addAmountValue <= 0}
+                    onClick={handleSaveMovement}
+                    disabled={
+                      movementAmountValue <= 0 ||
+                      (movementMode === "withdrawal" && movementAmountValue > goal.currentAmount) ||
+                      (movementMode === "deposit" && movementAmountValue > remainingAmount + 0.01)
+                    }
                     size="sm"
-                    className="h-10 w-10 p-0"
+                    className={cn(
+                      "px-3",
+                      movementMode === "withdrawal" && "bg-amber-600 hover:bg-amber-700 text-white",
+                    )}
                   >
-                    +
+                    Confirmar
                   </Button>
                   <Button
                     onClick={() => {
-                      setShowAddAmount(false);
-                      setInitialAddAmount(0);
-                      setContributionDate(getBrazilDateString());
+                      setMovementMode(null);
+                      setInitialMovementAmount(0);
+                      setMovementDate(getBrazilDateString());
                     }}
                     variant="outline"
                     size="sm"
@@ -930,20 +1349,58 @@ const GoalCard: React.FC<GoalCardProps> = ({
                   <Calendar className="w-4 h-4 text-primary" />
                   <Input
                     type="date"
-                    value={contributionDate}
-                    onChange={(e) => setContributionDate(e.target.value)}
+                    value={movementDate}
+                    onChange={(e) => setMovementDate(e.target.value)}
                     className="py-1.5"
                   />
                 </div>
 
+                {movementMode === "deposit" && movementAmountValue > remainingAmount + 0.01 && (
+                  <p className="text-[11px] text-rose-500 font-medium">
+                    Valor ultrapassa o restante da meta ({formatCurrency(remainingAmount)}).
+                  </p>
+                )}
+
+                {movementMode === "withdrawal" && movementAmountValue > goal.currentAmount && (
+                  <p className="text-[11px] text-rose-500 font-medium">
+                    Valor ultrapassa o saldo disponível na meta ({formatCurrency(goal.currentAmount)}).
+                  </p>
+                )}
+
                 <p className="text-[10px] text-muted-foreground font-medium italic">
-                  * O aporte será deduzido do saldo do mês selecionado.
+                  {movementMode === "deposit"
+                    ? "* O aporte será deduzido do saldo do mês selecionado e guardado nesta meta."
+                    : "* O valor resgatado sairá da meta e entrará no saldo disponível do mês selecionado."}
                 </p>
               </div>
             )}
           </div>
         )}
       </div>
+
+      <ConfirmationModal
+        isOpen={Boolean(contributionToDelete)}
+        onClose={() => setContributionToDelete(null)}
+        onConfirm={handleConfirmDeleteContribution}
+        title={
+          contributionToDelete?.type === "withdrawal"
+            ? "Reverter Resgate"
+            : "Confirmar Exclusão"
+        }
+        message={
+          contributionToDelete?.type === "withdrawal"
+            ? `Deseja reverter este resgate de ${formatCurrency(contributionToDelete.amount)}? O valor será devolvido à meta e a receita correspondente será cancelada.`
+            : `Tem certeza de que deseja excluir este aporte de ${formatCurrency(contributionToDelete?.amount || 0)}?`
+        }
+        confirmText={
+          contributionToDelete?.type === "withdrawal"
+            ? "Reverter Resgate"
+            : "Confirmar Exclusão"
+        }
+        confirmVariant={
+          contributionToDelete?.type === "withdrawal" ? "accent" : "danger"
+        }
+      />
     </Card>
   );
 };

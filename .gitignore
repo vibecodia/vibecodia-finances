@@ -88,3 +88,6 @@ backend/*.prod.ts
 public/manifest.json
 
 .kimchi/
+
+.agents
+_bmad*

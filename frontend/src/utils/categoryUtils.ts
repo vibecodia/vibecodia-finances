@@ -29,6 +29,12 @@ export const getCategory = (
 ): Category | undefined => {
   if (!value) return undefined;
   if (typeof value === "object") {
+    if (value.code && value.type) return value;
+    const id = value._id || value.id;
+    if (id && categories) {
+      const match = categories.find((c) => c._id === id || c.id === id);
+      if (match) return match;
+    }
     return value;
   }
   const stringValue = String(value).trim();
@@ -47,6 +53,12 @@ export const isSavingsContribution = (
   value?: string | Category | null,
   categories?: Category[] | null,
 ): boolean => getCategory(categories, value)?.isSavingsContribution === true;
+
+/** era: `category === "Resgate de Meta"` */
+export const isSavingsWithdrawal = (
+  value?: string | Category | null,
+  categories?: Category[] | null,
+): boolean => getCategory(categories, value)?.isSavingsWithdrawal === true;
 
 /** era: `category === "Rendimentos"` */
 export const isPassiveIncome = (
@@ -105,6 +117,12 @@ export const getSavingsContributionCategory = (
 ): Category | undefined =>
   categories?.find((c) => c.isSavingsContribution === true);
 
+/** Encontra a categoria de resgate de meta na lista. */
+export const getSavingsWithdrawalCategory = (
+  categories: Category[] | undefined | null,
+): Category | undefined =>
+  categories?.find((c) => c.isSavingsWithdrawal === true);
+
 /** Encontra a categoria de renda passiva (rendimentos) na lista. */
 export const getPassiveIncomeCategory = (
   categories: Category[] | undefined | null,
@@ -115,6 +133,12 @@ export const isContributionTransaction = (
   t: Pick<Transaction, "category">,
   categories?: Category[] | null,
 ): boolean => isSavingsContribution(t.category, categories);
+
+/** Verifica se uma transação é uma movimentação de meta (aporte ou resgate). */
+export const isGoalMovementTransaction = (
+  t: Pick<Transaction, "category">,
+  categories?: Category[] | null,
+): boolean => isSavingsContribution(t.category, categories) || isSavingsWithdrawal(t.category, categories);
 
 /**
  * Compacta texto para casamento de substring tolerante a formatação: remove
@@ -143,23 +167,27 @@ export const getBenefitCode = (
   t: Pick<Transaction, "description" | "category" | "paymentMethod">,
   categories?: Category[] | null,
 ): string | null => {
+  if (!t) return null;
   const pmCat = getCategory(categories, t.paymentMethod);
   if (pmCat?.isBenefit) return pmCat.code;
+
   const desc = compactText(t.description);
-  const catName = compactText(
-    typeof t.category === "object"
-      ? `${(t.category as Category).name || ""} ${
-          (t.category as Category).code || ""
-        }`
-      : t.category,
-  );
-  const pmText = compactText(
-    typeof t.paymentMethod === "object"
-      ? `${(t.paymentMethod as Category).name || ""} ${
-          (t.paymentMethod as Category).code || ""
-        }`
-      : t.paymentMethod,
-  );
+
+  let catName = "";
+  if (t.category && typeof t.category === "object") {
+    const cat = t.category as Category;
+    catName = compactText(`${cat.name || ""} ${cat.code || ""}`);
+  } else if (typeof t.category === "string") {
+    catName = compactText(t.category);
+  }
+
+  let pmText = "";
+  if (t.paymentMethod && typeof t.paymentMethod === "object") {
+    const pm = t.paymentMethod as Category;
+    pmText = compactText(`${pm.name || ""} ${pm.code || ""}`);
+  } else if (typeof t.paymentMethod === "string") {
+    pmText = compactText(t.paymentMethod);
+  }
 
   // Fallback legado: identifica o benefício pelo texto da transação usando os
   // NOME e CÓDIGO completos dos cartões configurados, compactados (ex.:

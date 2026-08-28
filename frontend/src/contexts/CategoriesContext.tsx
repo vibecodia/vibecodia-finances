@@ -12,12 +12,14 @@ import {
   DEFAULT_CATEGORIES,
   DEFAULT_CATEGORY_BY_CODE,
 } from "../data/defaultCategories";
-import { getCategory, toCode } from "../utils/categoryUtils";
 import { useLocalStorage } from "../hooks/trello/useLocalStorage";
-import { useVerification } from "./VerificationContext";
 import { Category, Transaction } from "../types";
+import { getCategory, toCode } from "../utils/categoryUtils";
 
-const API_BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || "/api";
+import { useVerification } from "./VerificationContext";
+
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 const STORAGE_KEY = "manageable_categories";
 
 // Chaves legadas (string arrays) — migradas uma única vez para Category[].
@@ -89,8 +91,8 @@ const migrateLegacy = (): Category[] => {
         const name =
           typeof item === "string"
             ? item
-            : item && typeof item === "object" && (item as any).name
-              ? (item as any).name
+            : item && typeof item === "object" && "name" in item && typeof (item as { name: unknown }).name === "string"
+              ? (item as { name: string }).name
               : null;
         if (!name) return;
         const code = toCode(name);

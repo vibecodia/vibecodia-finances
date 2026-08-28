@@ -78,3 +78,8 @@ Variáveis de Ambiente: infra/docker/.env
 Para executar os comandos Docker, navegue até o diretório correto:
 bashcd infra/docker
 docker-compose up --build
+
+
+
+
+# agy --conversation=498ba644-1369-4619-8db7-90acc6a35aee

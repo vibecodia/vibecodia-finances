@@ -1,8 +1,11 @@
-import React from "react";
 import { Check, Star, Zap } from "lucide-react";
-import { Card } from "./ui/Card";
-import { Button } from "./ui/Button";
+import React from "react";
+
 import { cn } from "../lib/utils";
+
+import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
+
 
 const PlansSection: React.FC = () => {
   const plans = [

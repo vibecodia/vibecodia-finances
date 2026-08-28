@@ -9,6 +9,7 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+import { DEFAULT_CATEGORY_BY_CODE } from "../data/defaultCategories";
 import {
   Transaction,
   MonthlyData,
@@ -16,7 +17,7 @@ import {
   SavingsGoal,
   Category,
 } from "../types";
-import { DEFAULT_CATEGORY_BY_CODE } from "../data/defaultCategories";
+
 import { getCategory, isSavingsContribution, toCode } from "./categoryUtils";
 
 export const generateId = (): string => {

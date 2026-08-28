@@ -10,6 +10,7 @@ export interface Category {
   code: string;
   type: "expense" | "income" | "payment_method";
   isSavingsContribution?: boolean;
+  isSavingsWithdrawal?: boolean;
   isPassiveIncome?: boolean;
   isBenefit?: boolean;
   includeInBalance?: boolean; // Cartão de benefício: contar no saldo quando o mestre global está desligado?
@@ -20,6 +21,22 @@ export interface Category {
   descriptionSuggestions?: string[];
   order?: number;
   status?: "active" | "deleted";
+}
+
+export interface ReceiptItem {
+  description?: string;
+  name?: string;
+  qty?: number;
+  quantity?: number;
+  unitPrice?: number;
+  price?: number;
+  totalPrice?: number;
+  [key: string]: unknown;
+}
+
+export interface StructuredNotes {
+  items?: ReceiptItem[];
+  [key: string]: unknown;
 }
 
 // `category` e `paymentMethod` podem ser o nome legado (string, modo guest /
@@ -38,7 +55,7 @@ export interface Transaction {
   paymentMethod?: string | Category; // Adicionado para despesas
   createdAt: string;
   updatedAt: string;
-  notes?: any; // Adicionado para o campo de notas (pode ser string ou objeto estruturado)
+  notes?: string | StructuredNotes | Record<string, unknown>; // Adicionado para o campo de notas (pode ser string ou objeto estruturado)
   imageUrl?: string; // Link para o recibo/imagem
   savingsGoalId?: string; // ID da meta vinculada
   savingsGoalContributionId?: string; // ID da contribuição original
@@ -47,11 +64,14 @@ export interface Transaction {
 }
 
 export interface SavingsContribution {
+  _id?: string;
   id: string;
   amount: number;
-  date: string; // Data do aporte
+  date: string; // Data da movimentação
+  type?: "deposit" | "withdrawal"; // "deposit" = aporte, "withdrawal" = resgate
   isPaid?: boolean;
   transactionId?: string;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
   status?: "active" | "deleted"; // Adicionado para Soft Delete
@@ -68,8 +88,9 @@ export interface SavingsGoal {
   contributions: SavingsContribution[]; // Histórico de aportes
   createdAt: string;
   updatedAt: string;
-  status?: "active" | "deleted"; // Adicionado para Soft Delete
+  status?: "active" | "archived" | "deleted"; // Adicionado para Soft Delete e Arquivamento
   deletedAt?: string; // Adicionado para Soft Delete
+  archivedAt?: string; // Data de arquivamento da meta
 }
 
 export interface MonthlyData {

@@ -1,18 +1,13 @@
 import { createLocalDateForStorage } from '../utils/date.js';
 import { httpError } from '../utils/httpError.js';
 import { logger } from '../utils/logger.js';
-import { resolveCategory } from './categories.js';
 
-// Recalcula currentAmount de uma meta a partir das transações ativas pagas.
-// Bloco que estava duplicado em 5 pontos do server.js original.
+import { resolveCategory } from './categories.js';
+import { calculateGoalCurrentAmount } from './goals.js';
+
+// Recalcula currentAmount de uma meta a partir da função centralizada de domínio.
 export async function recalcGoalCurrentAmount(models, goal) {
-  const { Transaction } = models;
-  const allActiveTransactions = await Transaction.find({
-    savingsGoalId: goal._id,
-    status: 'active',
-    isPaid: true
-  });
-  goal.currentAmount = allActiveTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+  goal.currentAmount = calculateGoalCurrentAmount(goal);
 }
 
 // Cria uma transação. Se a categoria resolvida for uma contribuição de meta
@@ -33,6 +28,8 @@ export async function createTransaction(models, body) {
     'payment_method',
   );
   const isAporte = category?.isSavingsContribution === true;
+  const isResgate = category?.isSavingsWithdrawal === true;
+  const isGoalMovement = isAporte || isResgate;
 
   const transactionData = {
     ...body,
@@ -42,12 +39,15 @@ export async function createTransaction(models, body) {
     dueDate: body.dueDate ? createLocalDateForStorage(body.dueDate) : undefined,
   };
 
-  if (isAporte) {
+  if (isGoalMovement) {
     if (!requestedGoalId) {
-      throw httpError(400, 'Para a categoria de aporte, o campo goalId/savingsGoalId é obrigatório.');
+      throw httpError(400, isResgate
+        ? 'Para a categoria de resgate, o campo goalId/savingsGoalId é obrigatório.'
+        : 'Para a categoria de aporte, o campo goalId/savingsGoalId é obrigatório.'
+      );
     }
     if (!Number.isFinite(amount) || amount <= 0) {
-      throw httpError(400, 'Valor do aporte inválido.');
+      throw httpError(400, 'Valor da movimentação inválido.');
     }
   } else {
     delete transactionData.savingsGoalId;
@@ -55,50 +55,36 @@ export async function createTransaction(models, body) {
     delete transactionData.savingsGoalContributionId;
   }
 
-  if (isAporte) {
+  if (isGoalMovement) {
     const goal = await SavingsGoal.findById(requestedGoalId);
     if (!goal || goal.status === 'deleted') {
       throw httpError(404, 'Meta não encontrada ou inativa.');
     }
 
-    // Casa o ObjectId (pós-migração) e a string legada "Aporte" (pré-migração)
-    // para o limite da meta valer também com dados antigos. Usa $expr/$toString
-    // (em vez de { category: 'Aporte' }) para evitar o CastError do Mongoose:
-    // category é ObjectId no schema e a string legada não pode ser castada.
-    const aporteMatch = {
-      $expr: {
-        $in: [
-          { $toString: '$category' },
-          [category._id.toString(), 'Aporte'],
-        ],
-      },
-      status: 'active',
-      savingsGoalId: goal._id,
-    };
+    const currentAccumulated = calculateGoalCurrentAmount(goal);
 
-    const aggregate = await Transaction.aggregate([
-      { $match: aporteMatch },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ]);
-    const plannedAmount = aggregate?.[0]?.total || 0;
-    const remaining = (goal.targetAmount || 0) - plannedAmount;
-
-    const paidAggregate = await Transaction.aggregate([
-      { $match: { ...aporteMatch, isPaid: true } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ]);
-    const paidAmount = paidAggregate?.[0]?.total || 0;
-
-    if (remaining <= 0) {
-      throw httpError(400, 'Esta meta já atingiu o valor total. Não é possível adicionar novos aportes.');
-    }
-    if (amount > remaining) {
-      throw httpError(400, `Valor do aporte ultrapassa o restante da meta. Restante disponível: ${remaining}.`, { remaining });
+    if (isResgate) {
+      if (amount > currentAccumulated) {
+        throw httpError(400, `Valor do resgate ultrapassa o saldo disponível na meta. Disponível: ${currentAccumulated}.`, {
+          available: currentAccumulated,
+        });
+      }
+    } else {
+      const remaining = (goal.targetAmount || 0) - currentAccumulated;
+      if (remaining <= 0) {
+        throw httpError(400, 'Esta meta já atingiu o valor total. Não é possível adicionar novos aportes.');
+      }
+      if (amount > remaining) {
+        throw httpError(400, `Valor do aporte ultrapassa o restante da meta. Restante disponível: ${remaining}.`, {
+          remaining,
+        });
+      }
     }
 
     goal.contributions.push({
       amount,
       date: transactionData.date || new Date(),
+      type: isResgate ? 'withdrawal' : 'deposit',
       isPaid: transactionData.isPaid === true,
       status: 'active'
     });
@@ -111,12 +97,12 @@ export async function createTransaction(models, body) {
 
     try {
       const newTransaction = await new Transaction(transactionData).save();
-      goal.currentAmount = paidAmount + (newTransaction.isPaid ? amount : 0);
+      goal.currentAmount = calculateGoalCurrentAmount(goal);
       await goal.save();
-      // Document.populate() retorna uma Promise (não encadeável como Query).
       return newTransaction.populate(['category', 'paymentMethod']);
     } catch (err) {
       goal.contributions = goal.contributions.filter(c => c._id.toString() !== newContribution._id.toString());
+      goal.currentAmount = calculateGoalCurrentAmount(goal);
       await goal.save();
       throw err;
     }
@@ -161,21 +147,17 @@ export async function updateTransaction(models, id, body) {
     return null;
   }
 
-  const isContribution =
-    updatedTransaction.category?.isSavingsContribution === true;
+  const isGoalMovement =
+    updatedTransaction.category?.isSavingsContribution === true ||
+    updatedTransaction.category?.isSavingsWithdrawal === true;
   const goalId = updatedTransaction.savingsGoalId;
   const contributionId = updatedTransaction.savingsGoalContributionId;
 
-  if (isContribution && goalId && contributionId) {
+  if (isGoalMovement && goalId && contributionId) {
     await syncContributionFromTransaction(models, updatedTransaction, body);
-  } else if (!isContribution && (goalId || contributionId)) {
-    // Categoria deixou de ser aporte (ou nunca foi e sobraram vínculos) →
-    // remove a contribuição da meta e TODOS os vínculos da transação, evitando
-    // o dinheiro contado 2× (despesa normal + impacto de meta) e vínculos
-    // órfãos (savingsGoalId sem savingsGoalContributionId — F7). Ordem
-    // importa: limpa savingsGoalId na transação ANTES do recalc, para o valor
-    // sair do currentAmount. A contribuição da meta só é removida quando o
-    // vínculo está completo (há contributionId para localizá-la).
+  } else if (!isGoalMovement && (goalId || contributionId)) {
+    // Categoria deixou de ser meta (ou nunca foi e sobraram vínculos) →
+    // remove a contribuição da meta e TODOS os vínculos da transação
     await Transaction.updateOne(
       { _id: id },
       { $set: { savingsGoalId: null, savingsGoalContributionId: null } },
@@ -195,7 +177,7 @@ export async function updateTransaction(models, id, body) {
   return updatedTransaction;
 }
 
-// Soft-delete de uma transação e, se for contribuição de meta, sincroniza.
+// Soft-delete de uma transação e, se for vinculada a meta, sincroniza.
 // Retorna null quando não encontrada (rota responde 404).
 export async function deleteTransaction(models, id) {
   const { Transaction } = models;
@@ -210,8 +192,12 @@ export async function deleteTransaction(models, id) {
     return null;
   }
 
+  const isGoalMovement =
+    deletedTransaction.category?.isSavingsContribution === true ||
+    deletedTransaction.category?.isSavingsWithdrawal === true;
+
   if (
-    deletedTransaction.category?.isSavingsContribution === true &&
+    isGoalMovement &&
     deletedTransaction.savingsGoalId &&
     deletedTransaction.savingsGoalContributionId
   ) {

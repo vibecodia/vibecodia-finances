@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import {
   X,
   Palette,
@@ -7,11 +6,13 @@ import {
   Save,
   AlertTriangle,
 } from "lucide-react";
+import { useState, useEffect } from "react";
+
+import { cn } from "../../lib/utils";
 import { BoardTheme } from "../../types/trello/task";
 import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
 import { Card } from "../ui/Card";
-import { cn } from "../../lib/utils";
+import { Input } from "../ui/Input";
 
 interface ThemeSettingsModalProps {
   isOpen: boolean;

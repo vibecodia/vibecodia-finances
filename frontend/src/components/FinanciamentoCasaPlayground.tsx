@@ -4,8 +4,6 @@ import {
   ArrowUp,
   Calendar,
   ChevronDown,
-  ChevronUp,
-  Maximize2,
   TrendingUp,
   Home,
   Info,
@@ -16,28 +14,21 @@ import React, { useState, useMemo } from "react";
 
 import { ColorPalette } from "../contexts/ThemeContext";
 import { useLocalStorage } from "../hooks/trello/useLocalStorage";
+import { cn } from "../lib/utils";
 import { Transaction, Category } from "../types";
-import { formatCurrency, formatBrazilDate } from "../utils/helpers";
+import {
+  HistoryItem,
+  SACInstallment,
+  ConsorcioInstallment,
+  calculateAdjustedSAC,
+} from "../utils/amortizationEngine";
 import { toCode } from "../utils/categoryUtils";
-import { Select } from "./ui/Select";
+import { formatCurrency, formatBrazilDate } from "../utils/helpers";
+
 import { Card } from "./ui/Card";
 import { Input } from "./ui/Input";
-import { Button } from "./ui/Button";
-import { cn } from "../lib/utils";
-
-interface HistoryItem {
-  parcela: number;
-  vencimento: string;
-  amortizacao: number;
-  juros: number;
-  seguroMIP: number;
-  seguroDFI: number;
-  fgtsMensal: number;
-  situacao: "Paga" | "Aberta" | "Projetada";
-  total: number;
-  saldoDevedor: number;
-  operacao?: string;
-}
+import { PlaygroundCardHeader } from "./ui/PlaygroundCardHeader";
+import { Select } from "./ui/Select";
 
 const ITAU_HISTORY: HistoryItem[] = [
   {
@@ -363,84 +354,18 @@ const FinanciamentoCasaPlayground: React.FC<
   // Derived stats base
   const totalParcelas = overrideTotalParcelas || 419;
 
-  // SAC Calculation for Juros vs Principal
-  const calculateAdjustedSAC = (
-    totalParcelasContrato: number,
-    taxaMensal: number,
-  ) => {
-    const results: any[] = [];
-
-    // 1. Iniciar com o histórico real do Itaú
-    ITAU_HISTORY.forEach((item: HistoryItem) => {
-      const date = parseISO(item.vencimento);
-      results.push({
-        parcela: item.parcela,
-        vencimento: item.vencimento,
-        amortizacao: item.amortizacao,
-        extraAmount: 0,
-        juros: item.juros,
-        seguros: item.seguroMIP + item.seguroDFI,
-        fgtsMensal: item.fgtsMensal,
-        total: item.total,
-        saldoDevedor: item.saldoDevedor,
-        date: date,
-        situacao: getStatusByDate(date),
-        operacao: item.operacao,
-      });
-    });
-
-    // 2. Continuar projeção a partir da última parcela do histórico
-    const lastReal = results[results.length - 1];
-    const initialLength = results.length;
-    let currentSaldo = lastReal.saldoDevedor;
-    const taxa = taxaMensal;
-    const startDate = parseISO(lastReal.vencimento);
-
-    for (let i = initialLength + 1; i <= totalParcelasContrato; i++) {
-      const currentMonth = addMonths(startDate, i - initialLength);
-      const juros = currentSaldo * taxa;
-
-      // No SAC real, a amortização é calculada sobre o saldo devedor atual dividido pelo prazo restante
-      const parcelasRestantes = totalParcelasContrato - i + 1;
-      const amortizacaoBase =
-        parcelasRestantes > 0 ? currentSaldo / parcelasRestantes : currentSaldo;
-
-      const seguros = 177.06 + 47.91;
-      const fgtsSubsidy = i <= 19 ? lastReal.fgtsMensal : 0;
-
-      currentSaldo = Math.max(currentSaldo - amortizacaoBase, 0);
-
-      results.push({
-        parcela: i,
-        vencimento: format(currentMonth, "yyyy-MM-dd"),
-        amortizacao: amortizacaoBase,
-        extraAmount: 0,
-        juros: juros,
-        seguros: seguros,
-        fgtsMensal: fgtsSubsidy,
-        total: Math.max(amortizacaoBase + juros + seguros - fgtsSubsidy, 0),
-        saldoDevedor: currentSaldo,
-        date: currentMonth,
-        situacao: getStatusByDate(currentMonth),
-      });
-
-      if (currentSaldo <= 0) break;
-    }
-    return results;
-  };
-
   const adjustedSacData = useMemo(() => {
-    return calculateAdjustedSAC(totalParcelas, taxaJurosMensal);
+    return calculateAdjustedSAC(ITAU_HISTORY, totalParcelas, taxaJurosMensal);
   }, [totalParcelas, taxaJurosMensal]);
 
   // Derived stats dependent on adjustedSacData
   const paidInstallments = useMemo(() => {
-    return adjustedSacData.filter((d: any) => d.situacao === "Paga");
+    return adjustedSacData.filter((d: SACInstallment) => d.situacao === "Paga");
   }, [adjustedSacData]);
 
   const lastParcelaPaga =
     paidInstallments.length > 0
-      ? Math.max(...paidInstallments.map((d: any) => d.parcela))
+      ? Math.max(...paidInstallments.map((d: SACInstallment) => d.parcela))
       : 0;
   const progressPercent =
     totalParcelas > 0 ? (lastParcelaPaga / totalParcelas) * 100 : 0;
@@ -719,7 +644,7 @@ const FinanciamentoCasaPlayground: React.FC<
   const parsedData = useMemo(() => {
     return transactions
       .filter(
-        (t: any) =>
+        (t: Transaction) =>
           t.type === "expense" &&
           t.status !== "deleted" &&
           (typeof t.category === "object"
@@ -727,7 +652,7 @@ const FinanciamentoCasaPlayground: React.FC<
             : toCode(t.category || "") === "patrimonio") &&
           /Financiamento casa \d+\/\d+/i.test(t.description || ""),
       )
-      .map((t: any): any => {
+      .map((t: Transaction) => {
         const match = (t.description || "").match(
           /Financiamento casa (\d+)\/(\d+)/i,
         );
@@ -741,7 +666,7 @@ const FinanciamentoCasaPlayground: React.FC<
           description: t.description,
         };
       })
-      .sort((a: any, b: any) => a.parcelaPaga - b.parcelaPaga);
+      .sort((a, b) => a.parcelaPaga - b.parcelaPaga);
   }, [transactions]);
 
   if (parsedData.length === 0) {
@@ -795,64 +720,17 @@ const FinanciamentoCasaPlayground: React.FC<
     index: number,
     isCollapsed: boolean,
   ) => (
-    <div className="p-4 border-b font-semibold text-foreground flex items-center justify-between group bg-muted/30 border-border">
-      <div className="flex items-center gap-2">
-        {icon}
-        <span className="text-sm lg:text-base uppercase font-black tracking-tight">
-          {label}
-        </span>
-      </div>
-      <div className="flex items-center gap-1">
-        <Button
-          onClick={(e) => {
-            e.stopPropagation();
-            moveItem(index, "up");
-          }}
-          disabled={index === 0}
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 disabled:opacity-0"
-          title="Mover para Cima"
-        >
-          <ArrowUp className="w-4 h-4" />
-        </Button>
-        <Button
-          onClick={(e) => {
-            e.stopPropagation();
-            moveItem(index, "down");
-          }}
-          disabled={index === layout.length - 1}
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 disabled:opacity-0"
-          title="Mover para Baixo"
-        >
-          <ArrowDown className="w-4 h-4" />
-        </Button>
-        <Button
-          onClick={() => setMaximizedId(id)}
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-          title="Maximizar"
-        >
-          <Maximize2 className="w-4 h-4" />
-        </Button>
-        <Button
-          onClick={() => toggleCollapse(id)}
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-          title={isCollapsed ? "Expandir" : "Minimizar"}
-        >
-          {isCollapsed ? (
-            <ChevronDown className="w-4 h-4" />
-          ) : (
-            <ChevronUp className="w-4 h-4" />
-          )}
-        </Button>
-      </div>
-    </div>
+    <PlaygroundCardHeader
+      id={id}
+      label={label}
+      icon={icon}
+      index={index}
+      isCollapsed={isCollapsed}
+      totalItems={layout.length}
+      onMoveItem={moveItem}
+      onMaximize={setMaximizedId}
+      onToggleCollapse={toggleCollapse}
+    />
   );
 
   const renderSection = (item: LayoutItem, index: number) => {
@@ -1241,7 +1119,9 @@ const FinanciamentoCasaPlayground: React.FC<
                           <Select
                             value={consorcioModoUso}
                             onChange={(e) =>
-                              setConsorcioModoUso(e.target.value as any)
+                              setConsorcioModoUso(
+                                e.target.value as "total" | "uma",
+                              )
                             }
                             className="font-bold py-2.5"
                           >
@@ -1542,7 +1422,7 @@ const FinanciamentoCasaPlayground: React.FC<
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/30">
-                    {adjustedSacData.map((d: any) => (
+                    {adjustedSacData.map((d: SACInstallment) => (
                       <tr
                         key={d.parcela}
                         className={cn(
@@ -1643,8 +1523,9 @@ const FinanciamentoCasaPlayground: React.FC<
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/30">
-                    {consorcioInstallmentsData.map((d: any) => (
-                      <tr
+                    {consorcioInstallmentsData.map(
+                      (d: ConsorcioInstallment) => (
+                        <tr
                         key={d.parcela}
                         className={cn(
                           "text-foreground hover:bg-primary/5 transition-colors",

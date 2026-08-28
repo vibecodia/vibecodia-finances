@@ -12,6 +12,7 @@ interface ConfirmationModalProps {
   message: string | React.ReactNode;
   confirmText?: string;
   confirmButtonText?: string;
+  confirmVariant?: "primary" | "secondary" | "accent" | "ghost" | "outline" | "danger";
 }
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -22,6 +23,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   message,
   confirmText = "Confirmar Exclusão",
   confirmButtonText,
+  confirmVariant = "primary",
 }) => {
   if (!isOpen) return null;
 
@@ -43,6 +45,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         </div>
         <div className="px-8 py-6 flex flex-col sm:flex-row-reverse gap-4 bg-muted/50 border-t border-border">
           <Button
+            variant={confirmVariant}
             onClick={() => {
               onConfirm();
               onClose();

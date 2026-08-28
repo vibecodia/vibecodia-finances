@@ -1,6 +1,7 @@
-import { Router } from 'express';
-import axios from 'axios';
 import https from 'https';
+
+import axios from 'axios';
+import { Router } from 'express';
 
 // AI Proxy Route to bypass CORS. Mantém o tratamento de erro customizado
 // (forward do status da API externa) por ser pass-through.

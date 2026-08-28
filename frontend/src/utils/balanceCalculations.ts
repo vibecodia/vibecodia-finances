@@ -1,13 +1,13 @@
 import { format, startOfMonth, endOfMonth, isBefore } from "date-fns";
 
 import { Transaction, SavingsGoal, Category } from "../types";
-import { isSavingsContribution } from "./categoryUtils";
 
+import { isSavingsContribution, isSavingsWithdrawal } from "./categoryUtils";
 import { getCurrentBrazilDate } from "./helpers";
 
 /**
- * Calcula o impacto total acumulado de todas as contribuições para metas
- * Considera apenas contribuições com data <= effectiveDate (YYYY-MM-DD)
+ * Calcula o impacto total acumulado de todas as movimentações para metas (aportes - resgates)
+ * Considera apenas movimentações com data <= effectiveDate (YYYY-MM-DD)
  */
 const calculateTotalGoalsImpact = (
   savingsGoals: SavingsGoal[] = [],
@@ -23,7 +23,10 @@ const calculateTotalGoalsImpact = (
       if (contribution.isPaid === false) return sum;
 
       const cDate = contribution.date.slice(0, 10);
-      return sum + (cDate <= effectiveDate ? contribution.amount : 0);
+      if (cDate > effectiveDate) return sum;
+
+      const type = contribution.type || "deposit";
+      return sum + (type === "withdrawal" ? -contribution.amount : contribution.amount);
     }, 0);
     return total + goalTotal;
   }, 0);
@@ -69,10 +72,16 @@ export const calculateBalances = (
     // Ignora transações deletadas
     if (t.status === "deleted") return false;
 
-    // CRITICAL: Exclude savings contributions (Aporte) from the "real" balance
+    // CRITICAL: Exclude savings movements (Aporte/Resgate) from the "real" balance
     // because they are accounted for in adjustedBalance/totalGoalsImpact.
     // This avoids double-counting since contributions are now also transactions.
-    if (isSavingsContribution(t.category, categories)) return false;
+    if (
+      isSavingsContribution(t.category, categories) ||
+      isSavingsWithdrawal(t.category, categories) ||
+      Boolean(t.savingsGoalId)
+    ) {
+      return false;
+    }
 
     const tDate = t.date.slice(0, 10);
     return t.isPaid && tDate <= effectiveDate;
@@ -93,8 +102,14 @@ export const calculateBalances = (
     // Ignora transações deletadas
     if (t.status === "deleted") return false;
 
-    // Exclude savings contributions to avoid double-counting with adjustedBalance
-    if (isSavingsContribution(t.category, categories)) return false;
+    // Exclude savings movements to avoid double-counting with adjustedBalance
+    if (
+      isSavingsContribution(t.category, categories) ||
+      isSavingsWithdrawal(t.category, categories) ||
+      Boolean(t.savingsGoalId)
+    ) {
+      return false;
+    }
 
     const tDate = t.date.slice(0, 10);
     return (

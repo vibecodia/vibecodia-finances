@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   FolderKanban,
   Layout,
@@ -7,10 +6,13 @@ import {
   AlertCircle,
   Settings,
 } from "lucide-react";
-import { BoardTheme, Task } from "../../types/trello/task";
-import { Button } from "../ui/Button";
+import { useState } from "react";
+
 import { useVerification } from "../../contexts/VerificationContext";
 import { cn } from "../../lib/utils";
+import { BoardTheme, Task } from "../../types/trello/task";
+import { Button } from "../ui/Button";
+
 import { ThemeSettingsModal } from "./ThemeSettingsModal";
 
 interface ThemeSelectorProps {

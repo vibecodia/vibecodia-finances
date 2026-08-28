@@ -6,8 +6,8 @@ import {
   Column,
   HistoryEntry,
 } from "../../types/trello/task";
-
 import { generateId } from "../../utils/trello/taskUtils";
+
 import { useLocalStorage } from "./useLocalStorage";
 
 const DEFAULT_THEME: BoardTheme = { id: "default", name: "Geral" };

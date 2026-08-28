@@ -6,7 +6,7 @@ export interface TrelloExportData {
   tasks: Task[];
   themes?: BoardTheme[];
   currentThemeId?: string;
-  settings?: any;
+  settings?: Record<string, unknown>;
   metadata: {
     device?: string;
     taskCount: number;
@@ -18,7 +18,7 @@ export function exportTrelloData(
   tasks: Task[],
   themes?: BoardTheme[],
   currentThemeId?: string,
-  settings?: any,
+  settings?: Record<string, unknown>,
 ): string {
   const version = `v${Date.now()}`;
   const exportData: TrelloExportData = {
@@ -50,7 +50,7 @@ export function validateTrelloImport(
     }
 
     return data as TrelloExportData;
-  } catch (e) {
+  } catch {
     return null;
   }
 }

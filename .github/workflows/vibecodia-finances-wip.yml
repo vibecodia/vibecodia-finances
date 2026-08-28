@@ -1,40 +1,172 @@
 name: CI + Docker (Dry Run)
+
 on:
   push:
     branches:
       - 'wip/*'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  ci:
+  lint:
+    name: 🔍 Lint & Static Analysis
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.MY_PAT }}
-      - uses: actions/setup-node@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run build
-      - run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-      - run: npm run release:dry-run
-        env:
-          MY_PAT: ${{ secrets.MY_PAT }}
 
-  docker:
-    needs: ci
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  test-backend:
+    name: 🧪 Backend Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Docker Compose dry-run
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Backend Tests (node:test)
+        run: npm run test:backend
+
+  test-frontend:
+    name: 🧪 Frontend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Frontend Tests (vitest)
+        run: npm run test:frontend
+
+  build:
+    name: 🏗️ TypeScript & Vite Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Compile TypeScript & Build PWA
+        run: npm run build
+
+  release-dry-run:
+    name: 🚀 Release Preview (Dry Run)
+    needs: [lint, test-backend, test-frontend, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code (Full History for SemVer)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.MY_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Configure Git Bot
         run: |
-          touch infra/docker/.env
-          docker compose -f infra/docker/docker-compose.yml config
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run Release Dry-Run
+        run: npm run release:dry-run
+        env:
+          MY_PAT: ${{ secrets.MY_PAT || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.MY_PAT || secrets.GITHUB_TOKEN }}
+
+  docker-validate:
+    name: 🐳 Docker & Compose Validation
+    needs: [lint, test-backend, test-frontend, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Validate Dockerfile Syntax (BuildKit)
+        run: |
+          echo "Validating Dockerfile.backend syntax..."
+          docker build --check -f infra/docker/Dockerfile.backend .
+          echo "Validating Dockerfile.frontend syntax..."
+          docker build --check -f infra/docker/Dockerfile.frontend .
+
+      - name: Validate Docker Compose Configurations
+        run: |
+          touch infra/docker/.env infra/docker/.env.staging
+          echo "Validating docker-compose.yml..."
+          docker compose -f infra/docker/docker-compose.yml config > /dev/null
+          echo "Validating docker-compose.prod.yml..."
+          docker compose -f infra/docker/docker-compose.prod.yml config > /dev/null
+          echo "Validating docker-compose.staging.yml..."
+          docker compose -f infra/docker/docker-compose.staging.yml config > /dev/null
+          echo "✅ All Dockerfiles and compose files are valid!"
         env:
           VITE_BACKEND_URL: http://backend:3001
           NODE_ENV: development
+
+  wip-summary:
+    name: 📋 WIP Pipeline Summary
+    needs: [lint, test-backend, test-frontend, build, release-dry-run, docker-validate]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Generate WIP Summary
+        run: |
+          echo "## 🛠️ WIP Pipeline Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Stage | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔍 Lint & Static Analysis | ${{ needs.lint.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧪 Backend Tests (node:test) | ${{ needs.test-backend.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧪 Frontend Tests (vitest) | ${{ needs.test-frontend.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🏗️ TypeScript & Vite Build | ${{ needs.build.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🚀 Release Dry-Run | ${{ needs.release-dry-run.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🐳 Docker Validation | ${{ needs.docker-validate.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Branch: \`${{ github.ref_name }}\` | SHA: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY

@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 import { DEFAULT_CATEGORIES, DEFAULT_CATEGORY_BY_CODE } from '../db/seed/categories.js';
 import { httpError } from '../utils/httpError.js';
+import { logger } from '../utils/logger.js';
 
 // Gera um slug a partir de um nome: minúsculas, sem acentos, espaços → '_'.
 // Usado para criar o `code` de categorias customizadas e para resolver por nome.
@@ -185,4 +186,57 @@ async function uniqueCode(models, baseCode, type) {
   let suffix = 1;
   while (await Category.findOne({ code: `${baseCode}_${suffix}` })) suffix++;
   return `${baseCode}_${suffix}`;
+}
+
+const verifiedConnections = new WeakSet();
+
+// Migra automaticamente transações legadas que ainda tenham category ou paymentMethod
+// gravados como string no MongoDB, convertendo para ObjectId da coleção Category.
+// Executa uma única vez por conexão de banco em memória durante o ciclo do processo.
+export async function autoMigrateLegacyCategories(models, conn) {
+  if (conn && verifiedConnections.has(conn)) return;
+
+  const { Transaction } = models;
+  if (!Transaction) return;
+
+  const hasLegacy = await Transaction.findOne({
+    $or: [
+      { category: { $type: 'string' } },
+      { paymentMethod: { $type: 'string' } },
+    ],
+  }).lean();
+
+  if (!hasLegacy) {
+    if (conn) verifiedConnections.add(conn);
+    return;
+  }
+
+  logger.info('[auto-migration] Detectadas transações com strings legadas em category/paymentMethod. Executando migração...');
+  await ensureDefaultCategories(models);
+
+  const legacyTransactions = await Transaction.find({
+    $or: [
+      { category: { $type: 'string' } },
+      { paymentMethod: { $type: 'string' } },
+    ],
+  }).lean();
+
+  let updatedCount = 0;
+  for (const t of legacyTransactions) {
+    const update = {};
+    if (typeof t.category === 'string' && !isObjectId(t.category)) {
+      const cat = await resolveCategory(models, t.category, t.type);
+      if (cat) update.category = cat._id;
+    }
+    if (typeof t.paymentMethod === 'string' && !isObjectId(t.paymentMethod)) {
+      const pm = await resolveCategory(models, t.paymentMethod, 'payment_method');
+      if (pm) update.paymentMethod = pm._id;
+    }
+    if (Object.keys(update).length > 0) {
+      await Transaction.updateOne({ _id: t._id }, { $set: update });
+      updatedCount++;
+    }
+  }
+  logger.info(`[auto-migration] Concluída com sucesso: ${updatedCount} transações migradas para ObjectId.`);
+  if (conn) verifiedConnections.add(conn);
 }

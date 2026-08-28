@@ -1,4 +1,10 @@
 import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  DropResult,
+} from "@hello-pangea/dnd";
+import {
   X,
   Target,
   Flag,
@@ -24,13 +30,8 @@ import {
   Minimize2,
 } from "lucide-react";
 import React, { useState, useEffect, useMemo } from "react";
-import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-  DropResult,
-} from "@hello-pangea/dnd";
 
+import { cn } from "../../lib/utils";
 import {
   Task,
   ChecklistItem,
@@ -39,17 +40,17 @@ import {
   Column,
   TimeLog,
 } from "../../types/trello/task";
+import { getBrazilDateString } from "../../utils/helpers";
 import {
   createTask,
   generateId,
   formatTimeElapsed,
 } from "../../utils/trello/taskUtils";
-import { getBrazilDateString } from "../../utils/helpers";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { Input } from "../ui/Input";
 import { Textarea } from "../ui/Textarea";
-import { cn } from "../../lib/utils";
+
 import TaskHistory from "./TaskHistory";
 
 interface TaskModalProps {
@@ -531,15 +532,15 @@ export function TaskModal({
                   Prioridade
                 </label>
                 <div className="grid grid-cols-3 gap-3">
-                  {[
+                  {([
                     { value: "low", label: "Baixa", color: "bg-green-500" },
                     { value: "medium", label: "Média", color: "bg-amber-500" },
                     { value: "high", label: "Alta", color: "bg-red-500" },
-                  ].map((option) => (
+                  ] as const).map((option) => (
                     <button
                       key={option.value}
                       type="button"
-                      onClick={() => setPriority(option.value as any)}
+                      onClick={() => setPriority(option.value)}
                       className={cn(
                         "p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-2",
                         priority === option.value

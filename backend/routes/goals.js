@@ -4,10 +4,13 @@ import { getModels } from '../db/models/index.js';
 import { dbMiddleware } from '../middleware/dbMiddleware.js';
 import {
   addContribution,
+  archiveGoal,
   createGoal,
   deleteContribution,
   deleteGoal,
   listGoals,
+  restoreContribution,
+  unarchiveGoal,
   updateContribution,
   updateGoal,
 } from '../services/goals.js';
@@ -30,6 +33,18 @@ export function goalsRouter(connectionManager) {
 
   router.put('/:id', requireDb, async (req, res) => {
     const goal = await updateGoal(getModels(req.conn), req.params.id, req.body);
+    if (!goal) return res.status(404).json({ message: 'Goal not found' });
+    res.json(goal);
+  });
+
+  router.patch('/:id/archive', requireDb, async (req, res) => {
+    const goal = await archiveGoal(getModels(req.conn), req.params.id);
+    if (!goal) return res.status(404).json({ message: 'Goal not found' });
+    res.json(goal);
+  });
+
+  router.patch('/:id/unarchive', requireDb, async (req, res) => {
+    const goal = await unarchiveGoal(getModels(req.conn), req.params.id);
     if (!goal) return res.status(404).json({ message: 'Goal not found' });
     res.json(goal);
   });
@@ -57,6 +72,11 @@ export function goalsRouter(connectionManager) {
 
   router.delete('/:goalId/contributions/:contributionId', requireDb, async (req, res) => {
     const goal = await deleteContribution(getModels(req.conn), req.params.goalId, req.params.contributionId);
+    res.json(goal);
+  });
+
+  router.post('/:goalId/contributions/:contributionId/restore', requireDb, async (req, res) => {
+    const goal = await restoreContribution(getModels(req.conn), req.params.goalId, req.params.contributionId);
     res.json(goal);
   });
 

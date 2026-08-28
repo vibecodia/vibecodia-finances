@@ -1,3 +1,4 @@
+import { Draggable } from "@hello-pangea/dnd";
 import {
   Calendar,
   ChevronRight,
@@ -17,18 +18,18 @@ import {
   Pin,
 } from "lucide-react";
 import React from "react";
-import { Draggable } from "@hello-pangea/dnd";
 
+import { cn } from "../../lib/utils";
 import { Task, TaskFlag } from "../../types/trello/task";
+import { parseLocalDate, getCurrentBrazilDate } from "../../utils/helpers";
 import {
   getPriorityLabel,
   formatDate,
   formatTimeElapsed,
 } from "../../utils/trello/taskUtils";
-import { parseLocalDate, getCurrentBrazilDate } from "../../utils/helpers";
-import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
-import { cn } from "../../lib/utils";
+import { Card } from "../ui/Card";
+
 import { Highlight } from "./Highlight";
 
 const FlagIcon = ({

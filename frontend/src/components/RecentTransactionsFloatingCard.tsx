@@ -1,6 +1,3 @@
-import React, { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
 import { format, isToday, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -13,11 +10,15 @@ import {
   Maximize2,
   Minimize2,
 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
+
 import { useTheme } from "../contexts/ThemeContext";
+import { useLocalStorage } from "../hooks/trello/useLocalStorage";
 import { Transaction } from "../types";
 import { formatCurrency } from "../utils/helpers";
 
-import { useLocalStorage } from "../hooks/trello/useLocalStorage";
 
 interface RecentTransactionsFloatingCardProps {
   transactions: Transaction[];

@@ -24,11 +24,13 @@ import {
 } from "lucide-react";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import { useTheme } from "../contexts/ThemeContext";
 import { useVerification } from "../contexts/VerificationContext";
+import { useLocalStorage } from "../hooks/trello/useLocalStorage";
 import { useCategories } from "../hooks/useCategories";
 import { usePaymentMethods } from "../hooks/usePaymentMethods";
-import { useLocalStorage } from "../hooks/trello/useLocalStorage";
+import { cn } from "../lib/utils";
 import { Transaction, SavingsGoal, Category } from "../types";
 import { getBenefitPaymentMethods } from "../utils/categoryUtils";
 import {
@@ -37,11 +39,12 @@ import {
   getCurrentBrazilDate,
   formatBrazilDate,
 } from "../utils/helpers";
+
 import { Button } from "./ui/Button";
-import { Input } from "./ui/Input";
 import { Card } from "./ui/Card";
+import { Input } from "./ui/Input";
 import { Textarea } from "./ui/Textarea";
-import { cn } from "../lib/utils";
+
 
 interface SettingsProps {
   transactions: Transaction[];
@@ -164,7 +167,7 @@ const Settings: React.FC<SettingsProps> = ({
   const [ninjaGameMode, setNinjaGameMode] = useState<"10s" | "15s" | "zen">(
     () => {
       const saved = localStorage.getItem("ninjaGameMode");
-      return (saved as any) || "10s"; // Default to 10s
+      return (saved as "10s" | "15s" | "zen") || "10s"; // Default to 10s
     },
   );
 
@@ -623,13 +626,9 @@ const Settings: React.FC<SettingsProps> = ({
                 <div className="flex flex-wrap gap-2">
                   {expenseCategories.map((cat, idx) => {
                     const catName =
-                      typeof cat === "string"
-                        ? cat
-                        : (cat && (cat as any).name) || "Categoria";
+                      typeof cat === "string" ? cat : cat?.name || "Categoria";
                     const catEmoji =
-                      typeof cat === "string"
-                        ? ""
-                        : (cat && (cat as any).emoji) || "";
+                      typeof cat === "string" ? "" : cat?.emoji || "";
                     return (
                       <div
                         key={`${catName}-${idx}`}
@@ -665,13 +664,9 @@ const Settings: React.FC<SettingsProps> = ({
                 <div className="flex flex-wrap gap-2">
                   {incomeCategories.map((cat, idx) => {
                     const catName =
-                      typeof cat === "string"
-                        ? cat
-                        : (cat && (cat as any).name) || "Categoria";
+                      typeof cat === "string" ? cat : cat?.name || "Categoria";
                     const catEmoji =
-                      typeof cat === "string"
-                        ? ""
-                        : (cat && (cat as any).emoji) || "";
+                      typeof cat === "string" ? "" : cat?.emoji || "";
                     return (
                       <div
                         key={`${catName}-${idx}`}
@@ -777,11 +772,9 @@ const Settings: React.FC<SettingsProps> = ({
                     const methodName =
                       typeof method === "string"
                         ? method
-                        : (method && (method as any).name) || "Cartão";
+                        : method?.name || "Cartão";
                     const methodEmoji =
-                      typeof method === "string"
-                        ? ""
-                        : (method && (method as any).emoji) || "";
+                      typeof method === "string" ? "" : method?.emoji || "";
                     return (
                       <div
                         key={methodName}

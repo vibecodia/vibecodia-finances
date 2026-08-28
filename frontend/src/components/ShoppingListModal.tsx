@@ -1,6 +1,12 @@
 import { Check, Trash2, PlusCircle, Star, ShoppingBasket } from "lucide-react";
 import React, { useState, useRef, useEffect } from "react";
 import { TransitionGroup, CSSTransition } from "react-transition-group";
+
+import { ColorPalette } from "../contexts/ThemeContext";
+import { ShoppingItem } from "../hooks/useShoppingList";
+import { cn } from "../lib/utils";
+
+import { Button } from "./ui/Button";
 import {
   Dialog,
   DialogContent,
@@ -8,12 +14,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "./ui/dialog";
-import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
-import { cn } from "../lib/utils";
 
-import { ColorPalette } from "../contexts/ThemeContext";
-import { ShoppingItem } from "../hooks/useShoppingList";
 
 interface ShoppingListModalProps {
   isOpen: boolean;

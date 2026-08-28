@@ -15,12 +15,12 @@ import React, {
 import { useLocation } from "react-router-dom";
 
 const VERIFICATION_COOKIE_NAME: string =
-  (import.meta as any).env.VITE_VERIFICATION_COOKIE_NAME || "user_verified";
+  import.meta.env.VITE_VERIFICATION_COOKIE_NAME || "user_verified";
 const PIN_COOKIE_NAME: string = "pin_code";
 const GUEST_MODE_STORAGE_KEY: string = "guest_mode";
 
 const VERIFICATION_TIMEOUT: number =
-  Number((import.meta as any).env.VITE_VERIFICATION_TIMEOUT_MS) ||
+  Number(import.meta.env.VITE_VERIFICATION_TIMEOUT_MS) ||
   15 * 60 * 1000; // Default: 15 min
 
 interface VerificationContextType {
@@ -117,7 +117,7 @@ export const VerificationProvider: React.FC<VerificationProviderProps> = ({
       );
       if (guestKeys.length === 0) return;
 
-      const guestData: Record<string, any> = {};
+      const guestData: Record<string, unknown> = {};
       guestKeys.forEach((key) => {
         try {
           guestData[key] = JSON.parse(localStorage.getItem(key) || "");

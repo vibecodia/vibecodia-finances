@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { getModels } from '../db/models/index.js';
 import { dbMiddleware } from '../middleware/dbMiddleware.js';
 import {
+  autoMigrateLegacyCategories,
   createCategory,
   ensureDefaultCategories,
   listCategories,
@@ -19,6 +20,7 @@ export function categoriesRouter(connectionManager) {
   router.get('/', requireDb, async (req, res) => {
     const models = getModels(req.conn);
     await ensureDefaultCategories(models);
+    await autoMigrateLegacyCategories(models, req.conn);
     const categories = await listCategories(models, req.query.type);
     res.json(categories);
   });
