@@ -83,3 +83,4 @@ docker-compose up --build
 
 
 # agy --conversation=498ba644-1369-4619-8db7-90acc6a35aee
+# [bmad method] agy --conversation=bcc6530a-10ef-41a4-8d95-32d2ccd4bd69
