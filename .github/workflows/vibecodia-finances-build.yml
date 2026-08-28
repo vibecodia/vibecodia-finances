@@ -1,4 +1,5 @@
 name: CI & Auto PR
+
 on:
   push:
     branches:
@@ -7,29 +8,152 @@ on:
       - 'chore/*'
       - 'hotfix/*'
       - 'release/*'
+      - 'develop'
+      - 'main'
+  pull_request:
+    branches:
+      - 'develop'
+      - 'main'
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
-  ci:
+  lint:
+    name: 🔍 Lint & Static Analysis
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run build
 
-  auto-pr:
-    needs: ci
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  test-backend:
+    name: 🧪 Backend Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Backend Tests (node:test)
+        run: npm run test:backend
+
+  test-frontend:
+    name: 🧪 Frontend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Frontend Tests (vitest)
+        run: npm run test:frontend
+
+  build:
+    name: 🏗️ TypeScript & Vite Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Compile TypeScript & Build PWA
+        run: npm run build
+
+  ci-status:
+    name: 🎯 CI Status Gate
+    needs: [lint, test-backend, test-frontend, build]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Verify All CI Checks
+        run: |
+          LINT="${{ needs.lint.result }}"
+          TEST_BACKEND="${{ needs.test-backend.result }}"
+          TEST_FRONTEND="${{ needs.test-frontend.result }}"
+          BUILD="${{ needs.build.result }}"
+
+          echo "Status: lint=$LINT, test-backend=$TEST_BACKEND, test-frontend=$TEST_FRONTEND, build=$BUILD"
+
+          if [ "$LINT" != "success" ] || [ "$TEST_BACKEND" != "success" ] || [ "$TEST_FRONTEND" != "success" ] || [ "$BUILD" != "success" ]; then
+            echo "❌ CI Quality Gate Failed!"
+            exit 1
+          fi
+
+          echo "✅ All CI checks passed successfully!"
+
+      - name: Generate CI Summary
+        run: |
+          echo "## 🚀 CI Pipeline Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Quality Gate | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔍 Lint & Static Analysis | ${{ needs.lint.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧪 Backend Tests (node:test) | ${{ needs.test-backend.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧪 Frontend Tests (vitest) | ${{ needs.test-frontend.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🏗️ TypeScript & Vite Build | ${{ needs.build.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Triggered by: \`${{ github.event_name }}\` | Ref: \`${{ github.ref_name }}\` | SHA: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+
+  auto-pr:
+    name: 🔀 Auto PR to develop
+    needs: [ci-status]
+    if: |
+      github.event_name == 'push' && (
+        startsWith(github.ref_name, 'feature/') ||
+        startsWith(github.ref_name, 'fix/') ||
+        startsWith(github.ref_name, 'chore/') ||
+        startsWith(github.ref_name, 'hotfix/') ||
+        startsWith(github.ref_name, 'release/')
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
@@ -60,13 +184,13 @@ jobs:
       - name: Sem alterações relevantes
         if: steps.branch-type.outputs.type == 'feature' && steps.check.outputs.relevant == 'false'
         run: |
-          echo "⚠️ Nenhuma alteração em frontend/, backend/ ou infra/docker/."
+          echo "ℹ️ Nenhuma alteração em frontend/, backend/ ou infra/docker/."
           echo "PR automático não será criado."
 
       - name: PR para develop (feature/fix/chore/hotfix)
         if: steps.branch-type.outputs.type == 'feature' && steps.check.outputs.relevant == 'true'
         env:
-          GH_TOKEN: ${{ secrets.MY_PAT }}
+          GH_TOKEN: ${{ secrets.MY_PAT || secrets.GITHUB_TOKEN }}
         run: |
           BRANCH="${{ github.ref_name }}"
           PR_EXISTS=$(gh pr list --head "$BRANCH" --base develop --json number --jq '.[0].number')
@@ -76,7 +200,7 @@ jobs:
               --base develop \
               --head "$BRANCH" \
               --title "PR: $BRANCH" \
-              --body "PR gerado automaticamente após CI na branch $BRANCH."
+              --body "PR gerado automaticamente após aprovação completa de CI (lint, testes backend, testes frontend e build) na branch $BRANCH."
             echo "✅ PR criado: $BRANCH → develop"
           else
             echo "ℹ️ PR já existe (#$PR_EXISTS), nada a fazer."

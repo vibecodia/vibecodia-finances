@@ -12,7 +12,9 @@
     "serve": "serve -s dist -l 5173",
     "release": "release-it",
     "release:dry-run": "release-it --dry-run",
-    "test": "node --test backend/tests/*.test.js",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "node --test backend/tests/*.test.js",
+    "test:frontend": "vitest run",
     "test-connection": "node backend/test_connection.js"
   },
   "dependencies": {
@@ -63,6 +65,7 @@
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.57.1",
     "vite": "^5.4.2",
-    "vite-plugin-pwa": "^0.21.1"
+    "vite-plugin-pwa": "^0.21.1",
+    "vitest": "^4.1.11"
   }
 }

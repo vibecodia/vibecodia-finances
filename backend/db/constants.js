@@ -13,3 +13,4 @@ export const CATEGORY_STATUS = ['active', 'deleted'];
 
 // Tipos de movimentação vinculada à meta (aporte / resgate)
 export const SAVINGS_CONTRIBUTION_TYPES = ['deposit', 'withdrawal'];
+export const SAVINGS_GOAL_STATUS = ['active', 'deleted', 'archived'];

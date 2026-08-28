@@ -1,0 +1,27 @@
+# Git & VCS
+.git
+.gitignore
+
+# Agents & Documentation
+.agents
+.system_generated
+ia/
+_bmad-output/
+
+# Dependencies & Build artifacts
+node_modules
+dist
+coverage
+*.log
+npm-debug.log*
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo

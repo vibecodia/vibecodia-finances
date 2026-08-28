@@ -6,9 +6,11 @@ import {
   calculateGoalProgress,
   enrichGoal,
   addContribution,
-  updateContribution,
+  archiveGoal,
   deleteContribution,
   restoreContribution,
+  unarchiveGoal,
+  updateContribution,
 } from '../services/goals.js';
 
 describe('Domain: Metas & Contribuições (Pure Functions)', () => {
@@ -136,6 +138,7 @@ describe('Business Rules: Regras de Validação e Consistência', () => {
       return { _id: 'tx-updated', ...update.$set };
     };
     mockTransaction.updateMany = async () => ({ modifiedCount: 1 });
+    mockTransaction.find = async () => [];
 
     function mockCategory(data) {
       this._id = 'cat-' + (data.code || 'mock');
@@ -255,6 +258,28 @@ describe('Business Rules: Regras de Validação e Consistência', () => {
     await restoreContribution(models, 'goal-123', 'c-init');
     assert.equal(goalDoc.contributions[0].status, 'active');
     assert.equal(goalDoc.currentAmount, 1000);
+  });
+
+  test('archiveGoal altera status para archived mantendo contribuições e transações ativas', async () => {
+    const { models, goalDoc } = createMockModels();
+    const result = await archiveGoal(models, 'goal-123');
+
+    assert.equal(result.status, 'archived');
+    assert.equal(goalDoc.status, 'archived');
+    assert.ok(goalDoc.archivedAt instanceof Date);
+    // Contribuições e transações continuam ativas para preservar o histórico contábil!
+    assert.equal(goalDoc.contributions[0].status, 'active');
+  });
+
+  test('unarchiveGoal restaura status para active e limpa archivedAt', async () => {
+    const { models, goalDoc } = createMockModels();
+    await archiveGoal(models, 'goal-123');
+    assert.equal(goalDoc.status, 'archived');
+
+    const result = await unarchiveGoal(models, 'goal-123');
+    assert.equal(result.status, 'active');
+    assert.equal(goalDoc.status, 'active');
+    assert.equal(goalDoc.archivedAt, null);
   });
 });
 
@@ -378,6 +403,39 @@ describe('User Scenario: Resgate de Meta 2 Meses Depois (Regime de Caixa & Saldo
     // adjustedBalance = 5200 - 0 = 5200!
     const adjustedAug = calculateCheckingBalance(txs, [], '2026-08-31') - calculateGoalsImpactAtDate([goal], '2026-08-31');
     assert.equal(adjustedAug, 5200, 'Saldo em Agosto é 5200 (recuperou os 1000 do aporte + ganhou 200 de lucro)');
+  });
+
+  test('Cenário 4: Meta resgatada e arquivada preserva saldos congelados; deletar causaria distorção', () => {
+    const initialIncome = { date: '2026-06-05', amount: 5000, type: 'income', isPaid: true, status: 'active' };
+    const aporteTx = { date: '2026-06-15', amount: 1000, type: 'expense', category: 'Aporte', isPaid: true, status: 'active' };
+    const resgateTx = { date: '2026-08-20', amount: 1000, type: 'income', category: 'Resgate de Meta', isPaid: true, status: 'active' };
+
+    const goal = {
+      _id: 'goal-viagem',
+      name: 'Viagem Concluída',
+      targetAmount: 1000,
+      status: 'archived', // Meta foi arquivada após o resgate
+      contributions: [
+        { id: 'c1', date: '2026-06-15', amount: 1000, type: 'deposit', isPaid: true, status: 'active' },
+        { id: 'c2', date: '2026-08-20', amount: 1000, type: 'withdrawal', isPaid: true, status: 'active' },
+      ],
+    };
+
+    const txs = [initialIncome, aporteTx, resgateTx];
+
+    // Com a meta ARQUIVADA:
+    // Saldo congelado de Junho continua 4.000 (preserva o histórico de que 1.000 estavam guardados)
+    const saldoJunhoArchived = calculateCheckingBalance(txs, [], '2026-06-30') - calculateGoalsImpactAtDate([goal], '2026-06-30');
+    assert.equal(saldoJunhoArchived, 4000, 'Saldo de Junho com meta arquivada permanece 100% congelado em 4000');
+
+    // Saldo de Agosto: 5000 (aportes - resgates = 0)
+    const saldoAgostoArchived = calculateCheckingBalance(txs, [], '2026-08-31') - calculateGoalsImpactAtDate([goal], '2026-08-31');
+    assert.equal(saldoAgostoArchived, 5000, 'Saldo de Agosto com meta arquivada é 5000');
+
+    // CONTRAPONTO: Se a meta tivesse sido DELETADA (status: 'deleted'):
+    const deletedGoal = { ...goal, status: 'deleted' };
+    const saldoJunhoDeleted = calculateCheckingBalance(txs, [], '2026-06-30') - calculateGoalsImpactAtDate([deletedGoal], '2026-06-30');
+    assert.equal(saldoJunhoDeleted, 5000, 'Deletar causaria distorção no saldo congelado (5000 em vez de 4000)');
   });
 });
 

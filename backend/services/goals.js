@@ -154,7 +154,7 @@ export async function updateGoal(models, id, body) {
     goal.deadline = deadline ? createLocalDateForStorage(deadline) : undefined;
   }
 
-  // Restauração de meta
+  // Restauração de meta excluída
   if (status === 'active' && goal.status === 'deleted') {
     goal.status = 'active';
     goal.deletedAt = null;
@@ -172,11 +172,43 @@ export async function updateGoal(models, id, body) {
       { savingsGoalId: goal._id, status: 'deleted' },
       { $set: { status: 'active', deletedAt: null } }
     );
+  } else if (status === 'archived') {
+    goal.status = 'archived';
+    goal.archivedAt = new Date();
+  } else if (status === 'active' && goal.status === 'archived') {
+    goal.status = 'active';
+    goal.archivedAt = null;
   } else if (status) {
     goal.status = status;
   }
 
   goal.currentAmount = calculateGoalCurrentAmount(goal);
+  await goal.save();
+
+  const relatedTransactions = await Transaction.find({ savingsGoalId: goal._id, status: 'active' });
+  return enrichGoal(goal, relatedTransactions);
+}
+
+export async function archiveGoal(models, id) {
+  const { SavingsGoal, Transaction } = models;
+  const goal = await SavingsGoal.findById(id);
+  if (!goal) return null;
+
+  goal.status = 'archived';
+  goal.archivedAt = new Date();
+  await goal.save();
+
+  const relatedTransactions = await Transaction.find({ savingsGoalId: goal._id, status: 'active' });
+  return enrichGoal(goal, relatedTransactions);
+}
+
+export async function unarchiveGoal(models, id) {
+  const { SavingsGoal, Transaction } = models;
+  const goal = await SavingsGoal.findById(id);
+  if (!goal) return null;
+
+  goal.status = 'active';
+  goal.archivedAt = null;
   await goal.save();
 
   const relatedTransactions = await Transaction.find({ savingsGoalId: goal._id, status: 'active' });

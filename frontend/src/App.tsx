@@ -108,6 +108,8 @@ function App() {
     updatePaymentStatus,
     addSavingsGoal,
     updateSavingsGoal,
+    archiveSavingsGoal,
+    unarchiveSavingsGoal,
     addSavingsContribution,
     updateSavingsContribution,
     deleteSavingsContribution,
@@ -415,6 +417,8 @@ function App() {
                 goals={savingsGoals}
                 onAdd={addSavingsGoal}
                 onUpdate={updateSavingsGoal}
+                onArchive={archiveSavingsGoal}
+                onUnarchive={unarchiveSavingsGoal}
                 onDelete={deleteSavingsGoal}
                 onAddContribution={addSavingsContribution}
                 onUpdateContribution={updateSavingsContribution}

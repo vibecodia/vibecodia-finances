@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-import { SAVINGS_CONTRIBUTION_TYPES } from '../constants.js';
+import { SAVINGS_CONTRIBUTION_TYPES, SAVINGS_GOAL_STATUS } from '../constants.js';
 
 // Schema de contribuições de meta (subdocumento)
 export const savingsContributionSchema = new mongoose.Schema({
@@ -20,6 +20,7 @@ export const savingsGoalSchema = new mongoose.Schema({
   currentAmount: { type: Number, default: 0 },
   deadline: { type: Date },
   contributions: [savingsContributionSchema],
-  status: { type: String, enum: ['active', 'deleted'], default: 'active' },
-  deletedAt: { type: Date }
+  status: { type: String, enum: SAVINGS_GOAL_STATUS, default: 'active' },
+  deletedAt: { type: Date },
+  archivedAt: { type: Date }
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });

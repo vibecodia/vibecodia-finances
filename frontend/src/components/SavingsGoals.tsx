@@ -11,6 +11,9 @@ import {
   ChevronDown,
   RotateCcw,
   Check,
+  Archive,
+  ArchiveRestore,
+  AlertTriangle,
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 
@@ -29,11 +32,12 @@ import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
 import { Input } from "./ui/Input";
 
-
 interface SavingsGoalsProps {
   goals: SavingsGoal[];
   onAdd: (goal: Omit<SavingsGoal, "id" | "createdAt" | "updatedAt">) => void;
   onUpdate: (id: string, updates: Partial<SavingsGoal>) => void;
+  onArchive?: (id: string) => void;
+  onUnarchive?: (id: string) => void;
   onDelete: (id: string) => void;
   onAddContribution: (
     goalId: string,
@@ -56,6 +60,8 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
   goals,
   onAdd,
   onUpdate,
+  onArchive,
+  onUnarchive,
   onDelete,
   onAddContribution,
   onUpdateContribution,
@@ -82,11 +88,18 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
   const [goalToDelete, setGoalToDelete] = useState<string | null>(null);
   const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
   const [goalToReactivate, setGoalToReactivate] = useState<string | null>(null);
-  const [showDeleted, setShowDeleted] = useState(false);
+  const [viewFilter, setViewFilter] = useState<"active" | "archived" | "deleted">(
+    "active",
+  );
   const [searchTerm, setSearchTerm] = useState("");
 
   const activeGoals = (goals || []).filter(
-    (g: SavingsGoal) => g.status !== "deleted",
+    (g: SavingsGoal) =>
+      g.status === "active" ||
+      (!g.status && g.status !== "deleted" && g.status !== "archived"),
+  );
+  const archivedGoals = (goals || []).filter(
+    (g: SavingsGoal) => g.status === "archived",
   );
   const deletedGoals = (goals || []).filter(
     (g: SavingsGoal) => g.status === "deleted",
@@ -101,18 +114,32 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
   };
 
   const filteredActiveGoals = filterBySearch(activeGoals);
+  const filteredArchivedGoals = filterBySearch(archivedGoals);
   const filteredDeletedGoals = filterBySearch(deletedGoals);
 
-  // Auto-switch back to active view if no deleted goals remain
+  // Auto-switch back to active view if no goals remain in the current filter
   useEffect(() => {
     if (
-      showDeleted &&
+      viewFilter === "deleted" &&
       filteredDeletedGoals.length === 0 &&
       deletedGoals.length === 0
     ) {
-      setShowDeleted(false);
+      setViewFilter("active");
     }
-  }, [deletedGoals.length, filteredDeletedGoals.length, showDeleted]);
+    if (
+      viewFilter === "archived" &&
+      filteredArchivedGoals.length === 0 &&
+      archivedGoals.length === 0
+    ) {
+      setViewFilter("active");
+    }
+  }, [
+    deletedGoals.length,
+    filteredDeletedGoals.length,
+    archivedGoals.length,
+    filteredArchivedGoals.length,
+    viewFilter,
+  ]);
 
   const openDeleteModal = (id: string) => {
     setGoalToDelete(id);
@@ -194,9 +221,12 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
     setShowForm(true);
   };
 
-  const goalsForDisplay = showDeleted
-    ? filteredDeletedGoals
-    : filteredActiveGoals;
+  const goalsForDisplay =
+    viewFilter === "archived"
+      ? filteredArchivedGoals
+      : viewFilter === "deleted"
+        ? filteredDeletedGoals
+        : filteredActiveGoals;
   const totalGoals = activeGoals.reduce(
     (sum: number, goal: SavingsGoal) => sum + (goal.targetAmount || 0),
     0,
@@ -230,25 +260,59 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 </span>
               </>
             )}
-            {deletedGoals.length > 0 && (
+            {archivedGoals.length > 0 && (
               <>
                 <span className="mx-2">•</span>
                 <Button
-                  onClick={() => setShowDeleted(!showDeleted)}
+                  onClick={() =>
+                    setViewFilter(
+                      viewFilter === "archived" ? "active" : "archived",
+                    )
+                  }
                   variant="ghost"
                   size="sm"
                   className={cn(
                     "text-xs font-bold px-2 py-0.5 rounded-full transition-colors flex items-center gap-1",
-                    showDeleted && "bg-accent text-white",
+                    viewFilter === "archived"
+                      ? "bg-primary text-primary-foreground"
+                      : "opacity-80 hover:opacity-100",
                   )}
                   style={{
-                    backgroundColor: showDeleted ? theme.accent : undefined,
+                    backgroundColor:
+                      viewFilter === "archived" ? theme.primary : undefined,
+                    color: viewFilter === "archived" ? "#fff" : undefined,
+                  }}
+                >
+                  <Archive className="w-3 h-3" />
+                  {archivedGoals.length}{" "}
+                  {archivedGoals.length === 1 ? "arquivada" : "arquivadas"}
+                </Button>
+              </>
+            )}
+            {deletedGoals.length > 0 && (
+              <>
+                <span className="mx-2">•</span>
+                <Button
+                  onClick={() =>
+                    setViewFilter(
+                      viewFilter === "deleted" ? "active" : "deleted",
+                    )
+                  }
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "text-xs font-bold px-2 py-0.5 rounded-full transition-colors flex items-center gap-1",
+                    viewFilter === "deleted" && "bg-accent text-white",
+                  )}
+                  style={{
+                    backgroundColor:
+                      viewFilter === "deleted" ? theme.accent : undefined,
                   }}
                 >
                   {deletedGoals.length}{" "}
                   {deletedGoals.length === 1 ? "excluída" : "excluídas"}
                   <span
-                    className={`transition-transform ${showDeleted ? "rotate-180" : ""}`}
+                    className={`transition-transform ${viewFilter === "deleted" ? "rotate-180" : ""}`}
                   >
                     <ChevronDown className="w-3 h-3" />
                   </span>
@@ -310,11 +374,13 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
               <Target className="w-8 h-8 text-muted-foreground" />
             </div>
             <p className="text-muted-foreground mb-4">
-              {showDeleted
-                ? "Nenhuma meta excluída encontrada"
-                : "Nenhuma meta cadastrada"}
+              {viewFilter === "archived"
+                ? "Nenhuma meta arquivada encontrada"
+                : viewFilter === "deleted"
+                  ? "Nenhuma meta excluída encontrada"
+                  : "Nenhuma meta de economia cadastrada"}
             </p>
-            {!showDeleted && (
+            {viewFilter === "active" && (
               <Button onClick={() => setShowForm(true)}>
                 Criar primeira meta
               </Button>
@@ -335,6 +401,14 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 progress={progress}
                 isComplete={isComplete}
                 onEdit={() => handleEdit(goal)}
+                onArchive={() => {
+                  if (onArchive) onArchive(goal.id);
+                  else onUpdate(goal.id, { status: "archived" });
+                }}
+                onUnarchive={() => {
+                  if (onUnarchive) onUnarchive(goal.id);
+                  else onUpdate(goal.id, { status: "active" });
+                }}
                 onDelete={() => openDeleteModal(goal.id)}
                 onReactivate={() => openReactivateModal(goal.id)}
                 onAddContribution={onAddContribution}
@@ -342,7 +416,7 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
                 onDeleteContribution={onDeleteContribution}
                 onRestoreContribution={onRestoreContribution}
                 onUpdatePaymentStatus={onUpdatePaymentStatus}
-                showDeleted={showDeleted}
+                showDeleted={viewFilter === "deleted"}
               />
             );
           })
@@ -422,13 +496,90 @@ const SavingsGoals: React.FC<SavingsGoalsProps> = ({
         </div>
       )}
 
-      <ConfirmationModal
-        isOpen={isDeleteModalOpen}
-        onClose={closeDeleteModal}
-        onConfirm={handleDeleteConfirm}
-        title="Confirmar Exclusão"
-        message="Tem certeza de que deseja excluir esta meta de economia? Todos os aportes associados também serão marcados como excluídos."
-      />
+      {/* Modal Inteligente de Exclusão / Arquivamento */}
+      {isDeleteModalOpen &&
+      goals.find((g) => g.id === goalToDelete)?.contributions?.some(
+        (c) => c.status !== "deleted",
+      ) ? (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-300">
+          <Card className="w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200 p-0 overflow-hidden">
+            <div className="p-6 sm:p-8">
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500 flex-shrink-0">
+                  <AlertTriangle className="w-8 h-8" />
+                </div>
+                <div className="space-y-3 flex-1 min-w-0">
+                  <h3 className="text-lg sm:text-xl font-black text-foreground">
+                    Meta com Histórico Financeiro
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    A meta{" "}
+                    <strong>
+                      {goals.find((g) => g.id === goalToDelete)?.name}
+                    </strong>{" "}
+                    possui movimentações financeiras registradas em meses anteriores.
+                  </p>
+                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-1.5 text-foreground">
+                    <p className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                      ⚠️ Atenção aos saldos dos meses anteriores:
+                    </p>
+                    <p className="opacity-90 leading-relaxed">
+                      Se você <strong>Excluir Definitivamente</strong>, todas as
+                      transações passadas desta meta serão apagadas, o que{" "}
+                      <strong>alterará os saldos congelados</strong> dos meses em
+                      que o dinheiro esteve guardado.
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    <strong>Recomendação:</strong> Escolha{" "}
+                    <strong>Arquivar Meta</strong> para ocultá-la da tela
+                    inicial mantendo seus saldos passados 100% protegidos e
+                    intactos.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 sm:px-8 sm:py-5 flex flex-col sm:flex-row gap-3 bg-muted/50 border-t border-border">
+              <Button
+                variant="primary"
+                onClick={() => {
+                  if (goalToDelete) {
+                    if (onArchive) onArchive(goalToDelete);
+                    else onUpdate(goalToDelete, { status: "archived" });
+                  }
+                  closeDeleteModal();
+                }}
+                className="flex-1 flex items-center justify-center gap-2 font-bold"
+              >
+                <Archive className="w-4 h-4" />
+                Arquivar (Recomendado)
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleDeleteConfirm}
+                className="text-xs text-accent hover:text-accent hover:bg-accent/10 border-border"
+              >
+                Excluir e Apagar Histórico
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={closeDeleteModal}
+                className="text-xs"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </Card>
+        </div>
+      ) : (
+        <ConfirmationModal
+          isOpen={isDeleteModalOpen}
+          onClose={closeDeleteModal}
+          onConfirm={handleDeleteConfirm}
+          title="Confirmar Exclusão"
+          message="Tem certeza de que deseja excluir esta meta de economia?"
+        />
+      )}
 
       <ConfirmationModal
         isOpen={isReactivateModalOpen}
@@ -447,6 +598,8 @@ interface GoalCardProps {
   progress: number;
   isComplete: boolean;
   onEdit: () => void;
+  onArchive?: () => void;
+  onUnarchive?: () => void;
   onDelete: () => void;
   onReactivate: () => void;
   onAddContribution: (
@@ -472,6 +625,8 @@ const GoalCard: React.FC<GoalCardProps> = ({
   progress,
   isComplete,
   onEdit,
+  onArchive,
+  onUnarchive,
   onDelete,
   onReactivate,
   onAddContribution,
@@ -579,6 +734,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
     });
 
   const isGoalDeleted = goal.status === "deleted";
+  const isGoalArchived = goal.status === "archived";
 
   return (
     <Card
@@ -588,9 +744,11 @@ const GoalCard: React.FC<GoalCardProps> = ({
       style={{
         borderColor: isGoalDeleted
           ? theme.cardBorder
-          : isComplete
-            ? theme.primary
-            : theme.cardBorder,
+          : isGoalArchived
+            ? theme.cardBorder
+            : isComplete
+              ? theme.primary
+              : theme.cardBorder,
       }}
     >
       <div className="flex items-start justify-between gap-3 mb-4">
@@ -612,7 +770,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
                 {goal.name}
               </h3>
             </div>
-            {!isGoalDeleted && isComplete && (
+            {!isGoalDeleted && !isGoalArchived && isComplete && (
               <div className="p-1 rounded-full bg-[#D4EDDA] flex-shrink-0">
                 <Check className="w-4 h-4 text-black" />
               </div>
@@ -620,6 +778,12 @@ const GoalCard: React.FC<GoalCardProps> = ({
             {isGoalDeleted && (
               <span className="text-[10px] font-bold uppercase tracking-wider text-accent bg-accent/10 px-1.5 py-0.5 rounded">
                 Excluída
+              </span>
+            )}
+            {isGoalArchived && (
+              <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                <Archive className="w-3 h-3" />
+                Arquivada
               </span>
             )}
           </div>
@@ -632,6 +796,14 @@ const GoalCard: React.FC<GoalCardProps> = ({
               >
                 <Calendar className="w-3 h-3 flex-shrink-0" />
                 Prazo: {formatBrazilDate(new Date(goal.deadline))}
+              </span>
+            )}
+            {isGoalArchived && goal.archivedAt && (
+              <span
+                className="px-2 py-1 rounded-full text-primary font-medium"
+                style={{ backgroundColor: theme.cardBorder }}
+              >
+                Arquivada em: {formatBrazilDate(new Date(goal.archivedAt))}
               </span>
             )}
             {isGoalDeleted && goal.deletedAt && (
@@ -655,6 +827,40 @@ const GoalCard: React.FC<GoalCardProps> = ({
             >
               <RotateCcw className="w-4 h-4" />
             </Button>
+          ) : isGoalArchived ? (
+            <div className="flex items-center gap-1.5">
+              {sortedContributions.length > 0 && (
+                <Button
+                  onClick={() => setShowHistory(!showHistory)}
+                  variant="ghost"
+                  size="sm"
+                  title="Ver histórico de aportes"
+                >
+                  <History className="w-4 h-4" />
+                </Button>
+              )}
+              {onUnarchive && (
+                <Button
+                  onClick={onUnarchive}
+                  size="sm"
+                  variant="outline"
+                  className="text-xs flex items-center gap-1 shadow-sm font-semibold"
+                  title="Desarquivar meta (voltar para ativas)"
+                >
+                  <ArchiveRestore className="w-3.5 h-3.5" />
+                  <span>Desarquivar</span>
+                </Button>
+              )}
+              <Button
+                onClick={onDelete}
+                variant="ghost"
+                size="sm"
+                className="hover:text-accent"
+                title="Excluir meta"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
           ) : (
             <>
               {sortedContributions.length > 0 && (
@@ -667,7 +873,22 @@ const GoalCard: React.FC<GoalCardProps> = ({
                   <History className="w-4 h-4" />
                 </Button>
               )}
-              <Button onClick={onEdit} variant="ghost" size="sm">
+              {onArchive && (
+                <Button
+                  onClick={onArchive}
+                  variant="ghost"
+                  size="sm"
+                  title="Arquivar meta (preserva histórico de saldos congelados)"
+                >
+                  <Archive className="w-4 h-4" />
+                </Button>
+              )}
+              <Button
+                onClick={onEdit}
+                variant="ghost"
+                size="sm"
+                title="Editar meta"
+              >
                 <Edit3 className="w-4 h-4" />
               </Button>
               <Button
@@ -675,6 +896,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
                 variant="ghost"
                 size="sm"
                 className="hover:text-accent"
+                title="Excluir meta"
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
@@ -981,8 +1203,49 @@ const GoalCard: React.FC<GoalCardProps> = ({
               Meta Excluída
             </span>
           </div>
+        ) : isGoalArchived ? (
+          <div className="flex items-center justify-between p-3 bg-primary/5 rounded-xl border border-primary/20">
+            <div className="flex items-center gap-2 text-primary">
+              <Archive className="w-4 h-4 flex-shrink-0" />
+              <span className="text-xs font-medium">
+                Meta Arquivada — Histórico e saldos protegidos.
+              </span>
+            </div>
+            {onUnarchive && (
+              <Button
+                onClick={onUnarchive}
+                variant="outline"
+                size="sm"
+                className="text-xs flex items-center gap-1 font-semibold"
+              >
+                <ArchiveRestore className="w-3.5 h-3.5" />
+                Desarquivar
+              </Button>
+            )}
+          </div>
         ) : (
           <div className="space-y-3">
+            {goal.currentAmount === 0 &&
+              (goal.contributions || []).some(
+                (c) => c.status !== "deleted",
+              ) && (
+                <div className="p-3 bg-primary/5 rounded-xl border border-primary/20 flex items-center justify-between gap-2">
+                  <span className="text-xs text-foreground/80">
+                    Saldo zerado após resgate total.
+                  </span>
+                  {onArchive && (
+                    <Button
+                      onClick={onArchive}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs flex items-center gap-1.5 font-bold flex-shrink-0"
+                    >
+                      <Archive className="w-3.5 h-3.5" />
+                      Arquivar Meta
+                    </Button>
+                  )}
+                </div>
+              )}
             {isComplete && (
               <div className="text-center py-2.5 bg-primary/10 rounded-xl border border-primary/20 animate-pulse">
                 <span className="text-primary text-sm font-bold">

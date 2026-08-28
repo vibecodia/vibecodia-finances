@@ -88,8 +88,9 @@ export interface SavingsGoal {
   contributions: SavingsContribution[]; // Histórico de aportes
   createdAt: string;
   updatedAt: string;
-  status?: "active" | "deleted"; // Adicionado para Soft Delete
+  status?: "active" | "archived" | "deleted"; // Adicionado para Soft Delete e Arquivamento
   deletedAt?: string; // Adicionado para Soft Delete
+  archivedAt?: string; // Data de arquivamento da meta
 }
 
 export interface MonthlyData {
