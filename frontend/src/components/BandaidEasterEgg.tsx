@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+
 import { cn } from "../lib/utils";
 
 interface Particle {
@@ -23,9 +24,12 @@ export const BandaidEasterEgg: React.FC<BandaidEasterEggProps> = ({
 
   const playSquishSound = () => {
     try {
-      const audioCtx = new (
-        window.AudioContext || (window as any).webkitAudioContext
-      )();
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as Window & { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+      if (!AudioContextClass) return;
+      const audioCtx = new AudioContextClass();
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
 

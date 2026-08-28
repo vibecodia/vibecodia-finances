@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 
+import { DEFAULT_CATEGORY_BY_CODE } from "../data/defaultCategories";
 import { Category } from "../types";
 import { getCategory, toCode } from "../utils/categoryUtils";
-import { DEFAULT_CATEGORY_BY_CODE } from "../data/defaultCategories";
 
 // --- Tipagens e Constantes ---
 

@@ -1,7 +1,8 @@
+import { Sun, Moon, Palette, X } from "lucide-react";
 import React, { useState } from "react";
+
 import { useTheme, ThemePaletteType } from "../contexts/ThemeContext";
 import { cn } from "../lib/utils";
-import { Sun, Moon, Palette, X } from "lucide-react";
 
 const ThemeSelector: React.FC = () => {
   const { paletteType, setPaletteType, isDarkMode, toggleTheme } = useTheme();

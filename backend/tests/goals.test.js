@@ -6,7 +6,7 @@ import {
   calculateGoalProgress,
   enrichGoal,
   addContribution,
-  createGoal,
+  updateContribution,
   deleteContribution,
   restoreContribution,
 } from '../services/goals.js';
@@ -92,29 +92,6 @@ describe('Domain: Metas & Contribuições (Pure Functions)', () => {
 });
 
 describe('Business Rules: Regras de Validação e Consistência', () => {
-  function createMockGoalModel(initialGoal) {
-    let storedGoal = initialGoal ? {
-      ...initialGoal,
-      toObject() { return { ...this }; },
-      save: async function () { return this; },
-      contributions: initialGoal.contributions ? initialGoal.contributions.map(c => ({
-        ...c,
-        _id: c._id || 'contrib-' + Math.random(),
-      })) : [],
-    } : null;
-
-    if (storedGoal && storedGoal.contributions) {
-      storedGoal.contributions.id = function (cid) {
-        return this.find(c => (c._id?.toString?.() || c.id?.toString?.()) === cid);
-      };
-    }
-
-    return {
-      findById: async (id) => storedGoal,
-      save: async () => storedGoal,
-    };
-  }
-
   function createMockModels(goalData, shouldTxFail = false) {
     const goalDoc = {
       _id: 'goal-123',
@@ -401,5 +378,182 @@ describe('User Scenario: Resgate de Meta 2 Meses Depois (Regime de Caixa & Saldo
     // adjustedBalance = 5200 - 0 = 5200!
     const adjustedAug = calculateCheckingBalance(txs, [], '2026-08-31') - calculateGoalsImpactAtDate([goal], '2026-08-31');
     assert.equal(adjustedAug, 5200, 'Saldo em Agosto é 5200 (recuperou os 1000 do aporte + ganhou 200 de lucro)');
+  });
+});
+
+describe('Edge Cases, Concurrency & Rollbacks: Concorrência e Integridade Transacional', () => {
+  function createTestModels(initialGoal, shouldTxFail = false) {
+    const goalDoc = {
+      _id: 'goal-edge',
+      name: 'Reserva de Emergência',
+      targetAmount: initialGoal?.targetAmount ?? 3000,
+      currentAmount: initialGoal?.currentAmount ?? 1000,
+      contributions: initialGoal?.contributions ?? [
+        { _id: 'c-dep1', amount: 1000, type: 'deposit', isPaid: true, status: 'active' },
+      ],
+    };
+    goalDoc.toObject = function () { return { ...this }; };
+    goalDoc.save = async function () { return this; };
+    goalDoc.contributions.id = function (cid) {
+      return this.find(c => (c._id?.toString?.() || c.id?.toString?.()) === cid);
+    };
+    const origPush = goalDoc.contributions.push.bind(goalDoc.contributions);
+    goalDoc.contributions.push = function (...items) {
+      items.forEach(item => {
+        if (!item._id) item._id = 'contrib-' + Math.random().toString(36).slice(2);
+      });
+      return origPush(...items);
+    };
+
+    const mockSavingsGoal = {
+      findById: async (id) => (id === 'goal-edge' ? goalDoc : null),
+    };
+
+    const mockTransaction = function (data) {
+      this.data = data;
+      this._id = 'tx-' + Math.random().toString(36).slice(2);
+      this.save = async () => {
+        if (shouldTxFail) throw new Error('Transaction insert error');
+        return this;
+      };
+    };
+    mockTransaction.findOneAndUpdate = async (filter, update) => {
+      if (shouldTxFail) throw new Error('Transaction update error');
+      return { _id: 'tx-updated', ...update.$set };
+    };
+
+    function mockCategory(data) {
+      this._id = 'cat-' + (data.code || 'mock');
+      Object.assign(this, data);
+      this.save = async () => this;
+    }
+    mockCategory.findOne = async (query) => {
+      if (query.isSavingsContribution) {
+        return { _id: 'cat-aporte', name: 'Aporte', code: 'aporte', isSavingsContribution: true };
+      }
+      if (query.isSavingsWithdrawal) {
+        return { _id: 'cat-resgate', name: 'Resgate de Meta', code: 'resgate_meta', isSavingsWithdrawal: true };
+      }
+      return null;
+    };
+    mockCategory.find = async () => [];
+    mockCategory.updateOne = async () => ({ modifiedCount: 1 });
+    mockCategory.countDocuments = async () => 1;
+
+    return {
+      models: {
+        SavingsGoal: mockSavingsGoal,
+        Transaction: mockTransaction,
+        Category: mockCategory,
+      },
+      goalDoc,
+    };
+  }
+
+  test('updateContribution rejeita aumento de aporte que ultrapassa targetAmount', async () => {
+    const { models } = createTestModels();
+    await assert.rejects(
+      async () => updateContribution(models, 'goal-edge', 'c-dep1', { amount: 3500 }),
+      (err) => {
+        assert.match(err.message, /Valor do aporte ultrapassa o restante da meta/);
+        return true;
+      }
+    );
+  });
+
+  test('updateContribution rejeita aumento de resgate que ultrapassa o saldo disponível', async () => {
+    const initial = {
+      targetAmount: 3000,
+      currentAmount: 800,
+      contributions: [
+        { _id: 'c-dep1', amount: 1000, type: 'deposit', isPaid: true, status: 'active' },
+        { _id: 'c-with1', amount: 200, type: 'withdrawal', isPaid: true, status: 'active' },
+      ],
+    };
+    const { models } = createTestModels(initial);
+    await assert.rejects(
+      async () => updateContribution(models, 'goal-edge', 'c-with1', { amount: 1200 }),
+      (err) => {
+        assert.match(err.message, /Valor do resgate ultrapassa o saldo disponível na meta/);
+        return true;
+      }
+    );
+  });
+
+  test('updateContribution realiza rollback se a sincronização da transação falhar', async () => {
+    const { models, goalDoc } = createTestModels(undefined, true /* shouldTxFail */);
+    const initialAmount = goalDoc.contributions[0].amount;
+
+    await assert.rejects(
+      async () => updateContribution(models, 'goal-edge', 'c-dep1', { amount: 1500 }),
+      { message: 'Transaction update error' }
+    );
+
+    assert.equal(goalDoc.contributions[0].amount, initialAmount);
+    assert.equal(goalDoc.currentAmount, 1000);
+  });
+
+  test('deleteContribution rejeita exclusão de aporte se existirem resgates ativos dependentes', async () => {
+    const initial = {
+      targetAmount: 3000,
+      currentAmount: 200,
+      contributions: [
+        { _id: 'c-dep1', amount: 1000, type: 'deposit', isPaid: true, status: 'active' },
+        { _id: 'c-with1', amount: 800, type: 'withdrawal', isPaid: true, status: 'active' },
+      ],
+    };
+    const { models } = createTestModels(initial);
+    await assert.rejects(
+      async () => deleteContribution(models, 'goal-edge', 'c-dep1'),
+      (err) => {
+        assert.match(err.message, /Não é possível excluir este aporte pois existem resgates vinculados/);
+        return true;
+      }
+    );
+  });
+
+  test('deleteContribution realiza rollback se a exclusão da transação falhar', async () => {
+    const { models, goalDoc } = createTestModels(undefined, true /* shouldTxFail */);
+
+    await assert.rejects(
+      async () => deleteContribution(models, 'goal-edge', 'c-dep1'),
+      { message: 'Transaction update error' }
+    );
+
+    assert.equal(goalDoc.contributions[0].status, 'active');
+    assert.equal(goalDoc.currentAmount, 1000);
+  });
+
+  test('concurrency: duas operações concorrentes de aporte não podem exceder targetAmount', async () => {
+    const initial = {
+      targetAmount: 2000,
+      currentAmount: 1500,
+      contributions: [
+        { _id: 'c-dep1', amount: 1500, type: 'deposit', isPaid: true, status: 'active' },
+      ],
+    };
+    const { models } = createTestModels(initial);
+
+    const res1 = await addContribution(models, 'goal-edge', { amount: 400, type: 'deposit' });
+    assert.equal(res1.currentAmount, 1900);
+
+    await assert.rejects(
+      async () => addContribution(models, 'goal-edge', { amount: 400, type: 'deposit' }),
+      (err) => {
+        assert.match(err.message, /ultrapassa o restante da meta|Operação concorrente/);
+        return true;
+      }
+    );
+  });
+
+  test('calculateGoalCurrentAmount lida perfeitamente com precisão de centavos em múltiplos aportes e resgates', () => {
+    const goal = {
+      contributions: [
+        { amount: 10.1, type: 'deposit', isPaid: true, status: 'active' },
+        { amount: 20.2, type: 'deposit', isPaid: true, status: 'active' },
+        { amount: 5.05, type: 'withdrawal', isPaid: true, status: 'active' },
+      ],
+    };
+    assert.equal(calculateGoalCurrentAmount(goal), 25.25);
   });
 });

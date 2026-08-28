@@ -1,4 +1,3 @@
-import React, { useMemo } from "react";
 import {
   format,
   startOfWeek,
@@ -19,10 +18,11 @@ import {
   Clock,
   Maximize2,
 } from "lucide-react";
+import React, { useMemo } from "react";
 
+import { cn } from "../../lib/utils";
 import { Task } from "../../types/trello/task";
 import { Button } from "../ui/Button";
-import { cn } from "../../lib/utils";
 
 interface TimelineProps {
   tasks: Task[];

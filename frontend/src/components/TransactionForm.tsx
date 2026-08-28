@@ -14,20 +14,10 @@ import React, { useState, useEffect, useRef } from "react";
 
 import { useTheme } from "../contexts/ThemeContext";
 import { useCategories } from "../hooks/useCategories";
-import { usePaymentMethods } from "../hooks/usePaymentMethods";
 import { useCurrencyInput } from "../hooks/useCurrencyInput";
-import { SavingsGoal, Transaction, PaymentMethod } from "../types";
-import {
-  formatCurrency,
-  getBrazilDateString,
-  parseLocalDate,
-} from "../utils/helpers";
-import { Button } from "./ui/Button";
-import { Input } from "./ui/Input";
-import { Select } from "./ui/Select";
-import { Card } from "./ui/Card";
-import { Textarea } from "./ui/Textarea";
+import { usePaymentMethods } from "../hooks/usePaymentMethods";
 import { cn } from "../lib/utils";
+import { SavingsGoal, Transaction, PaymentMethod, StructuredNotes } from "../types";
 import {
   getCategoryName,
   getPassiveIncomeCategory,
@@ -35,9 +25,20 @@ import {
   isSavingsContribution,
   isSavingsWithdrawal,
 } from "../utils/categoryUtils";
+import {
+  formatCurrency,
+  getBrazilDateString,
+  parseLocalDate,
+} from "../utils/helpers";
 
-import ImageUpload from "./ImageUpload";
 import { FallingItems } from "./FallingItems";
+import ImageUpload from "./ImageUpload";
+import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
+import { Input } from "./ui/Input";
+import { Select } from "./ui/Select";
+import { Textarea } from "./ui/Textarea";
+
 
 interface TransactionFormProps {
   type: "expense" | "income";
@@ -79,7 +80,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     dueDate: string;
     isPaid: boolean;
     paymentMethod: PaymentMethod;
-    notes: any;
+    notes: string | StructuredNotes | Record<string, unknown>;
   }>({
     description: "",
     category: "",
@@ -330,7 +331,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       const ninjaGameEnabled =
         localStorage.getItem("ninjaGameEnabled") === "true";
       const ninjaGameMode =
-        (localStorage.getItem("ninjaGameMode") as any) || "10s";
+        (localStorage.getItem("ninjaGameMode") as "10s" | "15s" | "zen") ||
+        "10s";
 
       if (ninjaGameEnabled) {
         setAnimationCategory(formData.category);
@@ -624,7 +626,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
               const emoji =
                 typeof category === "string"
                   ? ""
-                  : (category && (category as any).emoji) || "";
+                  : category?.emoji || "";
               return (
                 <option key={catName} value={catName}>
                   {emoji ? `${emoji} ` : ""}
@@ -750,7 +752,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
               <option value="">Selecione um meio de pagamento</option>
               {paymentMethods.map((method) => {
                 const methodName = getCategoryName(paymentMethods, method);
-                const methodEmoji = (method as any).emoji || "";
+                const methodEmoji =
+                  typeof method === "string" ? "" : method?.emoji || "";
                 return (
                   <option key={methodName} value={methodName}>
                     {methodEmoji ? `${methodEmoji} ` : ""}
@@ -849,7 +852,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             <Textarea
               label="Notas"
               name="notes"
-              value={formData.notes || ""}
+              value={typeof formData.notes === "string" ? formData.notes : ""}
               onChange={handleChange}
               placeholder="Adicione observações importantes aqui..."
               disabled={isAnimating}
@@ -860,12 +863,17 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
               <span
                 className={cn(
                   "text-[10px] font-black uppercase tracking-widest",
-                  (formData.notes?.length || 0) >= 1000
+                  (typeof formData.notes === "string"
+                    ? formData.notes.length
+                    : 0) >= 1000
                     ? "text-accent"
                     : "text-muted-foreground opacity-40",
                 )}
               >
-                {formData.notes?.length || 0}/1000
+                {typeof formData.notes === "string"
+                  ? formData.notes.length
+                  : 0}
+                /1000
               </span>
             </div>
           </div>
@@ -935,14 +943,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             )}
             onClick={() =>
               !isAnimating &&
-              handleChange({
-                target: {
-                  name: "isPaid",
-                  value: !formData.isPaid,
-                  type: "checkbox",
-                  checked: !formData.isPaid,
-                },
-              } as any)
+              setFormData((prev) => ({ ...prev, isPaid: !prev.isPaid }))
             }
           >
             <div

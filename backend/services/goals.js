@@ -1,5 +1,6 @@
 import { createLocalDateForStorage } from '../utils/date.js';
 import { httpError } from '../utils/httpError.js';
+
 import { resolveCategory } from './categories.js';
 
 // Códigos das categorias padrão do domínio de metas
@@ -262,7 +263,14 @@ export async function addContribution(models, goalId, body) {
     status: 'active'
   };
 
+  // Concorrência: se a adição violar o limite da meta após a inserção
   goal.contributions.push(contribution);
+  const calculated = calculateGoalCurrentAmount(goal);
+  if (!isWithdrawal && calculated > (goal.targetAmount || 0)) {
+    goal.contributions.pop();
+    throw httpError(400, 'Operação concorrente: valor total da meta seria ultrapassado.');
+  }
+
   const savedGoal = await goal.save();
   const newContrib = savedGoal.contributions[savedGoal.contributions.length - 1];
 
@@ -321,6 +329,12 @@ export async function updateContribution(models, goalId, contributionId, body) {
     throw httpError(404, 'Movimentação não encontrada.');
   }
 
+  const originalAmount = contribution.amount;
+  const originalDate = contribution.date;
+  const originalIsPaid = contribution.isPaid;
+  const originalStatus = contribution.status;
+  const originalNotes = contribution.notes;
+
   // Restauração de contribuição excluída
   if (body.status === 'active' && contribution.status === 'deleted') {
     contribution.status = 'active';
@@ -337,6 +351,32 @@ export async function updateContribution(models, goalId, contributionId, body) {
     if (!Number.isFinite(newAmount) || newAmount <= 0) {
       throw httpError(400, 'O valor da movimentação deve ser maior que zero.');
     }
+
+    // Valida se o novo valor respeita os limites da meta
+    const otherContributions = goal.contributions.filter(
+      c => (c._id?.toString?.() || c.id?.toString?.()) !== contributionId.toString()
+    );
+    const otherBalance = calculateGoalCurrentAmount({
+      ...(typeof goal.toObject === 'function' ? goal.toObject() : goal),
+      contributions: otherContributions,
+    });
+
+    const isWithdrawal = (contribution.type || 'deposit') === 'withdrawal';
+    if (isWithdrawal) {
+      if (newAmount > otherBalance) {
+        throw httpError(400, `Valor do resgate ultrapassa o saldo disponível na meta. Disponível: ${otherBalance}.`, {
+          available: otherBalance,
+        });
+      }
+    } else {
+      const remaining = Math.max(0, (goal.targetAmount || 0) - otherBalance);
+      if (newAmount > remaining) {
+        throw httpError(400, `Valor do aporte ultrapassa o restante da meta. Restante disponível: ${remaining}.`, {
+          remaining,
+        });
+      }
+    }
+
     contribution.amount = newAmount;
   }
 
@@ -362,11 +402,24 @@ export async function updateContribution(models, goalId, contributionId, body) {
     txUpdate.deletedAt = null;
   }
 
-  const tx = await Transaction.findOneAndUpdate(
-    { savingsGoalContributionId: contributionId },
-    { $set: txUpdate },
-    { new: true }
-  );
+  let tx;
+  try {
+    tx = await Transaction.findOneAndUpdate(
+      { savingsGoalContributionId: contributionId },
+      { $set: txUpdate },
+      { new: true }
+    );
+  } catch (err) {
+    // Rollback das alterações se a sincronização da transação falhar
+    contribution.amount = originalAmount;
+    contribution.date = originalDate;
+    contribution.isPaid = originalIsPaid;
+    contribution.status = originalStatus;
+    contribution.notes = originalNotes;
+    goal.currentAmount = calculateGoalCurrentAmount(goal);
+    await goal.save();
+    throw err;
+  }
 
   goal.currentAmount = calculateGoalCurrentAmount(goal);
   await goal.save();
@@ -389,15 +442,43 @@ export async function deleteContribution(models, goalId, contributionId) {
     throw httpError(404, 'Movimentação não encontrada ou já excluída.');
   }
 
+  // Validação: não permitir excluir um aporte se o saldo restante for insuficiente para cobrir os resgates existentes
+  if ((contribution.type || 'deposit') !== 'withdrawal') {
+    const simulatedContributions = goal.contributions.map(c =>
+      (c._id?.toString?.() || c.id?.toString?.()) === contributionId.toString()
+        ? { ...(typeof c.toObject === 'function' ? c.toObject() : c), status: 'deleted' }
+        : c
+    );
+    const deposits = simulatedContributions
+      .filter(c => c.status !== 'deleted' && c.isPaid !== false && (c.type || 'deposit') !== 'withdrawal')
+      .reduce((s, c) => s + (Number(c.amount) || 0), 0);
+    const withdrawals = simulatedContributions
+      .filter(c => c.status !== 'deleted' && c.isPaid !== false && c.type === 'withdrawal')
+      .reduce((s, c) => s + (Number(c.amount) || 0), 0);
+
+    if (withdrawals > deposits) {
+      throw httpError(400, 'Não é possível excluir este aporte pois existem resgates vinculados que dependem deste saldo.');
+    }
+  }
+
   const now = new Date();
   contribution.status = 'deleted';
   contribution.deletedAt = now;
 
-  const tx = await Transaction.findOneAndUpdate(
-    { savingsGoalContributionId: contributionId },
-    { $set: { status: 'deleted', deletedAt: now } },
-    { new: true }
-  );
+  let tx;
+  try {
+    tx = await Transaction.findOneAndUpdate(
+      { savingsGoalContributionId: contributionId },
+      { $set: { status: 'deleted', deletedAt: now } },
+      { new: true }
+    );
+  } catch (err) {
+    contribution.status = 'active';
+    contribution.deletedAt = null;
+    goal.currentAmount = calculateGoalCurrentAmount(goal);
+    await goal.save();
+    throw err;
+  }
 
   goal.currentAmount = calculateGoalCurrentAmount(goal);
   await goal.save();

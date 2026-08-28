@@ -10,12 +10,13 @@ import {
 } from "lucide-react";
 import React, { useState, useRef } from "react";
 
-import { Button } from "./ui/Button";
-import { Card } from "./ui/Card";
-import { Input } from "./ui/Input";
 import { cn } from "../lib/utils";
 
 import QRScanner from "./QRScanner";
+import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
+import { Input } from "./ui/Input";
+
 
 type ImageUploadProps = {
   onUploadError?: (error: string) => void;
@@ -55,7 +56,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
           setStatus("success");
           return true;
         }
-      } catch (err) {
+      } catch {
         throw new Error(
           "QR Code detectado, mas falha ao buscar dados na SEFAZ.",
         );
@@ -77,10 +78,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         setShowManualInput(false);
         setManualUrl("");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Manual fetch error:", err);
       setErrorMessage(
-        err.message || "Não foi possível ler este link. Verifique a URL.",
+        err instanceof Error
+          ? err.message
+          : "Não foi possível ler este link. Verifique a URL.",
       );
       setStatus("error");
     }
@@ -102,7 +105,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
               });
               const barcodes = await detector.detect(img);
               if (barcodes.length > 0) return resolve(barcodes[0].rawValue);
-            } catch (_err) {
+            } catch {
               // intencional
             }
           }
@@ -159,9 +162,10 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       } else {
         throw new Error("Nenhum QR Code detectado nesta imagem.");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       setStatus("error");
-      const msg = error.message || "Erro ao processar imagem.";
+      const msg =
+        error instanceof Error ? error.message : "Erro ao processar imagem.";
       setErrorMessage(msg);
       onUploadError?.(msg);
     } finally {
@@ -177,9 +181,10 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 
     try {
       await processQRUrl(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setStatus("error");
-      const msg = error.message || "Erro ao processar QR Code.";
+      const msg =
+        error instanceof Error ? error.message : "Erro ao processar QR Code.";
       setErrorMessage(msg);
       onUploadError?.(msg);
     } finally {

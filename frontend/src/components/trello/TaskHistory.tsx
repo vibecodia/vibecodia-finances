@@ -1,4 +1,3 @@
-import React from "react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -11,8 +10,10 @@ import {
   CheckSquare,
   Clock,
 } from "lucide-react";
-import { HistoryEntry } from "../../types/trello/task";
+import React from "react";
+
 import { cn } from "../../lib/utils";
+import { HistoryEntry } from "../../types/trello/task";
 
 interface TaskHistoryProps {
   history: HistoryEntry[];

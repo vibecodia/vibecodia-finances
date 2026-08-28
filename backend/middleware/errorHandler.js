@@ -17,7 +17,7 @@ export function notFoundApiHandler(req, res, next) {
 // precisam mais de try/catch.
 // Mapeia erros de cliente do Mongoose para 400; demais erros para 500.
 // Shape padronizado em { message } — o frontend lê body.message.
-export function errorHandler(err, req, res, next) {
+export function errorHandler(err, req, res, _next) {
   const isClientError =
     err instanceof mongoose.Error.ValidationError ||
     err instanceof mongoose.Error.CastError ||

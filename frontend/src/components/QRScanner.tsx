@@ -9,9 +9,19 @@ interface QRScannerProps {
   onError?: (error: string) => void;
 }
 
+interface QRCodeResult {
+  data: string;
+  [key: string]: unknown;
+}
+
 declare global {
   interface Window {
-    jsQR: any;
+    jsQR?: (
+      data: Uint8ClampedArray,
+      width: number,
+      height: number,
+      options?: { inversionAttempts?: string },
+    ) => QRCodeResult | null;
   }
 }
 
@@ -111,20 +121,24 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
       // 2. FOCO E CAPABILITIES (Hardware Adjustment)
       const videoTrack = newStream.getVideoTracks()[0];
       if (videoTrack) {
-        const capabilities = videoTrack.getCapabilities() as any;
+        const capabilities = (
+          videoTrack.getCapabilities ? videoTrack.getCapabilities() : {}
+        ) as MediaTrackCapabilities & { focusMode?: string[] };
         console.log("Capabilities da câmera:", capabilities);
 
-        const constraintsToApply: any = { advanced: [] };
+        const constraintsToApply: MediaTrackConstraints & {
+          advanced?: Array<Record<string, unknown>>;
+        } = { advanced: [] };
 
         // Tenta aplicar foco contínuo se suportado (Comum em Samsung/Android)
         if (capabilities.focusMode?.includes("continuous")) {
-          constraintsToApply.advanced.push({ focusMode: "continuous" });
+          constraintsToApply.advanced?.push({ focusMode: "continuous" });
         }
 
         // Se o hardware estiver muito perto e não focar, um leve zoom pode ajudar em alguns casos,
         // mas aqui mantemos o padrão ou aplicamos apenas se houver falha de foco conhecida.
 
-        if (constraintsToApply.advanced.length > 0) {
+        if (constraintsToApply.advanced && constraintsToApply.advanced.length > 0) {
           try {
             await videoTrack.applyConstraints(constraintsToApply);
             console.log("Constraints de hardware aplicadas com sucesso.");
@@ -147,7 +161,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, onError }) => {
       }
 
       setIsInitializing(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       clearTimeout(timeoutId);
       if (!isMountedRef.current) return;
       console.error("Erro fatal:", err);

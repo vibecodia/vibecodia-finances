@@ -23,11 +23,12 @@ import {
   formatBrazilDate,
   getBrazilDateString,
 } from "../utils/helpers";
-import { Button } from "./ui/Button";
-import { Input } from "./ui/Input";
-import { Card } from "./ui/Card";
 
 import ConfirmationModal from "./ConfirmationModal";
+import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
+import { Input } from "./ui/Input";
+
 
 interface SavingsGoalsProps {
   goals: SavingsGoal[];

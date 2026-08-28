@@ -23,6 +23,22 @@ export interface Category {
   status?: "active" | "deleted";
 }
 
+export interface ReceiptItem {
+  description?: string;
+  name?: string;
+  qty?: number;
+  quantity?: number;
+  unitPrice?: number;
+  price?: number;
+  totalPrice?: number;
+  [key: string]: unknown;
+}
+
+export interface StructuredNotes {
+  items?: ReceiptItem[];
+  [key: string]: unknown;
+}
+
 // `category` e `paymentMethod` podem ser o nome legado (string, modo guest /
 // dados antigos) ou o documento populado (modo autenticado).
 export interface Transaction {
@@ -39,7 +55,7 @@ export interface Transaction {
   paymentMethod?: string | Category; // Adicionado para despesas
   createdAt: string;
   updatedAt: string;
-  notes?: any; // Adicionado para o campo de notas (pode ser string ou objeto estruturado)
+  notes?: string | StructuredNotes | Record<string, unknown>; // Adicionado para o campo de notas (pode ser string ou objeto estruturado)
   imageUrl?: string; // Link para o recibo/imagem
   savingsGoalId?: string; // ID da meta vinculada
   savingsGoalContributionId?: string; // ID da contribuição original

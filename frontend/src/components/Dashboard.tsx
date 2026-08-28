@@ -29,10 +29,12 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import Confetti from "react-confetti";
 import { useNavigate } from "react-router-dom";
 
-import { useTheme } from "../contexts/ThemeContext";
 import { useCategoriesContext } from "../contexts/CategoriesContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { useLocalStorage } from "../hooks/trello/useLocalStorage";
+import { useCurrencyInput } from "../hooks/useCurrencyInput";
 import useWindowSize from "../hooks/useWindowSize";
+import { cn } from "../lib/utils";
 import { Transaction, SavingsGoal } from "../types";
 import { calculateBalances } from "../utils/balanceCalculations";
 import {
@@ -45,9 +47,12 @@ import {
   filterTransactionsByMonth,
   getCurrentBrazilDate,
 } from "../utils/helpers";
-import { cn } from "../lib/utils";
-import RecentTransactionsFloatingCard from "./RecentTransactionsFloatingCard";
+
+import { BandaidEasterEgg } from "./BandaidEasterEgg";
 import MonthSegmentedControl from "./MonthSegmentedControl";
+import RecentTransactionsFloatingCard from "./RecentTransactionsFloatingCard";
+import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
 import {
   Dialog,
   DialogContent,
@@ -56,12 +61,8 @@ import {
   DialogFooter,
   DialogDescription,
 } from "./ui/dialog";
-import { useCurrencyInput } from "../hooks/useCurrencyInput";
-import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
-import { Card } from "./ui/Card";
 import { UINinjaOverlay } from "./UINinjaOverlay";
-import { BandaidEasterEgg } from "./BandaidEasterEgg";
 
 interface DashboardProps {
   transactions: Transaction[];

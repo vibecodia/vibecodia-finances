@@ -1,7 +1,8 @@
-import cors from 'cors';
-import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+import cors from 'cors';
+import express from 'express';
 
 import { errorHandler, notFoundApiHandler } from './middleware/errorHandler.js';
 import { apiRouter } from './routes/index.js';

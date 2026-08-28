@@ -24,8 +24,8 @@ import {
   getBrazilDateString,
   formatPaymentMethod,
 } from "../utils/helpers";
-import MonthSegmentedControl from "./MonthSegmentedControl";
 
+import MonthSegmentedControl from "./MonthSegmentedControl";
 import TransactionDetailModal from "./TransactionDetailModal";
 
 interface CalendarProps {

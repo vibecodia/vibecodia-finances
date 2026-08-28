@@ -1,9 +1,12 @@
-import React, { useState } from "react";
-import { useCurrencyInput } from "../hooks/useCurrencyInput";
 import { Sparkles, Wallet, X } from "lucide-react";
+import React, { useState } from "react";
+
+import { useCurrencyInput } from "../hooks/useCurrencyInput";
+import { cn } from "../lib/utils";
+
 import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
-import { cn } from "../lib/utils";
+
 
 interface InitialBalanceModalProps {
   isOpen: boolean;
@@ -16,7 +19,7 @@ const InitialBalanceModal: React.FC<InitialBalanceModalProps> = ({
   onConfirm,
   onClose,
 }) => {
-  const appVersion = (import.meta as any).env.APP_VERSION;
+  const appVersion = import.meta.env.APP_VERSION;
   const [type, setType] = useState<"income" | "expense">("income");
 
   const {

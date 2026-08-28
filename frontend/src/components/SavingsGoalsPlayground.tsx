@@ -5,6 +5,7 @@ import {
   BarElement,
   Title,
   Tooltip,
+  TooltipItem,
   Legend,
   ArcElement,
   PointElement,
@@ -62,7 +63,13 @@ import {
   parseLocalDate,
   getBrazilDateString,
 } from "../utils/helpers";
+
+import DateRangePicker from "./DateRangePicker";
 import TransactionForm from "./TransactionForm";
+import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
+import { Input } from "./ui/Input";
+import { Select } from "./ui/Select";
 
 // Categoria/meio de pagamento podem ser objeto populado (modo autenticado) ou
 // string (modo guest / dados legados). Esses helpers extraem o texto em
@@ -80,11 +87,6 @@ const paymentMethodText = (p?: string | Category): string => {
     return `${p.name || ""} ${p.code || ""}`.toLowerCase();
   return String(p).toLowerCase();
 };
-import DateRangePicker from "./DateRangePicker";
-import { Button } from "./ui/Button";
-import { Input } from "./ui/Input";
-import { Card } from "./ui/Card";
-import { Select } from "./ui/Select";
 
 ChartJS.register(
   CategoryScale,
@@ -103,6 +105,17 @@ ChartJS.register(
   ScatterController,
   Filler,
 );
+
+interface DailyBalanceItem {
+  date: string;
+  revenues: number;
+  expenses: number;
+  total: number;
+  balance?: number;
+  openingBalance?: number;
+  isNegative?: boolean;
+  [key: string]: unknown;
+}
 
 interface SavingsGoalsPlaygroundProps {
   savingsGoals: SavingsGoal[];
@@ -638,7 +651,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
               </thead>
               <tbody>
                 ${dailyData.dailyBalances
-                  .map((day: any) => {
+                  .map((day: DailyBalanceItem) => {
                     const actualDayData = actualTotals?.dailyData[day.date];
                     const actualDayBalance = actualDayData?.balance;
                     const diff =
@@ -706,27 +719,33 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
     printWindow.focus();
   };
 
-  const simChartRef = useRef<any>(null);
-  const timelineChartRef = useRef<any>(null);
-  const distributionChartRef = useRef<any>(null);
-  const savingsVsIncomeChartRef = useRef<any>(null);
-  const matrixChartRef = useRef<any>(null);
+  const simChartRef = useRef<ChartJS | null>(null);
+  const timelineChartRef = useRef<ChartJS | null>(null);
+  const distributionChartRef = useRef<ChartJS | null>(null);
+  const savingsVsIncomeChartRef = useRef<ChartJS | null>(null);
+  const matrixChartRef = useRef<ChartJS | null>(null);
 
-  const toggleAll = (chartRef: React.MutableRefObject<any>) => {
+  const toggleAll = (
+    chartRef:
+      | React.RefObject<ChartJS | null>
+      | React.MutableRefObject<ChartJS | null>,
+  ) => {
     const chart = chartRef.current;
     if (!chart || !chart.config) return;
 
-    const isPieOrDoughnut = ["pie", "doughnut"].includes(chart.config.type);
+    const isPieOrDoughnut = ["pie", "doughnut"].includes(
+      (chart.config as { type?: string }).type || "",
+    );
 
     if (isPieOrDoughnut) {
       const metadata = chart.getDatasetMeta(0);
       if (!metadata || !metadata.data) return;
 
       const allVisible = metadata.data.every(
-        (_: any, index: number) => chart.getDataVisibility(index) === true,
+        (_val: unknown, index: number) => chart.getDataVisibility(index) === true,
       );
 
-      metadata.data.forEach((_: any, index: number) => {
+      metadata.data.forEach((_val: unknown, index: number) => {
         if (allVisible) {
           chart.toggleDataVisibility(index);
         } else {
@@ -737,11 +756,11 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
       });
     } else {
       if (!chart.data || !chart.data.datasets) return;
-      const allVisible = chart.data.datasets.every((_: any, index: number) =>
+      const allVisible = chart.data.datasets.every((_ds: unknown, index: number) =>
         chart.isDatasetVisible(index),
       );
 
-      chart.data.datasets.forEach((_: any, index: number) => {
+      chart.data.datasets.forEach((_ds: unknown, index: number) => {
         chart.setDatasetVisibility(index, !allVisible);
       });
     }
@@ -1123,7 +1142,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
     const end = parseLocalDate(endDate);
     const daysCount = differenceInDays(end, start) + 1;
 
-    const dailyBalances: any[] = [];
+    const dailyBalances: DailyBalanceItem[] = [];
     let runningBalance = monthlyTotals.previousMonthAdjustedBalance;
     let negativeCount = 0;
 
@@ -1241,7 +1260,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
       monthlyTotals.expenses -
       monthlyTotals.realContributions;
 
-    const dailyBalances: any[] = [];
+    const dailyBalances: DailyBalanceItem[] = [];
     let runningBalance = baseBalance;
     let negativeCount = 0;
 
@@ -1371,16 +1390,20 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
     setCountdownSimGoalId(goalId || null);
   };
 
-  const handleRegisterAporte = async (transactionData: any) => {
+  const handleRegisterAporte = async (
+    transactionData: Omit<Transaction, "id" | "createdAt" | "updatedAt">,
+  ) => {
     if (onAddTransaction) {
       try {
         setFormError(null);
         await onAddTransaction(transactionData);
         // setShowAporteForm(false); // Removido para permitir que a animação termine
         setCountdownSimExtra(0);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Erro ao registrar aporte:", error);
-        setFormError(error.message || "Erro ao registrar aporte");
+        setFormError(
+          error instanceof Error ? error.message : "Erro ao registrar aporte",
+        );
         throw error; // Relança para o TransactionForm
       }
     }
@@ -2575,7 +2598,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
                                 {(projectionView === "forward"
                                   ? nextDaysData.dailyBalances
                                   : currentPeriodDailyData.dailyBalances
-                                ).map((day: any) => (
+                                ).map((day: DailyBalanceItem) => (
                                   <tr
                                     key={day.date}
                                     className={cn(
@@ -2713,11 +2736,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
                   date: getBrazilDateString(),
                   dueDate: getBrazilDateString(),
                   isPaid: true,
+                  recurrence: "none",
                   type: "expense",
                   savingsGoalId: countdownSimGoalIdEffective || undefined,
                   createdAt: getCurrentBrazilDate().toISOString(),
                   updatedAt: getCurrentBrazilDate().toISOString(),
-                } as any
+                }
               }
               onSubmit={handleRegisterAporte}
               onClose={() => {
@@ -2877,7 +2901,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
 
                           <div className="h-full min-h-[300px]">
                             <Line
-                              ref={simChartRef}
+                              ref={(r) => {
+                                simChartRef.current = (r as ChartJS) || null;
+                              }}
                               data={simChartData}
                               options={{
                                 maintainAspectRatio: false,
@@ -2976,7 +3002,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
                       <div className="p-8 h-80">
                         {allContributions.length > 0 ? (
                           <Line
-                            ref={timelineChartRef}
+                            ref={(r) => {
+                              timelineChartRef.current = (r as ChartJS) || null;
+                            }}
                             data={timelineChartData}
                             options={{
                               maintainAspectRatio: false,
@@ -3025,7 +3053,10 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
                       <div className="p-8 h-80">
                         {activeGoals.length > 0 ? (
                           <Doughnut
-                            ref={distributionChartRef}
+                            ref={(r) => {
+                              distributionChartRef.current =
+                                (r as ChartJS) || null;
+                            }}
                             data={distributionChartData}
                             options={{
                               maintainAspectRatio: false,
@@ -3172,7 +3203,10 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
                       <div className="p-8 h-80">
                         {transactions.some((t) => t.type === "income") ? (
                           <Line
-                            ref={savingsVsIncomeChartRef}
+                            ref={(r) => {
+                              savingsVsIncomeChartRef.current =
+                                (r as ChartJS) || null;
+                            }}
                             data={savingsVsIncomeChartData}
                             options={{
                               maintainAspectRatio: false,
@@ -3221,7 +3255,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
                       <div className="p-8 h-96">
                         {activeGoals.some((g) => g.deadline) ? (
                           <Scatter
-                            ref={matrixChartRef}
+                            ref={(r) => {
+                              matrixChartRef.current = (r as ChartJS) || null;
+                            }}
                             data={matrixChartData}
                             options={{
                               maintainAspectRatio: false,
@@ -3229,8 +3265,11 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
                                 legend: { display: false },
                                 tooltip: {
                                   callbacks: {
-                                    label: (context: any) => {
-                                      const point = context.raw;
+                                    label: (context: TooltipItem<"scatter">) => {
+                                      const point = context.raw as {
+                                        label: string;
+                                        y: number;
+                                      };
                                       return `${point.label}: ${point.y > 0 ? formatCurrency(point.y) : "Completo"}`;
                                     },
                                   },

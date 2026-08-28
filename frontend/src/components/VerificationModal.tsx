@@ -1,9 +1,3 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-
-import { useVerification } from "../contexts/VerificationContext";
-import { Card } from "./ui/Card";
-import { cn } from "../lib/utils";
 import {
   ShieldCheck,
   Loader2,
@@ -12,12 +6,19 @@ import {
   ArrowLeft,
   RefreshCw,
 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+
+import { useVerification } from "../contexts/VerificationContext";
+import { cn } from "../lib/utils";
+
 import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
 
 const VerificationModal: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const appVersion = (import.meta as any).env.APP_VERSION;
+  const appVersion = import.meta.env.APP_VERSION;
   const [digits, setDigits] = useState<string[]>(["", "", ""]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);

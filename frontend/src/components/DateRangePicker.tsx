@@ -271,15 +271,15 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {[
+        {([
           { label: "Este mês", value: "thisMonth" },
           { label: "Próximo mês", value: "nextMonth" },
           { label: "Últimos 7 dias", value: "last7" },
           { label: "Últimos 30 dias", value: "last30" },
-        ].map((pill) => (
+        ] as const).map((pill) => (
           <button
             key={pill.value}
-            onClick={() => quickSelect(pill.value as any)}
+            onClick={() => quickSelect(pill.value)}
             className="px-3 py-1.5 rounded-full text-[11px] font-bold transition-all border"
             style={{
               backgroundColor: isActive(pill.value)

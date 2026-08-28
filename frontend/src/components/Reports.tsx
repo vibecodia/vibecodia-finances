@@ -14,8 +14,9 @@ import { BarChart3, PieChart, TrendingUp, Brain } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { Bar, Doughnut } from "react-chartjs-2";
 
-import { useTheme } from "../contexts/ThemeContext";
 import { useCategoriesContext } from "../contexts/CategoriesContext";
+import { useTheme } from "../contexts/ThemeContext";
+import { cn } from "../lib/utils";
 import { Transaction, SavingsGoal } from "../types";
 import {
   getMonthlyData,
@@ -23,10 +24,10 @@ import {
   formatCurrency,
   getCurrentBrazilDate,
 } from "../utils/helpers";
+
+import MonthSegmentedControl from "./MonthSegmentedControl";
 import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
-import { cn } from "../lib/utils";
-import MonthSegmentedControl from "./MonthSegmentedControl";
 
 ChartJS.register(
   CategoryScale,

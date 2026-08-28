@@ -1,6 +1,7 @@
-import React from "react";
 import { addMonths, subMonths, format, isSameMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import React from "react";
+
 import { useTheme } from "../contexts/ThemeContext";
 
 interface MonthSegmentedControlProps {

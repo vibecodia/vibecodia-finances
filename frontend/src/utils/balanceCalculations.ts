@@ -1,8 +1,8 @@
 import { format, startOfMonth, endOfMonth, isBefore } from "date-fns";
 
 import { Transaction, SavingsGoal, Category } from "../types";
-import { isSavingsContribution, isSavingsWithdrawal } from "./categoryUtils";
 
+import { isSavingsContribution, isSavingsWithdrawal } from "./categoryUtils";
 import { getCurrentBrazilDate } from "./helpers";
 
 /**

@@ -141,7 +141,9 @@ const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                 className="p-3 rounded-md whitespace-pre-wrap"
                 style={{ backgroundColor: theme.cardBorder, color: theme.text }}
               >
-                {transaction.notes}
+                {typeof transaction.notes === "string"
+                  ? transaction.notes
+                  : JSON.stringify(transaction.notes, null, 2)}
               </p>
             </div>
           )}

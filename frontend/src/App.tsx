@@ -1,29 +1,13 @@
-import { useEffect, useState } from "react";
+import { Keyboard, Loader2, MapPin, X } from "lucide-react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
-import Calendar from "./components/Calendar";
-import Dashboard from "./components/Dashboard";
+import GuestEntry from "./components/GuestEntry";
 import Header from "./components/Header";
 import InitialBalanceModal from "./components/InitialBalanceModal";
 import Navigation from "./components/Navigation";
-import Playground from "./components/Playground";
-import Reports from "./components/Reports";
-import SavingsGoals from "./components/SavingsGoals";
-import TransactionList from "./components/TransactionList";
-import Settings from "./components/Settings";
-import { Board } from "./components/trello/Board";
-import VerificationModal from "./components/VerificationModal";
-import { useTheme } from "./contexts/ThemeContext";
-import { useVerification } from "./contexts/VerificationContext";
 import ShoppingListModal from "./components/ShoppingListModal";
-import GuestEntry from "./components/GuestEntry";
-import { useTour } from "./hooks/useTour";
-import { useFinancialData } from "./hooks/useFinancialData";
-import { useShoppingList } from "./hooks/useShoppingList";
-import { usePushNotifications } from "./hooks/usePushNotifications";
-import { getBrazilDateString } from "./utils/helpers";
-import TransactionForm from "./components/TransactionForm";
-import { Transaction } from "./types";
+import { Button } from "./components/ui/Button";
 import {
   Dialog,
   DialogContent,
@@ -32,9 +16,28 @@ import {
   DialogFooter,
   DialogDescription,
 } from "./components/ui/dialog";
-import { Button } from "./components/ui/Button";
-import { MapPin, X, Keyboard } from "lucide-react";
+import VerificationModal from "./components/VerificationModal";
+import { useTheme } from "./contexts/ThemeContext";
+import { useVerification } from "./contexts/VerificationContext";
+import { useFinancialData } from "./hooks/useFinancialData";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { usePushNotifications } from "./hooks/usePushNotifications";
+import { useShoppingList } from "./hooks/useShoppingList";
+import { useTour } from "./hooks/useTour";
+import { Transaction } from "./types";
+import { getBrazilDateString } from "./utils/helpers";
+
+const Calendar = lazy(() => import("./components/Calendar"));
+const Dashboard = lazy(() => import("./components/Dashboard"));
+const Playground = lazy(() => import("./components/Playground"));
+const Reports = lazy(() => import("./components/Reports"));
+const SavingsGoals = lazy(() => import("./components/SavingsGoals"));
+const Settings = lazy(() => import("./components/Settings"));
+const TransactionForm = lazy(() => import("./components/TransactionForm"));
+const TransactionList = lazy(() => import("./components/TransactionList"));
+const Board = lazy(() =>
+  import("./components/trello/Board").then((m) => ({ default: m.Board })),
+);
 
 const HojeRedirect = () => {
   const navigate = useNavigate();
@@ -293,7 +296,14 @@ function App() {
       <main
         className={`w-full transition-all duration-300 ${isFocusMode ? "p-0" : "px-4 sm:px-6 lg:px-12 pb-20"} ${hideMenuOnDesktop || isFocusMode ? "" : "lg:pl-72"}`}
       >
-        <Routes>
+        <Suspense
+          fallback={
+            <div className="flex h-96 w-full items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          }
+        >
+          <Routes>
           <Route
             path="/"
             element={
@@ -430,6 +440,7 @@ function App() {
           <Route path="/tasks" element={<Board />} />
           <Route path="/hoje" element={<HojeRedirect />} />
         </Routes>
+      </Suspense>
       </main>
       <VerificationModal />
       <InitialBalanceModal

@@ -1,9 +1,11 @@
 import { Home, RefreshCw } from "lucide-react";
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import ThemeSelector from "./ThemeSelector";
-import ShoppingCartButton from "./ShoppingCartButton";
+
 import { cn } from "../lib/utils";
+
+import ShoppingCartButton from "./ShoppingCartButton";
+import ThemeSelector from "./ThemeSelector";
 
 interface HeaderProps {
   shoppingItemCount?: number;
@@ -18,8 +20,8 @@ const Header: React.FC<HeaderProps> = ({
 }) => {
   const [isPulsing, setIsPulsing] = useState(false);
   const location = useLocation();
-  const appVersion = (import.meta as any).env.APP_VERSION;
-  const appSubtitle = (import.meta as any).env.APP_SUBTITLE;
+  const appVersion = import.meta.env.APP_VERSION;
+  const appSubtitle = import.meta.env.APP_SUBTITLE;
 
   const isRoot = location.pathname === "/";
 

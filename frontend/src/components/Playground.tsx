@@ -57,7 +57,14 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useLocalStorage } from "../hooks/trello/useLocalStorage";
 import { useCategories } from "../hooks/useCategories";
 import { usePaymentMethods } from "../hooks/usePaymentMethods";
-import { Transaction, SavingsGoal } from "../types";
+import {
+  Transaction,
+  SavingsGoal,
+  Category,
+  StructuredNotes,
+  ReceiptItem,
+} from "../types";
+import { getCategoryName, isPassiveIncome } from "../utils/categoryUtils";
 import {
   formatCurrency,
   formatPaymentMethod,
@@ -66,11 +73,15 @@ import {
   getCurrentBrazilDate,
   getTransactionsWithRecurrence,
 } from "../utils/helpers";
-import { getCategoryName, isPassiveIncome } from "../utils/categoryUtils";
 
-import SavingsGoalsPlayground from "./SavingsGoalsPlayground";
-import FinanciamentoCasaPlayground from "./FinanciamentoCasaPlayground";
 import DateRangePicker from "./DateRangePicker";
+
+const FinanciamentoCasaPlayground = React.lazy(
+  () => import("./FinanciamentoCasaPlayground"),
+);
+const SavingsGoalsPlayground = React.lazy(
+  () => import("./SavingsGoalsPlayground"),
+);
 
 ChartJS.register(
   CategoryScale,
@@ -89,15 +100,53 @@ ChartJS.register(
   Filler,
 );
 
+interface TimelineDataset {
+  label: string;
+  data: number[];
+  backgroundColor?: string | string[];
+  borderColor?: string;
+  [key: string]: unknown;
+}
+
+interface TimelineChartData {
+  labels: string[];
+  datasets: TimelineDataset[];
+  totalCount?: number;
+  totalAmount?: number;
+  noMatch?: boolean;
+}
+
+interface AIStats {
+  near_limit?: boolean;
+  usage_percentage: number;
+  current_tokens: number;
+  token_limit: number;
+  [key: string]: unknown;
+}
+
+type NavigatorWithBadge = Navigator & {
+  setAppBadge?: (count?: number) => Promise<void>;
+};
+
+interface StackedBarElement {
+  x: number;
+  y: number;
+  base: number;
+  width?: number;
+}
+
 const stackedBarTotalPlugin = {
   id: "stackedBarTotal",
-  afterDraw: (chart: any) => {
-    const {
-      ctx,
-      scales: { y, x },
-      data,
-    } = chart;
-    if (chart.config.type !== "bar" || !y.options.stacked) return;
+  afterDraw: (chart: ChartJS) => {
+    const { ctx, scales, data } = chart;
+    const y = scales.y as
+      | (typeof scales.y & {
+          options?: { stacked?: boolean; ticks?: { color?: string } };
+        })
+      | undefined;
+    const x = scales.x;
+    const chartType = (chart.config as { type?: string }).type;
+    if (chartType !== "bar" || !y?.options?.stacked) return;
 
     ctx.save();
 
@@ -106,18 +155,20 @@ const stackedBarTotalPlugin = {
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
 
-    const totals = new Array(data.labels.length).fill(0);
-    data.datasets.forEach((dataset: any) => {
-      dataset.data.forEach((value: number, i: number) => {
-        totals[i] += value || 0;
+    const totals = new Array(data.labels?.length || 0).fill(0);
+    data.datasets.forEach((dataset) => {
+      dataset.data.forEach((val, i) => {
+        if (typeof val === "number") {
+          totals[i] += val;
+        }
       });
     });
 
-    data.labels.forEach((_label: string, i: number) => {
+    data.labels?.forEach((_label: unknown, i: number) => {
       const xPos = x.getPixelForTick(i);
       const yPos = y.getPixelForValue(totals[i]);
       if (totals[i] > 0) {
-        ctx.fillStyle = chart.options.scales.y.ticks.color || "#000";
+        ctx.fillStyle = y.options?.ticks?.color || "#000";
         ctx.fillText(
           new Intl.NumberFormat("pt-BR", {
             style: "currency",
@@ -131,13 +182,15 @@ const stackedBarTotalPlugin = {
     });
 
     // Draw individual segment values overlayed on the colors
-    data.datasets.forEach((dataset: any, datasetIndex: number) => {
+    data.datasets.forEach((dataset, datasetIndex: number) => {
       const meta = chart.getDatasetMeta(datasetIndex);
       if (meta.hidden) return;
 
-      meta.data.forEach((bar: any, index: number) => {
-        const value = dataset.data[index];
-        if (value && value > 0) {
+      meta.data.forEach((element, index: number) => {
+        const bar = element as unknown as StackedBarElement;
+        const rawVal = dataset.data[index];
+        const value = typeof rawVal === "number" ? rawVal : 0;
+        if (value > 0) {
           const height = Math.abs(bar.y - bar.base);
           const xPosInside = bar.x;
           const yPos = (bar.y + bar.base) / 2;
@@ -184,8 +237,8 @@ const stackedBarTotalPlugin = {
             ctx.textAlign = "left";
             ctx.textBaseline = "middle";
             ctx.shadowBlur = 0;
-            ctx.fillStyle = chart.options.scales.y.ticks.color || "#666";
-            const xPosOutside = bar.x + bar.width / 2 + 3;
+            ctx.fillStyle = y.options?.ticks?.color || "#666";
+            const xPosOutside = bar.x + (bar.width || 0) / 2 + 3;
             ctx.fillText(label, xPosOutside, yPos);
           }
           ctx.restore();
@@ -303,14 +356,20 @@ const Playground: React.FC<PlaygroundProps> = ({
     true,
   );
   const tableRef = useRef<HTMLDivElement>(null);
-  const incomeChartRef = useRef<any>(null);
-  const passiveIncomeChartRef = useRef<any>(null);
-  const expenseChartRef = useRef<any>(null);
-  const categoryChartRef = useRef<any>(null);
-  const paymentChartRef = useRef<any>(null);
-  const priceChartRef = useRef<any>(null);
-  const discountChartRef = useRef<any>(null);
-  const maximizedChartRef = useRef<any>(null);
+  const incomeChartRef = useRef<ChartJS | null>(null);
+  const passiveIncomeChartRef = useRef<ChartJS | null>(null);
+  const expenseChartRef = useRef<ChartJS | null>(null);
+  const categoryChartRef = useRef<ChartJS | null>(null);
+  const paymentChartRef = useRef<ChartJS | null>(null);
+  const priceChartRef = useRef<ChartJS | null>(null);
+  const discountChartRef = useRef<ChartJS | null>(null);
+  const maximizedChartRef = useRef<ChartJS | null>(null);
+
+  const setChartRef =
+    (refObj: React.MutableRefObject<ChartJS | null>) =>
+    (instance: unknown) => {
+      refObj.current = (instance as ChartJS) || null;
+    };
 
   useEffect(() => {
     setLayout((prev) => {
@@ -326,21 +385,27 @@ const Playground: React.FC<PlaygroundProps> = ({
     });
   }, []);
 
-  const toggleAll = (chartRef: React.MutableRefObject<any>) => {
+  const toggleAll = (
+    chartRef:
+      | React.RefObject<ChartJS | null>
+      | React.MutableRefObject<ChartJS | null>,
+  ) => {
     const chart = chartRef.current;
     if (!chart || !chart.config) return;
 
-    const isPieOrDoughnut = ["pie", "doughnut"].includes(chart.config.type);
+    const isPieOrDoughnut = ["pie", "doughnut"].includes(
+      (chart.config as { type?: string }).type || "",
+    );
 
     if (isPieOrDoughnut) {
       const metadata = chart.getDatasetMeta(0);
       if (!metadata || !metadata.data) return;
 
       const allVisible = metadata.data.every(
-        (_: any, index: number) => chart.getDataVisibility(index) === true,
+        (_val: unknown, index: number) => chart.getDataVisibility(index) === true,
       );
 
-      metadata.data.forEach((_: any, index: number) => {
+      metadata.data.forEach((_val: unknown, index: number) => {
         if (allVisible) {
           chart.toggleDataVisibility(index);
         } else {
@@ -351,11 +416,11 @@ const Playground: React.FC<PlaygroundProps> = ({
       });
     } else {
       if (!chart.data || !chart.data.datasets) return;
-      const allVisible = chart.data.datasets.every((_: any, index: number) =>
+      const allVisible = chart.data.datasets.every((_ds: unknown, index: number) =>
         chart.isDatasetVisible(index),
       );
 
-      chart.data.datasets.forEach((_: any, index: number) => {
+      chart.data.datasets.forEach((_ds: unknown, index: number) => {
         chart.setDatasetVisibility(index, !allVisible);
       });
     }
@@ -448,7 +513,7 @@ const Playground: React.FC<PlaygroundProps> = ({
   // AI Analysis State
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
-  const [aiStats, setAiStats] = useState<any>(null);
+  const [aiStats, setAiStats] = useState<AIStats | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isShareCopied, setIsShareCopied] = useState(false);
   const [showAIObsModal, setShowAIObsModal] = useState(false);
@@ -969,12 +1034,13 @@ INSTRUÇÕES:
   }, [transactions]);
 
   useEffect(() => {
-    if ("setAppBadge" in navigator) {
+    const nav = navigator as NavigatorWithBadge;
+    if (nav.setAppBadge) {
       const updateBadge = () => {
         if (todayPendingCount > 0) {
-          (navigator as any).setAppBadge(todayPendingCount).catch(() => {});
+          nav.setAppBadge?.(todayPendingCount).catch(() => {});
         } else {
-          (navigator as any).clearAppBadge().catch(() => {});
+          nav.clearAppBadge?.().catch(() => {});
         }
       };
 
@@ -1064,7 +1130,7 @@ INSTRUÇÕES:
 
   // Income Timeline Chart Data
   const incomeTimelineChartData = useMemo(() => {
-    const incomeTransactions = transactions.filter((t: any) => {
+    const incomeTransactions = transactions.filter((t: Transaction) => {
       const isIncome = t.type === "income";
       if (!isIncome) return false;
 
@@ -1100,10 +1166,10 @@ INSTRUÇÕES:
     // Group by selected criteria (description or category)
     incomeTransactions
       .sort(
-        (a: any, b: any) =>
+        (a: Transaction, b: Transaction) =>
           parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime(),
       )
-      .forEach((t: any) => {
+      .forEach((t: Transaction) => {
         const date = parseLocalDate(t.date);
         const dateStr =
           incomeMode === "range"
@@ -1260,7 +1326,7 @@ INSTRUÇÕES:
     const itemsMap: Record<string, { date: string; price: number; originalName: string }[]> = {};
     const nameMapping: Record<string, string> = {}; // maps normalized name to a "prettiest" original name
 
-    transactions.forEach((t: any) => {
+    transactions.forEach((t: Transaction) => {
       // Handle soft-deleted status
       if (showDeleted) {
         if (t.status !== "deleted") return;
@@ -1268,17 +1334,22 @@ INSTRUÇÕES:
         if (t.status === "deleted") return;
       }
 
-      let items: any[] = [];
+      let items: ReceiptItem[] = [];
       if (t.notes) {
-        if (typeof t.notes === "object" && Array.isArray(t.notes.items)) {
-          items = t.notes.items;
+        if (
+          typeof t.notes === "object" &&
+          t.notes !== null &&
+          "items" in t.notes &&
+          Array.isArray((t.notes as StructuredNotes).items)
+        ) {
+          items = (t.notes as StructuredNotes).items || [];
         } else if (typeof t.notes === "string") {
           try {
             const parsed = JSON.parse(t.notes);
             if (Array.isArray(parsed.items)) {
               items = parsed.items;
             }
-          } catch (e) {
+          } catch {
             // Not JSON
           }
         }
@@ -1325,8 +1396,8 @@ INSTRUÇÕES:
   }, [allItems, priceEvolutionItemSearch]);
 
   // Expense Timeline Chart Data
-  const expenseTimelineChartData = useMemo(() => {
-    const getExpenseTimelineDateSource = (t: any): string => {
+  const expenseTimelineChartData: TimelineChartData = useMemo(() => {
+    const getExpenseTimelineDateSource = (t: Transaction): string => {
       if (expenseDateField === "createdAt") return t.createdAt || t.date;
       return t.date;
     };
@@ -1468,7 +1539,7 @@ INSTRUÇÕES:
       }
     }
 
-    const expenseTransactions = transactions.filter((t: any) => {
+    const expenseTransactions = transactions.filter((t: Transaction) => {
       const isExpense = t.type === "expense";
       if (!isExpense) return false;
 
@@ -1517,11 +1588,11 @@ INSTRUÇÕES:
     // Group by month/year and selected criteria (description or category)
     expenseTransactions
       .sort(
-        (a: any, b: any) =>
+        (a: Transaction, b: Transaction) =>
           parseLocalDate(getExpenseTimelineDateSource(a)).getTime() -
           parseLocalDate(getExpenseTimelineDateSource(b)).getTime(),
       )
-      .forEach((t: any) => {
+      .forEach((t: Transaction) => {
         const date = parseLocalDate(getExpenseTimelineDateSource(t));
         const dateStr = format(date, "MMM/yy"); // e.g., Jan/26
         const groupKey =
@@ -1605,19 +1676,19 @@ INSTRUÇÕES:
   useEffect(() => {
     if (expenseTimelineChartData.datasets) {
       setVisibleDatasets(
-        expenseTimelineChartData.datasets.map((d: any) => d.label),
+        expenseTimelineChartData.datasets.map((d: TimelineDataset) => d.label),
       );
     }
   }, [expenseTimelineChartData]);
 
   // ── Average expense calculation for the badge ──
   const totalExpensesWithContext = useMemo(() => {
-    const chartData = expenseTimelineChartData as any;
+    const chartData = expenseTimelineChartData;
     if (!chartData?.datasets) return 0;
 
     // Only sum datasets that are currently visible
     let sum = 0;
-    chartData.datasets.forEach((ds: any) => {
+    chartData.datasets.forEach((ds: TimelineDataset) => {
       if (visibleDatasets.includes(ds.label)) {
         ds.data.forEach((val: number) => {
           sum += val;
@@ -1678,12 +1749,12 @@ INSTRUÇÕES:
       discount: number;
     }[] = [];
 
-    filteredTransactions.forEach((t: any) => {
+    filteredTransactions.forEach((t: Transaction) => {
       if (!t?.notes) return;
 
-      let notes: any = null;
-      if (typeof t.notes === "object") {
-        notes = t.notes;
+      let notes: StructuredNotes | null = null;
+      if (typeof t.notes === "object" && t.notes !== null) {
+        notes = t.notes as StructuredNotes;
       } else if (typeof t.notes === "string") {
         try {
           notes = JSON.parse(t.notes);
@@ -1694,7 +1765,9 @@ INSTRUÇÕES:
 
       if (!notes || notes.source !== "SEFAZ") return;
 
-      const items: any[] = Array.isArray(notes.items) ? notes.items : [];
+      const items: ReceiptItem[] = Array.isArray(notes.items)
+        ? (notes.items as ReceiptItem[])
+        : [];
       const discountTotal = items.reduce((acc, item) => {
         if (
           item?.description === "(-) DESCONTOS TOTAIS" &&
@@ -1802,16 +1875,22 @@ INSTRUÇÕES:
     weekdaysPtMondayFirst,
   ]);
 
-  const toggleCategory = (cat: any) => {
+  const toggleCategory = (cat: string | Category) => {
     const name = typeof cat === "string" ? cat : cat?.name || String(cat);
     setSelectedCategories((prev) =>
       prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name],
     );
   };
 
-  const togglePaymentMethod = (pm: any) => {
+  const togglePaymentMethod = (
+    pm: string | Category | { label?: string; name?: string },
+  ) => {
     const name =
-      typeof pm === "string" ? pm : pm?.label || pm?.name || String(pm);
+      typeof pm === "string"
+        ? pm
+        : ("label" in pm && typeof pm.label === "string"
+            ? pm.label
+            : pm.name) || String(pm);
     setSelectedPaymentMethods((prev) =>
       prev.includes(name) ? prev.filter((p) => p !== name) : [...prev, name],
     );
@@ -1846,8 +1925,8 @@ INSTRUÇÕES:
 
   const getSortedTransactions = () => {
     return [...filteredTransactions].sort((a, b) => {
-      let aVal: any = a[sortBy as keyof Transaction];
-      let bVal: any = b[sortBy as keyof Transaction];
+      let aVal: string | number = "";
+      let bVal: string | number = "";
 
       if (sortBy === "date") {
         aVal = parseLocalDate(getTransactionDateSource(a)).getTime();
@@ -1856,8 +1935,29 @@ INSTRUÇÕES:
         aVal = a.amount;
         bVal = b.amount;
       } else if (sortBy === "paymentMethod") {
-        aVal = a.paymentMethod || "";
-        bVal = b.paymentMethod || "";
+        aVal =
+          typeof a.paymentMethod === "string"
+            ? a.paymentMethod
+            : a.paymentMethod?.name || "";
+        bVal =
+          typeof b.paymentMethod === "string"
+            ? b.paymentMethod
+            : b.paymentMethod?.name || "";
+      } else {
+        const rawA = a[sortBy as keyof Transaction];
+        const rawB = b[sortBy as keyof Transaction];
+        aVal =
+          typeof rawA === "string"
+            ? rawA
+            : typeof rawA === "number"
+              ? rawA
+              : "";
+        bVal =
+          typeof rawB === "string"
+            ? rawB
+            : typeof rawB === "number"
+              ? rawB
+              : "";
       }
 
       if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
@@ -2297,7 +2397,7 @@ INSTRUÇÕES:
               <div className="h-full min-h-[500px]">
                 {incomeMode === "range" ? (
                   <Line
-                    ref={maximizedChartRef}
+                    ref={setChartRef(maximizedChartRef)}
                     data={incomeTimelineChartData}
                     options={{
                       maintainAspectRatio: false,
@@ -2325,7 +2425,7 @@ INSTRUÇÕES:
                   />
                 ) : (
                   <Bar
-                    ref={maximizedChartRef}
+                    ref={setChartRef(maximizedChartRef)}
                     data={incomeTimelineChartData}
                     options={{
                       maintainAspectRatio: false,
@@ -2360,7 +2460,7 @@ INSTRUÇÕES:
             {maximizedId === "passive_income_evolution" && (
               <div className="h-full min-h-[500px]">
                 <Line
-                  ref={maximizedChartRef}
+                  ref={setChartRef(maximizedChartRef)}
                   data={passiveIncomeEvolutionChartData}
                   options={{
                     maintainAspectRatio: false,
@@ -2390,7 +2490,7 @@ INSTRUÇÕES:
             {maximizedId === "expense_timeline" && (
               <div className="h-full min-h-[500px]">
                 {expenseItemSearch.trim().length >= 2 ? (
-                  (expenseTimelineChartData as any).noMatch ? (
+                  expenseTimelineChartData.noMatch ? (
                     <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-xl italic gap-4 animate-in fade-in duration-300">
                       <div className="p-6 bg-muted/20 rounded-full">
                         <Search className="w-20 h-20 opacity-20" />
@@ -2405,7 +2505,7 @@ INSTRUÇÕES:
                     </div>
                   ) : (
                     <Line
-                      ref={maximizedChartRef}
+                      ref={setChartRef(maximizedChartRef)}
                       data={expenseTimelineChartData}
                       options={{
                         maintainAspectRatio: false,
@@ -2437,7 +2537,7 @@ INSTRUÇÕES:
                   )
                 ) : (
                   <Bar
-                    ref={maximizedChartRef}
+                    ref={setChartRef(maximizedChartRef)}
                     data={expenseTimelineChartData}
                     options={{
                       maintainAspectRatio: false,
@@ -2476,7 +2576,7 @@ INSTRUÇÕES:
               <div className="h-full min-h-[500px] flex items-center justify-center">
                 <div className="w-full h-full">
                   <Doughnut
-                    ref={maximizedChartRef}
+                    ref={setChartRef(maximizedChartRef)}
                     data={categoryChartData}
                     options={{
                       maintainAspectRatio: false,
@@ -2495,7 +2595,7 @@ INSTRUÇÕES:
               <div className="h-full min-h-[500px] flex items-center justify-center">
                 <div className="w-full h-full">
                   <Pie
-                    ref={maximizedChartRef}
+                    ref={setChartRef(maximizedChartRef)}
                     data={paymentChartData}
                     options={{
                       maintainAspectRatio: false,
@@ -2548,7 +2648,7 @@ INSTRUÇÕES:
                     {/* Chart */}
                     <div className="h-[400px]">
                       <Line
-                        ref={maximizedChartRef}
+                        ref={setChartRef(maximizedChartRef)}
                         data={priceChartData}
                         options={{
                           maintainAspectRatio: false,
@@ -2614,7 +2714,7 @@ INSTRUÇÕES:
                       </div>
                       <div className="h-[520px]">
                         <Bar
-                          ref={maximizedChartRef}
+                          ref={setChartRef(maximizedChartRef)}
                           data={discountByWeekdayChartData}
                           options={{
                             maintainAspectRatio: false,
@@ -3429,7 +3529,7 @@ INSTRUÇÕES:
                         const catName =
                           typeof cat === "string"
                             ? cat
-                            : (cat && (cat as any).name) || "Categoria";
+                            : cat?.name || "Categoria";
                         const isFirstIncomeCategory =
                           incomeCategories.includes(cat) &&
                           (idx === 0 ||
@@ -3473,13 +3573,9 @@ INSTRUÇÕES:
                     <div className="flex flex-wrap gap-1">
                       {paymentMethods.map((pm) => {
                         const pmName =
-                          typeof pm === "string"
-                            ? pm
-                            : (pm && (pm as any).name) || "Cartão";
+                          typeof pm === "string" ? pm : pm?.name || "Cartão";
                         const pmEmoji =
-                          typeof pm === "string"
-                            ? ""
-                            : (pm && (pm as any).emoji) || "";
+                          typeof pm === "string" ? "" : pm?.emoji || "";
                         return (
                           <button
                             key={pmName}
@@ -3886,11 +3982,12 @@ INSTRUÇÕES:
                       </div>
                       {!item.collapsed && (
                         <div className="p-8 h-[500px]">
-                          {transactions.filter((t: any) => t.type === "income")
-                            .length > 0 ? (
+                          {transactions.filter(
+                            (t: Transaction) => t.type === "income",
+                          ).length > 0 ? (
                             incomeMode === "range" ? (
                               <Line
-                                ref={incomeChartRef}
+                                ref={setChartRef(incomeChartRef)}
                                 data={incomeTimelineChartData}
                                 options={{
                                   maintainAspectRatio: false,
@@ -3915,7 +4012,7 @@ INSTRUÇÕES:
                               />
                             ) : (
                               <Bar
-                                ref={incomeChartRef}
+                                ref={setChartRef(incomeChartRef)}
                                 data={incomeTimelineChartData}
                                 options={{
                                   maintainAspectRatio: false,
@@ -3982,7 +4079,7 @@ INSTRUÇÕES:
                         <div className="p-10 h-[500px]">
                           {passiveTransactionsCount > 0 ? (
                             <Line
-                              ref={passiveIncomeChartRef}
+                              ref={setChartRef(passiveIncomeChartRef)}
                               data={passiveIncomeEvolutionChartData}
                               options={{
                                 maintainAspectRatio: false,
@@ -4074,24 +4171,20 @@ INSTRUÇÕES:
 
                               {/* Search Totals Feedback */}
                               {expenseItemSearch.trim().length >= 2 &&
-                                (expenseTimelineChartData as any).totalCount >
+                                (expenseTimelineChartData.totalCount || 0) >
                                   0 && (
                                   <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-accent/10 border border-accent/20 animate-in fade-in zoom-in duration-300">
                                     <span className="text-[9px] font-black text-accent uppercase tracking-tighter">
-                                      {
-                                        (expenseTimelineChartData as any)
-                                          .totalCount
-                                      }{" "}
-                                      {(expenseTimelineChartData as any)
-                                        .totalCount === 1
+                                      {expenseTimelineChartData.totalCount}{" "}
+                                      {expenseTimelineChartData.totalCount === 1
                                         ? "item"
                                         : "itens"}
                                     </span>
                                     <div className="w-px h-2.5 bg-accent/20" />
                                     <span className="text-[10px] font-black text-accent tracking-tighter">
                                       {formatCurrency(
-                                        (expenseTimelineChartData as any)
-                                          .totalAmount,
+                                        expenseTimelineChartData.totalAmount ||
+                                          0,
                                       )}
                                     </span>
                                   </div>
@@ -4398,10 +4491,10 @@ INSTRUÇÕES:
                         <div className="p-8 h-auto">
                           <div className="h-[500px]">
                             {transactions.filter(
-                              (t: any) => t.type === "expense",
+                              (t: Transaction) => t.type === "expense",
                             ).length > 0 ? (
                               expenseItemSearch.trim().length >= 2 ? (
-                                (expenseTimelineChartData as any).noMatch ? (
+                                expenseTimelineChartData.noMatch ? (
                                   <div className="h-full flex flex-col items-center justify-center text-foreground opacity-40 text-sm italic gap-2 animate-in fade-in duration-300">
                                     <div className="p-4 bg-muted/20 rounded-full">
                                       <Search className="w-12 h-12 opacity-20" />
@@ -4417,7 +4510,7 @@ INSTRUÇÕES:
                                   </div>
                                 ) : (
                                   <Line
-                                    ref={expenseChartRef}
+                                    ref={setChartRef(expenseChartRef)}
                                     data={expenseTimelineChartData}
                                     options={{
                                       maintainAspectRatio: false,
@@ -4469,7 +4562,7 @@ INSTRUÇÕES:
                                 )
                               ) : (
                                 <Bar
-                                  ref={expenseChartRef}
+                                  ref={setChartRef(expenseChartRef)}
                                   data={expenseTimelineChartData}
                                   options={{
                                     maintainAspectRatio: false,
@@ -4573,7 +4666,7 @@ INSTRUÇÕES:
                         <div className="p-8 h-80">
                           {filteredTransactions.length > 0 ? (
                             <Doughnut
-                              ref={categoryChartRef}
+                              ref={setChartRef(categoryChartRef)}
                               data={categoryChartData}
                               options={{
                                 maintainAspectRatio: false,
@@ -4623,7 +4716,7 @@ INSTRUÇÕES:
                           {filteredTransactions.filter((t) => t.paymentMethod)
                             .length > 0 ? (
                             <Pie
-                              ref={paymentChartRef}
+                              ref={setChartRef(paymentChartRef)}
                               data={paymentChartData}
                               options={{
                                 maintainAspectRatio: false,
@@ -4804,7 +4897,7 @@ INSTRUÇÕES:
                               {/* Chart */}
                               <div className="h-80">
                                 <Line
-                                  ref={priceChartRef}
+                                  ref={setChartRef(priceChartRef)}
                                   data={priceChartData}
                                   options={{
                                     maintainAspectRatio: false,
@@ -4903,7 +4996,7 @@ INSTRUÇÕES:
                                 </div>
                                 <div className="h-64">
                                   <Bar
-                                    ref={discountChartRef}
+                                    ref={setChartRef(discountChartRef)}
                                     data={discountByWeekdayChartData}
                                     options={{
                                       maintainAspectRatio: false,
@@ -5586,20 +5679,36 @@ INSTRUÇÕES:
 
       {/* Savings Goals Tab */}
       {activeTab === "savings" && (
-        <SavingsGoalsPlayground
-          savingsGoals={savingsGoals}
-          transactions={transactions}
-          onAddTransaction={onAddTransaction}
-        />
+        <React.Suspense
+          fallback={
+            <div className="flex items-center justify-center p-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          }
+        >
+          <SavingsGoalsPlayground
+            savingsGoals={savingsGoals}
+            transactions={transactions}
+            onAddTransaction={onAddTransaction}
+          />
+        </React.Suspense>
       )}
 
       {/* Financiamento Tab */}
       {activeTab === "financiamento" && (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
-          <FinanciamentoCasaPlayground
-            transactions={transactions}
-            theme={theme}
-          />
+          <React.Suspense
+            fallback={
+              <div className="flex items-center justify-center p-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            }
+          >
+            <FinanciamentoCasaPlayground
+              transactions={transactions}
+              theme={theme}
+            />
+          </React.Suspense>
         </div>
       )}
     </div>

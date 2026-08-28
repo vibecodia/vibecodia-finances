@@ -1,3 +1,4 @@
+import { DragDropContext, DropResult } from "@hello-pangea/dnd";
 import {
   Plus,
   Archive,
@@ -16,28 +17,27 @@ import {
   CalendarDays,
 } from "lucide-react";
 import { useState, useMemo, useCallback, useRef } from "react";
-import { DragDropContext, DropResult } from "@hello-pangea/dnd";
 
-import { useTrello } from "../../hooks/trello/useTrello";
 import { useLocalStorage } from "../../hooks/trello/useLocalStorage";
+import { useTrello } from "../../hooks/trello/useTrello";
+import { cn } from "../../lib/utils";
 import { Task, Column as ColumnType, TaskFlag } from "../../types/trello/task";
+import { formatBrazilDate, getCurrentBrazilDate } from "../../utils/helpers";
 import {
   exportTrelloData,
   validateTrelloImport,
   TrelloExportData,
 } from "../../utils/trello/trelloIO";
-import { formatBrazilDate, getCurrentBrazilDate } from "../../utils/helpers";
+import ConfirmationModal from "../ConfirmationModal";
+import { InputModal } from "../InputModal";
+import { Button } from "../ui/Button";
 
 import { Column } from "./Column";
-import { Timeline } from "./Timeline";
 import { SearchBar } from "./SearchBar";
 import { TaskCard } from "./TaskCard";
 import { TaskModal } from "./TaskModal";
 import { ThemeSelector } from "./ThemeSelector";
-import ConfirmationModal from "../ConfirmationModal";
-import { InputModal } from "../InputModal";
-import { Button } from "../ui/Button";
-import { cn } from "../../lib/utils";
+import { Timeline } from "./Timeline";
 
 export function Board() {
   const {
@@ -316,9 +316,11 @@ export function Board() {
         importData.currentThemeId,
       );
 
-      // Restaurar configurações se presentes
       if (importData.settings?.columnViewModesByTheme) {
-        setColumnViewModesByTheme(importData.settings.columnViewModesByTheme);
+        setColumnViewModesByTheme(
+          importData.settings
+            .columnViewModesByTheme as Record<string, Record<string, boolean>>,
+        );
       }
 
       setImportData(null);
@@ -616,7 +618,9 @@ export function Board() {
               <div className="relative flex items-center">
                 <select
                   value={selectedFlagFilter}
-                  onChange={(e) => setSelectedFlagFilter(e.target.value as any)}
+                  onChange={(e) =>
+                    setSelectedFlagFilter(e.target.value as TaskFlag | "all")
+                  }
                   className="appearance-none bg-transparent text-[11px] font-black uppercase tracking-widest focus:outline-none cursor-pointer pr-5 z-10 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <option value="all" className="bg-background text-foreground">

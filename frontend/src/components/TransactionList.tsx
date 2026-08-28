@@ -17,11 +17,12 @@ import {
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import { useCategoriesContext } from "../contexts/CategoriesContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useCurrencyInput } from "../hooks/useCurrencyInput";
 import { usePaymentMethods } from "../hooks/usePaymentMethods";
-import { useCategoriesContext } from "../contexts/CategoriesContext";
-import { SavingsGoal, Transaction } from "../types";
+import { cn } from "../lib/utils";
+import { SavingsGoal, Transaction, StructuredNotes, ReceiptItem } from "../types";
 import {
   getCategoryName,
   isSavingsContribution,
@@ -36,15 +37,15 @@ import {
   isTransactionOverdue,
   parseLocalDate,
 } from "../utils/helpers";
-import { Button } from "./ui/Button";
-import { Input } from "./ui/Input";
-import { Card } from "./ui/Card";
-import { cn } from "../lib/utils";
 
 import ConfirmationModal from "./ConfirmationModal";
 import DailyDateSlider from "./DailyDateSlider";
-import TransactionForm from "./TransactionForm";
 import MonthSegmentedControl from "./MonthSegmentedControl";
+import TransactionForm from "./TransactionForm";
+import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
+import { Input } from "./ui/Input";
+
 
 interface TransactionListProps {
   type: "expense" | "income";
@@ -231,16 +232,19 @@ const TransactionList: React.FC<TransactionListProps> = ({
     }));
   };
 
-  const formatNotes = (notes: any) => {
+  const formatNotes = (
+    notes: string | StructuredNotes | Record<string, unknown> | null | undefined,
+  ) => {
     if (!notes) return "";
 
     // Se já for um objeto (nova estrutura de Map/Mixed no banco)
     if (typeof notes === "object" && notes !== null) {
-      if (notes.items && Array.isArray(notes.items)) {
-        return `ITENS DA NOTA:\n${notes.items
+      const structured = notes as StructuredNotes;
+      if (structured.items && Array.isArray(structured.items)) {
+        return `ITENS DA NOTA:\n${structured.items
           .map(
-            (item: any) =>
-              `${item.qty}x ${item.description} - R$ ${item.unitPrice.toFixed(2).replace(".", ",")}`,
+            (item: ReceiptItem) =>
+              `${item.qty ?? 1}x ${item.description || item.name || ""} - R$ ${(Number(item.unitPrice || item.price) || 0).toFixed(2).replace(".", ",")}`,
           )
           .join("\n")}`;
       }
@@ -250,20 +254,20 @@ const TransactionList: React.FC<TransactionListProps> = ({
     // Fallback para legado (string que pode ser JSON)
     try {
       if (typeof notes === "string" && notes.startsWith("{")) {
-        const parsed = JSON.parse(notes);
+        const parsed = JSON.parse(notes) as StructuredNotes;
         if (parsed.items && Array.isArray(parsed.items)) {
           return `ITENS DA NOTA:\n${parsed.items
             .map(
-              (item: any) =>
-                `${item.qty}x ${item.description} - R$ ${item.unitPrice.toFixed(2).replace(".", ",")}`,
+              (item: ReceiptItem) =>
+                `${item.qty ?? 1}x ${item.description || item.name || ""} - R$ ${(Number(item.unitPrice || item.price) || 0).toFixed(2).replace(".", ",")}`,
             )
             .join("\n")}`;
         }
       }
-    } catch (e) {
+    } catch {
       // Ignora erro e retorna texto puro
     }
-    return notes;
+    return String(notes);
   };
   const { theme } = useTheme();
   const { paymentMethods } = usePaymentMethods();

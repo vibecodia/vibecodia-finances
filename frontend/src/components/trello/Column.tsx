@@ -1,11 +1,12 @@
-import React from "react";
 import { Droppable } from "@hello-pangea/dnd";
 import { Maximize2, Minimize2, Pencil, Trash2 } from "lucide-react";
+import React from "react";
+
+import { cn } from "../../lib/utils";
 import { Task } from "../../types/trello/task";
+import { Button } from "../ui/Button";
 
 import { TaskCard } from "./TaskCard";
-import { cn } from "../../lib/utils";
-import { Button } from "../ui/Button";
 
 interface ColumnProps {
   id: string;

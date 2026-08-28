@@ -1,15 +1,17 @@
+import { ShieldCheck, UserCircle, ArrowRight, Info, Globe } from "lucide-react";
 import React from "react";
 import { useNavigate } from "react-router-dom";
+
 import { useVerification } from "../contexts/VerificationContext";
-import { Card } from "./ui/Card";
-import { Button } from "./ui/Button";
-import { ShieldCheck, UserCircle, ArrowRight, Info, Globe } from "lucide-react";
+
 import PlansSection from "./PlansSection";
+import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
 
 const GuestEntry: React.FC = () => {
   const navigate = useNavigate();
   const { enterGuestMode, setShowVerificationModal } = useVerification();
-  const appVersion = (import.meta as any).env.APP_VERSION;
+  const appVersion = import.meta.env.APP_VERSION;
 
   const handleEnterGuestMode = () => {
     enterGuestMode();

@@ -41,8 +41,8 @@ export interface HistoryEntry {
     | "timelog_add";
   details: string;
   date: string; // ISO String
-  previousValue?: any;
-  newValue?: any;
+  previousValue?: unknown;
+  newValue?: unknown;
 }
 
 export interface Task {

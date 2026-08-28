@@ -16,14 +16,15 @@ import React, { useState, useMemo } from "react";
 
 import { ColorPalette } from "../contexts/ThemeContext";
 import { useLocalStorage } from "../hooks/trello/useLocalStorage";
+import { cn } from "../lib/utils";
 import { Transaction, Category } from "../types";
-import { formatCurrency, formatBrazilDate } from "../utils/helpers";
 import { toCode } from "../utils/categoryUtils";
-import { Select } from "./ui/Select";
+import { formatCurrency, formatBrazilDate } from "../utils/helpers";
+
+import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
 import { Input } from "./ui/Input";
-import { Button } from "./ui/Button";
-import { cn } from "../lib/utils";
+import { Select } from "./ui/Select";
 
 interface HistoryItem {
   parcela: number;
@@ -37,6 +38,30 @@ interface HistoryItem {
   total: number;
   saldoDevedor: number;
   operacao?: string;
+}
+
+interface SACInstallment {
+  parcela: number;
+  vencimento: string;
+  amortizacao: number;
+  extraAmount?: number;
+  juros: number;
+  seguros: number;
+  fgtsMensal: number;
+  total: number;
+  saldoDevedor: number;
+  date: Date;
+  situacao: string;
+  operacao?: string;
+}
+
+interface ConsorcioInstallment {
+  parcela: number;
+  vencimento: string;
+  valor: number;
+  faltaParaCredito: number;
+  situacao: string;
+  date: Date;
 }
 
 const ITAU_HISTORY: HistoryItem[] = [
@@ -368,7 +393,7 @@ const FinanciamentoCasaPlayground: React.FC<
     totalParcelasContrato: number,
     taxaMensal: number,
   ) => {
-    const results: any[] = [];
+    const results: SACInstallment[] = [];
 
     // 1. Iniciar com o histórico real do Itaú
     ITAU_HISTORY.forEach((item: HistoryItem) => {
@@ -435,12 +460,12 @@ const FinanciamentoCasaPlayground: React.FC<
 
   // Derived stats dependent on adjustedSacData
   const paidInstallments = useMemo(() => {
-    return adjustedSacData.filter((d: any) => d.situacao === "Paga");
+    return adjustedSacData.filter((d: SACInstallment) => d.situacao === "Paga");
   }, [adjustedSacData]);
 
   const lastParcelaPaga =
     paidInstallments.length > 0
-      ? Math.max(...paidInstallments.map((d: any) => d.parcela))
+      ? Math.max(...paidInstallments.map((d: SACInstallment) => d.parcela))
       : 0;
   const progressPercent =
     totalParcelas > 0 ? (lastParcelaPaga / totalParcelas) * 100 : 0;
@@ -719,7 +744,7 @@ const FinanciamentoCasaPlayground: React.FC<
   const parsedData = useMemo(() => {
     return transactions
       .filter(
-        (t: any) =>
+        (t: Transaction) =>
           t.type === "expense" &&
           t.status !== "deleted" &&
           (typeof t.category === "object"
@@ -727,7 +752,7 @@ const FinanciamentoCasaPlayground: React.FC<
             : toCode(t.category || "") === "patrimonio") &&
           /Financiamento casa \d+\/\d+/i.test(t.description || ""),
       )
-      .map((t: any): any => {
+      .map((t: Transaction) => {
         const match = (t.description || "").match(
           /Financiamento casa (\d+)\/(\d+)/i,
         );
@@ -741,7 +766,7 @@ const FinanciamentoCasaPlayground: React.FC<
           description: t.description,
         };
       })
-      .sort((a: any, b: any) => a.parcelaPaga - b.parcelaPaga);
+      .sort((a, b) => a.parcelaPaga - b.parcelaPaga);
   }, [transactions]);
 
   if (parsedData.length === 0) {
@@ -1241,7 +1266,9 @@ const FinanciamentoCasaPlayground: React.FC<
                           <Select
                             value={consorcioModoUso}
                             onChange={(e) =>
-                              setConsorcioModoUso(e.target.value as any)
+                              setConsorcioModoUso(
+                                e.target.value as "total" | "uma",
+                              )
                             }
                             className="font-bold py-2.5"
                           >
@@ -1542,7 +1569,7 @@ const FinanciamentoCasaPlayground: React.FC<
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/30">
-                    {adjustedSacData.map((d: any) => (
+                    {adjustedSacData.map((d: SACInstallment) => (
                       <tr
                         key={d.parcela}
                         className={cn(
@@ -1643,8 +1670,9 @@ const FinanciamentoCasaPlayground: React.FC<
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/30">
-                    {consorcioInstallmentsData.map((d: any) => (
-                      <tr
+                    {consorcioInstallmentsData.map(
+                      (d: ConsorcioInstallment) => (
+                        <tr
                         key={d.parcela}
                         className={cn(
                           "text-foreground hover:bg-primary/5 transition-colors",

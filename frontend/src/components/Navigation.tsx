@@ -21,13 +21,14 @@ import {
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
-import { cn } from "../lib/utils";
-import { Button } from "./ui/Button";
 import { useVerification } from "../contexts/VerificationContext";
 import { useTour } from "../hooks/useTour";
+import { cn } from "../lib/utils";
+
+import { Button } from "./ui/Button";
 
 const Navigation: React.FC = () => {
-  const appVersion = (import.meta as any).env.APP_VERSION;
+  const appVersion = import.meta.env.APP_VERSION;
   const location = useLocation();
   const activeTab = location.pathname;
   const { logout, isGuest, setShowVerificationModal } = useVerification();
