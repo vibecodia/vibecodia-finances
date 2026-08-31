@@ -171,6 +171,9 @@ export const getBenefitCode = (
   const pmCat = getCategory(categories, t.paymentMethod);
   if (pmCat?.isBenefit) return pmCat.code;
 
+  const catObj = getCategory(categories, t.category);
+  if (catObj?.isBenefit) return catObj.code;
+
   const desc = compactText(t.description);
 
   let catName = "";

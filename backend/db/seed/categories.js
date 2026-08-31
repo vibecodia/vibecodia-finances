@@ -35,7 +35,7 @@ const EXPENSE_DEFAULTS = [
 
 const INCOME_DEFAULTS = [
   { name: 'Salário', code: 'salario', emoji: '💵', color: '#22C55E', order: 0 },
-  { name: 'Vale', code: 'vale', emoji: '🎟️', color: '#F59E0B', order: 1 },
+  { name: 'Vale', code: 'vale', emoji: '🎟️', color: '#F59E0B', order: 1, isBenefit: true },
   { name: 'Reembolsos', code: 'reembolsos', emoji: '🔙', color: '#3B82F6', order: 2 },
   { name: 'Aluguéis', code: 'alugueis', emoji: '🏠', color: '#8B5CF6', order: 3 },
   { name: 'Premiação', code: 'premiacao', emoji: '🏆', color: '#EAB308', order: 4 },

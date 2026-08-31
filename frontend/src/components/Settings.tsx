@@ -70,6 +70,7 @@ const Settings: React.FC<SettingsProps> = ({
     expenseCategories,
     incomeCategories,
     addCategory,
+    updateCategory,
     removeCategory,
     resetToDefaults: resetCategoriesToDefaults,
   } = useCategories();
@@ -465,6 +466,22 @@ const Settings: React.FC<SettingsProps> = ({
     setTimeout(() => setPaymentMethodMessage({ text: "", type: "idle" }), 3000);
   };
 
+  const handleToggleIncomeCategoryBenefit = async (cat: Category) => {
+    const next = !cat.isBenefit;
+    const ok = await updateCategory(
+      cat.type || "income",
+      cat.code || cat.id || cat.name,
+      { isBenefit: next },
+    );
+    setCategoryMessage({
+      text: ok
+        ? `"${cat.name}" ${next ? "passou a ser" : "deixou de ser"} categoria de benefício.`
+        : `Não foi possível atualizar "${cat.name}".`,
+      type: ok ? "success" : "error",
+    });
+    setTimeout(() => setCategoryMessage({ text: "", type: "idle" }), 3000);
+  };
+
   const totalTransactions = transactions.length;
   const totalGoals = savingsGoals.length;
 
@@ -680,6 +697,26 @@ const Settings: React.FC<SettingsProps> = ({
                           {catEmoji ? `${catEmoji} ` : ""}
                           {catName}
                         </span>
+                        {typeof cat === "object" && cat.code && (
+                          <button
+                            onClick={() =>
+                              handleToggleIncomeCategoryBenefit(cat)
+                            }
+                            className={cn(
+                              "transition-all",
+                              cat.isBenefit
+                                ? "text-primary opacity-100"
+                                : "opacity-0 group-hover:opacity-50 text-muted-foreground hover:opacity-100 hover:scale-125",
+                            )}
+                            title={
+                              cat.isBenefit
+                                ? "Categoria de benefício. Clique para voltar a categoria normal."
+                                : "Marcar como categoria de benefício"
+                            }
+                          >
+                            <Gift className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                         <button
                           onClick={() =>
                             handleRemoveCategory("income", catName)

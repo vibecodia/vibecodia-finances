@@ -35,7 +35,7 @@ const EXPENSE_DEFAULTS: DefaultSeed[] = [
 
 const INCOME_DEFAULTS: DefaultSeed[] = [
   { name: "Salário", code: "salario", type: "income", emoji: "💵", color: "#22C55E", order: 0 },
-  { name: "Vale", code: "vale", type: "income", emoji: "🎟️", color: "#F59E0B", order: 1 },
+  { name: "Vale", code: "vale", type: "income", emoji: "🎟️", color: "#F59E0B", order: 1, isBenefit: true },
   { name: "Reembolsos", code: "reembolsos", type: "income", emoji: "🔙", color: "#3B82F6", order: 2 },
   { name: "Aluguéis", code: "alugueis", type: "income", emoji: "🏠", color: "#8B5CF6", order: 3 },
   { name: "Premiação", code: "premiacao", type: "income", emoji: "🏆", color: "#EAB308", order: 4 },
