@@ -42,11 +42,13 @@ import {
 } from "lucide-react";
 import React, { useState, useMemo, useRef } from "react";
 
+import { useCategoriesContext } from "../contexts/CategoriesContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useLocalStorage } from "../hooks/trello/useLocalStorage";
 import { useCurrencyInput } from "../hooks/useCurrencyInput";
 import { cn } from "../lib/utils";
 import { SavingsGoal, Transaction, Category } from "../types";
+import { isBenefitTransaction } from "../utils/categoryUtils";
 import {
   formatCurrency,
   formatBrazilDate,
@@ -70,21 +72,13 @@ import { Input } from "./ui/Input";
 import { PlaygroundCardHeader } from "./ui/PlaygroundCardHeader";
 import { Select } from "./ui/Select";
 
-// Categoria/meio de pagamento podem ser objeto populado (modo autenticado) ou
-// string (modo guest / dados legados). Esses helpers extraem o texto em
-// minúsculas para os heurísticos do simulador sem quebrar com Category.
+// Categoria pode ser objeto populado (modo autenticado) ou string (modo guest /
+// dados legados). Esse helper extrai o texto em minúsculas para os heurísticos do simulador.
 const categoryText = (c?: string | Category): string => {
   if (!c) return "";
   if (typeof c === "object")
     return `${c.name || ""} ${c.code || ""}`.toLowerCase();
   return String(c).toLowerCase();
-};
-
-const paymentMethodText = (p?: string | Category): string => {
-  if (!p) return "";
-  if (typeof p === "object")
-    return `${p.name || ""} ${p.code || ""}`.toLowerCase();
-  return String(p).toLowerCase();
 };
 
 ChartJS.register(
@@ -182,6 +176,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
   onAddTransaction,
 }) => {
   const { theme } = useTheme();
+  const { categories } = useCategoriesContext();
   const [layout, setLayout] = useLocalStorage<LayoutItem[]>(
     "savings_playground_layout_v2",
     DEFAULT_LAYOUT,
@@ -294,10 +289,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
                 t.status === "active" &&
                 tDateStr >= startDate &&
                 tDateStr <= endDate &&
-                !t.description?.toLowerCase().includes("vero") &&
-                !categoryText(t.category).includes("vero") &&
-                !t.description?.toLowerCase().includes("flash") &&
-                !categoryText(t.category).includes("flash")
+                !isBenefitTransaction(t, categories)
               );
             })
             .reduce((sum, t) => sum + t.amount, 0);
@@ -309,8 +301,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
                 t.type === "expense" &&
                 t.status === "active" &&
                 !categoryText(t.category).includes("aporte") &&
-                !paymentMethodText(t.paymentMethod).includes("vero") &&
-                !paymentMethodText(t.paymentMethod).includes("flash") &&
+                !isBenefitTransaction(t, categories) &&
                 tDateStr >= startDate &&
                 tDateStr <= endDate
               );
@@ -372,20 +363,13 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             const cutoff = new Date(timeTravelDate + "T23:59:59");
             const divergingTransactions = transactions.filter((t) => {
               const tDateStr = t.date.slice(0, 10);
-              const desc = t.description?.toLowerCase() || "";
               const cat = categoryText(t.category) || "";
-              const pm = paymentMethodText(t.paymentMethod) || "";
 
               return (
                 tDateStr === currentDayStr &&
                 t.status === "active" &&
                 new Date(t.createdAt) > cutoff &&
-                !desc.includes("vero") &&
-                !cat.includes("vero") &&
-                !pm.includes("vero") &&
-                !desc.includes("flash") &&
-                !cat.includes("flash") &&
-                !pm.includes("flash") &&
+                !isBenefitTransaction(t, categories) &&
                 !(cat.includes("aporte") && !t.isPaid)
               );
             });
@@ -398,20 +382,12 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             const dayRevenues = transactions
               .filter((t) => {
                 const tDateStr = t.date.slice(0, 10);
-                const desc = t.description?.toLowerCase() || "";
-                const cat = categoryText(t.category) || "";
-                const pm = paymentMethodText(t.paymentMethod) || "";
 
                 return (
                   t.type === "income" &&
                   t.status === "active" &&
                   tDateStr === currentDayStr &&
-                  !desc.includes("vero") &&
-                  !cat.includes("vero") &&
-                  !pm.includes("vero") &&
-                  !desc.includes("flash") &&
-                  !cat.includes("flash") &&
-                  !pm.includes("flash")
+                  !isBenefitTransaction(t, categories)
                 );
               })
               .reduce((sum, t) => sum + t.amount, 0);
@@ -420,20 +396,13 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
               .filter((t) => {
                 const tDateStr = t.date.slice(0, 10);
                 const cat = categoryText(t.category) || "";
-                const pm = paymentMethodText(t.paymentMethod) || "";
-                const desc = t.description?.toLowerCase() || "";
 
                 return (
                   t.type === "expense" &&
                   t.status === "active" &&
                   tDateStr === currentDayStr &&
                   !cat.includes("aporte") &&
-                  !pm.includes("vero") &&
-                  !desc.includes("vero") &&
-                  !cat.includes("vero") &&
-                  !pm.includes("flash") &&
-                  !desc.includes("flash") &&
-                  !cat.includes("flash")
+                  !isBenefitTransaction(t, categories)
                 );
               })
               .reduce((sum, t) => sum + t.amount, 0);
@@ -998,7 +967,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
       );
   }, [activeGoals, showDeleted]);
 
-  // Calcular disponível mensal (excluindo Vero e Flash)
+  // Calcular disponível mensal (excluindo Benefícios)
 
   // Cálculo de dados para "Disponível Final do Mês" respeitando filtros de data
   const monthlyTotals = useMemo(() => {
@@ -1057,7 +1026,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
 
     const previousBalanceAdjusted = totalBalanceBefore - totalGoalsImpactBefore;
 
-    // 2. Receitas do período (excluindo Vero e Flash) - Todas (incluindo não pagas)
+    // 2. Receitas do período (excluindo Benefícios) - Todas (incluindo não pagas)
     const revenues = transactions
       .filter((t) => {
         const tDateStr = t.date.slice(0, 10);
@@ -1069,10 +1038,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
           t.status === "active" &&
           tDateStr >= startDate &&
           tDateStr <= endDate &&
-          !t.description?.toLowerCase().includes("vero") &&
-          !categoryText(t.category).includes("vero") &&
-          !t.description?.toLowerCase().includes("flash") &&
-          !categoryText(t.category).includes("flash") &&
+          !isBenefitTransaction(t, categories) &&
           isBeforeCutoff
         );
       })
@@ -1089,8 +1055,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
           t.type === "expense" &&
           t.status === "active" &&
           !categoryText(t.category).includes("aporte") &&
-          !paymentMethodText(t.paymentMethod).includes("vero") &&
-          !paymentMethodText(t.paymentMethod).includes("flash") &&
+          !isBenefitTransaction(t, categories) &&
           tDateStr >= startDate &&
           tDateStr <= endDate &&
           isBeforeCutoff
@@ -1163,10 +1128,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             t.type === "income" &&
             t.status === "active" &&
             tDateStr === currentDayStr &&
-            !t.description?.toLowerCase().includes("vero") &&
-            !categoryText(t.category).includes("vero") &&
-            !t.description?.toLowerCase().includes("flash") &&
-            !categoryText(t.category).includes("flash") &&
+            !isBenefitTransaction(t, categories) &&
             isBeforeCutoff
           );
         })
@@ -1183,8 +1145,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             t.status === "active" &&
             tDateStr === currentDayStr &&
             !categoryText(t.category).includes("aporte") &&
-            !paymentMethodText(t.paymentMethod).includes("vero") &&
-            !paymentMethodText(t.paymentMethod).includes("flash") &&
+            !isBenefitTransaction(t, categories) &&
             isBeforeCutoff
           );
         })
@@ -1281,10 +1242,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             t.type === "income" &&
             t.status === "active" &&
             tDateStr === currentDayStr &&
-            !t.description?.toLowerCase().includes("vero") &&
-            !categoryText(t.category).includes("vero") &&
-            !t.description?.toLowerCase().includes("flash") &&
-            !categoryText(t.category).includes("flash") &&
+            !isBenefitTransaction(t, categories) &&
             isBeforeCutoff
           );
         })
@@ -1301,8 +1259,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             t.status === "active" &&
             tDateStr === currentDayStr &&
             !categoryText(t.category).includes("aporte") &&
-            !paymentMethodText(t.paymentMethod).includes("vero") &&
-            !paymentMethodText(t.paymentMethod).includes("flash") &&
+            !isBenefitTransaction(t, categories) &&
             isBeforeCutoff
           );
         })
