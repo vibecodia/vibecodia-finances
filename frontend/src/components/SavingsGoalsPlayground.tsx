@@ -243,7 +243,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
               t.status === "deleted" ||
               isSavingsContribution(t.category, categories) ||
               isSavingsWithdrawal(t.category, categories) ||
-              Boolean(t.savingsGoalId) ||
+              t.savingsGoalId ||
               !t.isPaid
             )
               return false;
@@ -298,7 +298,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
                 t.type === "expense" &&
                 t.status === "active" &&
                 !isSavingsContribution(t.category, categories) &&
-                !Boolean(t.savingsGoalId) &&
+                !t.savingsGoalId &&
                 !isBenefitTransaction(t, categories) &&
                 tDateStr >= startDate &&
                 tDateStr <= endDate
@@ -316,7 +316,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
                 tDateStr >= startDate &&
                 tDateStr <= endDate &&
                 (isSavingsContribution(t.category, categories) ||
-                  Boolean(t.savingsGoalId))
+                  t.savingsGoalId)
               );
             })
             .reduce((sum, t) => sum + t.amount, 0);
@@ -399,7 +399,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
                   t.status === "active" &&
                   tDateStr === currentDayStr &&
                   !isSavingsContribution(t.category, categories) &&
-                  !Boolean(t.savingsGoalId) &&
+                  !t.savingsGoalId &&
                   !isBenefitTransaction(t, categories)
                 );
               })
@@ -414,7 +414,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
                   t.status === "active" &&
                   tDateStr === currentDayStr &&
                   (isSavingsContribution(t.category, categories) ||
-                    Boolean(t.savingsGoalId))
+                    t.savingsGoalId)
                 );
               })
               .reduce((sum, t) => sum + t.amount, 0);
@@ -982,7 +982,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
         t.status === "deleted" ||
         isSavingsContribution(t.category, categories) ||
         isSavingsWithdrawal(t.category, categories) ||
-        Boolean(t.savingsGoalId) ||
+        t.savingsGoalId ||
         !t.isPaid
       )
         return false;
@@ -1056,7 +1056,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
           t.type === "expense" &&
           t.status === "active" &&
           !isSavingsContribution(t.category, categories) &&
-          !Boolean(t.savingsGoalId) &&
+          !t.savingsGoalId &&
           !isBenefitTransaction(t, categories) &&
           tDateStr >= startDate &&
           tDateStr <= endDate &&
@@ -1079,7 +1079,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
           tDateStr >= startDate &&
           tDateStr <= endDate &&
           (isSavingsContribution(t.category, categories) ||
-            Boolean(t.savingsGoalId)) &&
+            t.savingsGoalId) &&
           isBeforeCutoff
         );
       })
@@ -1148,7 +1148,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             t.status === "active" &&
             tDateStr === currentDayStr &&
             !isSavingsContribution(t.category, categories) &&
-            !Boolean(t.savingsGoalId) &&
+            !t.savingsGoalId &&
             !isBenefitTransaction(t, categories) &&
             isBeforeCutoff
           );
@@ -1167,7 +1167,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             t.status === "active" &&
             tDateStr === currentDayStr &&
             (isSavingsContribution(t.category, categories) ||
-              Boolean(t.savingsGoalId)) &&
+              t.savingsGoalId) &&
             isBeforeCutoff
           );
         })
@@ -1265,7 +1265,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             t.status === "active" &&
             tDateStr === currentDayStr &&
             !isSavingsContribution(t.category, categories) &&
-            !Boolean(t.savingsGoalId) &&
+            !t.savingsGoalId &&
             !isBenefitTransaction(t, categories) &&
             isBeforeCutoff
           );
@@ -1284,7 +1284,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             t.status === "active" &&
             tDateStr === currentDayStr &&
             (isSavingsContribution(t.category, categories) ||
-              Boolean(t.savingsGoalId)) &&
+              t.savingsGoalId) &&
             isBeforeCutoff
           );
         })
