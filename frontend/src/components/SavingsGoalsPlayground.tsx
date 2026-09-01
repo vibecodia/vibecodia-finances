@@ -47,8 +47,12 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useLocalStorage } from "../hooks/trello/useLocalStorage";
 import { useCurrencyInput } from "../hooks/useCurrencyInput";
 import { cn } from "../lib/utils";
-import { SavingsGoal, Transaction, Category } from "../types";
-import { isBenefitTransaction } from "../utils/categoryUtils";
+import { SavingsGoal, Transaction } from "../types";
+import {
+  isBenefitTransaction,
+  isSavingsContribution,
+  isSavingsWithdrawal,
+} from "../utils/categoryUtils";
 import {
   formatCurrency,
   formatBrazilDate,
@@ -71,15 +75,6 @@ import { Card } from "./ui/Card";
 import { Input } from "./ui/Input";
 import { PlaygroundCardHeader } from "./ui/PlaygroundCardHeader";
 import { Select } from "./ui/Select";
-
-// Categoria pode ser objeto populado (modo autenticado) ou string (modo guest /
-// dados legados). Esse helper extrai o texto em minúsculas para os heurísticos do simulador.
-const categoryText = (c?: string | Category): string => {
-  if (!c) return "";
-  if (typeof c === "object")
-    return `${c.name || ""} ${c.code || ""}`.toLowerCase();
-  return String(c).toLowerCase();
-};
 
 ChartJS.register(
   CategoryScale,
@@ -246,7 +241,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
           const paidTransactionsBefore = transactions.filter((t) => {
             if (
               t.status === "deleted" ||
-              categoryText(t.category).includes("aporte") ||
+              isSavingsContribution(t.category, categories) ||
+              isSavingsWithdrawal(t.category, categories) ||
+              t.savingsGoalId ||
               !t.isPaid
             )
               return false;
@@ -300,7 +297,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
               return (
                 t.type === "expense" &&
                 t.status === "active" &&
-                !categoryText(t.category).includes("aporte") &&
+                !isSavingsContribution(t.category, categories) &&
+                !t.savingsGoalId &&
                 !isBenefitTransaction(t, categories) &&
                 tDateStr >= startDate &&
                 tDateStr <= endDate
@@ -317,7 +315,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
                 t.status === "active" &&
                 tDateStr >= startDate &&
                 tDateStr <= endDate &&
-                categoryText(t.category).includes("aporte")
+                (isSavingsContribution(t.category, categories) ||
+                  t.savingsGoalId)
               );
             })
             .reduce((sum, t) => sum + t.amount, 0);
@@ -363,14 +362,13 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             const cutoff = new Date(timeTravelDate + "T23:59:59");
             const divergingTransactions = transactions.filter((t) => {
               const tDateStr = t.date.slice(0, 10);
-              const cat = categoryText(t.category) || "";
 
               return (
                 tDateStr === currentDayStr &&
                 t.status === "active" &&
                 new Date(t.createdAt) > cutoff &&
                 !isBenefitTransaction(t, categories) &&
-                !(cat.includes("aporte") && !t.isPaid)
+                !(isSavingsContribution(t.category, categories) && !t.isPaid)
               );
             });
 
@@ -395,13 +393,13 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             const dayExpenses = transactions
               .filter((t) => {
                 const tDateStr = t.date.slice(0, 10);
-                const cat = categoryText(t.category) || "";
 
                 return (
                   t.type === "expense" &&
                   t.status === "active" &&
                   tDateStr === currentDayStr &&
-                  !cat.includes("aporte") &&
+                  !isSavingsContribution(t.category, categories) &&
+                  !t.savingsGoalId &&
                   !isBenefitTransaction(t, categories)
                 );
               })
@@ -415,7 +413,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
                   t.isPaid === true &&
                   t.status === "active" &&
                   tDateStr === currentDayStr &&
-                  categoryText(t.category).includes("aporte")
+                  (isSavingsContribution(t.category, categories) ||
+                    t.savingsGoalId)
                 );
               })
               .reduce((sum, t) => sum + t.amount, 0);
@@ -981,7 +980,9 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
     const paidTransactionsBefore = transactions.filter((t) => {
       if (
         t.status === "deleted" ||
-        categoryText(t.category).includes("aporte") ||
+        isSavingsContribution(t.category, categories) ||
+        isSavingsWithdrawal(t.category, categories) ||
+        t.savingsGoalId ||
         !t.isPaid
       )
         return false;
@@ -1054,7 +1055,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
         return (
           t.type === "expense" &&
           t.status === "active" &&
-          !categoryText(t.category).includes("aporte") &&
+          !isSavingsContribution(t.category, categories) &&
+          !t.savingsGoalId &&
           !isBenefitTransaction(t, categories) &&
           tDateStr >= startDate &&
           tDateStr <= endDate &&
@@ -1076,7 +1078,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
           t.status === "active" &&
           tDateStr >= startDate &&
           tDateStr <= endDate &&
-          categoryText(t.category).includes("aporte") &&
+          (isSavingsContribution(t.category, categories) ||
+            t.savingsGoalId) &&
           isBeforeCutoff
         );
       })
@@ -1144,7 +1147,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             t.type === "expense" &&
             t.status === "active" &&
             tDateStr === currentDayStr &&
-            !categoryText(t.category).includes("aporte") &&
+            !isSavingsContribution(t.category, categories) &&
+            !t.savingsGoalId &&
             !isBenefitTransaction(t, categories) &&
             isBeforeCutoff
           );
@@ -1162,7 +1166,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             t.isPaid === true &&
             t.status === "active" &&
             tDateStr === currentDayStr &&
-            categoryText(t.category).includes("aporte") &&
+            (isSavingsContribution(t.category, categories) ||
+              t.savingsGoalId) &&
             isBeforeCutoff
           );
         })
@@ -1205,6 +1210,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
     return { dailyBalances, negativeCount };
   }, [
     transactions,
+    categories,
     startDate,
     endDate,
     monthlyTotals.previousMonthAdjustedBalance,
@@ -1258,7 +1264,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             t.type === "expense" &&
             t.status === "active" &&
             tDateStr === currentDayStr &&
-            !categoryText(t.category).includes("aporte") &&
+            !isSavingsContribution(t.category, categories) &&
+            !t.savingsGoalId &&
             !isBenefitTransaction(t, categories) &&
             isBeforeCutoff
           );
@@ -1276,7 +1283,8 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
             t.isPaid === true &&
             t.status === "active" &&
             tDateStr === currentDayStr &&
-            categoryText(t.category).includes("aporte") &&
+            (isSavingsContribution(t.category, categories) ||
+              t.savingsGoalId) &&
             isBeforeCutoff
           );
         })
@@ -1324,6 +1332,7 @@ const SavingsGoalsPlayground: React.FC<SavingsGoalsPlaygroundProps> = ({
     };
   }, [
     transactions,
+    categories,
     endDate,
     monthlyTotals,
     countdownSimExtraValue,

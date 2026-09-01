@@ -317,8 +317,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
           dueDate: type === "expense" ? newDueDate || undefined : undefined,
           isPaid: i === 0 ? formData.isPaid : false,
           recurrence: "none",
-          paymentMethod:
-            type === "expense" ? formData.paymentMethod : undefined,
+          paymentMethod: formData.paymentMethod || undefined,
           notes: formData.notes,
           savingsGoalId: showGoalSelect ? formData.savingsGoalId : undefined,
         });
@@ -739,75 +738,79 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             </Select>
           )}
 
-          {type === "expense" && (
-            <>
-            <Select
-              label="Meio de Pagamento"
-              name="paymentMethod"
-              value={formData.paymentMethod}
-              onChange={handleChange}
-              disabled={isAnimating}
-              required
-            >
-              <option value="">Selecione um meio de pagamento</option>
-              {paymentMethods.map((method) => {
-                const methodName = getCategoryName(paymentMethods, method);
-                const methodEmoji =
-                  typeof method === "string" ? "" : method?.emoji || "";
-                return (
-                  <option key={methodName} value={methodName}>
-                    {methodEmoji ? `${methodEmoji} ` : ""}
-                    {methodName}
-                  </option>
-                );
-              })}
-              <option value={CREATE_PAYMENT_METHOD_OPTION}>
-                ➕ Criar novo meio de pagamento...
-              </option>
-            </Select>
+          <Select
+            label={
+              type === "expense"
+                ? "Meio de Pagamento"
+                : "Conta / Meio de Recebimento (Opcional)"
+            }
+            name="paymentMethod"
+            value={formData.paymentMethod}
+            onChange={handleChange}
+            disabled={isAnimating}
+            required={type === "expense"}
+          >
+            <option value="">
+              {type === "expense"
+                ? "Selecione um meio de pagamento"
+                : "Selecione a conta/cartão (opcional)"}
+            </option>
+            {paymentMethods.map((method) => {
+              const methodName = getCategoryName(paymentMethods, method);
+              const methodEmoji =
+                typeof method === "string" ? "" : method?.emoji || "";
+              return (
+                <option key={methodName} value={methodName}>
+                  {methodEmoji ? `${methodEmoji} ` : ""}
+                  {methodName}
+                </option>
+              );
+            })}
+            <option value={CREATE_PAYMENT_METHOD_OPTION}>
+              ➕ Criar novo meio de pagamento...
+            </option>
+          </Select>
 
-            {creatingPaymentMethod && (
-              <div className="space-y-2 animate-in fade-in duration-200">
-                <Input
-                  label="Nome do novo meio de pagamento"
-                  type="text"
-                  value={newPaymentMethodName}
-                  onChange={(e) => {
-                    setNewPaymentMethodName(e.target.value);
-                    setPaymentCreateError(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleCreatePaymentMethod();
-                    }
-                  }}
-                  placeholder="Ex: Itaú"
-                  error={paymentCreateError ?? undefined}
-                  autoFocus
-                />
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    onClick={handleCreatePaymentMethod}
-                    variant="primary"
-                    size="sm"
-                    disabled={isAnimating}
-                  >
-                    Criar meio de pagamento
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => setCreatingPaymentMethod(false)}
-                    variant="ghost"
-                    size="sm"
-                  >
-                    Cancelar
-                  </Button>
-                </div>
+          {creatingPaymentMethod && (
+            <div className="space-y-2 animate-in fade-in duration-200">
+              <Input
+                label="Nome do novo meio de pagamento"
+                type="text"
+                value={newPaymentMethodName}
+                onChange={(e) => {
+                  setNewPaymentMethodName(e.target.value);
+                  setPaymentCreateError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleCreatePaymentMethod();
+                  }
+                }}
+                placeholder="Ex: Itaú"
+                error={paymentCreateError ?? undefined}
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  onClick={handleCreatePaymentMethod}
+                  variant="primary"
+                  size="sm"
+                  disabled={isAnimating}
+                >
+                  Criar meio de pagamento
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setCreatingPaymentMethod(false)}
+                  variant="ghost"
+                  size="sm"
+                >
+                  Cancelar
+                </Button>
               </div>
-            )}
-            </>
+            </div>
           )}
 
           {type === "income" && (
