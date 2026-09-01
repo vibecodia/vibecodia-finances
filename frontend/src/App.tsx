@@ -38,6 +38,9 @@ const TransactionList = lazy(() => import("./components/TransactionList"));
 const Board = lazy(() =>
   import("./components/trello/Board").then((m) => ({ default: m.Board })),
 );
+const ConnectionErrorScreen = lazy(
+  () => import("./components/ConnectionErrorScreen"),
+);
 
 const HojeRedirect = () => {
   const navigate = useNavigate();
@@ -119,6 +122,9 @@ function App() {
     clearAllData,
     isLoading,
     hasLoaded,
+    isSlowConnection,
+    error,
+    refetch,
   } = useFinancialData();
 
   const { theme } = useTheme();
@@ -309,9 +315,29 @@ function App() {
           <Route
             path="/"
             element={
-              <Dashboard
-                transactions={transactions}
-                savingsGoals={savingsGoals}
+              !isGuest && !hasLoaded && error && !isLoading ? (
+                <ConnectionErrorScreen
+                  onRetry={refetch}
+                  errorMessage={error}
+                />
+              ) : (
+                <Dashboard
+                  transactions={transactions}
+                  savingsGoals={savingsGoals}
+                  isLoading={isLoading}
+                  hasLoaded={hasLoaded}
+                  isSlowConnection={isSlowConnection}
+                  onRetry={refetch}
+                />
+              )
+            }
+          />
+          <Route
+            path="/connection-issue"
+            element={
+              <ConnectionErrorScreen
+                onRetry={refetch}
+                errorMessage={error}
               />
             }
           />
@@ -400,6 +426,10 @@ function App() {
                 <Dashboard
                   transactions={transactions}
                   savingsGoals={savingsGoals}
+                  isLoading={isLoading}
+                  hasLoaded={hasLoaded}
+                  isSlowConnection={isSlowConnection}
+                  onRetry={refetch}
                 />
               ) : (
                 <Playground
@@ -443,6 +473,25 @@ function App() {
           />
           <Route path="/tasks" element={<Board />} />
           <Route path="/hoje" element={<HojeRedirect />} />
+          <Route
+            path="*"
+            element={
+              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 space-y-4">
+                <div className="p-6 rounded-full bg-primary/10 text-primary border border-primary/20">
+                  <span className="text-4xl font-black">404</span>
+                </div>
+                <h2 className="text-2xl font-black text-foreground uppercase tracking-tight">
+                  Página não encontrada
+                </h2>
+                <p className="text-sm text-muted-foreground max-w-sm">
+                  O endereço acessado não existe ou foi movido.
+                </p>
+                <Button onClick={() => navigate("/")} className="mt-2">
+                  Voltar ao Início
+                </Button>
+              </div>
+            }
+          />
         </Routes>
       </Suspense>
       </main>

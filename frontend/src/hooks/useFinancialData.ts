@@ -125,6 +125,23 @@ export const useFinancialData = () => {
     [transactionsHook.hasLoaded, goalsHook.hasLoaded],
   );
 
+  const isSlowConnection = useMemo(
+    () => transactionsHook.isSlowConnection || goalsHook.isSlowConnection,
+    [transactionsHook.isSlowConnection, goalsHook.isSlowConnection],
+  );
+
+  const error = useMemo(
+    () => transactionsHook.error || goalsHook.error,
+    [transactionsHook.error, goalsHook.error],
+  );
+
+  const refetch = useCallback(async () => {
+    await Promise.all([
+      transactionsHook.fetchTransactions(),
+      goalsHook.fetchGoals(),
+    ]);
+  }, [transactionsHook, goalsHook]);
+
   return {
     transactions: transactionsHook.transactions,
     savingsGoals: goalsHook.savingsGoals,
@@ -146,5 +163,8 @@ export const useFinancialData = () => {
     monthlyBalances,
     isLoading,
     hasLoaded,
+    isSlowConnection,
+    error,
+    refetch,
   };
 };

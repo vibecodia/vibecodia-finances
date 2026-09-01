@@ -22,6 +22,8 @@ export const useSavingsGoals = ({
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [isSlowConnection, setIsSlowConnection] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const headers = useMemo(
     () => ({
@@ -36,12 +38,15 @@ export const useSavingsGoals = ({
 
     if (isGuest) {
       setIsLoading(true);
+      setIsSlowConnection(false);
+      setError(null);
       try {
         const stored = guestStorageAdapter.getGoals();
         setSavingsGoals(stored);
         setHasLoaded(true);
-      } catch (error) {
-        console.error("Error reading guest goals:", error);
+      } catch (err) {
+        console.error("Error reading guest goals:", err);
+        setError("Erro ao ler metas locais.");
       } finally {
         setIsLoading(false);
       }
@@ -52,23 +57,53 @@ export const useSavingsGoals = ({
       setSavingsGoals([]);
       setIsLoading(false);
       setHasLoaded(false);
+      setIsSlowConnection(false);
+      setError(null);
       return;
     }
 
     setIsLoading(true);
+    setError(null);
+
+    const slowTimer = setTimeout(() => {
+      setIsSlowConnection(true);
+    }, 3500);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 12000);
+
     try {
-      const response = await fetch(`${API_BASE_URL}/goals`, { headers });
-      if (!response.ok) throw new Error("Failed to fetch goals");
+      const response = await fetch(`${API_BASE_URL}/goals`, {
+        headers,
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("Falha ao carregar metas");
       const data = await response.json();
       setSavingsGoals(data);
       setHasLoaded(true);
-    } catch (error) {
-      console.error("Error fetching savings goals:", error);
-      setSavingsGoals([]);
+      setError(null);
+    } catch (err: unknown) {
+      const isAbort =
+        err instanceof Error && err.name === "AbortError";
+      const message = isAbort
+        ? "Tempo limite de conexão excedido. A rede pode estar instável."
+        : err instanceof Error
+          ? err.message
+          : "Erro ao conectar com o servidor.";
+      console.error("Error fetching savings goals:", err);
+      setError(message);
+      if (!hasLoaded) {
+        setSavingsGoals([]);
+      }
     } finally {
+      clearTimeout(slowTimer);
+      clearTimeout(timeoutId);
+      setIsSlowConnection(false);
       setIsLoading(false);
     }
-  }, [headers, isGuest, isInitializing, pin]);
+  }, [hasLoaded, headers, isGuest, isInitializing, pin]);
 
   useEffect(() => {
     fetchGoals();
@@ -434,6 +469,8 @@ export const useSavingsGoals = ({
     savingsGoals,
     isLoading,
     hasLoaded,
+    isSlowConnection,
+    error,
     fetchGoals,
     refreshGoals,
     setSavingsGoals,
