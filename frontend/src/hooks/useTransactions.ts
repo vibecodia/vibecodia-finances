@@ -25,6 +25,8 @@ export const useTransactions = ({
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [isSlowConnection, setIsSlowConnection] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const headers = useMemo(
     () => ({
@@ -39,12 +41,15 @@ export const useTransactions = ({
 
     if (isGuest) {
       setIsLoading(true);
+      setIsSlowConnection(false);
+      setError(null);
       try {
         const stored = guestStorageAdapter.getTransactions();
         setTransactions(stored);
         setHasLoaded(true);
-      } catch (error) {
-        console.error("Error reading guest transactions:", error);
+      } catch (err) {
+        console.error("Error reading guest transactions:", err);
+        setError("Erro ao ler transações locais.");
       } finally {
         setIsLoading(false);
       }
@@ -55,23 +60,54 @@ export const useTransactions = ({
       setTransactions([]);
       setIsLoading(false);
       setHasLoaded(false);
+      setIsSlowConnection(false);
+      setError(null);
       return;
     }
 
     setIsLoading(true);
+    setError(null);
+
+    // Guardrail de conexão lenta: se demorar mais de 3.5s, ativa o aviso amigável
+    const slowTimer = setTimeout(() => {
+      setIsSlowConnection(true);
+    }, 3500);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 12000); // 12s de timeout máximo
+
     try {
-      const response = await fetch(`${API_BASE_URL}/transactions`, { headers });
-      if (!response.ok) throw new Error("Failed to fetch transactions");
+      const response = await fetch(`${API_BASE_URL}/transactions`, {
+        headers,
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("Falha ao carregar transações");
       const data = await response.json();
       setTransactions(data);
       setHasLoaded(true);
-    } catch (error) {
-      console.error("Error fetching transactions:", error);
-      setTransactions([]);
+      setError(null);
+    } catch (err: unknown) {
+      const isAbort =
+        err instanceof Error && err.name === "AbortError";
+      const message = isAbort
+        ? "Tempo limite de conexão excedido. A rede pode estar instável."
+        : err instanceof Error
+          ? err.message
+          : "Erro ao conectar com o servidor.";
+      console.error("Error fetching transactions:", err);
+      setError(message);
+      if (!hasLoaded) {
+        setTransactions([]);
+      }
     } finally {
+      clearTimeout(slowTimer);
+      clearTimeout(timeoutId);
+      setIsSlowConnection(false);
       setIsLoading(false);
     }
-  }, [headers, isGuest, isInitializing, pin]);
+  }, [hasLoaded, headers, isGuest, isInitializing, pin]);
 
   useEffect(() => {
     fetchTransactions();
@@ -258,6 +294,8 @@ export const useTransactions = ({
     transactions,
     isLoading,
     hasLoaded,
+    isSlowConnection,
+    error,
     fetchTransactions,
     setTransactions,
     addTransaction,

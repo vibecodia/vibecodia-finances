@@ -24,6 +24,7 @@ import {
   Camera,
   RotateCcw,
   Keyboard,
+  Coffee,
 } from "lucide-react";
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import Confetti from "react-confetti";
@@ -67,6 +68,10 @@ import { UINinjaOverlay } from "./UINinjaOverlay";
 interface DashboardProps {
   transactions: Transaction[];
   savingsGoals: SavingsGoal[];
+  isLoading?: boolean;
+  hasLoaded?: boolean;
+  isSlowConnection?: boolean;
+  onRetry?: () => void;
 }
 
 // ─── AccountSlider ────────────────────────────────────────────────────────────
@@ -418,6 +423,10 @@ const BenefitSplitModal: React.FC<BenefitSplitModalProps> = ({
 const Dashboard: React.FC<DashboardProps> = ({
   transactions,
   savingsGoals,
+  isLoading = false,
+  hasLoaded = true,
+  isSlowConnection = false,
+  onRetry,
 }) => {
   const navigate = useNavigate();
   const { width, height } = useWindowSize();
@@ -466,6 +475,42 @@ const Dashboard: React.FC<DashboardProps> = ({
     "recent_transactions_enabled",
     true,
   );
+
+  // Controle de persistência do banner de conexão lenta (garante exibição mínima de 6.5s para leitura amigável)
+  const [showSlowBanner, setShowSlowBanner] = useState(false);
+  const minSlowBannerUntilRef = useRef<number>(0);
+  const slowBannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (isSlowConnection) {
+      setShowSlowBanner(true);
+      const now = Date.now();
+      if (minSlowBannerUntilRef.current < now) {
+        minSlowBannerUntilRef.current = now + 6500; // Pelo menos 6.5 segundos visível
+      }
+    }
+  }, [isSlowConnection]);
+
+  useEffect(() => {
+    if (!isLoading && showSlowBanner) {
+      const now = Date.now();
+      const remainingTime = Math.max(0, minSlowBannerUntilRef.current - now);
+
+      if (slowBannerTimeoutRef.current) {
+        clearTimeout(slowBannerTimeoutRef.current);
+      }
+
+      slowBannerTimeoutRef.current = setTimeout(() => {
+        setShowSlowBanner(false);
+      }, remainingTime);
+
+      return () => {
+        if (slowBannerTimeoutRef.current) {
+          clearTimeout(slowBannerTimeoutRef.current);
+        }
+      };
+    }
+  }, [isLoading, showSlowBanner]);
 
   // Migração 1×: chaves antigas do split (exclusivas do Flash) → config por
   // cartão (dashboard_split_config). Idempotente: some a chave legada.
@@ -744,6 +789,49 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
+      {/* Slow Connection Guardrail Banner com persistência mínima de 6s e mensagem de café */}
+      {showSlowBanner && (
+        <div className="w-full flex items-center justify-between gap-3 p-4 px-5 rounded-2xl bg-amber-500/15 border border-amber-500/30 backdrop-blur-md text-amber-700 dark:text-amber-300 animate-in fade-in slide-in-from-top-2 duration-500 shadow-sm">
+          <div className="flex items-center gap-3.5">
+            <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-500 flex-shrink-0 relative">
+              <Coffee className="w-5 h-5 animate-bounce" />
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                  {!isLoading ? "Tudo sincronizado! ☕" : "Sincronizando com o servidor..."}
+                </span>
+                {!isLoading && (
+                  <span className="text-[10px] font-bold text-green-700 dark:text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
+                    Pronto
+                  </span>
+                )}
+              </div>
+              <span className="text-[11px] opacity-90 leading-tight mt-0.5">
+                {!isLoading
+                  ? "Nem deu tempo de esfriar o café! Seus números estão 100% atualizados."
+                  : "A conexão oscilou um pouco, mas não vai demorar nem o tempo de um cafezinho... ☕ Seus dados estão seguros!"}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {isLoading && onRetry && (
+              <button
+                onClick={onRetry}
+                className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-700 dark:text-amber-300 border border-amber-500/30 transition-all active:scale-95"
+              >
+                Reconectar
+              </button>
+            )}
+            <div
+              className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                !isLoading ? "bg-green-500 shadow-[0_0_8px_#22c55e]" : "bg-amber-500 animate-ping"
+              }`}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Main Balance Card + Quick Add FAB */}
       <div className="relative">
         <div
@@ -909,23 +997,31 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <span
                   className={cn(
                     "text-[10px] font-black uppercase tracking-[0.3em] mb-2 transition-colors duration-500",
-                    finalBalance < -0.001
-                      ? "text-rose-200 animate-pulse"
-                      : "opacity-50",
+                    isLoading && !hasLoaded
+                      ? "text-white/70 animate-pulse"
+                      : finalBalance < -0.001
+                        ? "text-rose-200 animate-pulse"
+                        : "opacity-50",
                   )}
                 >
-                  {finalBalance < -0.001
-                    ? "Atenção • Saldo Devedor"
-                    : "Saldo Disponível"}
+                  {isLoading && !hasLoaded
+                    ? "Sincronizando saldo..."
+                    : finalBalance < -0.001
+                      ? "Atenção • Saldo Devedor"
+                      : "Saldo Disponível"}
                 </span>
-                <p
-                  className={cn(
-                    "text-4xl sm:text-6xl font-black tracking-tighter tabular-nums drop-shadow-lg transition-colors duration-500",
-                    finalBalance < -0.001 ? "text-rose-100" : "text-white",
-                  )}
-                >
-                  {showBalance ? formatCurrency(displayBalance) : "R$ ••••••"}
-                </p>
+                {isLoading && !hasLoaded ? (
+                  <div className="h-10 sm:h-14 w-48 sm:w-64 my-1 rounded-2xl bg-white/20 animate-pulse" />
+                ) : (
+                  <p
+                    className={cn(
+                      "text-4xl sm:text-6xl font-black tracking-tighter tabular-nums drop-shadow-lg transition-colors duration-500",
+                      finalBalance < -0.001 ? "text-rose-100" : "text-white",
+                    )}
+                  >
+                    {showBalance ? formatCurrency(displayBalance) : "R$ ••••••"}
+                  </p>
+                )}
               </div>
             </div>
 
