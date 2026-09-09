@@ -12,12 +12,13 @@ import {
 } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
 
+import { useReductionLock } from "../contexts/ReductionLockContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useCategories } from "../hooks/useCategories";
 import { useCurrencyInput } from "../hooks/useCurrencyInput";
 import { usePaymentMethods } from "../hooks/usePaymentMethods";
 import { cn } from "../lib/utils";
-import { SavingsGoal, Transaction, PaymentMethod, StructuredNotes } from "../types";
+import { SavingsGoal, Transaction, PaymentMethod, StructuredNotes, ExpenseReductionAlert } from "../types";
 import {
   getCategoryName,
   getPassiveIncomeCategory,
@@ -33,6 +34,7 @@ import {
 
 import { FallingItems } from "./FallingItems";
 import ImageUpload from "./ImageUpload";
+import { ReductionAlertModal } from "./ReductionAlertModal";
 import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
 import { Input } from "./ui/Input";
@@ -64,6 +66,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   const { theme } = useTheme();
   const { expenseCategories, incomeCategories, addCategory } = useCategories();
   const { paymentMethods, addPaymentMethod } = usePaymentMethods();
+  const { isEnabled: isReductionLockEnabled, checkExpenseAlert } = useReductionLock();
+  const [pendingReductionAlert, setPendingReductionAlert] = useState<ExpenseReductionAlert | null>(null);
 
   const categories = type === "expense" ? expenseCategories : incomeCategories;
 
@@ -263,32 +267,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
           "Rendimento mensal cofrinhos",
         ];
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (
-      amountValue === 0 ||
-      !formData.description ||
-      !formData.category ||
-      localError
-    ) {
-      return;
-    }
-    if (showGoalSelect && !formData.savingsGoalId) {
-      return;
-    }
-
-    let finalDueDate = formData.dueDate;
-    if (type === "expense" && !formData.isPaid && !finalDueDate) {
-      finalDueDate = getBrazilDateString();
-    }
-
-    // Garante que a data principal seja a data de vencimento para despesas
-    const finalDate =
-      type === "expense"
-        ? finalDueDate || getBrazilDateString()
-        : formData.date;
-
+  const executeSubmit = async (finalDate: string, finalDueDate: string | undefined) => {
     try {
       const count = transaction ? 1 : repeatMonths > 0 ? repeatMonths : 1;
 
@@ -351,6 +330,70 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       // O erro é tratado no pai e refletido via prop submitError
       console.error("Submit error:", error);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (
+      amountValue === 0 ||
+      !formData.description ||
+      !formData.category ||
+      localError
+    ) {
+      return;
+    }
+    if (showGoalSelect && !formData.savingsGoalId) {
+      return;
+    }
+
+    let finalDueDate = formData.dueDate;
+    if (type === "expense" && !formData.isPaid && !finalDueDate) {
+      finalDueDate = getBrazilDateString();
+    }
+
+    // Garante que a data principal seja a data de vencimento para despesas
+    const finalDate =
+      type === "expense"
+        ? finalDueDate || getBrazilDateString()
+        : formData.date;
+
+    // Alerta de trava para redução de gastos variáveis
+    if (type === "expense" && isReductionLockEnabled) {
+      const alert = checkExpenseAlert({
+        category: formData.category,
+        paymentMethod: formData.paymentMethod,
+        date: finalDate,
+        dueDate: finalDueDate,
+      });
+
+      if (alert) {
+        setPendingReductionAlert(alert);
+        return;
+      }
+    }
+
+    await executeSubmit(finalDate, finalDueDate);
+  };
+
+  const handleConfirmReductionAlert = async () => {
+    setPendingReductionAlert(null);
+
+    let finalDueDate = formData.dueDate;
+    if (type === "expense" && !formData.isPaid && !finalDueDate) {
+      finalDueDate = getBrazilDateString();
+    }
+
+    const finalDate =
+      type === "expense"
+        ? finalDueDate || getBrazilDateString()
+        : formData.date;
+
+    await executeSubmit(finalDate, finalDueDate);
+  };
+
+  const handleCancelReductionAlert = () => {
+    setPendingReductionAlert(null);
   };
 
   const handleReceiptDetected = (data: {
@@ -1006,6 +1049,14 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
           </div>
         </form>
       </Card>
+
+      {/* Pop-up de Alerta para Redução de Gastos Variáveis */}
+      <ReductionAlertModal
+        isOpen={Boolean(pendingReductionAlert)}
+        alert={pendingReductionAlert}
+        onConfirm={handleConfirmReductionAlert}
+        onCancel={handleCancelReductionAlert}
+      />
     </div>
   );
 };

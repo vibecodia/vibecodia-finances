@@ -7,6 +7,7 @@ import { goalsRouter } from './goals.js';
 import { healthRouter } from './health.js';
 import { notificationsRouter } from './notifications.js';
 import { receiptRouter } from './receipt.js';
+import { reductionAlertsRouter } from './reductionAlerts.js';
 import { shoppingListRouter } from './shoppingList.js';
 import { transactionsRouter } from './transactions.js';
 import { verifyPinRouter } from './verifyPin.js';
@@ -23,6 +24,7 @@ export function apiRouter(deps) {
   router.use('/transactions', transactionsRouter(deps.connectionManager));
   router.use('/goals', goalsRouter(deps.connectionManager));
   router.use('/shopping-list', shoppingListRouter(deps.connectionManager));
+  router.use('/reduction-alerts', reductionAlertsRouter(deps.connectionManager));
   router.use('/fetch-receipt-data', receiptRouter());
   router.use('/ai-proxy', aiProxyRouter());
   router.use('/health-check', healthRouter());
