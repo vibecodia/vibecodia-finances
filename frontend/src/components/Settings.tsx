@@ -40,6 +40,7 @@ import {
   formatBrazilDate,
 } from "../utils/helpers";
 
+import { ReductionLockSettings } from "./ReductionLockSettings";
 import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
 import { Input } from "./ui/Input";
@@ -542,6 +543,9 @@ const Settings: React.FC<SettingsProps> = ({
           </span>
         </Button>
       </div>
+
+      {/* Trava para Redução de Gastos Variáveis */}
+      <ReductionLockSettings />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-8">

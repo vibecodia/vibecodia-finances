@@ -127,3 +127,5 @@ export interface PendingPayment {
   isOverdue: boolean;
   daysUntilDue: number | null; // Alterado para permitir null
 }
+
+export * from "./reductionLock";

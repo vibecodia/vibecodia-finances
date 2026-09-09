@@ -1,5 +1,6 @@
 import { categorySchema } from './category.js';
 import { pushSubscriptionSchema } from './pushSubscription.js';
+import { reductionAlertSchema } from './reductionAlert.js';
 import { savingsGoalSchema } from './savingsGoal.js';
 import { shoppingItemSchema } from './shoppingItem.js';
 import { transactionSchema } from './transaction.js';
@@ -19,6 +20,7 @@ export function getModels(conn) {
     SavingsGoal: conn.model('SavingsGoal', savingsGoalSchema),
     ShoppingItem: conn.model('ShoppingItem', shoppingItemSchema),
     PushSubscription: conn.model('PushSubscription', pushSubscriptionSchema),
+    ReductionAlert: conn.model('ReductionAlert', reductionAlertSchema, 'reductioin_alerts'),
   };
 
   modelsCache.set(conn, models);
