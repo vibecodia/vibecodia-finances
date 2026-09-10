@@ -62,6 +62,12 @@ export const ReductionAlertModal: React.FC<ReductionAlertModalProps> = ({
   const details = getAlertDetails();
   const IconComponent = details.icon;
   const formattedRange = formatWeekDateRange(alert.startDate, alert.endDate);
+  const displayWeekLabel =
+    formattedRange && alert.weekLabel.includes(formattedRange)
+      ? alert.weekLabel
+      : formattedRange
+        ? `${alert.weekLabel} (${formattedRange})`
+        : alert.weekLabel;
 
   return (
     <div
@@ -124,7 +130,7 @@ export const ReductionAlertModal: React.FC<ReductionAlertModalProps> = ({
                   Semana:
                 </span>
                 <span className="font-bold text-foreground">
-                  {alert.weekLabel} {formattedRange ? `(${formattedRange})` : ""}
+                  {displayWeekLabel}
                 </span>
               </div>
               <div className="flex items-center justify-between">

@@ -46,6 +46,7 @@ interface ReductionLockContextValue {
     paymentMethod?: string;
     date: string;
     dueDate?: string;
+    createdAt?: string;
   }) => ExpenseReductionAlert | null;
 }
 
@@ -307,6 +308,7 @@ export const ReductionLockProvider: React.FC<{ children: React.ReactNode }> = ({
       paymentMethod?: string;
       date: string;
       dueDate?: string;
+      createdAt?: string;
     }): ExpenseReductionAlert | null => {
       return checkExpenseReductionAlert(params, config);
     },

@@ -358,13 +358,18 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         ? finalDueDate || getBrazilDateString()
         : formData.date;
 
-    // Alerta de trava para redução de gastos variáveis
+    // Alerta de trava para redução de gastos variáveis (considerando data de criação/compra)
     if (type === "expense" && isReductionLockEnabled) {
+      const creationDate = transaction?.createdAt
+        ? transaction.createdAt.slice(0, 10)
+        : getBrazilDateString();
+
       const alert = checkExpenseAlert({
         category: formData.category,
         paymentMethod: formData.paymentMethod,
         date: finalDate,
         dueDate: finalDueDate,
+        createdAt: creationDate,
       });
 
       if (alert) {

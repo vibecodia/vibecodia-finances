@@ -137,6 +137,7 @@ export const checkExpenseReductionAlert = (
     paymentMethod?: string;
     date: string;
     dueDate?: string;
+    createdAt?: string;
   },
   config: ReductionLockConfig,
 ): ExpenseReductionAlert | null => {
@@ -158,8 +159,9 @@ export const checkExpenseReductionAlert = (
     return null;
   }
 
-  // Get date to check: prioritize dueDate for expenses, then date
-  const rawDate = params.dueDate || params.date;
+  // Prioritize createdAt (data de criação/compra do gasto no cartão) para checagem da trava,
+  // com fallback para dueDate ou date caso não fornecido.
+  const rawDate = params.createdAt || params.dueDate || params.date;
   if (!rawDate) {
     return null;
   }
