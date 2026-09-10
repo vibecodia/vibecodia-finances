@@ -153,7 +153,23 @@ describe("reductionLockUtils", () => {
       expect(alert).toBeNull();
     });
 
-    it("prioritizes dueDate when provided for expense", () => {
+    it("prioritizes createdAt (data de criação/compra) over future dueDate (vencimento da fatura)", () => {
+      const alert = checkExpenseReductionAlert(
+        {
+          category: "Compras",
+          paymentMethod: "Cartão XP",
+          createdAt: "2026-09-03", // week 1 (rule for Compras is red)
+          date: "2026-10-15",      // future invoice payment date
+          dueDate: "2026-10-15",   // future invoice due date
+        },
+        sampleConfig,
+      );
+      expect(alert).not.toBeNull();
+      expect(alert?.level).toBe("red");
+      expect(alert?.weekLabel).toContain("Semana 1");
+    });
+
+    it("falls back to dueDate when createdAt is not provided", () => {
       const alert = checkExpenseReductionAlert(
         {
           category: "Transporte",
