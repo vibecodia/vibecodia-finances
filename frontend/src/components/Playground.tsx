@@ -64,6 +64,10 @@ import {
   getCurrentBrazilDate,
   getTransactionsWithRecurrence,
 } from "../utils/helpers";
+import {
+  clusterTransactionsItems,
+  GroupedProductCluster,
+} from "../utils/productMatcher";
 
 import DateRangePicker from "./DateRangePicker";
 import { MaximizedChartModal } from "./playground/MaximizedChartModal";
@@ -75,10 +79,6 @@ import { PassiveIncomeEvolutionSection } from "./playground/sections/PassiveInco
 import { PaymentMethodsSection } from "./playground/sections/PaymentMethodsSection";
 import { PriceEvolutionSection } from "./playground/sections/PriceEvolutionSection";
 import { PriceEvolutionV2Section } from "./playground/sections/PriceEvolutionV2Section";
-import {
-  clusterTransactionsItems,
-  GroupedProductCluster,
-} from "../utils/productMatcher";
 import { TransactionsTableSection } from "./playground/sections/TransactionsTableSection";
 import { PlaygroundCardHeader } from "./ui/PlaygroundCardHeader";
 

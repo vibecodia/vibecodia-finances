@@ -1,4 +1,5 @@
 import { ReceiptItem, StructuredNotes, Transaction } from "../types";
+
 import { parseLocalDate } from "./helpers";
 
 export interface RawItemPurchase {
@@ -556,7 +557,7 @@ export function pickCanonicalDisplayName(
     return b.length - a.length;
   });
 
-  let best = sorted[0];
+  const best = sorted[0];
 
   // Clean and format Title Case
   let formatted = formatToTitleCase(best);

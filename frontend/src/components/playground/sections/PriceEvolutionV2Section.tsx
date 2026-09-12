@@ -23,11 +23,11 @@ import {
 import React, { useMemo, useState } from "react";
 import { Line } from "react-chartjs-2";
 
+import { formatBrazilDate, formatCurrency } from "../../../utils/helpers";
 import {
   GroupedProductCluster,
   RawItemPurchase,
 } from "../../../utils/productMatcher";
-import { formatBrazilDate, formatCurrency } from "../../../utils/helpers";
 
 export interface PriceEvolutionV2SectionProps {
   id: string;

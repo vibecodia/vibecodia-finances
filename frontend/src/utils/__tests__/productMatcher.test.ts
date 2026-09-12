@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
+
+import { Transaction } from "../../types";
 import {
   calculateItemSimilarity,
   clusterTransactionsItems,
   parseItemSignature,
 } from "../productMatcher";
-import { Transaction } from "../../types";
 
 describe("productMatcher", () => {
   it("should parse signatures and match abbreviations like marg bec 500g and margarina becel 500g", () => {
