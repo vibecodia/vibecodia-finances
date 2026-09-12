@@ -64,6 +64,10 @@ import {
   getCurrentBrazilDate,
   getTransactionsWithRecurrence,
 } from "../utils/helpers";
+import {
+  clusterTransactionsItems,
+  GroupedProductCluster,
+} from "../utils/productMatcher";
 
 import DateRangePicker from "./DateRangePicker";
 import { MaximizedChartModal } from "./playground/MaximizedChartModal";
@@ -74,6 +78,7 @@ import { IncomeTimelineSection } from "./playground/sections/IncomeTimelineSecti
 import { PassiveIncomeEvolutionSection } from "./playground/sections/PassiveIncomeEvolutionSection";
 import { PaymentMethodsSection } from "./playground/sections/PaymentMethodsSection";
 import { PriceEvolutionSection } from "./playground/sections/PriceEvolutionSection";
+import { PriceEvolutionV2Section } from "./playground/sections/PriceEvolutionV2Section";
 import { TransactionsTableSection } from "./playground/sections/TransactionsTableSection";
 import { PlaygroundCardHeader } from "./ui/PlaygroundCardHeader";
 
@@ -278,6 +283,7 @@ const DEFAULT_LAYOUT: LayoutItem[] = [
   { id: "payments", label: "Distribuição por Pagamento", collapsed: false },
   { id: "table", label: "Planilha de Transações", collapsed: false },
   { id: "price_evolution", label: "Evolução de Preços", collapsed: false },
+  { id: "price_evolution_v2", label: "Evolução de Preços V2", collapsed: false },
   { id: "discount_analysis", label: "Análise de Descontos", collapsed: false },
 ];
 
@@ -363,6 +369,7 @@ const Playground: React.FC<PlaygroundProps> = ({
   const categoryChartRef = useRef<ChartJS | null>(null);
   const paymentChartRef = useRef<ChartJS | null>(null);
   const priceChartRef = useRef<ChartJS | null>(null);
+  const priceChartV2Ref = useRef<ChartJS | null>(null);
   const discountChartRef = useRef<ChartJS | null>(null);
   const maximizedChartRef = useRef<ChartJS | null>(null);
 
@@ -374,15 +381,35 @@ const Playground: React.FC<PlaygroundProps> = ({
 
   useEffect(() => {
     setLayout((prev) => {
-      if (prev.some((i) => i.id === "discount_analysis")) return prev;
-      return [
-        ...prev,
-        {
-          id: "discount_analysis",
-          label: "Análise de Descontos",
+      let updated = prev;
+      if (!updated.some((i) => i.id === "price_evolution_v2")) {
+        const peIdx = updated.findIndex((i) => i.id === "price_evolution");
+        const newItem: LayoutItem = {
+          id: "price_evolution_v2",
+          label: "Evolução de Preços V2",
           collapsed: false,
-        },
-      ];
+        };
+        if (peIdx >= 0) {
+          updated = [
+            ...updated.slice(0, peIdx + 1),
+            newItem,
+            ...updated.slice(peIdx + 1),
+          ];
+        } else {
+          updated = [...updated, newItem];
+        }
+      }
+      if (!updated.some((i) => i.id === "discount_analysis")) {
+        updated = [
+          ...updated,
+          {
+            id: "discount_analysis",
+            label: "Análise de Descontos",
+            collapsed: false,
+          },
+        ];
+      }
+      return updated;
     });
   }, []);
 
@@ -442,6 +469,10 @@ const Playground: React.FC<PlaygroundProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [expenseItemSearch, setExpenseItemSearch] = useState("");
   const [priceEvolutionItemSearch, setPriceEvolutionItemSearch] = useState("");
+  const [priceEvolutionV2Search, setPriceEvolutionV2Search] = useState("");
+  const [selectedClusterId, setSelectedClusterId] = useState<string | null>(
+    null,
+  );
   const [typeFilter, setTypeFilter] = useState<"all" | "expense" | "income">(
     "all",
   );
@@ -1263,8 +1294,18 @@ INSTRUÇÕES:
 
   // Extract Items from Notes for Price Comparison with normalization
   const allItems = useMemo(() => {
-    const itemsMap: Record<string, { date: string; price: number; originalName: string }[]> = {};
-    const nameMapping: Record<string, string> = {}; // maps normalized name to a "prettiest" original name
+    type PriceItemEntry = {
+      date: string;
+      price: number;
+      originalName: string;
+      transactionDescription: string;
+      transactionId?: string;
+    };
+
+    const normalizedMap: Record<
+      string,
+      { displayName: string; points: PriceItemEntry[] }
+    > = {};
 
     transactions.forEach((t: Transaction) => {
       // Handle soft-deleted status
@@ -1275,6 +1316,7 @@ INSTRUÇÕES:
       }
 
       let items: ReceiptItem[] = [];
+      let storeName = "";
       if (t.notes) {
         if (
           typeof t.notes === "object" &&
@@ -1283,11 +1325,19 @@ INSTRUÇÕES:
           Array.isArray((t.notes as StructuredNotes).items)
         ) {
           items = (t.notes as StructuredNotes).items || [];
+          if (typeof (t.notes as Record<string, unknown>).store === "string") {
+            storeName = (
+              (t.notes as Record<string, unknown>).store as string
+            ).trim();
+          }
         } else if (typeof t.notes === "string") {
           try {
             const parsed = JSON.parse(t.notes);
             if (Array.isArray(parsed.items)) {
               items = parsed.items;
+            }
+            if (typeof parsed.store === "string") {
+              storeName = parsed.store.trim();
             }
           } catch {
             // Not JSON
@@ -1295,25 +1345,46 @@ INSTRUÇÕES:
         }
       }
 
+      const txDescription =
+        t.description?.trim() || storeName || "Transação sem descrição";
+
       items.forEach((item) => {
         const originalName = item.description || item.name;
         const price = item.unitPrice || item.price;
         if (originalName && typeof price === "number") {
           const normalized = normalizeItemName(originalName);
-          
+
           // Skip discount items
           if (originalName.toLowerCase().includes("descontos")) return;
-          
-          // Choose the shortest original name as the "pretty" one for display
-          if (!nameMapping[normalized] || originalName.length < nameMapping[normalized].length) {
-            nameMapping[normalized] = originalName;
+
+          if (!normalizedMap[normalized]) {
+            normalizedMap[normalized] = {
+              displayName: originalName,
+              points: [],
+            };
+          } else if (
+            originalName.length < normalizedMap[normalized].displayName.length
+          ) {
+            normalizedMap[normalized].displayName = originalName;
           }
-          
-          const displayName = nameMapping[normalized];
-          if (!itemsMap[displayName]) itemsMap[displayName] = [];
-          itemsMap[displayName].push({ date: t.date, price, originalName });
+
+          normalizedMap[normalized].points.push({
+            date: t.date,
+            price,
+            originalName,
+            transactionDescription: txDescription,
+            transactionId: t.id || t._id,
+          });
         }
       });
+    });
+
+    const itemsMap: Record<string, PriceItemEntry[]> = {};
+    Object.values(normalizedMap).forEach((group) => {
+      if (!itemsMap[group.displayName]) {
+        itemsMap[group.displayName] = [];
+      }
+      itemsMap[group.displayName].push(...group.points);
     });
 
     return itemsMap;
@@ -1334,6 +1405,11 @@ INSTRUÇÕES:
     // Put duplicates on top
     return [...duplicates, ...unique];
   }, [allItems, priceEvolutionItemSearch]);
+
+  // Intelligent product clustering for Price Evolution V2
+  const productClusters: GroupedProductCluster[] = useMemo(() => {
+    return clusterTransactionsItems(transactions, showDeleted);
+  }, [transactions, showDeleted]);
 
   // Expense Timeline Chart Data
   const expenseTimelineChartData: TimelineChartData = useMemo(() => {
@@ -1653,7 +1729,7 @@ INSTRUÇÕES:
   const priceChartData = useMemo(() => {
     if (!selectedItem || !allItems[selectedItem]) return null;
 
-    const dataPoints = allItems[selectedItem].sort(
+    const dataPoints = [...allItems[selectedItem]].sort(
       (a, b) =>
         parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime(),
     );
@@ -1668,10 +1744,17 @@ INSTRUÇÕES:
           backgroundColor: theme.primary + "33",
           fill: true,
           tension: 0.4,
+          pointRadius: 6,
+          pointHoverRadius: 9,
+          pointHitRadius: 25,
+          pointBackgroundColor: theme.primary,
+          pointBorderColor: theme.cardBackground,
+          pointBorderWidth: 2,
+          dataPoints,
         },
       ],
     };
-  }, [selectedItem, allItems, theme.primary]);
+  }, [selectedItem, allItems, theme.primary, theme.cardBackground]);
 
   const weekdaysPt = useMemo(
     () => ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const,
@@ -2512,6 +2595,11 @@ INSTRUÇÕES:
                         data={priceChartData}
                         options={{
                           maintainAspectRatio: false,
+                          interaction: {
+                            mode: "nearest",
+                            axis: "x",
+                            intersect: false,
+                          },
                           plugins: {
                             legend: {
                               display: true,
@@ -2520,10 +2608,25 @@ INSTRUÇÕES:
                             tooltip: {
                               callbacks: {
                                 label: (context) => {
-                                  return formatCurrency(context.parsed.y);
-                                }
-                              }
-                            }
+                                  const fallbackPoint = selectedItem ? allItems[selectedItem]?.[context.dataIndex] : undefined;
+                                  const rawPoint =
+                                    (context.dataset as unknown as { dataPoints?: { transactionDescription?: string; originalName?: string }[] })?.dataPoints?.[context.dataIndex] ?? fallbackPoint;
+                                  const txDesc = rawPoint?.transactionDescription;
+                                  const lines = [`Preço: ${formatCurrency(context.parsed.y)}`];
+                                  if (txDesc) {
+                                    lines.push(`Transação: ${txDesc}`);
+                                  }
+                                  if (
+                                    rawPoint?.originalName &&
+                                    selectedItem &&
+                                    rawPoint.originalName.toLowerCase() !== selectedItem.toLowerCase()
+                                  ) {
+                                    lines.push(`Item na nota: ${rawPoint.originalName}`);
+                                  }
+                                  return lines;
+                                },
+                              },
+                            },
                           },
                           scales: {
                             y: {
@@ -2548,6 +2651,31 @@ INSTRUÇÕES:
                     Nenhum item selecionado para evolução de preços
                   </div>
                 )}
+              </div>
+            )}
+            {maximizedId === "price_evolution_v2" && (
+              <div className="h-full min-h-[500px]">
+                <PriceEvolutionV2Section
+                  id="price_evolution_v2"
+                  label="Evolução de Preços V2"
+                  index={0}
+                  collapsed={false}
+                  clusters={productClusters}
+                  selectedClusterId={selectedClusterId}
+                  onSelectedClusterChange={setSelectedClusterId}
+                  searchQuery={priceEvolutionV2Search}
+                  onSearchQueryChange={setPriceEvolutionV2Search}
+                  chartRefCallback={setChartRef(maximizedChartRef)}
+                  textColor={theme.text}
+                  cardBackground={theme.cardBackground}
+                  cardBorder={theme.cardBorder}
+                  primaryColor={theme.primary}
+                  onMoveItem={() => {}}
+                  onMaximize={() => setMaximizedId(null)}
+                  onToggleCollapse={() => {}}
+                  isFirst={true}
+                  isLast={true}
+                />
               </div>
             )}
             {maximizedId === "discount_analysis" && (
@@ -3851,6 +3979,32 @@ INSTRUÇÕES:
                     />
                   );
                 }
+
+                case "price_evolution_v2":
+                  return (
+                    <PriceEvolutionV2Section
+                      key={item.id}
+                      id={item.id}
+                      label={item.label}
+                      index={index}
+                      collapsed={item.collapsed}
+                      clusters={productClusters}
+                      selectedClusterId={selectedClusterId}
+                      onSelectedClusterChange={setSelectedClusterId}
+                      searchQuery={priceEvolutionV2Search}
+                      onSearchQueryChange={setPriceEvolutionV2Search}
+                      chartRefCallback={setChartRef(priceChartV2Ref)}
+                      textColor={theme.text}
+                      cardBackground={theme.cardBackground}
+                      cardBorder={theme.cardBorder}
+                      primaryColor={theme.primary}
+                      onMoveItem={moveItem}
+                      onMaximize={setMaximizedId}
+                      onToggleCollapse={toggleCollapse}
+                      isFirst={index === 0}
+                      isLast={index === layout.length - 1}
+                    />
+                  );
 
                 case "discount_analysis":
                   return (
