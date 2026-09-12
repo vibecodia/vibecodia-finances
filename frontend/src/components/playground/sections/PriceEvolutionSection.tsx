@@ -14,6 +14,14 @@ import { Line } from "react-chartjs-2";
 
 import { formatCurrency } from "../../../utils/helpers";
 
+export interface PriceEvolutionItemPoint {
+  price: number;
+  date?: string;
+  originalName?: string;
+  transactionDescription?: string;
+  transactionId?: string;
+}
+
 export interface PriceEvolutionSectionProps {
   id: string;
   label: string;
@@ -24,7 +32,7 @@ export interface PriceEvolutionSectionProps {
   selectedItem: string | null;
   onSelectedItemChange: (item: string) => void;
   sortedItemNames: string[];
-  allItems: Record<string, { price: number }[]>;
+  allItems: Record<string, PriceEvolutionItemPoint[]>;
   stats: { min: number; max: number; avg: number; count: number } | null;
   priceChartData: ChartData<"line"> | null;
   chartRefCallback: (instance: unknown) => void;
@@ -240,12 +248,32 @@ export const PriceEvolutionSection: React.FC<PriceEvolutionSectionProps> = ({
                   data={priceChartData}
                   options={{
                     maintainAspectRatio: false,
+                    interaction: {
+                      mode: "nearest",
+                      axis: "x",
+                      intersect: false,
+                    },
                     plugins: {
                       legend: { display: false },
                       tooltip: {
                         callbacks: {
                           label: (context) => {
-                            return formatCurrency(context.parsed.y);
+                            const fallbackPoint = selectedItem ? allItems[selectedItem]?.[context.dataIndex] : undefined;
+                            const rawPoint =
+                              (context.dataset as unknown as { dataPoints?: PriceEvolutionItemPoint[] })?.dataPoints?.[context.dataIndex] ?? fallbackPoint;
+                            const txDesc = rawPoint?.transactionDescription;
+                            const lines = [`Preço: ${formatCurrency(context.parsed.y)}`];
+                            if (txDesc) {
+                              lines.push(`Transação: ${txDesc}`);
+                            }
+                            if (
+                              rawPoint?.originalName &&
+                              selectedItem &&
+                              rawPoint.originalName.toLowerCase() !== selectedItem.toLowerCase()
+                            ) {
+                              lines.push(`Item na nota: ${rawPoint.originalName}`);
+                            }
+                            return lines;
                           },
                         },
                       },
